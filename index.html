@@ -91,6 +91,22 @@ footer .footer-links{display:flex;gap:18px;}
 footer .footer-links a{color:var(--mu);text-decoration:none;}
 footer .footer-links a:hover{color:var(--blue);}
 
+.flag-swatch{display:inline-block;width:16px;height:11px;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.12);flex-shrink:0;vertical-align:middle;}
+.flag-fr{background:linear-gradient(90deg,#002395 33.33%,#ffffff 33.33% 66.66%,#ED2939 66.66%);}
+.flag-es{background:linear-gradient(180deg,#AA151B 25%,#F1BF00 25% 75%,#AA151B 75%);}
+.flag-gb{background:#012169;position:relative;overflow:hidden;}
+.flag-gb::before{content:'';position:absolute;inset:0;background:
+  linear-gradient(to bottom right, transparent 46%, #fff 46% 54%, transparent 54%),
+  linear-gradient(to bottom left, transparent 46%, #fff 46% 54%, transparent 54%),
+  linear-gradient(to bottom, transparent 42%, #fff 42% 58%, transparent 58%),
+  linear-gradient(to right, transparent 42%, #fff 42% 58%, transparent 58%);}
+.flag-gb::after{content:'';position:absolute;inset:0;background:
+  linear-gradient(to bottom right, transparent 48%, #C8102E 48% 52%, transparent 52%),
+  linear-gradient(to bottom left, transparent 48%, #C8102E 48% 52%, transparent 52%),
+  linear-gradient(to bottom, transparent 45%, #C8102E 45% 55%, transparent 55%),
+  linear-gradient(to right, transparent 45%, #C8102E 45% 55%, transparent 55%);}
+.lang-item-root:hover,.lang-item-root.active{background:rgba(18,102,227,.07);}
+
 @media(max-width:640px){
   .choix-grid{grid-template-columns:1fr;}
   header{padding:20px;}
@@ -106,7 +122,17 @@ footer .footer-links a:hover{color:var(--blue);}
       <img src="/apple-touch-icon.png" alt="LearnLogic Studio" style="width:24px;height:24px;border-radius:6px;">
       Cara<span>Link</span>
     </div>
-    <a href="https://www.learnlogicstudio.com/" class="btn-qui-header">Qui sommes-nous ?</a>
+    <a href="https://www.learnlogicstudio.com/" class="btn-qui-header" data-i18n="qui_sommes">Qui sommes-nous ?</a>
+    <div class="lang-dropdown-wrap-root" style="position:relative;">
+      <button id="lang-dropdown-btn-root" onclick="toggleLangMenuRoot(event)" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;border:1px solid var(--brd);background:var(--panel);color:var(--ink);font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;">
+        <span class="flag-swatch flag-fr"></span> Français
+      </button>
+      <div id="lang-dropdown-menu-root" style="display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--panel);border:1px solid var(--brd);border-radius:10px;box-shadow:0 8px 24px rgba(19,34,60,.12);min-width:150px;z-index:200;overflow:hidden;">
+        <div class="lang-item-root" data-lang="fr" onclick="setLangRoot('fr');toggleLangMenuRoot()" style="display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;font-size:13px;"><span class="flag-swatch flag-fr"></span> Français</div>
+        <div class="lang-item-root" data-lang="en" onclick="setLangRoot('en');toggleLangMenuRoot()" style="display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;font-size:13px;"><span class="flag-swatch flag-gb"></span> English</div>
+        <div class="lang-item-root" data-lang="es" onclick="setLangRoot('es');toggleLangMenuRoot()" style="display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;font-size:13px;"><span class="flag-swatch flag-es"></span> Español</div>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -117,10 +143,10 @@ footer .footer-links a:hover{color:var(--blue);}
 
   <div class="hero-flex">
     <div class="hero-main">
-      <div class="hero-eyebrow"><span class="dot-pulse"></span>Logique · Organisation · Performance</div>
-      <h1 class="hero-title">La <span class="accent">puissance</span> d'un écosystème. La <span class="accent">simplicité</span> d'une solution.</h1>
-      <p class="hero-sub">Des outils intelligents pensés pour simplifier le travail des professionnels et indépendants.</p>
-      <p class="hero-note">Par des passionnés pour des passionnés avec l'aide de professionnels du terrain.</p>
+      <div class="hero-eyebrow" data-i18n="hero_eyebrow"><span class="dot-pulse"></span>Logique · Organisation · Performance</div>
+      <h1 class="hero-title" data-i18n="hero_title">La <span class="accent">puissance</span> d'un écosystème. La <span class="accent">simplicité</span> d'une solution.</h1>
+      <p class="hero-sub" data-i18n="hero_sub">Des outils intelligents pensés pour simplifier le travail des professionnels et indépendants.</p>
+      <p class="hero-note" data-i18n="hero_note">Par des passionnés pour des passionnés avec l'aide de professionnels du terrain.</p>
     </div>
   </div>
 
@@ -129,9 +155,9 @@ footer .footer-links a:hover{color:var(--blue);}
   </div>
 
   <div class="hero-badges-row">
-    <span class="hero-badge-row-item">🇬🇵 100% Antilles-Guyane</span>
-    <span class="hero-badge-row-item">🛡️ Sécurité & confiance</span>
-    <span class="hero-badge-row-item">🤖 IA intégrée</span>
+    <span class="hero-badge-row-item" data-i18n="badge1">🇬🇵 100% Antilles-Guyane</span>
+    <span class="hero-badge-row-item" data-i18n="badge2">🛡️ Sécurité & confiance</span>
+    <span class="hero-badge-row-item" data-i18n="badge3">🤖 IA intégrée</span>
   </div>
 
 </section>
@@ -140,23 +166,23 @@ footer .footer-links a:hover{color:var(--blue);}
   <div class="choix-grid">
     <a href="/formation" class="choix-card formation">
       <div class="choix-icon">🎓</div>
-      <div class="choix-titre">CaraLink Formation</div>
-      <div class="choix-sub">Centres de formation à la recherche de formateurs disponibles.</div>
-      <div class="choix-cta">Découvrir →</div>
+      <div class="choix-titre" data-i18n="formation_titre">CaraLink Formation</div>
+      <div class="choix-sub" data-i18n="formation_sub">Centres de formation à la recherche de formateurs disponibles.</div>
+      <div class="choix-cta" data-i18n="decouvrir">Découvrir →</div>
     </a>
 
     <a href="/alternance" class="choix-card alternance">
       <div class="choix-icon">🤝</div>
-      <div class="choix-titre">CaraLink Alternance</div>
-      <div class="choix-sub">Candidats à l'alternance, entreprises et centres — la mise en relation qui simplifie tout.</div>
-      <div class="choix-cta">Découvrir →</div>
+      <div class="choix-titre" data-i18n="alternance_titre">CaraLink Alternance</div>
+      <div class="choix-sub" data-i18n="alternance_sub">Candidats à l'alternance, entreprises et centres — la mise en relation qui simplifie tout.</div>
+      <div class="choix-cta" data-i18n="decouvrir">Découvrir →</div>
     </a>
 
     <a href="/artisans/" class="choix-card artisans">
       <div class="choix-icon">🔧</div>
-      <div class="choix-titre">CaraLink Artisans</div>
-      <div class="choix-sub">Trouvez un artisan de confiance près de chez vous — jardinage, plomberie, électricité…</div>
-      <div class="choix-cta">Découvrir →</div>
+      <div class="choix-titre" data-i18n="artisans_titre">CaraLink Artisans</div>
+      <div class="choix-sub" data-i18n="artisans_sub">Trouvez un artisan de confiance près de chez vous — jardinage, plomberie, électricité…</div>
+      <div class="choix-cta" data-i18n="decouvrir">Découvrir →</div>
     </a>
   </div>
 </main>
@@ -164,13 +190,13 @@ footer .footer-links a:hover{color:var(--blue);}
 <footer>
   <div>
     <div style="font-weight:700;color:var(--ink);">LearnLogic Studio</div>
-    <div style="font-size:10.5px;color:var(--mu);letter-spacing:.5px;margin-top:2px;">Logique · Organisation · Performance</div>
-    <div style="margin-top:8px;">© 2026 CaraLink. Tous droits réservés.</div>
+    <div style="font-size:10.5px;color:var(--mu);letter-spacing:.5px;margin-top:2px;" data-i18n="footer_tagline">Logique · Organisation · Performance</div>
+    <div style="margin-top:8px;" data-i18n="footer_rights">© 2026 CaraLink. Tous droits réservés.</div>
   </div>
   <div class="footer-links">
-    <a href="https://www.learnlogicstudio.com/#">Mentions légales</a>
-    <a href="https://www.learnlogicstudio.com/#">Confidentialité</a>
-    <a href="mailto:contact@learnlogicstudio.com">Contact</a>
+    <a href="https://www.learnlogicstudio.com/#" data-i18n="footer_mentions">Mentions légales</a>
+    <a href="https://www.learnlogicstudio.com/#" data-i18n="footer_confidentialite">Confidentialité</a>
+    <a href="mailto:contact@learnlogicstudio.com" data-i18n="footer_contact">Contact</a>
   </div>
 </footer>
 
@@ -283,5 +309,6 @@ footer .footer-links a:hover{color:var(--blue);}
 })();
 </script>
 
+<script src="tr-caralink-root.js"></script>
 </body>
 </html>
