@@ -27,7 +27,7 @@ header{padding:26px 48px;text-align:center;position:relative;z-index:2;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
 @keyframes dotpulse{0%,100%{opacity:.4;transform:scale(.85)}50%{opacity:1;transform:scale(1.1)}}
 
-.hero{position:relative;overflow:hidden;padding:40px 40px 0;min-height:560px;}
+.hero{position:relative;overflow:hidden;padding:40px 40px 44px;min-height:560px;}
 .hero-glow{position:absolute;width:900px;height:900px;border-radius:50%;
   background:radial-gradient(circle,rgba(18,102,227,.10) 0%,transparent 68%);
   top:-260px;right:-280px;pointer-events:none;z-index:0;}
@@ -46,6 +46,7 @@ header{padding:26px 48px;text-align:center;position:relative;z-index:2;}
 .hero-title{font-size:clamp(32px,4.6vw,52px);line-height:1.1;letter-spacing:-1px;margin-bottom:18px;animation:fadeUp .7s .1s ease both;}
 .hero-title .accent{color:var(--blue);}
 .hero-sub{font-size:clamp(15px,1.4vw,17px);color:var(--mu2);max-width:480px;line-height:1.65;margin-bottom:10px;animation:fadeUp .7s .2s ease both;}
+.hero-note{font-size:12px;color:var(--mu);font-family:'JetBrains Mono',monospace;letter-spacing:.5px;animation:fadeUp .7s .3s ease both;}
 
 .hero-visual{position:absolute;top:0;right:0;bottom:0;width:52%;z-index:0;overflow:hidden;
   -webkit-mask-image:linear-gradient(to right,transparent 0%,black 26%);
@@ -57,11 +58,10 @@ header{padding:26px 48px;text-align:center;position:relative;z-index:2;}
   padding:26px 0;border-top:1px solid var(--brd);animation:fadeUp .7s .3s ease both;}
 .hero-badge-row-item{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--mu2);font-weight:500;}
 
-.qui-sommes-wrap{text-align:center;padding:28px 0 44px;position:relative;z-index:1;}
-.btn-qui{display:inline-flex;align-items:center;gap:8px;padding:12px 26px;border-radius:11px;
+.btn-qui-header{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:10px;
   border:1px solid var(--brd);background:var(--panel);color:var(--ink);text-decoration:none;
-  font-size:14px;font-weight:600;transition:all .2s;}
-.btn-qui:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);}
+  font-size:13px;font-weight:600;transition:all .2s;}
+.btn-qui-header:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);}
 
 @media(max-width:980px){
   .hero-flex{flex-direction:column;text-align:center;}
@@ -101,7 +101,13 @@ footer .footer-links a:hover{color:var(--blue);}
 <body>
 
 <header>
-  <div class="logo">Cara<span>Link</span></div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:18px;flex-wrap:wrap;">
+    <div class="logo" style="display:flex;align-items:center;gap:8px;">
+      <img src="/apple-touch-icon.png" alt="LearnLogic Studio" style="width:24px;height:24px;border-radius:6px;">
+      Cara<span>Link</span>
+    </div>
+    <a href="https://www.learnlogicstudio.com/" class="btn-qui-header">Qui sommes-nous ?</a>
+  </div>
 </header>
 
 <section class="hero">
@@ -111,9 +117,10 @@ footer .footer-links a:hover{color:var(--blue);}
 
   <div class="hero-flex">
     <div class="hero-main">
-      <div class="hero-eyebrow"><span class="dot-pulse"></span>Antilles-Guyane</div>
-      <h1 class="hero-title">La mise en relation <span class="accent">de confiance</span>, partout où vous en avez besoin.</h1>
-      <p class="hero-sub">Trois univers, une même exigence : zéro friction, vérification sérieuse, avis authentiques.</p>
+      <div class="hero-eyebrow"><span class="dot-pulse"></span>Logique · Organisation · Performance</div>
+      <h1 class="hero-title">La <span class="accent">puissance</span> d'un écosystème. La <span class="accent">simplicité</span> d'une solution.</h1>
+      <p class="hero-sub">Des outils intelligents pensés pour simplifier le travail des professionnels et indépendants.</p>
+      <p class="hero-note">Par des passionnés pour des passionnés avec l'aide de professionnels du terrain.</p>
     </div>
   </div>
 
@@ -123,13 +130,10 @@ footer .footer-links a:hover{color:var(--blue);}
 
   <div class="hero-badges-row">
     <span class="hero-badge-row-item">🇬🇵 100% Antilles-Guyane</span>
-    <span class="hero-badge-row-item">🛡️ Conformité Qualiopi</span>
+    <span class="hero-badge-row-item">🛡️ Sécurité & confiance</span>
     <span class="hero-badge-row-item">🤖 IA intégrée</span>
   </div>
 
-  <div class="qui-sommes-wrap">
-    <a href="https://www.learnlogicstudio.com/" class="btn-qui">Qui sommes-nous ?</a>
-  </div>
 </section>
 
 <main>
@@ -158,7 +162,11 @@ footer .footer-links a:hover{color:var(--blue);}
 </main>
 
 <footer>
-  <div>© 2026 CaraLink. Tous droits réservés.</div>
+  <div>
+    <div style="font-weight:700;color:var(--ink);">LearnLogic Studio</div>
+    <div style="font-size:10.5px;color:var(--mu);letter-spacing:.5px;margin-top:2px;">Logique · Organisation · Performance</div>
+    <div style="margin-top:8px;">© 2026 CaraLink. Tous droits réservés.</div>
+  </div>
   <div class="footer-links">
     <a href="https://www.learnlogicstudio.com/#">Mentions légales</a>
     <a href="https://www.learnlogicstudio.com/#">Confidentialité</a>
