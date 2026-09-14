@@ -136,6 +136,7 @@ function renderNav() {
       '</a>' +
       '<div class="nav-links" style="display:flex;align-items:center;gap:14px;">' +
         renderLangSwitcher() +
+        '<a href="/artisans/connexion.html" style="padding:6px 10px;color:var(--tx);text-decoration:none;font-size:13.5px;">Connexion</a>' +
         '<a href="/artisans/inscription.html" style="padding:6px 14px;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;text-decoration:none;">Devenir artisan</a>' +
       '</div>' +
     '</div>' +

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion — CaraLink Artisans</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{ --bg:#ffffff; --paper:#ffffff; --ink:#13223c; --mute:#6b7c96; --clay:#B5502F; --clay-dark:#8F3D22; --line:#e3eaf4; --danger:#B3261E; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Work Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;}
+h1{font-family:'Fraunces',serif;font-weight:600;}
+nav{padding:22px 48px;}
+.logo{font-family:'Fraunces',serif;font-size:20px;font-weight:700;text-decoration:none;color:var(--ink);}
+.logo span{color:var(--clay);}
+main{flex:1;display:flex;align-items:center;justify-content:center;padding:20px;}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 3px rgba(19,34,60,.08);padding:32px;max-width:380px;width:100%;}
+.card h1{font-size:22px;margin-bottom:6px;}
+.card p{font-size:13px;color:var(--mute);margin-bottom:22px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px;}
+.field input{width:100%;padding:11px 13px;border-radius:8px;border:1.5px solid var(--line);font-family:'Work Sans',sans-serif;font-size:14px;}
+.field input:focus{outline:2px solid var(--clay);outline-offset:1px;border-color:var(--clay);}
+.btn{width:100%;padding:13px;border-radius:9px;border:none;background:var(--clay);color:#fff;font-family:'Work Sans',sans-serif;font-size:14.5px;font-weight:700;cursor:pointer;}
+.btn:hover{background:var(--clay-dark);}
+.btn:disabled{opacity:.6;cursor:not-allowed;}
+.err{background:rgba(179,38,30,.08);border:1px solid rgba(179,38,30,.3);color:var(--danger);padding:11px 13px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none;}
+.err.show{display:block;}
+.foot{text-align:center;margin-top:18px;font-size:13px;color:var(--mute);}
+.foot a{color:var(--clay);font-weight:600;text-decoration:none;}
+</style>
+</head>
+<body>
+<nav><a href="/artisans/" class="logo">CaraLink <span>Artisans</span></a></nav>
+<main>
+  <div class="card">
+    <h1>Connexion artisan</h1>
+    <p>Accédez à votre profil, vos services et vos demandes de devis.</p>
+    <div id="err" class="err"></div>
+    <form onsubmit="event.preventDefault();seConnecter();">
+      <div class="field"><label for="f-email">Email</label><input type="email" id="f-email" required></div>
+      <div class="field"><label for="f-password">Mot de passe</label><input type="password" id="f-password" required></div>
+      <button type="submit" class="btn" id="btn">Se connecter</button>
+    </form>
+    <div class="foot">Pas encore de profil ? <a href="/artisans/inscription.html">Inscrivez-vous</a></div>
+  </div>
+</main>
+<script>
+const SUPABASE_URL  = 'https://uzgboxfxpxazhysusewv.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+async function seConnecter() {
+  var email = document.getElementById('f-email').value.trim();
+  var password = document.getElementById('f-password').value;
+  var err = document.getElementById('err');
+  var btn = document.getElementById('btn');
+  err.classList.remove('show');
+  btn.disabled = true; btn.textContent = 'Connexion…';
+
+  try {
+    var res = await sb.auth.signInWithPassword({ email, password });
+    if (res.error) throw new Error('Email ou mot de passe incorrect.');
+    window.location.href = '/artisans/espace.html';
+  } catch(e) {
+    err.textContent = e.message;
+    err.classList.add('show');
+    btn.disabled = false; btn.textContent = 'Se connecter';
+  }
+}
+</script>
+</body>
+</html>

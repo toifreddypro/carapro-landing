@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mon espace — CaraLink Artisans</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{ --bg:#ffffff; --paper:#ffffff; --ink:#13223c; --mute:#6b7c96; --mu2:#4a5c78; --clay:#B5502F; --clay-dark:#8F3D22; --palm:#2D5D4A; --line:#e3eaf4; --danger:#B3261E; --gold:#b45309; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Work Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
+h1,h2{font-family:'Fraunces',serif;font-weight:600;}
+nav{display:flex;align-items:center;justify-content:space-between;padding:18px 40px;border-bottom:1px solid var(--line);}
+.logo{font-family:'Fraunces',serif;font-size:19px;font-weight:700;text-decoration:none;color:var(--ink);}
+.logo span{color:var(--clay);}
+.deco{background:none;border:1px solid var(--line);border-radius:8px;padding:7px 14px;font-size:13px;color:var(--mute);cursor:pointer;}
+
+.wrap{max-width:800px;margin:0 auto;padding:28px 24px 80px;}
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:24px;overflow-x:auto;}
+.tab{padding:10px 16px;font-size:13.5px;font-weight:600;color:var(--mute);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+.tab.active{color:var(--clay);border-bottom-color:var(--clay);}
+
+.section{display:none;}
+.section.active{display:block;}
+
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px;}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border-radius:8px;border:1.5px solid var(--line);font-family:'Work Sans',sans-serif;font-size:14px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.btn{padding:11px 20px;border-radius:9px;border:none;background:var(--clay);color:#fff;font-size:13.5px;font-weight:700;cursor:pointer;}
+.btn:hover{background:var(--clay-dark);}
+.btn-sm{padding:7px 12px;font-size:12.5px;border-radius:7px;}
+.btn-outline{background:transparent;border:1.5px solid var(--line);color:var(--mute);}
+.btn-danger{background:transparent;border:1.5px solid rgba(179,38,30,.3);color:var(--danger);}
+
+.card{border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;}
+.card-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;}
+.badge-ouverte{background:rgba(180,83,9,.1);color:var(--gold);}
+.badge-vue{background:rgba(45,93,74,.1);color:var(--palm);}
+
+.photos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;}
+.photo-item{position:relative;border-radius:8px;overflow:hidden;aspect-ratio:1;}
+.photo-item img{width:100%;height:100%;object-fit:cover;}
+.photo-del{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:6px;width:22px;height:22px;cursor:pointer;font-size:12px;}
+
+.msg{padding:11px 13px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none;}
+.msg.show{display:block;}
+.msg-err{background:rgba(179,38,30,.08);color:var(--danger);}
+.msg-ok{background:rgba(45,93,74,.08);color:var(--palm);}
+.loader{text-align:center;padding:40px;color:var(--mute);}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/artisans/" class="logo">CaraLink <span>Artisans</span></a>
+  <button class="deco" onclick="seDeconnecter()">Se déconnecter</button>
+</nav>
+
+<div class="wrap" id="wrap">
+  <div class="loader">Chargement…</div>
+</div>
+
+<script>
+const SUPABASE_URL  = 'https://uzgboxfxpxazhysusewv.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+const SECTEURS = [
+  { code:'jardinage', label:'Jardinage' }, { code:'plomberie', label:'Plomberie' },
+  { code:'electricite', label:'Électricité' }, { code:'peinture', label:'Peinture' },
+  { code:'maconnerie', label:'Maçonnerie' }, { code:'menuiserie', label:'Menuiserie' },
+  { code:'climatisation', label:'Climatisation' }, { code:'autre', label:'Autre' },
+];
+
+var _session = null;
+var _data = null;
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+async function seDeconnecter() {
+  await sb.auth.signOut();
+  window.location.href = '/artisans/connexion.html';
+}
+
+async function appelerFonction(nom, options) {
+  var res = await fetch(SUPABASE_URL + '/functions/v1/' + nom, Object.assign({
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _session.access_token },
+  }, options || {}));
+  var data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+async function init() {
+  var { data: sessionData } = await sb.auth.getSession();
+  if (!sessionData.session) { window.location.href = '/artisans/connexion.html'; return; }
+  _session = sessionData.session;
+
+  try {
+    _data = await appelerFonction('mon-espace-artisan', { method: 'GET' });
+    render();
+  } catch(e) {
+    document.getElementById('wrap').innerHTML = '<div class="loader">Erreur : ' + escHtml(e.message) + '</div>';
+  }
+}
+
+function render() {
+  document.getElementById('wrap').innerHTML =
+    '<div class="tabs">' +
+      '<div class="tab active" data-tab="profil" onclick="changerOnglet(this)">Profil</div>' +
+      '<div class="tab" data-tab="services" onclick="changerOnglet(this)">Services</div>' +
+      '<div class="tab" data-tab="photos" onclick="changerOnglet(this)">Photos</div>' +
+      '<div class="tab" data-tab="devis" onclick="changerOnglet(this)">Devis reçus' + (_data.devis.length ? ' (' + _data.devis.length + ')' : '') + '</div>' +
+    '</div>' +
+    '<div id="msg" class="msg"></div>' +
+    '<div class="section active" id="sec-profil">' + renderProfil() + '</div>' +
+    '<div class="section" id="sec-services">' + renderServices() + '</div>' +
+    '<div class="section" id="sec-photos">' + renderPhotos() + '</div>' +
+    '<div class="section" id="sec-devis">' + renderDevis() + '</div>';
+}
+
+function changerOnglet(el) {
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+  document.querySelectorAll('.section').forEach(function(s){ s.classList.remove('active'); });
+  el.classList.add('active');
+  document.getElementById('sec-' + el.dataset.tab).classList.add('active');
+}
+
+function afficherMsg(texte, ok) {
+  var m = document.getElementById('msg');
+  m.textContent = texte;
+  m.className = 'msg show ' + (ok ? 'msg-ok' : 'msg-err');
+  setTimeout(function(){ m.classList.remove('show'); }, 4000);
+}
+
+// ── PROFIL ──
+function renderProfil() {
+  var a = _data.artisan;
+  var options = SECTEURS.map(function(s){ return '<option value="'+s.code+'"'+(a.secteur===s.code?' selected':'')+'>'+s.label+'</option>'; }).join('');
+  var statutBadge = a.verifie
+    ? '<span class="badge badge-vue">✅ Vérifié</span>'
+    : '<span class="badge badge-ouverte">⏳ ' + (a.verification_statut === 'en_attente' ? 'Vérification en cours' : 'Non vérifié') + '</span>';
+  return '<h2 style="font-size:18px;margin-bottom:4px;">Votre profil ' + statutBadge + '</h2>' +
+    '<p style="font-size:13px;color:var(--mute);margin-bottom:20px;">Visible par tous les clients de l\'annuaire.</p>' +
+    '<div class="field"><label>Nom de l\'entreprise</label><input id="p-nom" value="' + escHtml(a.nom_entreprise) + '"></div>' +
+    '<div class="field-row">' +
+      '<div class="field"><label>Secteur</label><select id="p-secteur">' + options + '</select></div>' +
+      '<div class="field"><label>Commune</label><input id="p-commune" value="' + escHtml(a.commune) + '"></div>' +
+    '</div>' +
+    '<div class="field-row">' +
+      '<div class="field"><label>Téléphone</label><input id="p-telephone" value="' + escHtml(a.telephone) + '"></div>' +
+      '<div class="field"><label>Rayon d\'intervention (km)</label><input id="p-rayon" type="number" value="' + (a.rayon_intervention_km||15) + '"></div>' +
+    '</div>' +
+    '<div class="field"><label>Présentation</label><textarea id="p-bio" rows="3">' + escHtml(a.bio||'') + '</textarea></div>' +
+    '<button class="btn" onclick="sauverProfil()">Enregistrer</button>';
+}
+
+async function sauverProfil() {
+  try {
+    await appelerFonction('gerer-espace-artisan', { method: 'POST', body: JSON.stringify({
+      action: 'maj_profil',
+      nom_entreprise: document.getElementById('p-nom').value.trim(),
+      secteur: document.getElementById('p-secteur').value,
+      commune: document.getElementById('p-commune').value.trim(),
+      telephone: document.getElementById('p-telephone').value.trim(),
+      bio: document.getElementById('p-bio').value.trim(),
+      rayon_intervention_km: parseInt(document.getElementById('p-rayon').value, 10) || 15,
+    })});
+    afficherMsg('✅ Profil mis à jour.', true);
+  } catch(e) { afficherMsg(e.message, false); }
+}
+
+// ── SERVICES ──
+function renderServices() {
+  var liste = _data.services.map(function(s) {
+    return '<div class="card"><div class="card-row">' +
+      '<div><strong>' + escHtml(s.nom_service) + '</strong>' + (s.description ? '<div style="font-size:12.5px;color:var(--mute);">' + escHtml(s.description) + '</div>' : '') +
+      '<div style="font-size:12.5px;color:var(--clay);font-weight:600;margin-top:4px;">' + (s.prix_indicatif ? s.prix_indicatif + '€' + (s.unite?'/'+s.unite:'') : 'Sur devis') + '</div></div>' +
+      '<button class="btn btn-sm btn-danger" onclick="supprimerService(\'' + s.id + '\')">Supprimer</button>' +
+    '</div></div>';
+  }).join('');
+  return '<h2 style="font-size:18px;margin-bottom:16px;">Vos services</h2>' +
+    (liste || '<p style="color:var(--mute);font-size:13px;margin-bottom:16px;">Aucun service pour l\'instant.</p>') +
+    '<div class="card" style="margin-top:16px;">' +
+      '<div class="field"><label>Nom du service</label><input id="s-nom" placeholder="Ex : Tonte de pelouse"></div>' +
+      '<div class="field-row">' +
+        '<div class="field"><label>Tarif indicatif (€)</label><input id="s-prix" type="number"></div>' +
+        '<div class="field"><label>Unité</label><input id="s-unite" placeholder="forfait, heure, m²…"></div>' +
+      '</div>' +
+      '<div class="field"><label>Description</label><input id="s-desc"></div>' +
+      '<button class="btn btn-sm" onclick="ajouterService()">Ajouter ce service</button>' +
+    '</div>';
+}
+
+async function ajouterService() {
+  var nom = document.getElementById('s-nom').value.trim();
+  if (!nom) { afficherMsg('Le nom du service est obligatoire.', false); return; }
+  try {
+    await appelerFonction('gerer-espace-artisan', { method: 'POST', body: JSON.stringify({
+      action: 'ajouter_service', nom_service: nom,
+      prix_indicatif: parseFloat(document.getElementById('s-prix').value) || null,
+      unite: document.getElementById('s-unite').value.trim() || null,
+      description: document.getElementById('s-desc').value.trim() || null,
+    })});
+    _data = await appelerFonction('mon-espace-artisan', { method: 'GET' });
+    document.getElementById('sec-services').innerHTML = renderServices();
+    afficherMsg('✅ Service ajouté.', true);
+  } catch(e) { afficherMsg(e.message, false); }
+}
+
+async function supprimerService(id) {
+  try {
+    await appelerFonction('gerer-espace-artisan', { method: 'POST', body: JSON.stringify({ action: 'supprimer_service', id: id })});
+    _data = await appelerFonction('mon-espace-artisan', { method: 'GET' });
+    document.getElementById('sec-services').innerHTML = renderServices();
+    afficherMsg('Service supprimé.', true);
+  } catch(e) { afficherMsg(e.message, false); }
+}
+
+// ── PHOTOS ──
+function renderPhotos() {
+  var grille = _data.photos.map(function(p) {
+    return '<div class="photo-item"><img src="' + escHtml(p.url_photo) + '" alt=""><button class="photo-del" onclick="supprimerPhoto(\'' + p.id + '\')">✕</button></div>';
+  }).join('');
+  return '<h2 style="font-size:18px;margin-bottom:16px;">Photos de vos réalisations</h2>' +
+    '<div class="photos-grid" style="margin-bottom:16px;">' + grille + '</div>' +
+    '<input type="file" id="ph-input" accept="image/*" style="display:none;" onchange="uploaderPhoto()">' +
+    '<button class="btn btn-sm" onclick="document.getElementById(\'ph-input\').click()">Ajouter une photo</button>';
+}
+
+async function uploaderPhoto() {
+  var input = document.getElementById('ph-input');
+  var fichier = input.files[0];
+  if (!fichier) return;
+  try {
+    var chemin = _session.user.id + '/' + Date.now() + '_' + fichier.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    var up = await sb.storage.from('artisans-photos').upload(chemin, fichier);
+    if (up.error) throw new Error(up.error.message);
+    var { data: pub } = sb.storage.from('artisans-photos').getPublicUrl(chemin);
+    await appelerFonction('gerer-espace-artisan', { method: 'POST', body: JSON.stringify({ action: 'ajouter_photo', url_photo: pub.publicUrl })});
+    _data = await appelerFonction('mon-espace-artisan', { method: 'GET' });
+    document.getElementById('sec-photos').innerHTML = renderPhotos();
+    afficherMsg('✅ Photo ajoutée.', true);
+  } catch(e) { afficherMsg(e.message, false); }
+}
+
+async function supprimerPhoto(id) {
+  try {
+    await appelerFonction('gerer-espace-artisan', { method: 'POST', body: JSON.stringify({ action: 'supprimer_photo', id: id })});
+    _data = await appelerFonction('mon-espace-artisan', { method: 'GET' });
+    document.getElementById('sec-photos').innerHTML = renderPhotos();
+    afficherMsg('Photo supprimée.', true);
+  } catch(e) { afficherMsg(e.message, false); }
+}
+
+// ── DEVIS REÇUS ──
+function renderDevis() {
+  if (!_data.devis.length) return '<h2 style="font-size:18px;margin-bottom:16px;">Devis reçus</h2><p style="color:var(--mute);font-size:13px;">Aucune demande pour l\'instant.</p>';
+  return '<h2 style="font-size:18px;margin-bottom:16px;">Devis reçus</h2>' +
+    _data.devis.map(function(d) {
+      var demande = d.demande;
+      var badge = d.statut === 'vue' ? '<span class="badge badge-vue">Répondu</span>' : '<span class="badge badge-ouverte">Nouveau</span>';
+      return '<div class="card">' +
+        '<div class="card-row"><strong>' + (demande ? escHtml(demande.client_nom) : 'Client') + '</strong>' + badge + '</div>' +
+        (demande ? '<div style="font-size:12.5px;color:var(--mute);margin:6px 0;">📍 ' + escHtml(demande.commune) + ' · ' + escHtml(demande.description_besoin) + '</div>' : '') +
+        (d.statut === 'vue'
+          ? '<div style="font-size:12.5px;color:var(--palm);margin-top:8px;">✅ Votre réponse : ' + escHtml(d.message) + (d.prix_propose ? ' — ' + d.prix_propose + '€' : '') + '</div>'
+          : '<div style="margin-top:10px;">' +
+              '<textarea id="dv-msg-' + d.id + '" rows="2" placeholder="Votre message au client…" style="width:100%;padding:9px 11px;border-radius:7px;border:1.5px solid var(--line);font-size:13px;margin-bottom:6px;"></textarea>' +
+              '<div style="display:flex;gap:8px;">' +
+                '<input id="dv-prix-' + d.id + '" type="number" placeholder="Prix (€)" style="width:110px;padding:9px 11px;border-radius:7px;border:1.5px solid var(--line);font-size:13px;">' +
+                '<button class="btn btn-sm" onclick="repondreDevis(\'' + d.id + '\')">Envoyer ma réponse</button>' +
+              '</div>' +
+            '</div>') +
+      '</div>';
+    }).join('');
+}
+
+async function repondreDevis(id) {
+  var msg = document.getElementById('dv-msg-' + id).value.trim();
+  if (!msg) { afficherMsg('Merci d\'écrire un message.', false); return; }
+  try {
+    await appelerFonction('gerer-espace-artisan', { method: 'POST', body: JSON.stringify({
+      action: 'repondre_devis', devis_reponse_id: id, message: msg,
+      prix_propose: parseFloat(document.getElementById('dv-prix-' + id).value) || null,
+    })});
+    _data = await appelerFonction('mon-espace-artisan', { method: 'GET' });
+    document.getElementById('sec-devis').innerHTML = renderDevis();
+    afficherMsg('✅ Réponse envoyée.', true);
+  } catch(e) { afficherMsg(e.message, false); }
+}
+
+init();
+</script>
+</body>
+</html>
