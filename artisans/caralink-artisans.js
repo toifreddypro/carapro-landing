@@ -130,7 +130,7 @@ function renderNav() {
     '<div class="nav-wrap">' +
       '<a href="/artisans/" class="nav-logo">' +
         '<div style="display:flex;align-items:center;gap:8px;">' +
-          '<img src="/artisans/img/learnlogic-icon.png" alt="LearnLogic Studio" style="width:26px;height:26px;border-radius:7px;flex-shrink:0;">' +
+          '<img src="/apple-touch-icon.png" alt="LearnLogic Studio" style="width:26px;height:26px;border-radius:7px;flex-shrink:0;">' +
           '<span class="nav-logo-txt">CaraLink <span>Artisans</span></span>' +
         '</div>' +
       '</a>' +
