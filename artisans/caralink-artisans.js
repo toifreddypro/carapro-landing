@@ -120,6 +120,7 @@ function choisirLangArtisans(code) {
   renderNav();
   renderHero();
   renderResults();
+  appliquerTraductionsStatiques();
 }
 document.addEventListener('click', function(e) {
   var menu = document.getElementById('lang-menu-artisans');
@@ -475,8 +476,6 @@ async function envoyerDemandeDevis(artisanId) {
 
 // ── Init ──
 document.addEventListener('DOMContentLoaded', function() {
-  var saved = localStorage.getItem('at_lang');
-  if (saved && AT_TR[saved]) AT_LANG = saved;
   renderNav();
   renderHero();
   renderResults();

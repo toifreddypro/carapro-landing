@@ -4,7 +4,10 @@
 // Traductions FR / EN / ES — annuaire, recherche, profil, devis.
 // ═══════════════════════════════════════════════════════════
 
-var AT_LANG = 'fr';
+var AT_LANG = (function() {
+  var saved = localStorage.getItem('at_lang');
+  return (saved && ['fr','en','es'].includes(saved)) ? saved : 'fr';
+})();
 
 var AT_TR = {
   fr: {
@@ -64,6 +67,41 @@ var AT_TR = {
 
     lang_bientot: "🌍 Bientôt disponible en",
     lang_anglais: "anglais", lang_espagnol: "espagnol",
+
+    faq_group_artisans: "Pour les artisans",
+    faq1_q: "Comment créer mon profil artisan ?",
+    faq1_a: '<div class="faq-step"><span class="faq-num">1</span>Cliquez sur <strong>Devenir artisan</strong> en haut de la page</div><div class="faq-step"><span class="faq-num">2</span>Remplissez votre compte, votre activité (secteur, commune, téléphone) et votre présentation</div><div class="faq-step"><span class="faq-num">3</span>Ajoutez votre SIRET et votre attestation d\'assurance si vous les avez déjà</div><div class="faq-step"><span class="faq-num">4</span>Validez — votre profil est visible immédiatement dans l\'annuaire</div><div class="faq-tip">💡 Tout se fait en une seule page. Pas besoin de revenir plus tard si vous êtes pressé.</div>',
+    faq2_q: 'Comment obtenir le badge "Vérifié" ?',
+    faq2_a: '<p>Votre SIRET est vérifié automatiquement auprès du registre officiel des entreprises. Votre attestation d\'assurance (RC Pro ou décennale) est ensuite examinée manuellement, généralement sous 24 à 48h.</p><div class="faq-tip">💡 Vous pouvez ajouter ou compléter ces documents à tout moment depuis votre profil, même après votre inscription.</div>',
+    faq3_q: "Comment je reçois les demandes de devis ?",
+    faq3_a: '<p>Quand un client demande un devis depuis votre profil, sa demande apparaît directement associée à votre compte — nom, téléphone, commune, et description du besoin.</p><div class="faq-tip">💡 Un client peut aussi poster une demande générale, visible par tous les artisans de son secteur et de sa zone.</div>',
+    faq4_q: "Puis-je ajouter mes services, tarifs et photos de chantiers ?",
+    faq4_a: '<p>Oui, c\'est ce qui compose votre vitrine, visible par tous les clients qui consultent votre profil — vos services avec un tarif indicatif, et des photos de vos réalisations.</p><div class="faq-tip">💡 Un profil complet, avec de vraies photos, inspire davantage confiance qu\'un profil minimal.</div>',
+
+    faq_group_clients: "Pour les clients",
+    faq5_q: "Comment trouver un artisan ?",
+    faq5_a: '<div class="faq-step"><span class="faq-num">1</span>Utilisez la barre de recherche — indiquez un secteur (plomberie, jardinage…) et votre lieu</div><div class="faq-step"><span class="faq-num">2</span>Parcourez les profils, avec le badge "Vérifié" bien visible s\'il est présent</div><div class="faq-step"><span class="faq-num">3</span>Cliquez sur un profil pour voir ses services, ses tarifs et ses avis</div><div class="faq-tip">💡 La carte interactive vous montre où se trouvent les artisans autour de vous.</div>',
+    faq6_q: "Comment demander un devis ?",
+    faq6_a: '<div class="faq-step"><span class="faq-num">1</span>Sur le profil d\'un artisan, cliquez sur <strong>Demander un devis</strong></div><div class="faq-step"><span class="faq-num">2</span>Indiquez votre nom, votre téléphone, votre commune et votre besoin</div><div class="faq-step"><span class="faq-num">3</span>Envoyez — aucun compte à créer, aucun mot de passe</div><div class="faq-tip">💡 L\'artisan reçoit votre demande directement et vous recontacte par téléphone.</div>',
+    faq7_q: 'Que garantit le badge "Vérifié" ?',
+    faq7_a: '<p>Un artisan vérifié a un SIRET actif reconnu par le registre officiel des entreprises, et son attestation d\'assurance (RC Pro ou décennale) a été contrôlée.</p><div class="faq-tip">💡 Un artisan non encore vérifié n\'est pas nécessairement suspect — il peut simplement être en cours de constitution de son dossier.</div>',
+
+    faq_group_plateforme: "La plateforme",
+    faq8_q: "C'est vraiment gratuit ?",
+    faq8_a: '<p>Oui. L\'annuaire, la recherche et la demande de devis sont entièrement gratuits, aussi bien pour les clients que pour les artisans.</p><div class="faq-tip">💡 Aucune carte bancaire n\'est demandée à l\'inscription.</div>',
+    faq9_q: "Peut-on réserver un créneau directement en ligne ?",
+    faq9_a: "<p>Pas encore — aujourd'hui, tout passe par la demande de devis, et c'est l'artisan qui vous recontacte pour convenir d'un rendez-vous. La réservation de créneau en ligne est prévue pour une prochaine version.</p>",
+
+    faq_group_compte: "Compte & Sécurité",
+    faq10_q: "Mes données sont-elles confidentielles ?",
+    faq10_a: '<p>Oui. Vos données sont hébergées sur une infrastructure sécurisée, avec des règles d\'accès strictes — chaque utilisateur n\'accède qu\'à ses propres données.</p><p style="margin-top:8px;">Votre téléphone et votre email ne sont jamais affichés publiquement — ils ne sont partagés qu\'au moment d\'une demande de devis.</p><div class="faq-tip">💡 CaraLink Artisans ne vend jamais vos données à des tiers.</div>',
+    faq11_q: "J'ai oublié mon mot de passe, que faire ?",
+    faq11_a: '<div class="faq-step"><span class="faq-num">1</span>Sur la page de connexion, cliquez sur <strong>Mot de passe oublié</strong></div><div class="faq-step"><span class="faq-num">2</span>Entrez votre email</div><div class="faq-step"><span class="faq-num">3</span>Consultez votre boîte mail et cliquez sur le lien de réinitialisation</div><div class="faq-tip">💡 Vérifiez vos spams si vous ne recevez pas l\'email dans les 2 minutes.</div>',
+    faq12_q: "Comment contacter le support ?",
+    faq12_a_p1: 'Contactez-nous à <a href="mailto:contact@learnlogicstudio.com" style="color:var(--ac);">contact@learnlogicstudio.com</a> — nous répondons sous 24h ouvrées.',
+    faq12_btn_bug: "🐛 Signaler un bug",
+    faq12_a_p2: 'Pour toute autre demande : <a href="mailto:contact@learnlogicstudio.com" style="color:var(--ac2);">contact@learnlogicstudio.com</a>',
+    faq12_tip: "💡 Décrivez le problème avec le plus de détails possibles (page, action effectuée, message d'erreur).",
   },
   en: {
     nav_connexion: "Log in",
@@ -122,6 +160,41 @@ var AT_TR = {
 
     lang_bientot: "🌍 Coming soon in",
     lang_anglais: "English", lang_espagnol: "Spanish",
+
+    faq_group_artisans: "For craftsmen",
+    faq1_q: "How do I create my craftsman profile?",
+    faq1_a: '<div class="faq-step"><span class="faq-num">1</span>Click <strong>Become a craftsman</strong> at the top of the page</div><div class="faq-step"><span class="faq-num">2</span>Fill in your account, your trade (sector, town, phone) and your bio</div><div class="faq-step"><span class="faq-num">3</span>Add your SIRET and insurance certificate if you already have them</div><div class="faq-step"><span class="faq-num">4</span>Submit — your profile is visible immediately in the directory</div><div class="faq-tip">💡 It all happens on a single page. No need to come back later if you\'re in a hurry.</div>',
+    faq2_q: 'How do I get the "Verified" badge?',
+    faq2_a: '<p>Your SIRET is automatically verified against the official business register. Your insurance certificate (liability or ten-year) is then manually reviewed, usually within 24-48h.</p><div class="faq-tip">💡 You can add or complete these documents at any time from your profile, even after signing up.</div>',
+    faq3_q: "How do I receive quote requests?",
+    faq3_a: '<p>When a client requests a quote from your profile, their request appears directly linked to your account — name, phone number, town, and description of the need.</p><div class="faq-tip">💡 A client can also post a general request, visible to all craftsmen in their trade and area.</div>',
+    faq4_q: "Can I add my services, prices and project photos?",
+    faq4_a: '<p>Yes, that\'s what makes up your showcase, seen by every client who views your profile — your services with an indicative price, and photos of your work.</p><div class="faq-tip">💡 A complete profile, with real photos, builds more trust than a minimal one.</div>',
+
+    faq_group_clients: "For clients",
+    faq5_q: "How do I find a craftsman?",
+    faq5_a: '<div class="faq-step"><span class="faq-num">1</span>Use the search bar — enter a trade (plumbing, gardening…) and your location</div><div class="faq-step"><span class="faq-num">2</span>Browse profiles, with the "Verified" badge clearly shown when present</div><div class="faq-step"><span class="faq-num">3</span>Click a profile to see their services, prices and reviews</div><div class="faq-tip">💡 The interactive map shows you where craftsmen are located near you.</div>',
+    faq6_q: "How do I request a quote?",
+    faq6_a: '<div class="faq-step"><span class="faq-num">1</span>On a craftsman\'s profile, click <strong>Request a quote</strong></div><div class="faq-step"><span class="faq-num">2</span>Enter your name, phone number, town and what you need</div><div class="faq-step"><span class="faq-num">3</span>Send — no account needed, no password</div><div class="faq-tip">💡 The craftsman receives your request directly and calls you back.</div>',
+    faq7_q: 'What does the "Verified" badge guarantee?',
+    faq7_a: '<p>A verified craftsman has an active SIRET recognized by the official business register, and their insurance certificate (liability or ten-year) has been checked.</p><div class="faq-tip">💡 A craftsman who isn\'t verified yet isn\'t necessarily suspicious — they may simply still be building their file.</div>',
+
+    faq_group_plateforme: "The platform",
+    faq8_q: "Is it really free?",
+    faq8_a: '<p>Yes. The directory, search and quote requests are entirely free, for both clients and craftsmen.</p><div class="faq-tip">💡 No credit card is required to sign up.</div>',
+    faq9_q: "Can I book a time slot directly online?",
+    faq9_a: "<p>Not yet — today, everything goes through a quote request, and the craftsman calls you back to arrange an appointment. Online time-slot booking is planned for a future version.</p>",
+
+    faq_group_compte: "Account & Security",
+    faq10_q: "Is my data kept confidential?",
+    faq10_a: '<p>Yes. Your data is hosted on secure infrastructure, with strict access rules — each user only accesses their own data.</p><p style="margin-top:8px;">Your phone number and email are never shown publicly — they are only shared when a quote is requested.</p><div class="faq-tip">💡 CaraLink Artisans never sells your data to third parties.</div>',
+    faq11_q: "I forgot my password, what do I do?",
+    faq11_a: '<div class="faq-step"><span class="faq-num">1</span>On the login page, click <strong>Forgot password</strong></div><div class="faq-step"><span class="faq-num">2</span>Enter your email</div><div class="faq-step"><span class="faq-num">3</span>Check your inbox and click the reset link</div><div class="faq-tip">💡 Check your spam folder if you don\'t receive the email within 2 minutes.</div>',
+    faq12_q: "How do I contact support?",
+    faq12_a_p1: 'Contact us at <a href="mailto:contact@learnlogicstudio.com" style="color:var(--ac);">contact@learnlogicstudio.com</a> — we reply within 24 business hours.',
+    faq12_btn_bug: "🐛 Report a bug",
+    faq12_a_p2: 'For any other request: <a href="mailto:contact@learnlogicstudio.com" style="color:var(--ac2);">contact@learnlogicstudio.com</a>',
+    faq12_tip: "💡 Describe the issue with as much detail as possible (page, action taken, error message).",
   },
   es: {
     nav_connexion: "Iniciar sesión",
@@ -180,9 +253,57 @@ var AT_TR = {
 
     lang_bientot: "🌍 Próximamente en",
     lang_anglais: "inglés", lang_espagnol: "español",
+
+    faq_group_artisans: "Para artesanos",
+    faq1_q: "¿Cómo creo mi perfil de artesano?",
+    faq1_a: '<div class="faq-step"><span class="faq-num">1</span>Haz clic en <strong>Hazte artesano</strong> en la parte superior de la página</div><div class="faq-step"><span class="faq-num">2</span>Completa tu cuenta, tu oficio (sector, localidad, teléfono) y tu presentación</div><div class="faq-step"><span class="faq-num">3</span>Añade tu SIRET y tu certificado de seguro si ya los tienes</div><div class="faq-step"><span class="faq-num">4</span>Valida — tu perfil es visible de inmediato en el directorio</div><div class="faq-tip">💡 Todo se hace en una sola página. No hace falta volver más tarde si tienes prisa.</div>',
+    faq2_q: '¿Cómo consigo la insignia "Verificado"?',
+    faq2_a: '<p>Tu SIRET se verifica automáticamente en el registro oficial de empresas. Tu certificado de seguro (responsabilidad civil o decenal) se revisa después manualmente, normalmente en 24-48h.</p><div class="faq-tip">💡 Puedes añadir o completar estos documentos en cualquier momento desde tu perfil, incluso después de registrarte.</div>',
+    faq3_q: "¿Cómo recibo las solicitudes de presupuesto?",
+    faq3_a: '<p>Cuando un cliente solicita un presupuesto desde tu perfil, su solicitud aparece directamente asociada a tu cuenta — nombre, teléfono, localidad y descripción de la necesidad.</p><div class="faq-tip">💡 Un cliente también puede publicar una solicitud general, visible para todos los artesanos de su oficio y zona.</div>',
+    faq4_q: "¿Puedo añadir mis servicios, tarifas y fotos de trabajos?",
+    faq4_a: '<p>Sí, eso es lo que compone tu vitrina, visible para todos los clientes que consultan tu perfil — tus servicios con una tarifa indicativa, y fotos de tus trabajos realizados.</p><div class="faq-tip">💡 Un perfil completo, con fotos reales, inspira más confianza que uno mínimo.</div>',
+
+    faq_group_clients: "Para clientes",
+    faq5_q: "¿Cómo encuentro un artesano?",
+    faq5_a: '<div class="faq-step"><span class="faq-num">1</span>Usa la barra de búsqueda — indica un oficio (fontanería, jardinería…) y tu ubicación</div><div class="faq-step"><span class="faq-num">2</span>Explora los perfiles, con la insignia "Verificado" bien visible cuando esté presente</div><div class="faq-step"><span class="faq-num">3</span>Haz clic en un perfil para ver sus servicios, tarifas y reseñas</div><div class="faq-tip">💡 El mapa interactivo te muestra dónde están los artesanos cerca de ti.</div>',
+    faq6_q: "¿Cómo solicito un presupuesto?",
+    faq6_a: '<div class="faq-step"><span class="faq-num">1</span>En el perfil de un artesano, haz clic en <strong>Solicitar presupuesto</strong></div><div class="faq-step"><span class="faq-num">2</span>Indica tu nombre, teléfono, localidad y tu necesidad</div><div class="faq-step"><span class="faq-num">3</span>Envía — sin necesidad de cuenta, sin contraseña</div><div class="faq-tip">💡 El artesano recibe tu solicitud directamente y te vuelve a llamar.</div>',
+    faq7_q: '¿Qué garantiza la insignia "Verificado"?',
+    faq7_a: '<p>Un artesano verificado tiene un SIRET activo reconocido por el registro oficial de empresas, y su certificado de seguro (responsabilidad civil o decenal) ha sido comprobado.</p><div class="faq-tip">💡 Un artesano aún no verificado no es necesariamente sospechoso — puede simplemente estar completando su expediente.</div>',
+
+    faq_group_plateforme: "La plataforma",
+    faq8_q: "¿Es realmente gratis?",
+    faq8_a: '<p>Sí. El directorio, la búsqueda y las solicitudes de presupuesto son completamente gratuitos, tanto para clientes como para artesanos.</p><div class="faq-tip">💡 No se pide ninguna tarjeta bancaria al registrarte.</div>',
+    faq9_q: "¿Se puede reservar una cita directamente en línea?",
+    faq9_a: "<p>Todavía no — hoy en día, todo pasa por la solicitud de presupuesto, y es el artesano quien te vuelve a llamar para acordar una cita. La reserva de citas en línea está prevista para una próxima versión.</p>",
+
+    faq_group_compte: "Cuenta y seguridad",
+    faq10_q: "¿Mis datos son confidenciales?",
+    faq10_a: '<p>Sí. Tus datos están alojados en una infraestructura segura, con normas de acceso estrictas — cada usuario solo accede a sus propios datos.</p><p style="margin-top:8px;">Tu teléfono y correo electrónico nunca se muestran públicamente — solo se comparten en el momento de una solicitud de presupuesto.</p><div class="faq-tip">💡 CaraLink Artisans nunca vende tus datos a terceros.</div>',
+    faq11_q: "Olvidé mi contraseña, ¿qué hago?",
+    faq11_a: '<div class="faq-step"><span class="faq-num">1</span>En la página de inicio de sesión, haz clic en <strong>Olvidé mi contraseña</strong></div><div class="faq-step"><span class="faq-num">2</span>Introduce tu correo electrónico</div><div class="faq-step"><span class="faq-num">3</span>Revisa tu bandeja de entrada y haz clic en el enlace de restablecimiento</div><div class="faq-tip">💡 Revisa tu carpeta de spam si no recibes el correo en 2 minutos.</div>',
+    faq12_q: "¿Cómo contacto con soporte?",
+    faq12_a_p1: 'Contáctanos en <a href="mailto:contact@learnlogicstudio.com" style="color:var(--ac);">contact@learnlogicstudio.com</a> — respondemos en 24h laborables.',
+    faq12_btn_bug: "🐛 Reportar un error",
+    faq12_a_p2: 'Para cualquier otra solicitud: <a href="mailto:contact@learnlogicstudio.com" style="color:var(--ac2);">contact@learnlogicstudio.com</a>',
+    faq12_tip: "💡 Describe el problema con el mayor detalle posible (página, acción realizada, mensaje de error).",
   }
 };
 
 function T(cle) {
   return (AT_TR[AT_LANG] && AT_TR[AT_LANG][cle]) || (AT_TR.fr[cle]) || cle;
 }
+
+// ⚠️ Ajouté le 14/09 — applique les traductions aux éléments statiques
+// (la FAQ, en HTML pur dans plateforme.html) — jamais aux éléments
+// construits dynamiquement par carapro.js, qui se redessinent
+// eux-mêmes via T() à chaque changement de langue.
+function appliquerTraductionsStatiques() {
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    var cle = el.getAttribute('data-i18n');
+    var val = T(cle);
+    if (val && val !== cle) el.innerHTML = val;
+  });
+}
+document.addEventListener('DOMContentLoaded', appliquerTraductionsStatiques);
