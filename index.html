@@ -3,31 +3,73 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CaraLink — Antilles-Guyane</title>
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
 <link rel="icon" href="/favicon.ico">
-<title>CaraLink — Antilles-Guyane</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=JetBrains+Mono:wght@500;700&family=Outfit:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#F7F9FC; --ink:#13223C; --mu:#6b7c96;
-  --blue:#1266E3; --clay:#B5502F; --alt:#0f9d78;
+  --bg:#F7F9FC; --panel:#fff; --ink:#13223C; --mu:#6b7c96; --mu2:#4a5c78; --brd:#e3eaf4;
+  --blue:#1266E3; --blue-dim:rgba(18,102,227,.08); --blue-brd:rgba(18,102,227,.25);
+  --clay:#B5502F; --alt:#0f9d78;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Work Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;}
-h1,h2{font-family:'Fraunces',serif;font-weight:600;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;}
+h1,h2{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;}
 
-header{padding:26px 48px;text-align:center;}
+header{padding:26px 48px;text-align:center;position:relative;z-index:2;}
 .logo{font-family:'Fraunces',serif;font-size:22px;font-weight:700;}
 .logo span{color:var(--blue);}
 
-main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 24px 60px;text-align:center;}
-main h1{font-size:clamp(28px,4.5vw,42px);margin-bottom:10px;}
-main p{color:var(--mu);max-width:480px;margin:0 auto 44px;font-size:15px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+@keyframes dotpulse{0%,100%{opacity:.4;transform:scale(.85)}50%{opacity:1;transform:scale(1.1)}}
 
-.choix-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;max-width:960px;width:100%;}
+.hero{position:relative;overflow:hidden;padding:40px 40px 0;}
+.hero-glow{position:absolute;width:900px;height:900px;border-radius:50%;
+  background:radial-gradient(circle,rgba(18,102,227,.10) 0%,transparent 68%);
+  top:-260px;right:-280px;pointer-events:none;z-index:0;}
+.hero-glow2{position:absolute;width:600px;height:600px;border-radius:50%;
+  background:radial-gradient(circle,rgba(245,158,11,.06) 0%,transparent 70%);
+  bottom:-160px;left:-160px;pointer-events:none;z-index:0;}
+#hero-bubbles{position:absolute;inset:0;z-index:0;pointer-events:none;}
+
+.hero-flex{position:relative;z-index:1;max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:36px;min-height:460px;}
+.hero-main{flex:1 1 460px;min-width:0;max-width:620px;text-align:left;}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:6px 18px;border-radius:100px;
+  border:1px solid var(--blue-brd);background:var(--panel);
+  font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--blue);
+  letter-spacing:1.5px;text-transform:uppercase;margin-bottom:24px;animation:fadeUp .7s ease both;}
+.dot-pulse{width:7px;height:7px;border-radius:50%;background:var(--blue);flex-shrink:0;animation:dotpulse 1.6s ease-in-out infinite;}
+.hero-title{font-size:clamp(32px,4.6vw,52px);line-height:1.1;letter-spacing:-1px;margin-bottom:18px;animation:fadeUp .7s .1s ease both;}
+.hero-title .accent{color:var(--blue);}
+.hero-sub{font-size:clamp(15px,1.4vw,17px);color:var(--mu2);max-width:480px;line-height:1.65;margin-bottom:10px;animation:fadeUp .7s .2s ease both;}
+
+.hero-visual{flex:0 0 46%;max-width:640px;border-radius:22px;overflow:hidden;position:relative;z-index:1;animation:fadeUp .7s .18s ease both;}
+.hero-visual img{width:100%;display:block;border-radius:22px;}
+
+.hero-badges-row{position:relative;z-index:1;max-width:900px;margin:44px auto 0;
+  display:flex;align-items:center;justify-content:center;gap:36px;flex-wrap:wrap;
+  padding:26px 0;border-top:1px solid var(--brd);animation:fadeUp .7s .3s ease both;}
+.hero-badge-row-item{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--mu2);font-weight:500;}
+
+.qui-sommes-wrap{text-align:center;padding:28px 0 44px;position:relative;z-index:1;}
+.btn-qui{display:inline-flex;align-items:center;gap:8px;padding:12px 26px;border-radius:11px;
+  border:1px solid var(--brd);background:var(--panel);color:var(--ink);text-decoration:none;
+  font-size:14px;font-weight:600;transition:all .2s;}
+.btn-qui:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);}
+
+@media(max-width:980px){
+  .hero-flex{flex-direction:column;text-align:center;}
+  .hero-main{text-align:center;max-width:100%;}
+  .hero-visual{width:100%;max-width:460px;}
+}
+
+main{flex:1;padding:10px 24px 60px;text-align:center;position:relative;z-index:1;}
+
+.choix-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;max-width:960px;width:100%;margin:0 auto;}
 .choix-card{background:#fff;border-radius:16px;padding:36px 28px;text-decoration:none;color:var(--ink);transition:transform .15s,box-shadow .15s;box-shadow:0 1px 3px rgba(19,34,60,.08);}
 .choix-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(19,34,60,.12);}
 .choix-icon{font-size:38px;margin-bottom:14px;}
@@ -41,11 +83,15 @@ main p{color:var(--mu);max-width:480px;margin:0 auto 44px;font-size:15px;}
 .choix-card.alternance .choix-cta{color:var(--alt);}
 .choix-card.artisans .choix-cta{color:var(--clay);}
 
-footer{text-align:center;padding:20px;font-size:11.5px;color:var(--mu);}
+footer{display:flex;align-items:center;justify-content:space-between;padding:22px 48px;font-size:11.5px;color:var(--mu);border-top:1px solid var(--brd);flex-wrap:wrap;gap:10px;}
+footer .footer-links{display:flex;gap:18px;}
+footer .footer-links a{color:var(--mu);text-decoration:none;}
+footer .footer-links a:hover{color:var(--blue);}
 
 @media(max-width:640px){
   .choix-grid{grid-template-columns:1fr;}
   header{padding:20px;}
+  footer{flex-direction:column;text-align:center;}
 }
 </style>
 </head>
@@ -55,10 +101,34 @@ footer{text-align:center;padding:20px;font-size:11.5px;color:var(--mu);}
   <div class="logo">Cara<span>Link</span></div>
 </header>
 
-<main>
-  <h1>La mise en relation de confiance, aux Antilles-Guyane</h1>
-  <p>Trois univers, une même exigence : zéro friction, vérification sérieuse, avis authentiques.</p>
+<section class="hero">
+  <div class="hero-glow" aria-hidden="true"></div>
+  <div class="hero-glow2" aria-hidden="true"></div>
+  <canvas id="hero-bubbles" aria-hidden="true"></canvas>
 
+  <div class="hero-flex">
+    <div class="hero-main">
+      <div class="hero-eyebrow"><span class="dot-pulse"></span>Antilles-Guyane</div>
+      <h1 class="hero-title">La mise en relation <span class="accent">de confiance</span>, partout où vous en avez besoin.</h1>
+      <p class="hero-sub">Trois univers, une même exigence : zéro friction, vérification sérieuse, avis authentiques.</p>
+    </div>
+    <div class="hero-visual">
+      <img src="img/hero-caralink-reseau.png" alt="Réseau CaraLink : mise en relation entre professionnels, entreprises et clients">
+    </div>
+  </div>
+
+  <div class="hero-badges-row">
+    <span class="hero-badge-row-item">🇬🇵 100% Antilles-Guyane</span>
+    <span class="hero-badge-row-item">🛡️ Conformité Qualiopi</span>
+    <span class="hero-badge-row-item">🤖 IA intégrée</span>
+  </div>
+
+  <div class="qui-sommes-wrap">
+    <a href="https://www.learnlogicstudio.com/" class="btn-qui">Qui sommes-nous ?</a>
+  </div>
+</section>
+
+<main>
   <div class="choix-grid">
     <a href="/formation" class="choix-card formation">
       <div class="choix-icon">🎓</div>
@@ -83,7 +153,123 @@ footer{text-align:center;padding:20px;font-size:11.5px;color:var(--mu);}
   </div>
 </main>
 
-<footer>© 2026 CaraLink. Tous droits réservés.</footer>
+<footer>
+  <div>© 2026 CaraLink. Tous droits réservés.</div>
+  <div class="footer-links">
+    <a href="https://www.learnlogicstudio.com/#">Mentions légales</a>
+    <a href="https://www.learnlogicstudio.com/#">Confidentialité</a>
+    <a href="mailto:contact@learnlogicstudio.com">Contact</a>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var canvas = document.getElementById('hero-bubbles');
+  if (!canvas) return;
+  var hero = canvas.closest('.hero');
+  var ctx = canvas.getContext('2d');
+
+  var QUANTITY = 60;
+  var STATICITY = 50;
+  var EASE = 50;
+  var BASE_SIZE = 0.6;
+  var COLOR_RGB = [18, 102, 227];
+  var dpr = window.devicePixelRatio || 1;
+
+  var W = 0, H = 0;
+  var mouse = { x: 0, y: 0 };
+  var circles = [];
+
+  function resize(){
+    W = hero.clientWidth;
+    H = hero.clientHeight;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    circles = [];
+    for (var i = 0; i < QUANTITY; i++) circles.push(makeCircle());
+  }
+
+  function onMouseMove(e){
+    var rect = canvas.getBoundingClientRect();
+    var x = e.clientX - rect.left - W / 2;
+    var y = e.clientY - rect.top - H / 2;
+    var inside = x < W/2 && x > -W/2 && y < H/2 && y > -H/2;
+    if (inside) { mouse.x = x; mouse.y = y; }
+  }
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('resize', resize);
+
+  function makeCircle(){
+    return {
+      x: Math.random() * W,
+      y: Math.random() * H,
+      translateX: 0,
+      translateY: 0,
+      size: Math.random() * 2 + BASE_SIZE,
+      alpha: 0,
+      targetAlpha: parseFloat((Math.random() * 0.55 + 0.3).toFixed(2)),
+      dx: (Math.random() - 0.5) * 0.1,
+      dy: (Math.random() - 0.5) * 0.1,
+      magnetism: 0.1 + Math.random() * 4
+    };
+  }
+
+  function remap(value, s1, e1, s2, e2){
+    var r = ((value - s1) * (e2 - s2)) / (e1 - s1) + s2;
+    return r > 0 ? r : 0;
+  }
+
+  function drawCircle(c){
+    ctx.save();
+    ctx.translate(c.translateX, c.translateY);
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(' + COLOR_RGB.join(',') + ',' + c.alpha + ')';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function animate(){
+    ctx.clearRect(0, 0, W, H);
+    for (var i = circles.length - 1; i >= 0; i--) {
+      var c = circles[i];
+      var edge = [
+        c.x + c.translateX - c.size,
+        W - c.x - c.translateX - c.size,
+        c.y + c.translateY - c.size,
+        H - c.y - c.translateY - c.size
+      ];
+      var closestEdge = Math.min.apply(null, edge);
+      var remapped = parseFloat(remap(closestEdge, 0, 20, 0, 1).toFixed(2));
+
+      if (remapped > 1) {
+        c.alpha += 0.02;
+        if (c.alpha > c.targetAlpha) c.alpha = c.targetAlpha;
+      } else {
+        c.alpha = c.targetAlpha * remapped;
+      }
+
+      c.x += c.dx;
+      c.y += c.dy;
+      c.translateX += (mouse.x / (STATICITY / c.magnetism) - c.translateX) / EASE;
+      c.translateY += (mouse.y / (STATICITY / c.magnetism) - c.translateY) / EASE;
+
+      drawCircle(c);
+
+      if (c.x < -c.size || c.x > W + c.size || c.y < -c.size || c.y > H + c.size) {
+        circles[i] = makeCircle();
+      }
+    }
+    requestAnimationFrame(animate);
+  }
+
+  resize();
+  animate();
+})();
+</script>
 
 </body>
 </html>
