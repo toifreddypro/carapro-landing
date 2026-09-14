@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Devenir artisan — CaraLink Artisans</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<style>
+:root{
+  --bg:#ffffff; --paper:#ffffff; --ink:#13223c; --mute:#6b7c96;
+  --clay:#B5502F; --clay-dark:#8F3D22; --palm:#2D5D4A; --line:#e3eaf4;
+  --danger:#B3261E;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Work Sans',sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;}
+h1,h2{font-family:'Fraunces',serif;font-weight:600;}
+a{color:var(--clay);}
+
+nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 auto;}
+.logo{font-family:'Fraunces',serif;font-size:20px;font-weight:700;text-decoration:none;color:var(--ink);}
+.logo span{color:var(--clay);}
+
+.wrap{max-width:640px;margin:0 auto;padding:20px 24px 80px;}
+.wrap h1{font-size:clamp(26px,4vw,34px);margin-bottom:8px;}
+.wrap>p{color:var(--mute);margin-bottom:32px;font-size:14.5px;}
+
+.form-section{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:20px;box-shadow:0 1px 3px rgba(19,34,60,.05);}
+.form-section h2{font-size:17px;margin-bottom:4px;}
+.form-section .sub{font-size:12.5px;color:var(--mute);margin-bottom:18px;}
+
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px;}
+.field input, .field select, .field textarea{
+  width:100%;padding:11px 13px;border-radius:8px;border:1.5px solid var(--line);
+  background:#fff;font-family:'Work Sans',sans-serif;font-size:14px;color:var(--ink);
+}
+.field input:focus, .field select:focus, .field textarea:focus{outline:2px solid var(--clay);outline-offset:1px;border-color:var(--clay);}
+.field textarea{resize:vertical;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.field-note{font-size:11.5px;color:var(--mute);margin-top:4px;}
+
+.upload-zone{border:2px dashed var(--line);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:border-color .15s;}
+.upload-zone:hover, .upload-zone.dragover{border-color:var(--clay);}
+.upload-zone.has-file{border-color:var(--palm);border-style:solid;background:rgba(45,93,74,.05);}
+.upload-zone-text{font-size:13px;color:var(--mute);}
+
+.btn-submit{width:100%;padding:15px;border-radius:10px;border:none;background:var(--clay);color:#fff;font-family:'Work Sans',sans-serif;font-size:15.5px;font-weight:700;cursor:pointer;transition:background .15s;}
+.btn-submit:hover{background:var(--clay-dark);}
+.btn-submit:disabled{opacity:.6;cursor:not-allowed;}
+
+.msg-err{background:rgba(179,38,30,.08);border:1px solid rgba(179,38,30,.3);color:var(--danger);padding:12px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;display:none;}
+.msg-err.show{display:block;}
+
+.confirmation{text-align:center;padding:50px 24px;}
+.confirmation .icon{font-size:52px;margin-bottom:16px;}
+.confirmation h1{margin-bottom:12px;}
+.confirmation p{color:var(--mute);max-width:420px;margin:0 auto;}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/artisans/" class="logo">CaraLink <span>Artisans</span></a>
+</nav>
+
+<div class="wrap" id="wrap-form">
+  <h1>Devenir artisan sur CaraLink</h1>
+  <p>Une seule page, quelques minutes. Votre profil sera visible immédiatement — le badge « Vérifié » viendra ensuite, après examen de vos documents.</p>
+
+  <div id="msg-err" class="msg-err"></div>
+
+  <form id="form-inscription" onsubmit="event.preventDefault();soumettreInscription();">
+
+    <div class="form-section">
+      <h2>Votre compte</h2>
+      <div class="sub">Pour retrouver votre profil et le mettre à jour plus tard.</div>
+      <div class="field">
+        <label for="f-email">Email</label>
+        <input type="email" id="f-email" required placeholder="vous@exemple.com">
+      </div>
+      <div class="field">
+        <label for="f-password">Mot de passe</label>
+        <input type="password" id="f-password" required minlength="8" placeholder="8 caractères minimum">
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h2>Votre activité</h2>
+      <div class="sub">Ce que verront les clients dans l'annuaire.</div>
+      <div class="field">
+        <label for="f-nom">Nom de votre entreprise</label>
+        <input type="text" id="f-nom" required placeholder="Ex : Jardins de Guadeloupe">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="f-secteur">Secteur</label>
+          <select id="f-secteur" required>
+            <option value="">Choisir…</option>
+            <option value="jardinage">Jardinage</option>
+            <option value="plomberie">Plomberie</option>
+            <option value="electricite">Électricité</option>
+            <option value="peinture">Peinture</option>
+            <option value="maconnerie">Maçonnerie</option>
+            <option value="menuiserie">Menuiserie</option>
+            <option value="climatisation">Climatisation</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-commune">Commune</label>
+          <input type="text" id="f-commune" required placeholder="Ex : Sainte-Anne">
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-telephone">Téléphone</label>
+        <input type="tel" id="f-telephone" required placeholder="0690 00 00 00">
+      </div>
+      <div class="field">
+        <label for="f-rayon">Rayon d'intervention (km)</label>
+        <input type="number" id="f-rayon" value="15" min="1" max="100">
+      </div>
+      <div class="field">
+        <label for="f-bio">Présentez-vous en quelques mots</label>
+        <textarea id="f-bio" rows="3" placeholder="Votre expérience, vos spécialités…"></textarea>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h2>Vérification (recommandé)</h2>
+      <div class="sub">Le badge « Vérifié » rassure vos futurs clients — vous pouvez aussi le compléter plus tard depuis votre profil.</div>
+      <div class="field">
+        <label for="f-siret">Numéro SIRET</label>
+        <input type="text" id="f-siret" placeholder="14 chiffres" maxlength="14" inputmode="numeric">
+        <div class="field-note">Vérifié automatiquement auprès du registre officiel des entreprises.</div>
+      </div>
+      <div class="field">
+        <label>Attestation d'assurance (RC Pro ou décennale)</label>
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('f-document').click()">
+          <div class="upload-zone-text" id="upload-zone-text">📎 Cliquez pour choisir un fichier (PDF, JPG, PNG)</div>
+        </div>
+        <input type="file" id="f-document" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="onFichierChoisi()">
+      </div>
+    </div>
+
+    <div class="cf-turnstile" data-sitekey="0x4AAAAAAE0Iymsul7mZRXTA" style="margin-bottom:16px;"></div>
+
+    <button type="submit" class="btn-submit" id="btn-submit">Créer mon profil</button>
+  </form>
+</div>
+
+<div class="wrap" id="wrap-confirmation" style="display:none;">
+  <div class="confirmation">
+    <div class="icon">🎉</div>
+    <h1>Bienvenue sur CaraLink Artisans !</h1>
+    <p id="confirmation-msg">Votre profil est en ligne.</p>
+    <p style="margin-top:20px;"><a href="/artisans/">← Voir l'annuaire</a></p>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL  = 'https://uzgboxfxpxazhysusewv.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+var _fichierChoisi = null;
+
+function onFichierChoisi() {
+  var input = document.getElementById('f-document');
+  var zone = document.getElementById('upload-zone');
+  var texte = document.getElementById('upload-zone-text');
+  if (input.files && input.files[0]) {
+    _fichierChoisi = input.files[0];
+    zone.classList.add('has-file');
+    texte.textContent = '✅ ' + _fichierChoisi.name;
+  }
+}
+
+function afficherErreur(msg) {
+  var el = document.getElementById('msg-err');
+  el.textContent = msg;
+  el.classList.add('show');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function soumettreInscription() {
+  var email = document.getElementById('f-email').value.trim();
+  var password = document.getElementById('f-password').value;
+  var nom = document.getElementById('f-nom').value.trim();
+  var secteur = document.getElementById('f-secteur').value;
+  var commune = document.getElementById('f-commune').value.trim();
+  var telephone = document.getElementById('f-telephone').value.trim();
+  var rayon = parseInt(document.getElementById('f-rayon').value, 10) || 15;
+  var bio = document.getElementById('f-bio').value.trim();
+  var siret = document.getElementById('f-siret').value.trim();
+
+  document.getElementById('msg-err').classList.remove('show');
+
+  if (!email || !password || !nom || !secteur || !commune || !telephone) {
+    afficherErreur('Merci de remplir tous les champs obligatoires.');
+    return;
+  }
+  if (siret && !/^\d{14}$/.test(siret)) {
+    afficherErreur('Le SIRET doit comporter exactement 14 chiffres.');
+    return;
+  }
+
+  var turnstileToken = (typeof turnstile !== 'undefined') ? turnstile.getResponse() : null;
+  if (!turnstileToken) {
+    afficherErreur('Merci de valider la vérification anti-robot.');
+    return;
+  }
+
+  var btn = document.getElementById('btn-submit');
+  btn.disabled = true; btn.textContent = 'Création en cours…';
+
+  try {
+    var authResult = await sb.auth.signUp({ email: email, password: password });
+    var authData = authResult.data;
+    var authError = authResult.error;
+    if (authError) throw new Error(authError.message === 'User already registered' ? 'Un compte existe déjà avec cet email.' : authError.message);
+
+    var accessToken = authData.session ? authData.session.access_token : null;
+    if (!accessToken) throw new Error('Impossible de créer la session. Réessayez.');
+
+    var documentPath = null;
+    if (_fichierChoisi) {
+      var cheminFichier = authData.user.id + '/' + Date.now() + '_' + _fichierChoisi.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      var uploadResult = await sb.storage.from('artisans-documents').upload(cheminFichier, _fichierChoisi);
+      if (uploadResult.error) throw new Error('Le document n\'a pas pu être envoyé : ' + uploadResult.error.message);
+      documentPath = cheminFichier;
+    }
+
+    var res = await fetch(SUPABASE_URL + '/functions/v1/finaliser-inscription-artisan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + accessToken },
+      body: JSON.stringify({
+        nom_entreprise: nom, secteur: secteur, commune: commune, telephone: telephone,
+        bio: bio || null, rayon_intervention_km: rayon, siret: siret || null, document_path: documentPath,
+        turnstile_token: turnstileToken,
+      }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    document.getElementById('wrap-form').style.display = 'none';
+    document.getElementById('wrap-confirmation').style.display = 'block';
+    document.getElementById('confirmation-msg').textContent = data.message;
+
+  } catch(e) {
+    afficherErreur(e.message);
+    btn.disabled = false; btn.textContent = 'Créer mon profil';
+    if (typeof turnstile !== 'undefined') turnstile.reset();
+  }
+}
+</script>
+</body>
+</html>
