@@ -136,10 +136,9 @@ function renderNav() {
   nav.innerHTML =
     '<div class="nav-wrap">' +
       '<a href="/artisans/" class="nav-logo">' +
-        '<div style="display:flex;align-items:center;gap:8px;">' +
-          '<img src="/apple-touch-icon.png" alt="LearnLogic Studio" style="width:26px;height:26px;border-radius:7px;flex-shrink:0;">' +
-          '<span class="nav-logo-txt">CaraLink <span>Artisans</span></span>' +
-        '</div>' +
+        '<img src="/apple-touch-icon.png" alt="LearnLogic Studio" style="width:26px;height:26px;border-radius:7px;">' +
+        '<div class="nav-brand"><span class="learn">Learn</span><span class="logic">Logic</span> <span class="studio">Studio</span></div>' +
+        '<div class="nav-kk"><span class="karuk">Cara</span><span class="connect">Link</span> <span class="nav-kk-suffix">Artisans</span></div>' +
       '</a>' +
       '<div class="nav-links" style="display:flex;align-items:center;gap:14px;">' +
         renderLangSwitcher() +
