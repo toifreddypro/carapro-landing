@@ -473,6 +473,99 @@ async function envoyerDemandeDevis(artisanId) {
   }
 }
 
+// ════════════════════════════════════════
+//  MODALS LÉGALES
+// ⚠️ Ajouté le 15/09 — les liens du footer appelaient openLegal(),
+// jamais définie nulle part : liens cassés depuis le début. Corrigé en
+// alignant sur le vrai nom utilisé par CaraLink Formation
+// (ouvrirModalLegal), avec du contenu propre à Artisans.
+// ════════════════════════════════════════
+var LEGAL_CONTENT_ARTISANS = {
+  mentions: {
+    fr: { titre: 'Mentions légales', contenu:
+      '<h3>Éditeur du site</h3><p>Le site <strong>CaraLink Artisans</strong> est édité par LearnLogic Studio (SIRET 832 640 858 000 29), 971 Guadeloupe, France.</p>' +
+      '<h3>Contact</h3><p><a href="mailto:contact@learnlogicstudio.com">contact@learnlogicstudio.com</a></p>' +
+      '<h3>Hébergement</h3><p>Le site est hébergé par Vercel Inc. La base de données est hébergée par Supabase Inc.</p>' },
+    en: { titre: 'Legal notice', contenu:
+      '<h3>Publisher</h3><p>The <strong>CaraLink Artisans</strong> website is published by LearnLogic Studio (SIRET 832 640 858 000 29), 971 Guadeloupe, France.</p>' +
+      '<h3>Contact</h3><p><a href="mailto:contact@learnlogicstudio.com">contact@learnlogicstudio.com</a></p>' +
+      '<h3>Hosting</h3><p>The site is hosted by Vercel Inc. The database is hosted by Supabase Inc.</p>' },
+    es: { titre: 'Aviso legal', contenu:
+      '<h3>Editor</h3><p>El sitio <strong>CaraLink Artisans</strong> está editado por LearnLogic Studio (SIRET 832 640 858 000 29), 971 Guadalupe, Francia.</p>' +
+      '<h3>Contacto</h3><p><a href="mailto:contact@learnlogicstudio.com">contact@learnlogicstudio.com</a></p>' +
+      '<h3>Alojamiento</h3><p>El sitio está alojado por Vercel Inc. La base de datos está alojada por Supabase Inc.</p>' },
+  },
+  cgu: {
+    fr: { titre: 'Conditions générales d\'utilisation', contenu:
+      '<p>Les présentes CGU définissent les conditions d\'accès et d\'utilisation de CaraLink Artisans, l\'annuaire de mise en relation entre clients et artisans, édité par LearnLogic Studio (SIRET 832 640 858 000 29).</p>' +
+      '<h3>Gratuité</h3><p>L\'annuaire, la recherche et la demande de devis sont entièrement gratuits.</p>' +
+      '<h3>Responsabilité</h3><p>CaraLink Artisans met en relation clients et artisans mais n\'est pas partie au contrat conclu entre eux. La plateforme ne garantit pas la qualité des prestations réalisées par les artisans référencés.</p>' +
+      '<h3>Vérification des artisans</h3><p>Le SIRET est vérifié automatiquement auprès du registre officiel des entreprises. Les documents d\'assurance sont examinés manuellement mais leur validité continue reste de la responsabilité de l\'artisan.</p>' },
+    en: { titre: 'Terms of Service', contenu:
+      '<p>These Terms of Service define the conditions of access to and use of CaraLink Artisans, the directory connecting clients and craftsmen, published by LearnLogic Studio (SIRET 832 640 858 000 29).</p>' +
+      '<h3>Free of charge</h3><p>The directory, search and quote requests are entirely free.</p>' +
+      '<h3>Liability</h3><p>CaraLink Artisans connects clients and craftsmen but is not a party to the contract between them. The platform does not guarantee the quality of work performed by listed craftsmen.</p>' +
+      '<h3>Craftsman verification</h3><p>SIRET is automatically verified against the official business register. Insurance documents are manually reviewed, but their continued validity remains the craftsman\'s responsibility.</p>' },
+    es: { titre: 'Condiciones generales de uso', contenu:
+      '<p>Las presentes CGU definen las condiciones de acceso y uso de CaraLink Artisans, el directorio que conecta clientes y artesanos, editado por LearnLogic Studio (SIRET 832 640 858 000 29).</p>' +
+      '<h3>Gratuidad</h3><p>El directorio, la búsqueda y las solicitudes de presupuesto son completamente gratuitos.</p>' +
+      '<h3>Responsabilidad</h3><p>CaraLink Artisans conecta clientes y artesanos, pero no es parte del contrato entre ellos. La plataforma no garantiza la calidad de los trabajos realizados por los artesanos listados.</p>' +
+      '<h3>Verificación de artesanos</h3><p>El SIRET se verifica automáticamente en el registro oficial de empresas. Los documentos de seguro se revisan manualmente, pero su validez continua sigue siendo responsabilidad del artesano.</p>' },
+  },
+  privacy: {
+    fr: { titre: 'Confidentialité', contenu:
+      '<p>Vos données sont hébergées sur une infrastructure sécurisée, avec des règles d\'accès strictes — chaque utilisateur n\'accède qu\'à ses propres données.</p>' +
+      '<p>Votre téléphone et votre email ne sont jamais affichés publiquement — ils ne sont partagés qu\'au moment d\'une demande de devis.</p>' +
+      '<p>CaraLink Artisans ne vend jamais vos données à des tiers.</p>' },
+    en: { titre: 'Privacy', contenu:
+      '<p>Your data is hosted on secure infrastructure, with strict access rules — each user only accesses their own data.</p>' +
+      '<p>Your phone number and email are never shown publicly — they are only shared when a quote is requested.</p>' +
+      '<p>CaraLink Artisans never sells your data to third parties.</p>' },
+    es: { titre: 'Privacidad', contenu:
+      '<p>Tus datos están alojados en una infraestructura segura, con normas de acceso estrictas — cada usuario solo accede a sus propios datos.</p>' +
+      '<p>Tu teléfono y correo electrónico nunca se muestran públicamente — solo se comparten en el momento de una solicitud de presupuesto.</p>' +
+      '<p>CaraLink Artisans nunca vende tus datos a terceros.</p>' },
+  },
+  cookies: {
+    fr: { titre: 'Cookies', contenu:
+      '<p>Ce site utilise uniquement des cookies techniques nécessaires à son fonctionnement (préférence de langue, session de connexion). Aucun cookie publicitaire ou de tracking tiers.</p>' },
+    en: { titre: 'Cookies', contenu:
+      '<p>This site only uses technical cookies necessary for its operation (language preference, login session). No advertising or third-party tracking cookies.</p>' },
+    es: { titre: 'Cookies', contenu:
+      '<p>Este sitio solo utiliza cookies técnicas necesarias para su funcionamiento (preferencia de idioma, sesión de conexión). Sin cookies publicitarias ni de seguimiento de terceros.</p>' },
+  },
+};
+
+function ouvrirModalLegal(type) {
+  var existing = document.getElementById('modal-legal');
+  if (existing) existing.remove();
+
+  var content = (LEGAL_CONTENT_ARTISANS[type] && LEGAL_CONTENT_ARTISANS[type][AT_LANG]) || LEGAL_CONTENT_ARTISANS[type]['fr'];
+  if (!content) return;
+
+  var div = document.createElement('div');
+  div.id = 'modal-legal';
+  div.style.cssText = 'position:fixed;inset:0;z-index:10003;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);overflow-y:auto;';
+  div.innerHTML =
+    '<div style="background:var(--panel,#fff);border:1px solid var(--brd,#e3eaf4);border-radius:16px;padding:32px;width:100%;max-width:680px;position:relative;">' +
+      '<button onclick="document.getElementById(\'modal-legal\').remove()" style="position:absolute;top:16px;right:16px;background:rgba(0,0,0,.05);border:1px solid var(--brd,#e3eaf4);border-radius:6px;color:var(--mu2,#777);font-size:16px;width:30px;height:30px;cursor:pointer;line-height:1;">✕</button>' +
+      '<h2 style="font-size:18px;font-weight:800;margin-bottom:20px;padding-right:40px;">' + content.titre + '</h2>' +
+      '<div class="legal-content-artisans" style="font-size:13.5px;color:var(--mu2,#555);line-height:1.7;">' + content.contenu + '</div>' +
+      '<div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--brd,#e3eaf4);text-align:right;">' +
+        '<button onclick="document.getElementById(\'modal-legal\').remove()" style="padding:9px 24px;border-radius:8px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;">' + (AT_LANG==='en'?'Close':AT_LANG==='es'?'Cerrar':'Fermer') + '</button>' +
+      '</div>' +
+    '</div>';
+
+  if (!document.getElementById('legal-styles-artisans')) {
+    var style = document.createElement('style');
+    style.id = 'legal-styles-artisans';
+    style.textContent = '.legal-content-artisans h3{font-size:14px;font-weight:700;color:var(--ink,#13223c);margin:16px 0 6px;}.legal-content-artisans p{margin-bottom:10px;}.legal-content-artisans a{color:var(--ac,#B5502F);}';
+    document.head.appendChild(style);
+  }
+
+  document.body.appendChild(div);
+}
+
 // ── Init ──
 document.addEventListener('DOMContentLoaded', function() {
   renderNav();
