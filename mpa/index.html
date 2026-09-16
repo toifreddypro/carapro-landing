@@ -157,6 +157,39 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .fp-total-row{display:flex;justify-content:flex-end;gap:40px;font-size:16px;font-weight:800;padding:12px 8px;}
 .fp-footer{margin-top:50px;font-size:11px;color:#6b7c96;text-align:center;}
 
+/* ── Tableau de bord ── */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:900px){.dash-grid{grid-template-columns:1fr;}}
+.dash-jauge-card{background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:14px;margin-bottom:12px;}
+.dj-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.dj-icon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.dj-title-block{flex:1;min-width:0;}
+.dj-title{font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:700;color:var(--tx);}
+.dj-sub{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--mu);margin-top:2px;}
+.dj-pct{font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:800;color:var(--ac);flex-shrink:0;}
+.dj-track{position:relative;height:8px;background:var(--p2);border-radius:4px;overflow:hidden;margin-bottom:6px;}
+.dj-bar{height:100%;width:0%;border-radius:4px;transition:width .6s ease;background:var(--ac);}
+.dj-bar.warn{background:var(--gold);}
+.dj-bar.danger{background:var(--danger);}
+.dj-footer{display:flex;align-items:center;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu);}
+.dj-msg{font-size:10px;text-align:right;max-width:55%;line-height:1.4;}
+.ir-ligne{display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px;border-bottom:1px solid var(--brd);}
+.ir-ligne:last-child{border-bottom:none;padding-top:9px;margin-top:4px;border-top:2px solid var(--brd);font-weight:800;font-size:15px;color:var(--ac);}
+.parts-inline{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11.5px;color:var(--mu);}
+.parts-inline input{width:50px;padding:4px 8px;border-radius:6px;border:1px solid var(--b2);text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;}
+
+.dv2-cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.dv2-cal-month{font-family:'Bricolage Grotesque',sans-serif;font-size:14px;font-weight:700;text-transform:capitalize;}
+.dv2-cal-nav button{width:26px;height:26px;border-radius:7px;border:1px solid var(--brd);background:var(--panel);cursor:pointer;}
+.dv2-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.dv2-day{aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;background:var(--p2);color:var(--mu);}
+.dv2-day.busy{background:rgba(181,80,47,.15);color:var(--ac);font-weight:700;}
+.dv2-day.other{opacity:.25;}
+.dv2-cal-legend{display:flex;gap:16px;margin-top:10px;font-size:11px;color:var(--mu);}
+.dv2-cal-legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;}
+.dv2-cal-legend-dot.free{background:var(--p2);border:1px solid var(--brd);}
+.dv2-cal-legend-dot.busy{background:var(--ac);}
+
 /* ── Planning ── */
 .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap;}
 .cal-nav{display:flex;align-items:center;gap:10px;}
@@ -443,9 +476,71 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   <!-- Facture imprimable, hors écran normal -->
   <div id="facture-print" style="display:none;"></div>
 
-  <!-- TABLEAU DE BORD — phase 6 -->
+  <!-- TABLEAU DE BORD -->
   <div class="pnl" id="p4">
-    <div class="placeholder-phase">📈 <strong>Tableau de bord</strong> — arrive en phase 6.<br>Projection impôts, disponibilités visibles.</div>
+    <div class="dash-grid">
+      <div>
+        <div class="dash-jauge-card">
+          <div class="dj-header">
+            <div class="dj-icon" style="background:rgba(181,80,47,.1);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#B5502F" stroke-width="2" width="13" height="13"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+            </div>
+            <div class="dj-title-block">
+              <div class="dj-title">Plafond micro-entreprise</div>
+              <div class="dj-sub">BIC prestations de services : 77 700 €</div>
+            </div>
+            <div class="dj-pct" id="dash-me-pct">0%</div>
+          </div>
+          <div class="dj-track"><div class="dj-bar" id="dash-jauge-me"></div></div>
+          <div class="dj-footer">
+            <span id="dash-me-amt">0 € / 77 700 €</span>
+            <span class="dj-msg" id="dash-me-msg"></span>
+          </div>
+        </div>
+
+        <div class="dash-jauge-card">
+          <div class="dj-header">
+            <div class="dj-icon" style="background:rgba(109,40,217,.1);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#6d28d9" stroke-width="2" width="13" height="13"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <div class="dj-title-block">
+              <div class="dj-title">Estimation impôt sur le revenu</div>
+              <div class="dj-sub">Abattement forfaitaire 50% — BIC services</div>
+            </div>
+          </div>
+          <div id="dash-ir-body"></div>
+          <div class="parts-inline">
+            Nombre de parts fiscales :
+            <input type="number" id="dash-parts" value="1" min="1" step="0.5" onchange="sauverPartsFiscales()">
+            <span style="font-size:9.5px;">(quotient familial — 1 pour un artisan seul)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="dash-jauge-card" style="margin-bottom:0;">
+        <div class="dj-header">
+          <div class="dj-icon" style="background:rgba(59,130,246,.1);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" width="13" height="13"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <div class="dj-title-block">
+            <div class="dj-title">Occupation du mois</div>
+            <div class="dj-sub">Jours travaillés & disponibilités</div>
+          </div>
+        </div>
+        <div class="dv2-cal-head">
+          <span class="dv2-cal-month" id="dv2-cal-month">—</span>
+          <div class="dv2-cal-nav">
+            <button onclick="dispoMoisPrec()">‹</button>
+            <button onclick="dispoMoisSuiv()">›</button>
+          </div>
+        </div>
+        <div class="dv2-cal-grid" id="dv2-cal-grid"></div>
+        <div class="dv2-cal-legend">
+          <span><span class="dv2-cal-legend-dot free"></span>Disponible</span>
+          <span><span class="dv2-cal-legend-dot busy"></span>Jour travaillé</span>
+        </div>
+      </div>
+    </div>
   </div>
 
 </div>

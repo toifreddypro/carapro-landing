@@ -60,6 +60,7 @@ async function init() {
   await chargerCompta();
   remplirSelectClientFacture();
   await chargerFactures();
+  await initDashboard();
 }
 
 // ════════════════════════════════════════
@@ -598,6 +599,123 @@ async function imprimerFacture(factureId) {
     window.print();
     document.getElementById('facture-print').style.display = 'none';
   }, 200);
+}
+
+// ════════════════════════════════════════
+//  TABLEAU DE BORD — plafond micro-entreprise, estimation IR,
+//  disponibilités visibles.
+//  ⚠️ Abattement forfaitaire à 50% (BIC prestations de services),
+//  volontairement différent des 34% de MPA Formation (BNC, services
+//  libéraux) — vraie différence de régime fiscal entre un formateur
+//  indépendant et un artisan, pas une erreur de recopie.
+// ════════════════════════════════════════
+const PLAFOND_MICRO_BIC_SERVICES = 77700;
+const ABATTEMENT_BIC_SERVICES = 0.50;
+// Barème progressif IR 2024 (revenus 2024, déclarés en 2025)
+const BAREME_IR = [
+  { seuil: 0,      taux: 0    },
+  { seuil: 11294,  taux: 0.11 },
+  { seuil: 28797,  taux: 0.30 },
+  { seuil: 82341,  taux: 0.41 },
+  { seuil: 177106, taux: 0.45 },
+];
+
+function calculerIR(revenuImposable, nbParts) {
+  var parPart = revenuImposable / (nbParts || 1);
+  var impotParPart = 0;
+  for (var i = 0; i < BAREME_IR.length; i++) {
+    var seuilBas = BAREME_IR[i].seuil;
+    var seuilHaut = (i + 1 < BAREME_IR.length) ? BAREME_IR[i+1].seuil : Infinity;
+    if (parPart > seuilBas) {
+      var tranche = Math.min(parPart, seuilHaut) - seuilBas;
+      impotParPart += tranche * BAREME_IR[i].taux;
+    }
+  }
+  return impotParPart * (nbParts || 1);
+}
+
+async function initDashboard() {
+  document.getElementById('dash-parts').value = _artisan.parts_fiscales || 1;
+  await calculerDashboardFiscal();
+  _dispoAnnee = new Date().getFullYear();
+  _dispoMois = new Date().getMonth();
+  await renderDispoCalendrier();
+}
+
+async function calculerDashboardFiscal() {
+  var anneeAuj = new Date().getFullYear();
+  var debut = anneeAuj + '-01-01';
+  var fin = anneeAuj + '-12-31';
+
+  var { data } = await sb.from('mpa_artisans_interventions')
+    .select('prix, statut, date_intervention')
+    .eq('artisan_id', _artisan.id)
+    .in('statut', ['terminee', 'payee'])
+    .gte('date_intervention', debut)
+    .lte('date_intervention', fin);
+
+  var caBrut = (data || []).reduce(function(s, i) { return s + (i.prix || 0); }, 0);
+
+  // Jauge plafond micro-entreprise
+  var pct = Math.min(100, (caBrut / PLAFOND_MICRO_BIC_SERVICES) * 100);
+  document.getElementById('dash-me-pct').textContent = pct.toFixed(0) + '%';
+  document.getElementById('dash-me-amt').textContent = caBrut.toFixed(0) + ' € / ' + PLAFOND_MICRO_BIC_SERVICES.toLocaleString('fr-FR') + ' €';
+  var bar = document.getElementById('dash-jauge-me');
+  bar.style.width = pct + '%';
+  bar.className = 'dj-bar' + (pct >= 90 ? ' danger' : pct >= 70 ? ' warn' : '');
+  document.getElementById('dash-me-msg').textContent =
+    pct >= 90 ? '⚠️ Seuil bientôt atteint' : pct >= 70 ? 'À surveiller' : 'Marge confortable';
+
+  // Estimation IR
+  var revenuImposable = caBrut * (1 - ABATTEMENT_BIC_SERVICES);
+  var nbParts = parseFloat(document.getElementById('dash-parts').value) || 1;
+  var ir = calculerIR(revenuImposable, nbParts);
+
+  document.getElementById('dash-ir-body').innerHTML =
+    '<div class="ir-ligne"><span>CA brut (année)</span><span>' + caBrut.toFixed(0) + ' €</span></div>' +
+    '<div class="ir-ligne"><span>Revenu imposable (après abattement 50%)</span><span>' + revenuImposable.toFixed(0) + ' €</span></div>' +
+    '<div class="ir-ligne"><span>Estimation impôt sur le revenu</span><span>' + ir.toFixed(0) + ' €</span></div>';
+}
+
+async function sauverPartsFiscales() {
+  var parts = parseFloat(document.getElementById('dash-parts').value) || 1;
+  await sb.from('artisans').update({ parts_fiscales: parts }).eq('id', _artisan.id);
+  _artisan.parts_fiscales = parts;
+  await calculerDashboardFiscal();
+}
+
+// ── Mini-calendrier disponibilités ──
+var _dispoAnnee, _dispoMois;
+
+function dispoMoisPrec() { _dispoMois--; if (_dispoMois < 0) { _dispoMois = 11; _dispoAnnee--; } renderDispoCalendrier(); }
+function dispoMoisSuiv() { _dispoMois++; if (_dispoMois > 11) { _dispoMois = 0; _dispoAnnee++; } renderDispoCalendrier(); }
+
+async function renderDispoCalendrier() {
+  document.getElementById('dv2-cal-month').textContent = MOIS_NOMS[_dispoMois] + ' ' + _dispoAnnee;
+
+  var debutMois = new Date(_dispoAnnee, _dispoMois, 1).toISOString().slice(0,10);
+  var finMois = new Date(_dispoAnnee, _dispoMois + 1, 0).toISOString().slice(0,10);
+  var { data } = await sb.from('mpa_artisans_interventions')
+    .select('date_intervention')
+    .eq('artisan_id', _artisan.id)
+    .neq('statut', 'annulee')
+    .gte('date_intervention', debutMois)
+    .lte('date_intervention', finMois);
+
+  var joursOccupes = {};
+  (data || []).forEach(function(i) { joursOccupes[i.date_intervention] = true; });
+
+  var premierJourSemaine = (new Date(_dispoAnnee, _dispoMois, 1).getDay() + 6) % 7;
+  var joursDansMois = new Date(_dispoAnnee, _dispoMois + 1, 0).getDate();
+
+  var html = '';
+  for (var v = 0; v < premierJourSemaine; v++) html += '<div class="dv2-day other"></div>';
+  for (var j = 1; j <= joursDansMois; j++) {
+    var dateStr = _dispoAnnee + '-' + String(_dispoMois+1).padStart(2,'0') + '-' + String(j).padStart(2,'0');
+    var occupe = !!joursOccupes[dateStr];
+    html += '<div class="dv2-day' + (occupe ? ' busy' : '') + '">' + j + '</div>';
+  }
+  document.getElementById('dv2-cal-grid').innerHTML = html;
 }
 
 // ════════════════════════════════════════
