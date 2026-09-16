@@ -24,6 +24,124 @@ async function doLogout() {
 function ouvrirModale(id) { document.getElementById(id).classList.add('show'); }
 function fermerModale(id) { document.getElementById(id).classList.remove('show'); }
 
+// ════════════════════════════════════════
+//  MPA AI — bulle compagnon flottante
+// ⚠️ Ajouté le 16/09 — même apparence et comportement que côté MPA
+// Formation : bulle ✨ draggable, point de pulsation coloré selon
+// l'urgence (cyan=info, orange=à surveiller, rouge=critique), remplace
+// le toast générique pour ce qui mérite d'être "raconté" plutôt que
+// juste confirmé. Déclencheurs adaptés au métier d'artisan (jamais
+// une simple recopie des alertes Qualiopi/formateur, sans objet ici).
+// ════════════════════════════════════════
+var _mpaAiFeed = [];
+
+function mpaAiDire(message, type, cta) {
+  var icone = type === 'important' ? '🔴' : type === 'warning' ? '⚠️' : '✨';
+  _mpaAiFeed.unshift({ message: message, icone: icone, type: type, time: new Date(), cta: cta });
+  renderMpaAiFeed();
+
+  var dot = document.getElementById('mpa-ai-dot');
+  dot.classList.add('show');
+  dot.className = 'mpa-ai-dot show' + (type === 'important' ? ' important' : type === 'warning' ? ' warning' : '');
+
+  if (type === 'important') {
+    document.getElementById('mpa-ai-panel').classList.add('open');
+  }
+}
+
+function renderMpaAiFeed() {
+  var zone = document.getElementById('mpa-ai-feed');
+  if (!_mpaAiFeed.length) { zone.innerHTML = '<div class="mpa-ai-empty">Rien à signaler pour l\'instant 👋</div>'; return; }
+  zone.innerHTML = _mpaAiFeed.map(function(m) {
+    var heure = m.time.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+    return '<div class="mpa-ai-msg">' +
+      '<span class="mpa-ai-msg-icone">' + m.icone + '</span>' + m.message +
+      (m.cta ? '<br><button class="mpa-ai-msg-cta" onclick="' + m.cta.action + '">' + m.cta.label + '</button>' : '') +
+      '<div class="mpa-ai-msg-time">' + heure + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function toggleMpaAi() {
+  var panel = document.getElementById('mpa-ai-panel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) {
+    document.getElementById('mpa-ai-dot').classList.remove('show');
+  }
+}
+
+// Rendre la bulle déplaçable — même comportement que côté Formation.
+(function initMpaAiDrag() {
+  document.addEventListener('DOMContentLoaded', function() {
+    var fab = document.getElementById('mpa-ai-fab');
+    if (!fab) return;
+    var dragging = false, moved = false, offX, offY;
+
+    fab.addEventListener('mousedown', function(e) {
+      dragging = true; moved = false;
+      offX = e.clientX - fab.getBoundingClientRect().left;
+      offY = e.clientY - fab.getBoundingClientRect().top;
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!dragging) return;
+      moved = true;
+      fab.style.left = (e.clientX - offX) + 'px';
+      fab.style.top = (e.clientY - offY) + 'px';
+      fab.style.right = 'auto'; fab.style.bottom = 'auto';
+    });
+    document.addEventListener('mouseup', function() {
+      if (dragging && moved) {
+        var r = fab.getBoundingClientRect();
+        document.getElementById('mpa-ai-panel').style.bottom = (window.innerHeight - r.top + 12) + 'px';
+        document.getElementById('mpa-ai-panel').style.right = (window.innerWidth - r.right) + 'px';
+      }
+      dragging = false;
+    });
+    fab.addEventListener('click', function(e) { if (moved) e.stopImmediatePropagation(); });
+  });
+})();
+
+// ── Déclencheurs proactifs propres au métier d'artisan ──
+async function verifierAlertesMpaAi() {
+  // 1) Plafond micro-entreprise proche — critique dès 90%.
+  var anneeAuj = new Date().getFullYear();
+  var { data: interYear } = await sb.from('mpa_artisans_interventions')
+    .select('prix, statut, date_intervention').eq('artisan_id', _artisan.id)
+    .in('statut', ['terminee','payee']).gte('date_intervention', anneeAuj+'-01-01').lte('date_intervention', anneeAuj+'-12-31');
+  var caBrut = (interYear||[]).reduce(function(s,i){ return s+(i.prix||0); }, 0);
+  var pct = (caBrut / PLAFOND_MICRO_BIC_SERVICES) * 100;
+  if (pct >= 90) {
+    mpaAiDire('Vous êtes à ' + pct.toFixed(0) + '% du plafond micro-entreprise (' + caBrut.toFixed(0) + '€ / 77 700€). Au-delà, changement de régime fiscal obligatoire.', 'important',
+      { label: 'Voir le tableau de bord', action: "switchTab(4)" });
+  } else if (pct >= 70) {
+    mpaAiDire('Vous avez atteint ' + pct.toFixed(0) + '% du plafond micro-entreprise cette année — à surveiller.', 'warning');
+  }
+
+  // 2) Factures émises depuis plus de 30 jours, jamais marquées payées.
+  var seuil30j = new Date(); seuil30j.setDate(seuil30j.getDate() - 30);
+  var { data: facturesAnciennes } = await sb.from('mpa_artisans_factures')
+    .select('id, numero, date_facture, montant_total, client_id, mpa_artisans_clients(nom)')
+    .eq('artisan_id', _artisan.id).lt('date_facture', seuil30j.toISOString().slice(0,10));
+  if (facturesAnciennes && facturesAnciennes.length) {
+    var { data: interFacturees } = await sb.from('mpa_artisans_interventions')
+      .select('facture_id, statut').in('facture_id', facturesAnciennes.map(function(f){return f.id;}));
+    var facturesImpayees = facturesAnciennes.filter(function(f) {
+      return (interFacturees||[]).some(function(i) { return i.facture_id === f.id && i.statut !== 'payee'; });
+    });
+    if (facturesImpayees.length) {
+      var f = facturesImpayees[0];
+      var client = f.mpa_artisans_clients ? f.mpa_artisans_clients.nom : 'ce client';
+      mpaAiDire('La facture ' + f.numero + ' (' + f.montant_total.toFixed(0) + '€, ' + escHtml(client) + ') a plus de 30 jours et n\'est pas encore marquée payée. Une petite relance ?', 'warning',
+        { label: 'Voir la facturation', action: "switchTab(3)" });
+    }
+  }
+
+  // 3) Nouvel utilisateur — aucun client ni service configuré.
+  if (!_clientsCache.length && !_servicesCache.length) {
+    mpaAiDire('Bienvenue sur MPA Artisans ! Commencez par ajouter un client habituel dans "Base de données", ou ajoutez vos services directement depuis votre espace CaraLink Artisans.', 'info');
+  }
+}
+
 // ── Onglets principaux ──
 function switchTab(i) {
   document.querySelectorAll('#nav .ntab').forEach(function(b, idx) { b.classList.toggle('active', idx === i); });
@@ -61,6 +179,8 @@ async function init() {
   remplirSelectClientFacture();
   await chargerFactures();
   await initDashboard();
+  renderMpaAiFeed();
+  await verifierAlertesMpaAi();
 }
 
 // ════════════════════════════════════════
