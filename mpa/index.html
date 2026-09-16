@@ -149,7 +149,14 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .cal-half-matin{background:rgba(251,191,36,.06);}
 .cal-half-am{background:rgba(99,102,241,.06);}
 .cal-half-label{font-size:8.5px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.3px;padding:1px 3px;}
-.cal-pill{display:block;background:var(--panel);border:1px solid var(--brd);border-left:3px solid var(--ac);border-radius:5px;padding:2px 5px;margin-bottom:2px;font-size:10px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cal-pill{display:flex;align-items:center;justify-content:space-between;gap:3px;background:var(--panel);border:1px solid var(--brd);border-left:3px solid #f59e0b;border-radius:5px;padding:2px 5px;margin-bottom:2px;font-size:10px;cursor:pointer;overflow:hidden;}
+.cal-pill-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.cal-pill.st-planifiee{border-left-color:#f59e0b;background:rgba(245,158,11,.06);}
+.cal-pill.st-terminee{border-left-color:#3b82f6;background:rgba(59,130,246,.06);}
+.cal-pill.st-payee{border-left-color:#22c55e;background:rgba(34,197,94,.08);}
+.cal-pill.st-annulee{border-left-color:var(--mu);background:var(--p2);opacity:.55;text-decoration:line-through;}
+.cal-pill-edit{flex-shrink:0;opacity:.4;font-size:9px;padding:0 2px;}
+.cal-pill-edit:hover{opacity:1;}
 .cal-pill:hover{border-color:var(--ac);transform:translateX(1px);}
 .cal-pill-heure{color:var(--mu);font-family:'JetBrains Mono',monospace;font-size:9px;}
 .cal-add-btn{width:100%;text-align:center;font-size:9px;color:var(--mu);background:none;border:1px dashed var(--b2);border-radius:5px;cursor:pointer;padding:2px 0;opacity:0;transition:opacity .15s;}
@@ -211,10 +218,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
       </div>
       <button class="cal-today-btn" onclick="allerAujourdhui()">Aujourd'hui</button>
       <div class="cal-legend">
-        <span><span class="dot" style="background:#fbbf24;"></span>Matin</span>
-        <span><span class="dot" style="background:#6366f1;"></span>Après-midi</span>
+        <span><span class="dot" style="background:#f59e0b;"></span>Planifiée</span>
+        <span><span class="dot" style="background:#3b82f6;"></span>Terminée</span>
+        <span><span class="dot" style="background:#22c55e;"></span>Payée</span>
       </div>
     </div>
+    <div style="font-size:11px;color:var(--mu);margin-bottom:10px;">💡 Cliquez sur une intervention pour faire avancer son statut — le crayon ✎ ouvre les détails (prix, date de paiement, notes…).</div>
     <div class="cal-grid" id="cal-dows"></div>
     <div class="cal-grid" id="cal-grid" style="margin-top:6px;"></div>
   </div>

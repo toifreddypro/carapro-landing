@@ -163,9 +163,13 @@ function renderCreneauHtml(creneau, dateStr, liste) {
     var client = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '';
     var service = i.artisans_services ? i.artisans_services.nom_service : '(sans service)';
     var heure = i.heure_debut ? i.heure_debut.slice(0,5) : '';
-    return '<div class="cal-pill" onclick="ouvrirIntervention(\'' + i.id + '\')">' +
-      (heure ? '<span class="cal-pill-heure">' + heure + '</span> ' : '') +
-      escHtml(service) + (client ? ' — ' + escHtml(client) : '') +
+    var statut = i.statut || 'planifiee';
+    return '<div class="cal-pill st-' + statut + '" onclick="avancerStatut(\'' + i.id + '\',event)" title="Cliquer pour faire avancer le statut">' +
+      '<span class="cal-pill-txt">' +
+        (heure ? '<span class="cal-pill-heure">' + heure + '</span> ' : '') +
+        escHtml(service) + (client ? ' — ' + escHtml(client) : '') +
+      '</span>' +
+      '<span class="cal-pill-edit" onclick="event.stopPropagation();ouvrirIntervention(\'' + i.id + '\')" title="Modifier les détails">✎</span>' +
     '</div>';
   }).join('');
 
@@ -182,6 +186,30 @@ function ouvrirJourDetail(dateStr, creneau) {
   // Version simple pour l'instant : ouvre directement la création,
   // la vue "détail du jour" pourra venir plus tard si le besoin se confirme.
   ouvrirNouvelleIntervention(dateStr, creneau);
+}
+
+// ⚠️ Ajouté le 16/09 — décidé avec Freddy : un clic direct sur la
+// vignette fait avancer le statut (Planifiée → Terminée → Payée →
+// Planifiée), sans passer par la modale. Le crayon séparé reste pour
+// modifier les détails (date de paiement précise, prix, etc).
+var CYCLE_STATUT = { planifiee: 'terminee', terminee: 'payee', payee: 'planifiee' };
+
+async function avancerStatut(id, ev) {
+  if (ev) ev.stopPropagation();
+  var i = _interventionsCache.find(function(x) { return x.id === id; });
+  if (!i) return;
+  var statutActuel = i.statut || 'planifiee';
+  if (statutActuel === 'annulee') return; // une intervention annulée ne suit pas ce cycle
+
+  var nouveauStatut = CYCLE_STATUT[statutActuel] || 'planifiee';
+  var maj = { statut: nouveauStatut };
+  maj.date_paiement = nouveauStatut === 'payee' ? new Date().toISOString().slice(0, 10) : null;
+
+  var { error } = await sb.from('mpa_artisans_interventions').update(maj).eq('id', id).eq('artisan_id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+
+  await chargerInterventions();
+  if (document.getElementById('p2').classList.contains('active')) await chargerCompta();
 }
 
 async function remplirSelectsIntervention() {
