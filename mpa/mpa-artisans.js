@@ -57,6 +57,7 @@ async function init() {
   await chargerClients();
   await chargerServices();
   await initPlanning();
+  await chargerCompta();
 }
 
 // ════════════════════════════════════════
@@ -206,6 +207,8 @@ async function ouvrirNouvelleIntervention(dateStr, creneau) {
   document.getElementById('mi-prix').value = '';
   document.getElementById('mi-notes').value = '';
   document.getElementById('mi-statut').value = 'planifiee';
+  document.getElementById('mi-date-paiement').value = '';
+  document.getElementById('mi-date-paiement-wrap').style.display = 'none';
   document.getElementById('mi-delete-wrap').style.display = 'none';
   ouvrirModale('modal-intervention');
 }
@@ -225,8 +228,19 @@ async function ouvrirIntervention(id) {
   document.getElementById('mi-prix').value = i.prix || '';
   document.getElementById('mi-notes').value = i.notes || '';
   document.getElementById('mi-statut').value = i.statut || 'planifiee';
+  document.getElementById('mi-date-paiement').value = i.date_paiement || '';
+  toggleDatePaiement();
   document.getElementById('mi-delete-wrap').style.display = 'block';
   ouvrirModale('modal-intervention');
+}
+
+function toggleDatePaiement() {
+  var statut = document.getElementById('mi-statut').value;
+  var wrap = document.getElementById('mi-date-paiement-wrap');
+  wrap.style.display = statut === 'payee' ? 'block' : 'none';
+  if (statut === 'payee' && !document.getElementById('mi-date-paiement').value) {
+    document.getElementById('mi-date-paiement').value = new Date().toISOString().slice(0, 10);
+  }
 }
 
 async function sauverIntervention() {
@@ -241,6 +255,7 @@ async function sauverIntervention() {
     prix: parseFloat(document.getElementById('mi-prix').value) || null,
     notes: document.getElementById('mi-notes').value.trim() || null,
     statut: document.getElementById('mi-statut').value,
+    date_paiement: document.getElementById('mi-statut').value === 'payee' ? (document.getElementById('mi-date-paiement').value || null) : null,
   };
   if (!maj.date_intervention) { alert('La date est obligatoire.'); return; }
 
@@ -262,6 +277,127 @@ async function supprimerIntervention() {
   if (error) { alert('Erreur : ' + error.message); return; }
   fermerModale('modal-intervention');
   await chargerInterventions();
+}
+
+// ════════════════════════════════════════
+//  COMPTABILITÉ — matrice Clients × Mois
+//  Vue Production : rangée dans le mois de l'intervention, dès
+//  "Terminée" ou "Payée". Vue Réel : rangée dans le mois de la vraie
+//  date de paiement — décidé le 16/09, la réalité du terrain pour un
+//  artisan (contrairement à un centre de formation, aucun délai
+//  contractuel connu à l'avance).
+// ════════════════════════════════════════
+var _vueCompta = 'production';
+var _anneeCompta = new Date().getFullYear();
+var _interventionsAnneeCache = [];
+
+const MOIS_COURTS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+
+function switchVueCompta(vue) {
+  _vueCompta = vue;
+  document.getElementById('cta-prod').classList.toggle('active', vue === 'production');
+  document.getElementById('cta-reel').classList.toggle('active', vue === 'reel');
+  document.getElementById('compta-note').innerHTML = vue === 'production'
+    ? '💡 Vue <strong>Production</strong> : le CA est rangé dans le mois de l\'intervention, dès qu\'elle est marquée "Terminée" ou "Payée".'
+    : '💡 Vue <strong>Réel</strong> : le CA est rangé dans le mois de la vraie date de paiement — la réalité de trésorerie d\'un artisan.';
+  renderMatriceCompta();
+}
+
+function anneeComptaPrec() { _anneeCompta--; chargerCompta(); }
+function anneeComptaSuiv() { _anneeCompta++; chargerCompta(); }
+
+async function chargerCompta() {
+  document.getElementById('compta-annee').textContent = _anneeCompta;
+  var debut = _anneeCompta + '-01-01';
+  var fin = _anneeCompta + '-12-31';
+
+  var { data, error } = await sb.from('mpa_artisans_interventions')
+    .select('*, mpa_artisans_clients(nom)')
+    .eq('artisan_id', _artisan.id)
+    .neq('statut', 'annulee')
+    .or('date_intervention.gte.' + debut + ',date_paiement.gte.' + debut)
+    .lte('date_intervention', fin);
+
+  if (error) { console.error(error); _interventionsAnneeCache = []; }
+  else { _interventionsAnneeCache = data || []; }
+
+  renderMatriceCompta();
+}
+
+function renderMatriceCompta() {
+  // Regroupement par client, puis par mois (1-12), selon la vue active
+  var parClient = {}; // { nomClient: { 1: montant, 2: montant, ... } }
+  var totalParMois = Array(13).fill(0); // index 1-12
+  var totalGeneral = 0;
+
+  _interventionsAnneeCache.forEach(function(i) {
+    if (_vueCompta === 'production') {
+      if (i.statut !== 'terminee' && i.statut !== 'payee') return;
+      var d = new Date(i.date_intervention);
+      if (d.getFullYear() !== _anneeCompta) return;
+      var mois = d.getMonth() + 1;
+      ajouterMontant(i, mois);
+    } else {
+      if (i.statut !== 'payee' || !i.date_paiement) return;
+      var dp = new Date(i.date_paiement);
+      if (dp.getFullYear() !== _anneeCompta) return;
+      var moisP = dp.getMonth() + 1;
+      ajouterMontant(i, moisP);
+    }
+  });
+
+  function ajouterMontant(i, mois) {
+    var nomClient = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '(sans client)';
+    if (!parClient[nomClient]) parClient[nomClient] = {};
+    parClient[nomClient][mois] = (parClient[nomClient][mois] || 0) + (i.prix || 0);
+    totalParMois[mois] += (i.prix || 0);
+    totalGeneral += (i.prix || 0);
+  }
+
+  // En-tête
+  document.getElementById('thead-compta-row').innerHTML =
+    '<th>Client</th>' + MOIS_COURTS.map(function(m) { return '<th style="text-align:right;">' + m + '</th>'; }).join('') +
+    '<th style="text-align:right;">Total</th>';
+
+  // Corps
+  var clients = Object.keys(parClient).sort();
+  var tbody = document.getElementById('tbody-compta');
+  if (!clients.length) {
+    tbody.innerHTML = '<tr><td colspan="14" class="etat-vide-tbl">Aucune donnée pour ' + _anneeCompta + '.</td></tr>';
+  } else {
+    tbody.innerHTML = clients.map(function(nom) {
+      var ligne = parClient[nom];
+      var totalLigne = 0;
+      var cellules = MOIS_COURTS.map(function(_, idx) {
+        var m = idx + 1;
+        var val = ligne[m] || 0;
+        totalLigne += val;
+        return '<td style="text-align:right;' + (val ? '' : 'color:var(--mu);') + '">' + (val ? val.toFixed(0) + '€' : '—') + '</td>';
+      }).join('');
+      return '<tr><td><strong>' + escHtml(nom) + '</strong></td>' + cellules + '<td style="text-align:right;font-weight:700;">' + totalLigne.toFixed(0) + '€</td></tr>';
+    }).join('');
+
+    // Ligne total
+    tbody.innerHTML += '<tr style="background:var(--p2);"><td><strong>Total</strong></td>' +
+      totalParMois.slice(1).map(function(v) { return '<td style="text-align:right;font-weight:700;">' + (v ? v.toFixed(0) + '€' : '—') + '</td>'; }).join('') +
+      '<td style="text-align:right;font-weight:800;color:var(--ac);">' + totalGeneral.toFixed(0) + '€</td></tr>';
+  }
+
+  // KPIs (toujours sur le CA Production de l'année, référence "vraie richesse produite")
+  var caBrutProduction = 0;
+  _interventionsAnneeCache.forEach(function(i) {
+    if (i.statut !== 'terminee' && i.statut !== 'payee') return;
+    var d = new Date(i.date_intervention);
+    if (d.getFullYear() !== _anneeCompta) return;
+    caBrutProduction += (i.prix || 0);
+  });
+  var cotisPct = _artisan.cotisation_sociale_pct ?? 22;
+  var cotis = caBrutProduction * (cotisPct / 100);
+  var net = caBrutProduction - cotis;
+
+  document.getElementById('kpi-ca-brut').textContent = caBrutProduction.toFixed(0) + ' €';
+  document.getElementById('kpi-cotis').textContent = cotis.toFixed(0) + ' €';
+  document.getElementById('kpi-ca-net').textContent = net.toFixed(0) + ' €';
 }
 
 // ════════════════════════════════════════

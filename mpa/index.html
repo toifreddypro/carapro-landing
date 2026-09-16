@@ -328,9 +328,46 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
     </div>
   </div>
 
-  <!-- COMPTABILITÉ — phase 4 -->
+  <!-- COMPTABILITÉ -->
   <div class="pnl" id="p2">
-    <div class="placeholder-phase">📊 <strong>Comptabilité</strong> — arrive en phase 4.<br>Matrice CA par client/mois, cotisations, net — calculée depuis les interventions du planning.</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+      <div style="display:flex;gap:6px;">
+        <button class="ntab active" id="cta-prod" onclick="switchVueCompta('production')" style="border:1px solid var(--brd);border-radius:9px;">Production</button>
+        <button class="ntab" id="cta-reel" onclick="switchVueCompta('reel')" style="border:1px solid var(--brd);border-radius:9px;">Réel</button>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="cal-nav-btn tbbtn" onclick="anneeComptaPrec()">‹ <span id="compta-annee">—</span></button>
+        <button class="tbbtn" onclick="anneeComptaSuiv()">›</button>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px;">
+      <div class="fcard" style="padding:16px;">
+        <div style="font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">CA brut (année)</div>
+        <div style="font-size:24px;font-weight:800;font-family:'Bricolage Grotesque',sans-serif;" id="kpi-ca-brut">0 €</div>
+      </div>
+      <div class="fcard" style="padding:16px;">
+        <div style="font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Cotisations estimées</div>
+        <div style="font-size:24px;font-weight:800;font-family:'Bricolage Grotesque',sans-serif;color:var(--danger);" id="kpi-cotis">0 €</div>
+      </div>
+      <div class="fcard" style="padding:16px;">
+        <div style="font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">CA net (année)</div>
+        <div style="font-size:24px;font-weight:800;font-family:'Bricolage Grotesque',sans-serif;color:var(--ac);" id="kpi-ca-net">0 €</div>
+      </div>
+    </div>
+
+    <div class="dcard">
+      <div class="dchdr">
+        <div class="dctit"><svg viewBox="0 0 24 24" fill="none" stroke="#B5502F" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span id="compta-titre">Matrice CA — Clients &amp; Mois</span></div>
+      </div>
+      <div class="dcbdy">
+        <table class="dtbl" id="tbl-compta">
+          <thead><tr id="thead-compta-row"><th>Client</th></tr></thead>
+          <tbody id="tbody-compta"></tbody>
+        </table>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--mu);margin-top:10px;" id="compta-note">💡 Vue <strong>Production</strong> : le CA est rangé dans le mois de l'intervention, dès qu'elle est marquée "Terminée" ou "Payée".</div>
   </div>
 
   <!-- FACTURATION — phase 5 -->
@@ -408,11 +445,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
     <div class="modal-field"><label>Prix (€)</label><input type="number" id="mi-prix" step="0.01"></div>
     <div class="modal-field"><label>Notes</label><input type="text" id="mi-notes" placeholder="Optionnel"></div>
     <div class="modal-field"><label>Statut</label>
-      <select id="mi-statut" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
+      <select id="mi-statut" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;" onchange="toggleDatePaiement()">
         <option value="planifiee">Planifiée</option>
         <option value="terminee">Terminée</option>
+        <option value="payee">Payée</option>
         <option value="annulee">Annulée</option>
       </select>
+    </div>
+    <div class="modal-field" id="mi-date-paiement-wrap" style="display:none;">
+      <label>Date de paiement réelle</label>
+      <input type="date" id="mi-date-paiement">
     </div>
     <div class="modal-actions">
       <button class="btn-primary" onclick="sauverIntervention()">Enregistrer</button>
