@@ -58,6 +58,8 @@ async function init() {
   await chargerServices();
   await initPlanning();
   await chargerCompta();
+  remplirSelectClientFacture();
+  await chargerFactures();
 }
 
 // ════════════════════════════════════════
@@ -426,6 +428,176 @@ function renderMatriceCompta() {
   document.getElementById('kpi-ca-brut').textContent = caBrutProduction.toFixed(0) + ' €';
   document.getElementById('kpi-cotis').textContent = cotis.toFixed(0) + ' €';
   document.getElementById('kpi-ca-net').textContent = net.toFixed(0) + ' €';
+}
+
+// ════════════════════════════════════════
+//  FACTURATION — regroupée par client, "panier non facturé"
+//  Décidé le 16/09 avec Freddy : jamais une facture par intervention,
+//  toujours un lot de tout ce qui est Terminée/Payée et pas encore
+//  facturé pour un client donné, peu importe la date exacte.
+// ════════════════════════════════════════
+var _panierActuel = [];
+
+function remplirSelectClientFacture() {
+  var sel = document.getElementById('fact-client');
+  sel.innerHTML = '<option value="">— Choisir un client —</option>' +
+    _clientsCache.map(function(c) { return '<option value="' + c.id + '">' + escHtml(c.nom) + '</option>'; }).join('');
+}
+
+async function chargerPanierClient() {
+  var clientId = document.getElementById('fact-client').value;
+  var zone = document.getElementById('fact-panier');
+  if (!clientId) { zone.innerHTML = ''; return; }
+
+  var { data, error } = await sb.from('mpa_artisans_interventions')
+    .select('*, artisans_services(nom_service)')
+    .eq('artisan_id', _artisan.id)
+    .eq('client_id', clientId)
+    .in('statut', ['terminee', 'payee'])
+    .is('facture_id', null)
+    .order('date_intervention', { ascending: true });
+
+  if (error) { zone.innerHTML = '<p style="color:var(--danger);font-size:13px;">Erreur : ' + error.message + '</p>'; return; }
+  _panierActuel = data || [];
+
+  if (!_panierActuel.length) {
+    zone.innerHTML = '<p style="font-size:13px;color:var(--mu);padding:14px 0;">Aucune intervention en attente de facturation pour ce client.</p>';
+    return;
+  }
+
+  zone.innerHTML =
+    _panierActuel.map(function(i) {
+      var service = i.artisans_services ? i.artisans_services.nom_service : '(sans service)';
+      var dateAff = new Date(i.date_intervention).toLocaleDateString('fr-FR', { day:'numeric', month:'short', year:'numeric' });
+      return '<label class="panier-item">' +
+        '<input type="checkbox" class="panier-check" data-id="' + i.id + '" data-prix="' + (i.prix||0) + '" checked onchange="recalculerPanier()">' +
+        '<span class="panier-item-info">' + escHtml(service) + ' <span style="color:var(--mu);">— ' + dateAff + '</span></span>' +
+        '<span class="panier-item-prix">' + (i.prix||0).toFixed(2) + '€</span>' +
+      '</label>';
+    }).join('') +
+    '<div class="panier-total">' +
+      '<span class="panier-total-label">Total sélectionné</span>' +
+      '<span class="panier-total-montant" id="panier-total-montant">0€</span>' +
+    '</div>' +
+    '<button class="addb" style="width:100%;justify-content:center;margin-top:14px;padding:11px;" onclick="genererFacture()">🧾 Générer la facture</button>';
+
+  recalculerPanier();
+}
+
+function recalculerPanier() {
+  var total = 0;
+  document.querySelectorAll('.panier-check:checked').forEach(function(cb) {
+    total += parseFloat(cb.dataset.prix) || 0;
+  });
+  var el = document.getElementById('panier-total-montant');
+  if (el) el.textContent = total.toFixed(2) + '€';
+}
+
+async function genererFacture() {
+  var clientId = document.getElementById('fact-client').value;
+  var checked = Array.from(document.querySelectorAll('.panier-check:checked'));
+  if (!checked.length) { alert('Sélectionnez au moins une intervention.'); return; }
+
+  var idsSelectionnes = checked.map(function(cb) { return cb.dataset.id; });
+  var montantTotal = checked.reduce(function(s, cb) { return s + (parseFloat(cb.dataset.prix) || 0); }, 0);
+
+  // Numérotation simple : ANNÉE-XXX, séquentiel par artisan
+  var { count } = await sb.from('mpa_artisans_factures').select('id', { count: 'exact', head: true }).eq('artisan_id', _artisan.id);
+  var numero = new Date().getFullYear() + '-' + String((count||0) + 1).padStart(3, '0');
+
+  var { data: facture, error } = await sb.from('mpa_artisans_factures').insert({
+    artisan_id: _artisan.id, client_id: clientId, numero: numero, montant_total: montantTotal,
+  }).select().single();
+  if (error) { alert('Erreur : ' + error.message); return; }
+
+  var { error: err2 } = await sb.from('mpa_artisans_interventions')
+    .update({ facture_id: facture.id }).in('id', idsSelectionnes);
+  if (err2) { alert('Erreur : ' + err2.message); return; }
+
+  await chargerPanierClient();
+  await chargerFactures();
+  imprimerFacture(facture.id);
+}
+
+async function chargerFactures() {
+  var { data, error } = await sb.from('mpa_artisans_factures')
+    .select('*, mpa_artisans_clients(nom)')
+    .eq('artisan_id', _artisan.id)
+    .order('date_facture', { ascending: false });
+  if (error) { console.error(error); return; }
+
+  var tbody = document.getElementById('tbody-factures');
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="etat-vide-tbl">Aucune facture émise pour l\'instant.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(function(f) {
+    var dateAff = new Date(f.date_facture).toLocaleDateString('fr-FR');
+    var client = f.mpa_artisans_clients ? f.mpa_artisans_clients.nom : '—';
+    return '<tr>' +
+      '<td><strong>' + escHtml(f.numero) + '</strong></td>' +
+      '<td>' + escHtml(client) + '</td>' +
+      '<td>' + dateAff + '</td>' +
+      '<td>' + f.montant_total.toFixed(2) + '€</td>' +
+      '<td><button class="icbtn" onclick="imprimerFacture(\'' + f.id + '\')" title="Voir / imprimer">🖨</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+async function imprimerFacture(factureId) {
+  var { data: facture, error } = await sb.from('mpa_artisans_factures')
+    .select('*, mpa_artisans_clients(*)').eq('id', factureId).single();
+  if (error) { alert('Erreur : ' + error.message); return; }
+
+  var { data: lignes } = await sb.from('mpa_artisans_interventions')
+    .select('*, artisans_services(nom_service)').eq('facture_id', factureId).order('date_intervention', { ascending: true });
+
+  var a = _artisan;
+  var c = facture.mpa_artisans_clients;
+  var dateFactureAff = new Date(facture.date_facture).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
+
+  var lignesHtml = (lignes||[]).map(function(l) {
+    var service = l.artisans_services ? l.artisans_services.nom_service : '(sans service)';
+    var dateAff = new Date(l.date_intervention).toLocaleDateString('fr-FR', { day:'numeric', month:'short', year:'numeric' });
+    return '<tr><td>' + dateAff + '</td><td>' + escHtml(service) + (l.notes ? ' — ' + escHtml(l.notes) : '') + '</td><td>' + (l.prix||0).toFixed(2) + '€</td></tr>';
+  }).join('');
+
+  document.getElementById('facture-print').innerHTML =
+    '<div class="fp-page">' +
+      '<div class="fp-header">' +
+        '<div class="fp-brand">MPA <span>Artisans</span></div>' +
+        '<div class="fp-meta">Facture n° ' + escHtml(facture.numero) + '<br>Le ' + dateFactureAff + '</div>' +
+      '</div>' +
+      '<div class="fp-parties">' +
+        '<div class="fp-partie">' +
+          '<div class="fp-partie-label">Émetteur</div>' +
+          '<div class="fp-partie-nom">' + escHtml(a.nom_entreprise||'') + '</div>' +
+          '<p>' + escHtml(a.statut||'') + (a.siret ? '<br>SIRET ' + escHtml(a.siret) : '') + (a.ape ? ' — APE ' + escHtml(a.ape) : '') +
+          (a.adresse ? '<br>' + escHtml(a.adresse) : '') + (a.code_postal||a.commune ? '<br>' + escHtml(a.code_postal||'') + ' ' + escHtml(a.commune||'') : '') +
+          (a.telephone ? '<br>Tél. ' + escHtml(a.telephone) : '') + (a.email ? '<br>' + escHtml(a.email) : '') + '</p>' +
+        '</div>' +
+        '<div class="fp-partie">' +
+          '<div class="fp-partie-label">Client</div>' +
+          '<div class="fp-partie-nom">' + escHtml(c.nom) + '</div>' +
+          '<p>' + (c.adresse ? escHtml(c.adresse) + '<br>' : '') + (c.adresse2 ? escHtml(c.adresse2) + '<br>' : '') +
+          (c.code_postal||c.commune ? escHtml(c.code_postal||'') + ' ' + escHtml(c.commune||'') : '') +
+          (c.referent ? '<br>À l\'attention de ' + escHtml(c.referent) : '') + '</p>' +
+        '</div>' +
+      '</div>' +
+      '<table class="fp-table">' +
+        '<thead><tr><th>Date</th><th>Prestation</th><th>Montant</th></tr></thead>' +
+        '<tbody>' + lignesHtml + '</tbody>' +
+      '</table>' +
+      '<div class="fp-total-row"><span>Total</span><span>' + facture.montant_total.toFixed(2) + '€</span></div>' +
+      (a.tva_config && a.tva_config !== 'Non assujetti' ? '' : '<p style="font-size:11px;color:#6b7c96;">TVA non applicable, art. 293 B du CGI.</p>') +
+      '<div class="fp-footer">' + escHtml(a.nom_entreprise||'') + (a.siret ? ' — SIRET ' + escHtml(a.siret) : '') + '</div>' +
+    '</div>';
+
+  document.getElementById('facture-print').style.display = 'block';
+  setTimeout(function() {
+    window.print();
+    document.getElementById('facture-print').style.display = 'none';
+  }, 200);
 }
 
 // ════════════════════════════════════════
