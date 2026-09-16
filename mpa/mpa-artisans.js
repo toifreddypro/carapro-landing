@@ -56,6 +56,212 @@ async function init() {
   renderFiche();
   await chargerClients();
   await chargerServices();
+  await initPlanning();
+}
+
+// ════════════════════════════════════════
+//  PLANNING — vue mensuelle, blocs Matin/Après-midi
+//  Approche hybride décidée le 16/09 : affichage épuré par demi-
+//  journée (jusqu'à 3-5 interventions/jour pour un artisan, contre
+//  1-2 pour un formateur), avec heure précise en sous-couche pour le
+//  futur Smart Dispatch IA.
+// ════════════════════════════════════════
+var _calAnnee, _calMois; // _calMois : 0-11
+var _interventionsCache = [];
+var _interventionEnCours = null; // id de l'intervention ouverte dans la modale, ou null si création
+
+const MOIS_NOMS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const JOURS_NOMS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+
+async function initPlanning() {
+  var auj = new Date();
+  _calAnnee = auj.getFullYear();
+  _calMois = auj.getMonth();
+  renderDows();
+  await chargerInterventions();
+}
+
+function renderDows() {
+  document.getElementById('cal-dows').innerHTML = JOURS_NOMS.map(function(j) {
+    return '<div class="cal-dow">' + j + '</div>';
+  }).join('');
+}
+
+function moisPrecedent() { _calMois--; if (_calMois < 0) { _calMois = 11; _calAnnee--; } chargerInterventions(); }
+function moisSuivant() { _calMois++; if (_calMois > 11) { _calMois = 0; _calAnnee++; } chargerInterventions(); }
+function allerAujourdhui() { var auj = new Date(); _calAnnee = auj.getFullYear(); _calMois = auj.getMonth(); chargerInterventions(); }
+
+async function chargerInterventions() {
+  document.getElementById('cal-titre').textContent = MOIS_NOMS[_calMois] + ' ' + _calAnnee;
+
+  var debutMois = new Date(_calAnnee, _calMois, 1);
+  var finMois = new Date(_calAnnee, _calMois + 1, 0);
+  var debutStr = debutMois.toISOString().slice(0, 10);
+  var finStr = finMois.toISOString().slice(0, 10);
+
+  var { data, error } = await sb.from('mpa_artisans_interventions')
+    .select('*, mpa_artisans_clients(nom), artisans_services(nom_service)')
+    .eq('artisan_id', _artisan.id)
+    .gte('date_intervention', debutStr)
+    .lte('date_intervention', finStr);
+
+  if (error) { console.error(error); _interventionsCache = []; }
+  else { _interventionsCache = data || []; }
+
+  renderCalendrier();
+}
+
+function renderCalendrier() {
+  var premierJourSemaine = (new Date(_calAnnee, _calMois, 1).getDay() + 6) % 7; // lundi = 0
+  var joursDansMois = new Date(_calAnnee, _calMois + 1, 0).getDate();
+  var joursDansMoisPrecedent = new Date(_calAnnee, _calMois, 0).getDate();
+
+  var cellules = [];
+  for (var i = premierJourSemaine - 1; i >= 0; i--) {
+    cellules.push({ jour: joursDansMoisPrecedent - i, autreMonth: true });
+  }
+  for (var j = 1; j <= joursDansMois; j++) {
+    cellules.push({ jour: j, autreMonth: false });
+  }
+  while (cellules.length % 7 !== 0) {
+    cellules.push({ jour: cellules.length - premierJourSemaine - joursDansMois + 1, autreMonth: true });
+  }
+
+  var aujDate = new Date();
+  var aujStr = aujDate.toISOString().slice(0, 10);
+
+  document.getElementById('cal-grid').innerHTML = cellules.map(function(c, idx) {
+    var dateStr = c.autreMonth ? null : _calAnnee + '-' + String(_calMois+1).padStart(2,'0') + '-' + String(c.jour).padStart(2,'0');
+    var estWeekend = idx % 7 >= 5;
+    var estAuj = dateStr === aujStr;
+
+    var classes = 'cal-day' + (c.autreMonth ? ' other-month' : '') + (estWeekend ? ' weekend' : '') + (estAuj ? ' today' : '');
+
+    var interDuJour = dateStr ? _interventionsCache.filter(function(i) { return i.date_intervention === dateStr; }) : [];
+    var interMatin = interDuJour.filter(function(i) { return i.creneau !== 'apres_midi'; });
+    var interAM = interDuJour.filter(function(i) { return i.creneau === 'apres_midi'; });
+
+    return '<div class="' + classes + '">' +
+      '<div class="cal-day-num">' + c.jour + '</div>' +
+      (c.autreMonth ? '' :
+        '<div class="cal-halves">' +
+          renderCreneauHtml('matin', dateStr, interMatin) +
+          renderCreneauHtml('apres_midi', dateStr, interAM) +
+        '</div>'
+      ) +
+    '</div>';
+  }).join('');
+}
+
+function renderCreneauHtml(creneau, dateStr, liste) {
+  var maxVisible = 2;
+  var visibles = liste.slice(0, maxVisible);
+  var reste = liste.length - maxVisible;
+
+  var pills = visibles.map(function(i) {
+    var client = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '';
+    var service = i.artisans_services ? i.artisans_services.nom_service : '(sans service)';
+    var heure = i.heure_debut ? i.heure_debut.slice(0,5) : '';
+    return '<div class="cal-pill" onclick="ouvrirIntervention(\'' + i.id + '\')">' +
+      (heure ? '<span class="cal-pill-heure">' + heure + '</span> ' : '') +
+      escHtml(service) + (client ? ' — ' + escHtml(client) : '') +
+    '</div>';
+  }).join('');
+
+  var plus = reste > 0 ? '<div class="cal-more" onclick="ouvrirJourDetail(\'' + dateStr + '\',\'' + creneau + '\')">+' + reste + ' autre' + (reste>1?'s':'') + '</div>' : '';
+
+  return '<div class="cal-half cal-half-' + (creneau==='matin'?'matin':'am') + '">' +
+    '<div class="cal-half-label">' + (creneau==='matin'?'Matin':'Aprem') + '</div>' +
+    pills + plus +
+    '<button class="cal-add-btn" onclick="ouvrirNouvelleIntervention(\'' + dateStr + '\',\'' + creneau + '\')">+</button>' +
+  '</div>';
+}
+
+function ouvrirJourDetail(dateStr, creneau) {
+  // Version simple pour l'instant : ouvre directement la création,
+  // la vue "détail du jour" pourra venir plus tard si le besoin se confirme.
+  ouvrirNouvelleIntervention(dateStr, creneau);
+}
+
+async function remplirSelectsIntervention() {
+  var selClient = document.getElementById('mi-client');
+  selClient.innerHTML = '<option value="">— Aucun —</option>' +
+    _clientsCache.map(function(c) { return '<option value="' + c.id + '">' + escHtml(c.nom) + '</option>'; }).join('');
+
+  var selService = document.getElementById('mi-service');
+  selService.innerHTML = '<option value="">— Aucun —</option>' +
+    _servicesCache.map(function(s) { return '<option value="' + s.id + '">' + escHtml(s.nom_service) + '</option>'; }).join('');
+}
+
+async function ouvrirNouvelleIntervention(dateStr, creneau) {
+  await remplirSelectsIntervention();
+  _interventionEnCours = null;
+  document.getElementById('mi-titre').textContent = 'Nouvelle intervention';
+  document.getElementById('mi-date').value = dateStr;
+  document.getElementById('mi-creneau').value = creneau;
+  document.getElementById('mi-heure-debut').value = creneau === 'matin' ? '08:00' : '14:00';
+  document.getElementById('mi-heure-fin').value = creneau === 'matin' ? '10:00' : '16:00';
+  document.getElementById('mi-client').value = '';
+  document.getElementById('mi-service').value = '';
+  document.getElementById('mi-prix').value = '';
+  document.getElementById('mi-notes').value = '';
+  document.getElementById('mi-statut').value = 'planifiee';
+  document.getElementById('mi-delete-wrap').style.display = 'none';
+  ouvrirModale('modal-intervention');
+}
+
+async function ouvrirIntervention(id) {
+  await remplirSelectsIntervention();
+  var i = _interventionsCache.find(function(x) { return x.id === id; });
+  if (!i) return;
+  _interventionEnCours = id;
+  document.getElementById('mi-titre').textContent = 'Modifier l\'intervention';
+  document.getElementById('mi-date').value = i.date_intervention;
+  document.getElementById('mi-creneau').value = i.creneau || 'matin';
+  document.getElementById('mi-heure-debut').value = i.heure_debut ? i.heure_debut.slice(0,5) : '';
+  document.getElementById('mi-heure-fin').value = i.heure_fin ? i.heure_fin.slice(0,5) : '';
+  document.getElementById('mi-client').value = i.client_id || '';
+  document.getElementById('mi-service').value = i.service_id || '';
+  document.getElementById('mi-prix').value = i.prix || '';
+  document.getElementById('mi-notes').value = i.notes || '';
+  document.getElementById('mi-statut').value = i.statut || 'planifiee';
+  document.getElementById('mi-delete-wrap').style.display = 'block';
+  ouvrirModale('modal-intervention');
+}
+
+async function sauverIntervention() {
+  var maj = {
+    artisan_id: _artisan.id,
+    date_intervention: document.getElementById('mi-date').value,
+    creneau: document.getElementById('mi-creneau').value,
+    heure_debut: document.getElementById('mi-heure-debut').value || null,
+    heure_fin: document.getElementById('mi-heure-fin').value || null,
+    client_id: document.getElementById('mi-client').value || null,
+    service_id: document.getElementById('mi-service').value || null,
+    prix: parseFloat(document.getElementById('mi-prix').value) || null,
+    notes: document.getElementById('mi-notes').value.trim() || null,
+    statut: document.getElementById('mi-statut').value,
+  };
+  if (!maj.date_intervention) { alert('La date est obligatoire.'); return; }
+
+  var res;
+  if (_interventionEnCours) {
+    res = await sb.from('mpa_artisans_interventions').update(maj).eq('id', _interventionEnCours).eq('artisan_id', _artisan.id);
+  } else {
+    res = await sb.from('mpa_artisans_interventions').insert(maj);
+  }
+  if (res.error) { alert('Erreur : ' + res.error.message); return; }
+  fermerModale('modal-intervention');
+  await chargerInterventions();
+}
+
+async function supprimerIntervention() {
+  if (!_interventionEnCours) return;
+  if (!confirm('Supprimer cette intervention ?')) return;
+  var { error } = await sb.from('mpa_artisans_interventions').delete().eq('id', _interventionEnCours).eq('artisan_id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  fermerModale('modal-intervention');
+  await chargerInterventions();
 }
 
 // ════════════════════════════════════════
