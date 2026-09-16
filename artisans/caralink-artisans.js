@@ -212,9 +212,9 @@ function renderResults() {
   if (!main) return;
   main.innerHTML =
     '<div class="results-layout">' +
-      '<div class="ads-panel">' +
-        '<div style="font-size:11px;font-weight:700;color:var(--mu2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px;">' + T('ads_titre') + '</div>' +
-        '<div style="font-size:13px;color:var(--mu);line-height:1.6;">' + T('ads_texte') + '</div>' +
+      '<div class="partner-panel">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--mu2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px;">' + T('partner_titre') + '</div>' +
+        '<div style="font-size:13px;color:var(--mu);line-height:1.6;">' + T('partner_texte') + '</div>' +
       '</div>' +
       '<div class="results-panel">' +
         '<div class="results-header">' +

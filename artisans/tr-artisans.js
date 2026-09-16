@@ -33,8 +33,8 @@ var AT_TR = {
     filter_note: "⭐ Note",
     filter_bientot_title: "Bientôt disponible",
 
-    ads_titre: "Espace partenaire",
-    ads_texte: "Vous êtes une entreprise locale ? Cet espace vous sera bientôt réservé.",
+    partner_titre: "Espace partenaire",
+    partner_texte: "Vous êtes une entreprise locale ? Cet espace vous sera bientôt réservé.",
     chargement: "Chargement…",
     map_label: "Où sont-ils ?",
     artisan_un: "artisan", artisan_plusieurs: "artisans",
@@ -126,8 +126,8 @@ var AT_TR = {
     filter_note: "⭐ Rating",
     filter_bientot_title: "Coming soon",
 
-    ads_titre: "Partner space",
-    ads_texte: "Are you a local business? This space will soon be reserved for you.",
+    partner_titre: "Partner space",
+    partner_texte: "Are you a local business? This space will soon be reserved for you.",
     chargement: "Loading…",
     map_label: "Where are they?",
     artisan_un: "craftsman", artisan_plusieurs: "craftsmen",
@@ -219,8 +219,8 @@ var AT_TR = {
     filter_note: "⭐ Valoración",
     filter_bientot_title: "Próximamente",
 
-    ads_titre: "Espacio para socios",
-    ads_texte: "¿Eres una empresa local? Este espacio pronto estará reservado para ti.",
+    partner_titre: "Espacio para socios",
+    partner_texte: "¿Eres una empresa local? Este espacio pronto estará reservado para ti.",
     chargement: "Cargando…",
     map_label: "¿Dónde están?",
     artisan_un: "artesano", artisan_plusieurs: "artesanos",
