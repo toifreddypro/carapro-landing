@@ -191,14 +191,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .mpa-ai-empty{text-align:center;color:var(--mu);font-size:12.5px;padding:30px 10px;}
 
 /* ── Comptabilité — carte "Matrice CA" alignée sur Formation ── */
-.cpv2-card{width:100%;box-sizing:border-box;margin-top:6px;background:var(--panel);border:1px solid var(--brd);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:28px 32px;}
+#p2.active{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:24px;overflow:hidden;}
+.cpv2-card{width:100%;max-width:1400px;box-sizing:border-box;background:var(--panel);border:1px solid var(--brd);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:28px 32px;overflow:hidden;display:flex;flex-direction:column;}
 .cpv2-matrix-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;flex-wrap:wrap;gap:14px;}
 .cpv2-matrix-headtext{display:flex;flex-direction:column;gap:4px;}
 .cpv2-matrix-title{font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:700;color:var(--tx);margin:0;display:flex;align-items:center;gap:8px;}
 .cpv2-matrix-subtitle{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mu);margin:0;}
 .cpv2-matrix-note{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--mu2);margin:4px 0 0;opacity:.75;}
-.cpv2-kpis{display:flex;gap:14px;margin:18px 0 22px;flex-wrap:wrap;}
-.cpv2-kpi{display:flex;flex-direction:column;gap:4px;padding:14px 20px;border-radius:10px;background:rgba(181,80,47,.03);border:1px solid rgba(181,80,47,.08);min-width:160px;flex:1;}
+.cpv2-kpis{display:flex;gap:24px;margin:18px 0 22px;flex-wrap:wrap;}
+.cpv2-kpi{display:flex;flex-direction:column;gap:4px;padding:12px 20px;border-radius:10px;background:rgba(181,80,47,.03);border:1px solid rgba(181,80,47,.08);min-width:160px;}
 .cpv2-kpi-lbl{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--mu);text-transform:uppercase;}
 .cpv2-kpi-val{font-family:'Bricolage Grotesque',sans-serif;font-size:26px;font-weight:700;color:var(--tx);line-height:1.1;}
 .cpv2-kpi.cotis .cpv2-kpi-val{color:var(--gold);}
@@ -544,7 +545,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
         </div>
       </div>
 
-      <div style="overflow-x:auto;">
+      <div style="overflow:auto;flex:1;min-height:0;">
         <table id="tbl-compta">
           <thead><tr id="thead-compta-row"><th>Client</th></tr></thead>
           <tbody id="tbody-compta"></tbody>
