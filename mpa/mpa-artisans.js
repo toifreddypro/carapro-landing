@@ -578,24 +578,24 @@ function renderMatriceCompta() {
       }).join('');
 
       tbody.innerHTML += '<tr class="cpv2-sep"><td colspan="6"><div class="cpv2-matrix-sep-bar"></div></td></tr>';
-
-      var qBrut = [], qCotis = [], qNet = [];
-      qDefs.forEach(function(q) {
-        var b = 0; q.m.forEach(function(m) { b += totalParMois[m] || 0; });
-        var co = Math.round(b * cotisPct / 100 * 100) / 100;
-        qBrut.push(b); qCotis.push(co); qNet.push(b - co);
-      });
-      function makeQRow(data, label, cls, color) {
-        var cells = data.map(function(v, qi) {
-          var c = (qi === curQ && isCurYear) ? ' class="col-now"' : '';
-          return '<td' + c + ' style="text-align:right;font-weight:700;' + (color ? 'color:' + color + ';' : '') + '">' + (v ? v.toFixed(0) + '€' : '—') + '</td>';
-        }).join('');
-        return '<tr class="' + cls + '"><td><strong>' + label + '</strong></td>' + cells + '<td></td></tr>';
-      }
-      tbody.innerHTML += makeQRow(qBrut, 'CA brut', 'cpv2-row-brut');
-      tbody.innerHTML += makeQRow(qCotis, 'Cotisations', 'cpv2-row-cotis', 'var(--gold)');
-      tbody.innerHTML += makeQRow(qNet, 'CA net', 'cpv2-row-net', 'var(--ac)');
     }
+
+    var qBrut = [], qCotis = [], qNet = [];
+    qDefs.forEach(function(q) {
+      var b = 0; q.m.forEach(function(m) { b += totalParMois[m] || 0; });
+      var co = Math.round(b * cotisPct / 100 * 100) / 100;
+      qBrut.push(b); qCotis.push(co); qNet.push(b - co);
+    });
+    function makeQRow(data, label, cls, color) {
+      var cells = data.map(function(v, qi) {
+        var c = (qi === curQ && isCurYear) ? ' class="col-now"' : '';
+        return '<td' + c + ' style="text-align:right;font-weight:700;' + (color ? 'color:' + color + ';' : '') + '">' + (v ? v.toFixed(0) + '€' : '—') + '</td>';
+      }).join('');
+      return '<tr class="' + cls + '"><td><strong>' + label + '</strong></td>' + cells + '<td></td></tr>';
+    }
+    tbody.innerHTML += makeQRow(qBrut, 'CA brut', 'cpv2-row-brut');
+    tbody.innerHTML += makeQRow(qCotis, 'Cotisations', 'cpv2-row-cotis', 'var(--gold)');
+    tbody.innerHTML += makeQRow(qNet, 'CA net', 'cpv2-row-net', 'var(--ac)');
   } else {
     // ── COLONNES = 12 MOIS ──
     thead.innerHTML = '<th>Client</th>' + MOIS_COURTS.map(function(m, idx) {
@@ -620,24 +620,24 @@ function renderMatriceCompta() {
       }).join('');
 
       tbody.innerHTML += '<tr class="cpv2-sep"><td colspan="14"><div class="cpv2-matrix-sep-bar"></div></td></tr>';
-
-      var mBrut = [], mCotis = [], mNet = [];
-      for (var mi = 1; mi <= 12; mi++) {
-        var b2 = totalParMois[mi] || 0;
-        var co2 = Math.round(b2 * cotisPct / 100 * 100) / 100;
-        mBrut.push(b2); mCotis.push(co2); mNet.push(b2 - co2);
-      }
-      function makeMRow(data, label, cls, color) {
-        var cells = data.map(function(v, idx) {
-          var c = (idx === curMonth && isCurYear) ? ' class="col-now"' : '';
-          return '<td' + c + ' style="text-align:right;font-weight:700;' + (color ? 'color:' + color + ';' : '') + '">' + (v ? v.toFixed(0) + '€' : '—') + '</td>';
-        }).join('');
-        return '<tr class="' + cls + '"><td><strong>' + label + '</strong></td>' + cells + '<td></td></tr>';
-      }
-      tbody.innerHTML += makeMRow(mBrut, 'CA brut', 'cpv2-row-brut');
-      tbody.innerHTML += makeMRow(mCotis, 'Cotisations', 'cpv2-row-cotis', 'var(--gold)');
-      tbody.innerHTML += makeMRow(mNet, 'CA net', 'cpv2-row-net', 'var(--ac)');
     }
+
+    var mBrut = [], mCotis = [], mNet = [];
+    for (var mi = 1; mi <= 12; mi++) {
+      var b2 = totalParMois[mi] || 0;
+      var co2 = Math.round(b2 * cotisPct / 100 * 100) / 100;
+      mBrut.push(b2); mCotis.push(co2); mNet.push(b2 - co2);
+    }
+    function makeMRow(data, label, cls, color) {
+      var cells = data.map(function(v, idx) {
+        var c = (idx === curMonth && isCurYear) ? ' class="col-now"' : '';
+        return '<td' + c + ' style="text-align:right;font-weight:700;' + (color ? 'color:' + color + ';' : '') + '">' + (v ? v.toFixed(0) + '€' : '—') + '</td>';
+      }).join('');
+      return '<tr class="' + cls + '"><td><strong>' + label + '</strong></td>' + cells + '<td></td></tr>';
+    }
+    tbody.innerHTML += makeMRow(mBrut, 'CA brut', 'cpv2-row-brut');
+    tbody.innerHTML += makeMRow(mCotis, 'Cotisations', 'cpv2-row-cotis', 'var(--gold)');
+    tbody.innerHTML += makeMRow(mNet, 'CA net', 'cpv2-row-net', 'var(--ac)');
   }
 
   // KPIs (toujours sur le CA Production de l'année, référence "vraie richesse produite")
