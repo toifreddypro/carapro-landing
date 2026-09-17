@@ -140,10 +140,17 @@ function renderNav() {
         '<div class="nav-brand"><span class="learn">Learn</span><span class="logic">Logic</span> <span class="studio">Studio</span></div>' +
         '<div class="nav-kk"><span class="karuk">Cara</span><span class="connect">Link</span> <span class="nav-kk-suffix">Artisans</span></div>' +
       '</a>' +
-      '<div class="nav-links" style="display:flex;align-items:center;gap:14px;">' +
+      '<div class="nav-links">' +
+        /* ⚠️ 17/09 — "Mon espace" pointe directement vers MPA Artisans
+        (caralink.app/mpa/), plus vers une page de connexion propre à
+        CaraLink Artisans : MPA Artisans gère lui-même l'identification,
+        comme demandé par Freddy ("comme CaraLink Formation"). URL à
+        confirmer si elle diffère de caralink.app/mpa/. */
+        '<a href="https://caralink.app/mpa/" style="padding:6px 14px;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;text-decoration:none;">' + (T('nav_mon_espace')||'Mon espace') + '</a>' +
+        '<a href="/artisans/inscription.html" style="padding:6px 14px;border-radius:8px;border:1px solid var(--brd);color:var(--tx);font-weight:600;text-decoration:none;">' + T('nav_devenir_artisan') + '</a>' +
+      '</div>' +
+      '<div class="nav-right">' +
         renderLangSwitcher() +
-        '<a href="/artisans/connexion.html" style="padding:6px 10px;color:var(--tx);text-decoration:none;font-size:13.5px;">' + T('nav_connexion') + '</a>' +
-        '<a href="/artisans/inscription.html" style="padding:6px 14px;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;text-decoration:none;">' + T('nav_devenir_artisan') + '</a>' +
       '</div>' +
     '</div>' +
     '<div class="nav-spacer"></div>';
