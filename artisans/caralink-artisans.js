@@ -172,7 +172,12 @@ function renderHero() {
       '<div class="hero-main">' +
         '<div class="hero-eyebrow">' + T('hero_eyebrow') + '</div>' +
         '<h1 class="hero-title">' + T('hero_title') + '</h1>' +
-        '<p class="hero-note">' + T('hero_note') + '</p>' +
+        '<div class="hero-tagline">' +
+          '<span class="hero-tagline-part">' + (T('hero_tag1')||'Trouvez, réservez !') + '</span>' +
+          '<span class="hero-tagline-sep" aria-hidden="true"></span>' +
+          '<span class="hero-tagline-part">' + (T('hero_tag2')||'Soyez visible, travaillez !') + '</span>' +
+        '</div>' +
+        '<p class="hero-note">' + (T('hero_note_short')||'Recherche gratuite, sans inscription, SIRET vérifié.') + '</p>' +
         '<div class="search-bar">' +
           '<div class="search-field"><label>' + T('search_secteur_label') + '</label>' +
             '<input id="search-secteur" type="text" placeholder="' + T('search_secteur_ph') + '" value="' + escHtml(_searchState.secteur) + '" onkeydown="if(event.key===\'Enter\')lancerRecherche()"/></div>' +
