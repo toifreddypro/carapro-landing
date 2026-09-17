@@ -191,7 +191,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .mpa-ai-empty{text-align:center;color:var(--mu);font-size:12.5px;padding:30px 10px;}
 
 /* ── Comptabilité — carte "Matrice CA" alignée sur Formation ── */
-.cpv2-card{background:var(--panel);border:1px solid var(--brd);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:28px 32px;}
+.cpv2-card{width:100%;box-sizing:border-box;margin-top:6px;background:var(--panel);border:1px solid var(--brd);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:28px 32px;}
 .cpv2-matrix-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;flex-wrap:wrap;gap:14px;}
 .cpv2-matrix-headtext{display:flex;flex-direction:column;gap:4px;}
 .cpv2-matrix-title{font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:700;color:var(--tx);margin:0;display:flex;align-items:center;gap:8px;}
@@ -222,6 +222,14 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 #tbl-compta thead th.col-now{color:var(--ac);background:rgba(181,80,47,.08);border-radius:4px 4px 0 0;}
 #tbl-compta tbody td.col-now{background:rgba(181,80,47,.05);}
 #tbl-compta tbody tr.cpv2-row-client td:first-child{border-left:3px solid transparent;padding-left:10px;}
+#tbl-compta tr.cpv2-sep td{padding:2px 0;border-bottom:none;}
+.cpv2-matrix-sep-bar{height:1px;background:linear-gradient(90deg,rgba(181,80,47,.4),rgba(181,80,47,.08));border-radius:1px;}
+#tbl-compta tr.cpv2-row-brut td{color:var(--tx);font-weight:700;}
+#tbl-compta tr.cpv2-row-cotis td{color:var(--mu);}
+#tbl-compta tr.cpv2-row-net td{color:var(--ac);font-weight:700;}
+#tbl-compta tr.cpv2-row-brut td:first-child,
+#tbl-compta tr.cpv2-row-cotis td:first-child,
+#tbl-compta tr.cpv2-row-net td:first-child{text-align:left;padding-left:10px;}
 .panier-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--brd);}
 .panier-item:last-child{border-bottom:none;}
 .panier-item input[type="checkbox"]{width:16px;height:16px;flex-shrink:0;accent-color:var(--ac);}
@@ -507,7 +515,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
           <div class="cpv2-toggle">
             <button type="button" class="active" id="cta-prod" onclick="switchVueCompta('production')">Production</button>
-            <button type="button" id="cta-reel" onclick="switchVueCompta('reel')">Réel</button>
+            <button type="button" id="cta-reel" onclick="switchVueCompta('reel')">Encaissement</button>
+          </div>
+          <div class="cpv2-toggle">
+            <button type="button" class="active" id="cpv2-btn-mois" onclick="setVueMoisTrim('mois')">Mois</button>
+            <button type="button" id="cpv2-btn-trim" onclick="setVueMoisTrim('trim')">Trimestre</button>
           </div>
           <div class="cpv2-yearnav">
             <button onclick="anneeComptaPrec()">‹</button>

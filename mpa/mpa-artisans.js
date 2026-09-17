@@ -439,6 +439,7 @@ async function supprimerIntervention() {
 //  contractuel connu à l'avance).
 // ════════════════════════════════════════
 var _vueCompta = 'production';
+var _vueMoisTrim = 'mois';
 var _anneeCompta = new Date().getFullYear();
 var _interventionsAnneeCache = [];
 
@@ -476,7 +477,14 @@ function switchVueCompta(vue) {
   document.getElementById('cta-reel').classList.toggle('active', vue === 'reel');
   document.getElementById('compta-note').innerHTML = vue === 'production'
     ? '💡 Vue <strong>Production</strong> : le CA est rangé dans le mois de l\'intervention, dès qu\'elle est marquée "Terminée" ou "Payée".'
-    : '💡 Vue <strong>Réel</strong> : le CA est rangé dans le mois de la vraie date de paiement — la réalité de trésorerie d\'un artisan.';
+    : '💡 Vue <strong>Encaissement</strong> : le CA est rangé dans le mois de la vraie date de paiement — la réalité de trésorerie d\'un artisan.';
+  renderMatriceCompta();
+}
+
+function setVueMoisTrim(vue) {
+  _vueMoisTrim = vue;
+  document.getElementById('cpv2-btn-mois').classList.toggle('active', vue === 'mois');
+  document.getElementById('cpv2-btn-trim').classList.toggle('active', vue === 'trim');
   renderMatriceCompta();
 }
 
@@ -533,41 +541,103 @@ function renderMatriceCompta() {
 
   var curMonth = new Date().getMonth(); // 0-11
   var isCurYear = (_anneeCompta === new Date().getFullYear());
-
-  // En-tête
-  document.getElementById('thead-compta-row').innerHTML =
-    '<th>Client</th>' + MOIS_COURTS.map(function(m, idx) {
-      return '<th style="text-align:right;"' + (idx === curMonth && isCurYear ? ' class="col-now"' : '') + '>' + m + '</th>';
-    }).join('') +
-    '<th style="text-align:right;">Total</th>';
-
-  // Corps
+  var cotisPct = _artisan.cotisation_sociale_pct ?? 22;
   var clients = Object.keys(parClient).sort();
+  var thead = document.getElementById('thead-compta-row');
   var tbody = document.getElementById('tbody-compta');
-  if (!clients.length) {
-    tbody.innerHTML = '<tr><td colspan="14" class="etat-vide-tbl">Aucune donnée pour ' + _anneeCompta + '.</td></tr>';
-  } else {
-    tbody.innerHTML = clients.map(function(nom) {
-      var ligne = parClient[nom];
-      var totalLigne = 0;
-      var clr = getClientColor(nom);
-      var cellules = MOIS_COURTS.map(function(_, idx) {
-        var m = idx + 1;
-        var val = ligne[m] || 0;
-        totalLigne += val;
-        var cls = (idx === curMonth && isCurYear) ? ' class="col-now"' : '';
-        return '<td' + cls + ' style="text-align:right;' + (val ? '' : 'color:var(--mu);') + '">' + (val ? val.toFixed(0) + '€' : '—') + '</td>';
-      }).join('');
-      return '<tr class="cpv2-row-client"><td style="border-left-color:' + clr + ';color:' + clr + ';"><strong>' + escHtml(nom) + '</strong></td>' + cellules + '<td style="text-align:right;font-weight:700;">' + totalLigne.toFixed(0) + '€</td></tr>';
-    }).join('');
 
-    // Ligne total
-    tbody.innerHTML += '<tr style="background:var(--p2);"><td><strong>Total</strong></td>' +
-      totalParMois.slice(1).map(function(v, idx) {
-        var cls = (idx === curMonth && isCurYear) ? ' class="col-now"' : '';
-        return '<td' + cls + ' style="text-align:right;font-weight:700;">' + (v ? v.toFixed(0) + '€' : '—') + '</td>';
-      }).join('') +
-      '<td style="text-align:right;font-weight:800;color:var(--ac);">' + totalGeneral.toFixed(0) + '€</td></tr>';
+  if (_vueMoisTrim === 'trim') {
+    // ── COLONNES = 4 TRIMESTRES ──
+    var qDefs = [
+      { l: 'T1', m: [1, 2, 3] },
+      { l: 'T2', m: [4, 5, 6] },
+      { l: 'T3', m: [7, 8, 9] },
+      { l: 'T4', m: [10, 11, 12] }
+    ];
+    var curQ = Math.floor(curMonth / 3);
+
+    thead.innerHTML = '<th>Client</th>' + qDefs.map(function(q, qi) {
+      return '<th' + (qi === curQ && isCurYear ? ' class="col-now"' : '') + '>' + q.l + '</th>';
+    }).join('') + '<th>Total</th>';
+
+    if (!clients.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="etat-vide-tbl">Aucune donnée pour ' + _anneeCompta + '.</td></tr>';
+    } else {
+      tbody.innerHTML = clients.map(function(nom) {
+        var ligne = parClient[nom];
+        var totalLigne = 0;
+        var clr = getClientColor(nom);
+        var cellules = qDefs.map(function(q, qi) {
+          var val = 0;
+          q.m.forEach(function(m) { val += ligne[m] || 0; });
+          totalLigne += val;
+          var cls = (qi === curQ && isCurYear) ? ' class="col-now"' : '';
+          return '<td' + cls + ' style="text-align:right;' + (val ? '' : 'color:var(--mu);') + '">' + (val ? val.toFixed(0) + '€' : '—') + '</td>';
+        }).join('');
+        return '<tr class="cpv2-row-client"><td style="border-left-color:' + clr + ';color:' + clr + ';"><strong>' + escHtml(nom) + '</strong></td>' + cellules + '<td style="text-align:right;font-weight:700;">' + totalLigne.toFixed(0) + '€</td></tr>';
+      }).join('');
+
+      tbody.innerHTML += '<tr class="cpv2-sep"><td colspan="6"><div class="cpv2-matrix-sep-bar"></div></td></tr>';
+
+      var qBrut = [], qCotis = [], qNet = [];
+      qDefs.forEach(function(q) {
+        var b = 0; q.m.forEach(function(m) { b += totalParMois[m] || 0; });
+        var co = Math.round(b * cotisPct / 100 * 100) / 100;
+        qBrut.push(b); qCotis.push(co); qNet.push(b - co);
+      });
+      function makeQRow(data, label, cls, color) {
+        var cells = data.map(function(v, qi) {
+          var c = (qi === curQ && isCurYear) ? ' class="col-now"' : '';
+          return '<td' + c + ' style="text-align:right;font-weight:700;' + (color ? 'color:' + color + ';' : '') + '">' + (v ? v.toFixed(0) + '€' : '—') + '</td>';
+        }).join('');
+        return '<tr class="' + cls + '"><td><strong>' + label + '</strong></td>' + cells + '<td></td></tr>';
+      }
+      tbody.innerHTML += makeQRow(qBrut, 'CA brut', 'cpv2-row-brut');
+      tbody.innerHTML += makeQRow(qCotis, 'Cotisations', 'cpv2-row-cotis', 'var(--gold)');
+      tbody.innerHTML += makeQRow(qNet, 'CA net', 'cpv2-row-net', 'var(--ac)');
+    }
+  } else {
+    // ── COLONNES = 12 MOIS ──
+    thead.innerHTML = '<th>Client</th>' + MOIS_COURTS.map(function(m, idx) {
+      return '<th' + (idx === curMonth && isCurYear ? ' class="col-now"' : '') + '>' + m + '</th>';
+    }).join('') + '<th>Total</th>';
+
+    if (!clients.length) {
+      tbody.innerHTML = '<tr><td colspan="14" class="etat-vide-tbl">Aucune donnée pour ' + _anneeCompta + '.</td></tr>';
+    } else {
+      tbody.innerHTML = clients.map(function(nom) {
+        var ligne = parClient[nom];
+        var totalLigne = 0;
+        var clr = getClientColor(nom);
+        var cellules = MOIS_COURTS.map(function(_, idx) {
+          var m = idx + 1;
+          var val = ligne[m] || 0;
+          totalLigne += val;
+          var cls = (idx === curMonth && isCurYear) ? ' class="col-now"' : '';
+          return '<td' + cls + ' style="text-align:right;' + (val ? '' : 'color:var(--mu);') + '">' + (val ? val.toFixed(0) + '€' : '—') + '</td>';
+        }).join('');
+        return '<tr class="cpv2-row-client"><td style="border-left-color:' + clr + ';color:' + clr + ';"><strong>' + escHtml(nom) + '</strong></td>' + cellules + '<td style="text-align:right;font-weight:700;">' + totalLigne.toFixed(0) + '€</td></tr>';
+      }).join('');
+
+      tbody.innerHTML += '<tr class="cpv2-sep"><td colspan="14"><div class="cpv2-matrix-sep-bar"></div></td></tr>';
+
+      var mBrut = [], mCotis = [], mNet = [];
+      for (var mi = 1; mi <= 12; mi++) {
+        var b2 = totalParMois[mi] || 0;
+        var co2 = Math.round(b2 * cotisPct / 100 * 100) / 100;
+        mBrut.push(b2); mCotis.push(co2); mNet.push(b2 - co2);
+      }
+      function makeMRow(data, label, cls, color) {
+        var cells = data.map(function(v, idx) {
+          var c = (idx === curMonth && isCurYear) ? ' class="col-now"' : '';
+          return '<td' + c + ' style="text-align:right;font-weight:700;' + (color ? 'color:' + color + ';' : '') + '">' + (v ? v.toFixed(0) + '€' : '—') + '</td>';
+        }).join('');
+        return '<tr class="' + cls + '"><td><strong>' + label + '</strong></td>' + cells + '<td></td></tr>';
+      }
+      tbody.innerHTML += makeMRow(mBrut, 'CA brut', 'cpv2-row-brut');
+      tbody.innerHTML += makeMRow(mCotis, 'Cotisations', 'cpv2-row-cotis', 'var(--gold)');
+      tbody.innerHTML += makeMRow(mNet, 'CA net', 'cpv2-row-net', 'var(--ac)');
+    }
   }
 
   // KPIs (toujours sur le CA Production de l'année, référence "vraie richesse produite")
@@ -578,7 +648,6 @@ function renderMatriceCompta() {
     if (d.getFullYear() !== _anneeCompta) return;
     caBrutProduction += (i.prix || 0);
   });
-  var cotisPct = _artisan.cotisation_sociale_pct ?? 22;
   var cotis = caBrutProduction * (cotisPct / 100);
   var net = caBrutProduction - cotis;
 
