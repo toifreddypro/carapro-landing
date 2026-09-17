@@ -146,7 +146,7 @@ function renderNav() {
         CaraLink Artisans : MPA Artisans gère lui-même l'identification,
         comme demandé par Freddy ("comme CaraLink Formation"). URL à
         confirmer si elle diffère de caralink.app/mpa/. */
-        '<a href="https://caralink.app/mpa/" style="padding:6px 14px;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;text-decoration:none;">' + (T('nav_mon_espace')||'Mon espace') + '</a>' +
+        '<a href="https://caralink.app/mpa/" style="padding:6px 14px;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;text-decoration:none;">Mon espace</a>' +
         '<a href="/artisans/inscription.html" style="padding:6px 14px;border-radius:8px;border:1px solid var(--brd);color:var(--tx);font-weight:600;text-decoration:none;">' + T('nav_devenir_artisan') + '</a>' +
       '</div>' +
       '<div class="nav-right">' +
@@ -173,11 +173,11 @@ function renderHero() {
         '<div class="hero-eyebrow">' + T('hero_eyebrow') + '</div>' +
         '<h1 class="hero-title">' + T('hero_title') + '</h1>' +
         '<div class="hero-tagline">' +
-          '<span class="hero-tagline-part">' + (T('hero_tag1')||'Trouvez, réservez !') + '</span>' +
+          '<span class="hero-tagline-part">Trouvez, réservez !</span>' +
           '<span class="hero-tagline-sep" aria-hidden="true"></span>' +
-          '<span class="hero-tagline-part">' + (T('hero_tag2')||'Soyez visible, travaillez !') + '</span>' +
+          '<span class="hero-tagline-part">Soyez visible, travaillez !</span>' +
         '</div>' +
-        '<p class="hero-note">' + (T('hero_note_short')||'Recherche gratuite, sans inscription, SIRET vérifié.') + '</p>' +
+        '<p class="hero-note">Recherche gratuite, sans inscription, SIRET vérifié.</p>' +
         '<div class="search-bar">' +
           '<div class="search-field"><label>' + T('search_secteur_label') + '</label>' +
             '<input id="search-secteur" type="text" placeholder="' + T('search_secteur_ph') + '" value="' + escHtml(_searchState.secteur) + '" onkeydown="if(event.key===\'Enter\')lancerRecherche()"/></div>' +
