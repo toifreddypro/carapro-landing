@@ -190,7 +190,23 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   background:var(--ac);color:#fff;font-size:11.5px;font-weight:700;text-decoration:none;cursor:pointer;border:none;}
 .mpa-ai-empty{text-align:center;color:var(--mu);font-size:12.5px;padding:30px 10px;}
 
-/* ── Comptabilité — carte "Matrice CA" alignée sur Formation ── */
+/* ── Facturation — cartes façon Formation ── */
+#p3.active{display:flex;flex-direction:column;align-items:center;height:100%;padding:24px;overflow-y:auto;}
+.cpv2-page-wrap{width:100%;max-width:1400px;display:flex;flex-direction:column;gap:20px;}
+.cpv2-fact-field{display:flex;flex-direction:column;gap:6px;max-width:420px;}
+.cpv2-fact-field label{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--mu);text-transform:uppercase;}
+.cpv2-select{width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);background:var(--panel);}
+#fact-panier .panier-item{font-family:'Outfit',sans-serif;}
+#fact-panier .panier-item-prix{font-family:'JetBrains Mono',monospace;}
+#fact-panier .panier-total-label{font-family:'Bricolage Grotesque',sans-serif;}
+#fact-panier .panier-total-montant{color:var(--ac);}
+#fact-panier .addb{background:var(--ac);border-radius:9px;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;letter-spacing:.2px;}
+#fact-panier .addb:hover{background:#8F3D22;}
+#tbl-factures{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:13px;}
+#tbl-factures thead th{padding:10px 6px;text-align:center;color:var(--mu);font-size:11px;letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--brd);}
+#tbl-factures tbody td{padding:12px 6px;text-align:center;color:var(--tx);}
+#tbl-factures tbody tr:nth-child(even) td{background:rgba(181,80,47,.02);}
+#tbl-factures tbody tr:not(:last-child) td{border-bottom:1px solid var(--brd);}
 #p2.active{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:24px;overflow:hidden;}
 .cpv2-card{width:100%;max-width:1400px;box-sizing:border-box;background:var(--panel);border:1px solid var(--brd);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:28px 32px;overflow:hidden;display:flex;flex-direction:column;}
 .cpv2-matrix-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;flex-wrap:wrap;gap:14px;}
@@ -557,30 +573,36 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 
   <!-- FACTURATION — phase 5 -->
   <div class="pnl" id="p3">
-    <div class="dcard" style="margin-bottom:16px;">
-      <div class="dchdr">
-        <div class="dctit"><svg viewBox="0 0 24 24" fill="none" stroke="#B5502F" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Nouvelle facture</div>
-      </div>
-      <div class="fcbdy">
-        <div class="modal-field">
+    <div class="cpv2-page-wrap">
+      <div class="cpv2-card">
+        <div class="cpv2-matrix-head">
+          <div class="cpv2-matrix-headtext">
+            <p class="cpv2-matrix-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Nouvelle facture</p>
+            <p class="cpv2-matrix-subtitle">Choisissez un client, sélectionnez les prestations à facturer</p>
+          </div>
+        </div>
+        <div class="cpv2-fact-field">
           <label>Client</label>
-          <select id="fact-client" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;" onchange="chargerPanierClient()">
+          <select id="fact-client" class="cpv2-select" onchange="chargerPanierClient()">
             <option value="">— Choisir un client —</option>
           </select>
         </div>
         <div id="fact-panier" style="margin-top:14px;"></div>
       </div>
-    </div>
 
-    <div class="dcard">
-      <div class="dchdr">
-        <div class="dctit"><svg viewBox="0 0 24 24" fill="none" stroke="#B5502F" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>Factures émises</div>
-      </div>
-      <div class="dcbdy">
-        <table class="dtbl">
-          <thead><tr><th>N°</th><th>Client</th><th>Date</th><th>Montant</th><th></th></tr></thead>
-          <tbody id="tbody-factures"></tbody>
-        </table>
+      <div class="cpv2-card">
+        <div class="cpv2-matrix-head">
+          <div class="cpv2-matrix-headtext">
+            <p class="cpv2-matrix-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>Factures émises</p>
+            <p class="cpv2-matrix-subtitle">Historique de vos factures générées</p>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table id="tbl-factures">
+            <thead><tr><th style="text-align:left;">N°</th><th style="text-align:left;">Client</th><th>Date</th><th>Montant</th><th></th></tr></thead>
+            <tbody id="tbody-factures"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
