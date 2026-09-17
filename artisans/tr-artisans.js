@@ -12,6 +12,7 @@ var AT_LANG = (function() {
 var AT_TR = {
   fr: {
     nav_connexion: "Connexion",
+    nav_mon_espace: "Mon espace",
     nav_devenir_artisan: "Devenir artisan",
 
     sec_jardinage: "Jardinage", sec_plomberie: "Plomberie", sec_electricite: "Électricité",
@@ -21,6 +22,9 @@ var AT_TR = {
     hero_eyebrow: "CaraLink Artisans · Antilles-Guyane",
     hero_title: "Trouvez un <span>artisan</span> disponible pour vos travaux",
     hero_note: "Trouvez, réservez ! Soyez visible, travaillez !<br>Recherche gratuite, sans inscription, SIRET vérifié.",
+    hero_tag1: "Trouvez, réservez !",
+    hero_tag2: "Soyez visible, travaillez !",
+    hero_note_short: "Recherche gratuite, sans inscription, SIRET vérifié.",
     search_secteur_label: "Secteur",
     search_secteur_ph: "Ex : plomberie, jardinage…",
     search_lieu_label: "Lieu",
@@ -105,6 +109,7 @@ var AT_TR = {
   },
   en: {
     nav_connexion: "Log in",
+    nav_mon_espace: "My space",
     nav_devenir_artisan: "Become a craftsman",
 
     sec_jardinage: "Gardening", sec_plomberie: "Plumbing", sec_electricite: "Electrical",
@@ -114,6 +119,9 @@ var AT_TR = {
     hero_eyebrow: "CaraLink Artisans · Caribbean",
     hero_title: "Find a <span>craftsman</span> available for your project",
     hero_note: "Find, book! Be visible, get work!<br>Free search, no sign-up, verified SIRET.",
+    hero_tag1: "Find, book!",
+    hero_tag2: "Be visible, get work!",
+    hero_note_short: "Free search, no sign-up, verified SIRET.",
     search_secteur_label: "Trade",
     search_secteur_ph: "E.g.: plumbing, gardening…",
     search_lieu_label: "Location",
@@ -198,6 +206,7 @@ var AT_TR = {
   },
   es: {
     nav_connexion: "Iniciar sesión",
+    nav_mon_espace: "Mi espacio",
     nav_devenir_artisan: "Hazte artesano",
 
     sec_jardinage: "Jardinería", sec_plomberie: "Fontanería", sec_electricite: "Electricidad",
@@ -207,6 +216,9 @@ var AT_TR = {
     hero_eyebrow: "CaraLink Artisans · Caribe",
     hero_title: "Encuentra un <span>artesano</span> disponible para tu proyecto",
     hero_note: "¡Busca, reserva! ¡Hazte visible, trabaja!<br>Búsqueda gratuita, sin registro, SIRET verificado.",
+    hero_tag1: "¡Busca, reserva!",
+    hero_tag2: "¡Hazte visible, trabaja!",
+    hero_note_short: "Búsqueda gratuita, sin registro, SIRET verificado.",
     search_secteur_label: "Oficio",
     search_secteur_ph: "Ej: fontanería, jardinería…",
     search_lieu_label: "Lugar",
