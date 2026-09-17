@@ -444,6 +444,32 @@ var _interventionsAnneeCache = [];
 
 const MOIS_COURTS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
 
+// ── Système de couleurs par client (même mécanique que MPA Formation) ──
+var CLIENT_PALETTE = [
+  '#B5502F', // Terre cuite (marque)
+  '#0891b2', // Cyan/sarcelle doux
+  '#7c6fdb', // Violet doux
+  '#0a8f68', // Vert émeraude doux
+  '#b45309', // Ambre/brun doux
+  '#c2578f', // Rose vieilli doux
+  '#4f6ba8', // Bleu ardoise
+  '#5a8a5a', // Vert sauge
+  '#8a6ba8', // Mauve doux
+  '#3f8a8a', // Teal foncé doux
+];
+var CLIENT_COLORS = {};
+function getClientColor(nom) {
+  if (!nom) return '#B5502F';
+  if (CLIENT_COLORS[nom]) return CLIENT_COLORS[nom];
+  var hash = 0;
+  for (var i = 0; i < nom.length; i++) {
+    hash = (hash * 31 + nom.charCodeAt(i)) & 0xffffffff;
+  }
+  var idx = Math.abs(hash) % CLIENT_PALETTE.length;
+  CLIENT_COLORS[nom] = CLIENT_PALETTE[idx];
+  return CLIENT_COLORS[nom];
+}
+
 function switchVueCompta(vue) {
   _vueCompta = vue;
   document.getElementById('cta-prod').classList.toggle('active', vue === 'production');
@@ -505,9 +531,14 @@ function renderMatriceCompta() {
     totalGeneral += (i.prix || 0);
   }
 
+  var curMonth = new Date().getMonth(); // 0-11
+  var isCurYear = (_anneeCompta === new Date().getFullYear());
+
   // En-tête
   document.getElementById('thead-compta-row').innerHTML =
-    '<th>Client</th>' + MOIS_COURTS.map(function(m) { return '<th style="text-align:right;">' + m + '</th>'; }).join('') +
+    '<th>Client</th>' + MOIS_COURTS.map(function(m, idx) {
+      return '<th style="text-align:right;"' + (idx === curMonth && isCurYear ? ' class="col-now"' : '') + '>' + m + '</th>';
+    }).join('') +
     '<th style="text-align:right;">Total</th>';
 
   // Corps
@@ -519,18 +550,23 @@ function renderMatriceCompta() {
     tbody.innerHTML = clients.map(function(nom) {
       var ligne = parClient[nom];
       var totalLigne = 0;
+      var clr = getClientColor(nom);
       var cellules = MOIS_COURTS.map(function(_, idx) {
         var m = idx + 1;
         var val = ligne[m] || 0;
         totalLigne += val;
-        return '<td style="text-align:right;' + (val ? '' : 'color:var(--mu);') + '">' + (val ? val.toFixed(0) + '€' : '—') + '</td>';
+        var cls = (idx === curMonth && isCurYear) ? ' class="col-now"' : '';
+        return '<td' + cls + ' style="text-align:right;' + (val ? '' : 'color:var(--mu);') + '">' + (val ? val.toFixed(0) + '€' : '—') + '</td>';
       }).join('');
-      return '<tr><td><strong>' + escHtml(nom) + '</strong></td>' + cellules + '<td style="text-align:right;font-weight:700;">' + totalLigne.toFixed(0) + '€</td></tr>';
+      return '<tr class="cpv2-row-client"><td style="border-left-color:' + clr + ';color:' + clr + ';"><strong>' + escHtml(nom) + '</strong></td>' + cellules + '<td style="text-align:right;font-weight:700;">' + totalLigne.toFixed(0) + '€</td></tr>';
     }).join('');
 
     // Ligne total
     tbody.innerHTML += '<tr style="background:var(--p2);"><td><strong>Total</strong></td>' +
-      totalParMois.slice(1).map(function(v) { return '<td style="text-align:right;font-weight:700;">' + (v ? v.toFixed(0) + '€' : '—') + '</td>'; }).join('') +
+      totalParMois.slice(1).map(function(v, idx) {
+        var cls = (idx === curMonth && isCurYear) ? ' class="col-now"' : '';
+        return '<td' + cls + ' style="text-align:right;font-weight:700;">' + (v ? v.toFixed(0) + '€' : '—') + '</td>';
+      }).join('') +
       '<td style="text-align:right;font-weight:800;color:var(--ac);">' + totalGeneral.toFixed(0) + '€</td></tr>';
   }
 
