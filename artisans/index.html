@@ -400,7 +400,11 @@
     .resa-footer{border-top:1px solid var(--brd);padding:16px 28px;display:flex;gap:10px;justify-content:flex-end;background:rgba(3,5,8,.5);}
     /* PAGE FOOTER */
     .footer-wrap{border-top:1px solid var(--brd);padding:32px;text-align:center;margin-top:60px;}
-    .footer-brand{font-size:13px;color:var(--mu);margin-bottom:8px;}
+    footer{border-top:1px solid var(--brd);padding:24px 48px;background:var(--panel);
+      display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;}
+    .footer-brand{font-family:'Bricolage Grotesque',sans-serif;font-size:14px;font-weight:700;color:var(--mu);}
+    .footer-brand span.ac{color:var(--ac);}
+    .footer-note{font-size:12px;color:var(--mu);font-family:'JetBrains Mono',monospace;letter-spacing:.5px;}
     .footer-links{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;}
     .footer-links a{font-size:12px;color:var(--mu);transition:color .2s;}
     .footer-links a:hover{color:var(--ac2);}
@@ -917,16 +921,14 @@ body.theme-light footer { background:#fbfcfe; }
   <main id="main-results"></main>
   <div id="overlay-profil" style="display:none;"></div>
   <div id="overlay-resa"   style="display:none;"></div>
-  <footer id="footer" style="padding:20px 40px;border-top:1px solid var(--brd);"><div style="margin-top:4px;padding-top:6px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-    <div style="font-size:12px;color:var(--mu,#64748b);">© 2026 CaraLink Artisans. Tous droits réservés.</div>
-    <div style="display:flex;gap:16px;flex-wrap:wrap;">
-      <a href="#" onclick="ouvrirModalLegal('mentions');return false;" style="font-size:12px;color:var(--mu,#64748b);text-decoration:none;">Mentions légales</a>
-      <a href="#" onclick="ouvrirModalLegal('cgu');return false;" style="font-size:12px;color:var(--mu,#64748b);text-decoration:none;">CGU</a>
-      <a href="#" onclick="ouvrirModalLegal('privacy');return false;" style="font-size:12px;color:var(--mu,#64748b);text-decoration:none;">Confidentialité</a>
-      <a href="#" onclick="ouvrirModalLegal('cookies');return false;" style="font-size:12px;color:var(--mu,#64748b);text-decoration:none;">Cookies</a>
-      <a href="mailto:contact@learnlogicstudio.com" style="font-size:12px;color:var(--mu,#64748b);text-decoration:none;">Contact</a>
+  <footer id="footer">
+    <div class="footer-brand">CARA<span class="ac">LINK</span> <span style="font-size:14px;color:var(--mu2);margin-left:6px;font-weight:600;">Artisans</span> <span style="font-size:12px;color:var(--mu);margin-left:8px;font-weight:400;">by LearnLogic Studio</span></div>
+    <div class="footer-note">// Guadeloupe · Martinique · Guyane — 2026</div>
+    <div style="font-size:12px;color:var(--mu);font-family:'JetBrains Mono',monospace;">
+      <a href="#" onclick="ouvrirModalLegal('mentions');return false;" style="color:var(--mu2);text-decoration:none;margin:0 8px;">Mentions légales</a>·
+      <a href="#" onclick="ouvrirModalLegal('privacy');return false;" style="color:var(--mu2);text-decoration:none;margin:0 8px;">Confidentialité</a>
     </div>
-  </div></footer>
+  </footer>
   <script src="/artisans/tr-artisans.js"></script>
   <script src="/artisans/caralink-artisans.js"></script>
 
