@@ -422,6 +422,9 @@ function recalculerHeureFin() {
   if (debut && duree) {
     document.getElementById('mi-heure-fin').value = minVersHeure(heureVersMin(debut) + duree);
   }
+  if (debut) {
+    document.getElementById('mi-creneau').value = heureVersMin(debut) < 12 * 60 ? 'matin' : 'apres_midi';
+  }
 }
 
 function choisirCreneau(debut) {
