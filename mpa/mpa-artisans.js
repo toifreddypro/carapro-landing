@@ -336,6 +336,196 @@ async function avancerStatut(id, ev) {
   if (document.getElementById('p2').classList.contains('active')) await chargerCompta();
 }
 
+// ════════════════════════════════════════
+//  SMART DISPATCH IA — géocodage, trajets, créneaux suggérés
+// ════════════════════════════════════════
+
+var _geocodeCache = {}; // clé: "adresse, cp, commune" → {lat, lon}
+var _trajetCache = {};  // clé: "lat1,lon1|lat2,lon2" → minutes
+
+function heureVersMin(hhmm) {
+  var p = hhmm.split(':');
+  return parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
+}
+function minVersHeure(min) {
+  min = Math.max(0, Math.round(min));
+  var h = Math.floor(min / 60), m = min % 60;
+  return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+}
+function arrondirQuart(min) { return Math.ceil(min / 15) * 15; }
+
+async function geocoderAdresse(adresse, cp, commune) {
+  var q = [adresse, cp, commune].filter(Boolean).join(', ');
+  if (!q) return null;
+  if (_geocodeCache[q]) return _geocodeCache[q];
+  try {
+    var res = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q));
+    var data = await res.json();
+    if (data && data[0]) {
+      var pt = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+      _geocodeCache[q] = pt;
+      return pt;
+    }
+  } catch (e) { console.warn('Géocodage échoué :', e); }
+  return null;
+}
+
+async function tempsTrajetMinutes(latA, lonA, latB, lonB) {
+  if (latA == null || lonA == null || latB == null || lonB == null) return null;
+  var cle = latA + ',' + lonA + '|' + latB + ',' + lonB;
+  if (_trajetCache[cle] != null) return _trajetCache[cle];
+  try {
+    var url = 'https://router.project-osrm.org/route/v1/driving/' + lonA + ',' + latA + ';' + lonB + ',' + latB + '?overview=false';
+    var res = await fetch(url);
+    var data = await res.json();
+    if (data.routes && data.routes[0]) {
+      var min = Math.ceil(data.routes[0].duration / 60);
+      _trajetCache[cle] = min;
+      return min;
+    }
+  } catch (e) { console.warn('Calcul de trajet échoué :', e); }
+  return null;
+}
+
+// Géocode l'intervention en cours de saisie si besoin, et la met à jour en mémoire (mi-lat / mi-lon)
+async function geocoderInterventionCourante() {
+  var adresse = document.getElementById('mi-adr').value.trim();
+  var cp = document.getElementById('mi-cp').value.trim();
+  var commune = document.getElementById('mi-com').value.trim();
+  if (!adresse) return null;
+  return await geocoderAdresse(adresse, cp, commune);
+}
+
+function preRemplirAdresseIntervention() {
+  var clientId = document.getElementById('mi-client').value;
+  var c = _clientsCache.find(function(x) { return x.id === clientId; });
+  if (c) {
+    document.getElementById('mi-adr').value = c.adresse || '';
+    document.getElementById('mi-cp').value = c.code_postal || '';
+    document.getElementById('mi-com').value = c.commune || '';
+  }
+  calculerCreneaux();
+}
+
+function preRemplirDureeIntervention() {
+  var serviceId = document.getElementById('mi-service').value;
+  var s = _servicesCache.find(function(x) { return x.id === serviceId; });
+  if (s && s.duree_estimee_min && !document.getElementById('mi-duree').value) {
+    document.getElementById('mi-duree').value = s.duree_estimee_min;
+  }
+  calculerCreneaux();
+}
+
+function recalculerHeureFin() {
+  var debut = document.getElementById('mi-heure-debut').value;
+  var duree = parseInt(document.getElementById('mi-duree').value, 10);
+  if (debut && duree) {
+    document.getElementById('mi-heure-fin').value = minVersHeure(heureVersMin(debut) + duree);
+  }
+}
+
+function choisirCreneau(debut) {
+  document.getElementById('mi-heure-debut').value = debut;
+  recalculerHeureFin();
+}
+
+var _calculCreneauxToken = 0;
+
+async function calculerCreneaux() {
+  var zone = document.getElementById('mi-creneaux-zone');
+  if (!zone) return;
+  var monToken = ++_calculCreneauxToken; // évite qu'une réponse tardive écrase un calcul plus récent
+
+  var dateStr = document.getElementById('mi-date').value;
+  var duree = parseInt(document.getElementById('mi-duree').value, 10);
+  var adresse = document.getElementById('mi-adr').value.trim();
+
+  if (!dateStr || !adresse || !duree) {
+    zone.innerHTML = 'Renseignez la date, l\'adresse et la durée pour voir les créneaux qui tiennent compte de vos trajets.';
+    return;
+  }
+  zone.innerHTML = '⏳ Calcul des créneaux…';
+
+  var pt = await geocoderInterventionCourante();
+  if (monToken !== _calculCreneauxToken) return;
+  if (!pt) {
+    zone.innerHTML = '<span style="color:var(--gold);">⚠ Adresse introuvable — vous pouvez saisir l\'heure manuellement, mais je ne peux pas vérifier le trajet.</span>';
+    return;
+  }
+
+  var duJour = _interventionsCache.filter(function(i) {
+    return i.date_intervention === dateStr && i.id !== _interventionEnCours && i.statut !== 'annulee' && i.heure_debut && i.heure_fin;
+  }).sort(function(a, b) { return a.heure_debut.localeCompare(b.heure_debut); });
+
+  var base = (_artisan.latitude != null && _artisan.longitude != null) ? { lat: _artisan.latitude, lon: _artisan.longitude } : null;
+
+  // Points de la journée : [base] puis chaque intervention existante, dans l'ordre
+  var points = [];
+  if (base) points.push({ lat: base.lat, lon: base.lon, finMin: null }); // null = pas d'heure de fin imposée (départ libre le matin)
+  duJour.forEach(function(i) {
+    points.push({
+      lat: i.latitude, lon: i.longitude,
+      debutMin: heureVersMin(i.heure_debut.slice(0,5)),
+      finMin: heureVersMin(i.heure_fin.slice(0,5)),
+    });
+  });
+
+  var creneaux = [];
+  for (var k = 0; k < points.length; k++) {
+    var prev = points[k];
+    var next = points[k + 1] || null;
+    if (prev.lat == null) continue; // intervention jamais géocodée : on ne devine pas, on saute ce trou par prudence
+
+    var travelIn = await tempsTrajetMinutes(prev.lat, prev.lon, pt.lat, pt.lon);
+    if (monToken !== _calculCreneauxToken) return;
+    if (travelIn == null) continue;
+
+    var debutMin = arrondirQuart((prev.finMin != null ? prev.finMin : 7 * 60) + travelIn);
+
+    if (next) {
+      if (next.lat == null) continue;
+      var travelOut = await tempsTrajetMinutes(pt.lat, pt.lon, next.lat, next.lon);
+      if (monToken !== _calculCreneauxToken) return;
+      if (travelOut == null) continue;
+      if (debutMin + duree + travelOut > next.debutMin) continue; // ne rentre pas dans le trou disponible
+    }
+
+    creneaux.push({ debut: minVersHeure(debutMin), travelIn: travelIn });
+  }
+
+  if (!creneaux.length) {
+    zone.innerHTML = '<span style="color:var(--danger);">⚠ Aucun créneau ne semble tenir compte-tenu de vos trajets ce jour-là. Vous pouvez tout de même saisir une heure à la main.</span>';
+    return;
+  }
+
+  zone.innerHTML = creneaux.map(function(c) {
+    return '<button type="button" onclick="choisirCreneau(\'' + c.debut + '\')" style="padding:7px 12px;margin:3px 4px 3px 0;border-radius:8px;border:1px solid var(--ac-brd);background:var(--panel);color:var(--ac);font-weight:700;font-size:13px;cursor:pointer;">' +
+      c.debut + '<span style="display:block;font-weight:400;color:var(--mu);font-size:9.5px;">+' + c.travelIn + ' min trajet</span></button>';
+  }).join('');
+}
+
+// Vérification après enregistrement — jamais bloquante, juste informative
+async function verifierFaisabiliteJour(dateStr, idAModifier) {
+  var duJour = _interventionsCache.filter(function(i) {
+    return i.date_intervention === dateStr && i.statut !== 'annulee' && i.heure_debut && i.heure_fin && i.latitude != null;
+  }).sort(function(a, b) { return a.heure_debut.localeCompare(b.heure_debut); });
+
+  var alertes = [];
+  for (var k = 0; k < duJour.length - 1; k++) {
+    var a = duJour[k], b = duJour[k + 1];
+    var travel = await tempsTrajetMinutes(a.latitude, a.longitude, b.latitude, b.longitude);
+    if (travel == null) continue;
+    var finA = heureVersMin(a.heure_fin.slice(0,5));
+    var debutB = heureVersMin(b.heure_debut.slice(0,5));
+    if (finA + travel > debutB) {
+      alertes.push('Entre ' + a.heure_fin.slice(0,5) + ' et ' + b.heure_debut.slice(0,5) + ' : ' + travel + ' min de trajet nécessaires, ' + (debutB - finA) + ' min seulement disponibles.');
+    }
+  }
+  if (alertes.length) {
+    alert('⚠ Attention, ce planning semble serré :\n\n' + alertes.join('\n'));
+  }
+}
+
 async function remplirSelectsIntervention() {
   var selClient = document.getElementById('mi-client');
   selClient.innerHTML = '<option value="">— Aucun —</option>' +
@@ -355,7 +545,12 @@ async function ouvrirNouvelleIntervention(dateStr, creneau) {
   document.getElementById('mi-heure-debut').value = creneau === 'matin' ? '08:00' : '14:00';
   document.getElementById('mi-heure-fin').value = creneau === 'matin' ? '10:00' : '16:00';
   document.getElementById('mi-client').value = '';
+  document.getElementById('mi-adr').value = '';
+  document.getElementById('mi-cp').value = '';
+  document.getElementById('mi-com').value = '';
   document.getElementById('mi-service').value = '';
+  document.getElementById('mi-duree').value = '';
+  document.getElementById('mi-creneaux-zone').innerHTML = 'Renseignez la date, l\'adresse et la durée pour voir les créneaux qui tiennent compte de vos trajets.';
   document.getElementById('mi-prix').value = '';
   document.getElementById('mi-notes').value = '';
   document.getElementById('mi-statut').value = 'planifiee';
@@ -376,7 +571,11 @@ async function ouvrirIntervention(id) {
   document.getElementById('mi-heure-debut').value = i.heure_debut ? i.heure_debut.slice(0,5) : '';
   document.getElementById('mi-heure-fin').value = i.heure_fin ? i.heure_fin.slice(0,5) : '';
   document.getElementById('mi-client').value = i.client_id || '';
+  document.getElementById('mi-adr').value = i.adresse || '';
+  document.getElementById('mi-cp').value = i.code_postal || '';
+  document.getElementById('mi-com').value = i.commune || '';
   document.getElementById('mi-service').value = i.service_id || '';
+  document.getElementById('mi-duree').value = (i.heure_debut && i.heure_fin) ? (heureVersMin(i.heure_fin.slice(0,5)) - heureVersMin(i.heure_debut.slice(0,5))) : '';
   document.getElementById('mi-prix').value = i.prix || '';
   document.getElementById('mi-notes').value = i.notes || '';
   document.getElementById('mi-statut').value = i.statut || 'planifiee';
@@ -384,6 +583,7 @@ async function ouvrirIntervention(id) {
   toggleDatePaiement();
   document.getElementById('mi-delete-wrap').style.display = 'block';
   ouvrirModale('modal-intervention');
+  calculerCreneaux();
 }
 
 function toggleDatePaiement() {
@@ -396,6 +596,10 @@ function toggleDatePaiement() {
 }
 
 async function sauverIntervention() {
+  var adresse = document.getElementById('mi-adr').value.trim() || null;
+  var cp = document.getElementById('mi-cp').value.trim() || null;
+  var commune = document.getElementById('mi-com').value.trim() || null;
+
   var maj = {
     artisan_id: _artisan.id,
     date_intervention: document.getElementById('mi-date').value,
@@ -403,6 +607,9 @@ async function sauverIntervention() {
     heure_debut: document.getElementById('mi-heure-debut').value || null,
     heure_fin: document.getElementById('mi-heure-fin').value || null,
     client_id: document.getElementById('mi-client').value || null,
+    adresse: adresse,
+    code_postal: cp,
+    commune: commune,
     service_id: document.getElementById('mi-service').value || null,
     prix: parseFloat(document.getElementById('mi-prix').value) || null,
     notes: document.getElementById('mi-notes').value.trim() || null,
@@ -410,6 +617,12 @@ async function sauverIntervention() {
     date_paiement: document.getElementById('mi-statut').value === 'payee' ? (document.getElementById('mi-date-paiement').value || null) : null,
   };
   if (!maj.date_intervention) { alert('La date est obligatoire.'); return; }
+
+  // Géocodage silencieux — si l'adresse a une correspondance, on la stocke ; sinon on enregistre quand même (jamais bloquant)
+  if (adresse) {
+    var pt = await geocoderAdresse(adresse, cp, commune);
+    if (pt) { maj.latitude = pt.lat; maj.longitude = pt.lon; }
+  }
 
   var res;
   if (_interventionEnCours) {
@@ -420,6 +633,9 @@ async function sauverIntervention() {
   if (res.error) { alert('Erreur : ' + res.error.message); return; }
   fermerModale('modal-intervention');
   await chargerInterventions();
+  if (maj.statut !== 'annulee') {
+    verifierFaisabiliteJour(maj.date_intervention);
+  }
 }
 
 async function supprimerIntervention() {
