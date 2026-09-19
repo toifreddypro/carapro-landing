@@ -49,7 +49,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: demande, error } = await sb.from("demandes_devis").insert({
       client_nom, client_telephone, secteur, description_besoin, commune,
-      statut: "ouverte",
+      statut: artisan_id ? "directe" : "ouverte",
     }).select().single();
     if (error) throw error;
 

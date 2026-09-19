@@ -23,19 +23,37 @@ function jsAttr(val) {
   return JSON.stringify(val == null ? '' : String(val)).replace(/"/g, '&quot;');
 }
 
-const SECTEURS = [
-  { code:'jardinage',     icon:'🌿' },
-  { code:'plomberie',     icon:'🔧' },
-  { code:'electricite',   icon:'⚡' },
-  { code:'peinture',      icon:'🎨' },
-  { code:'maconnerie',    icon:'🧱' },
-  { code:'menuiserie',    icon:'🪚' },
-  { code:'climatisation', icon:'❄️' },
-  { code:'autre',         icon:'✨' },
+// Secteurs — chargés depuis la table `secteurs` (modifiable depuis l'admin),
+// avec une liste de repli si jamais le chargement échoue (mode dégradé).
+var _secteursCache = [
+  { code:'jardinage', icon:'🌿', label_fr:'Jardinage' },
+  { code:'plomberie', icon:'🔧', label_fr:'Plomberie' },
+  { code:'electricite', icon:'⚡', label_fr:'Électricité' },
+  { code:'peinture', icon:'🎨', label_fr:'Peinture' },
+  { code:'maconnerie', icon:'🧱', label_fr:'Maçonnerie' },
+  { code:'menuiserie', icon:'🪚', label_fr:'Menuiserie' },
+  { code:'climatisation', icon:'❄️', label_fr:'Climatisation' },
+  { code:'autre', icon:'✨', label_fr:'Autre' },
 ];
+
+async function chargerSecteurs() {
+  try {
+    var { data, error } = await sb.from('secteurs').select('*').order('ordre', { ascending: true });
+    if (!error && data && data.length) _secteursCache = data;
+  } catch (e) { console.warn('Chargement des secteurs échoué, liste de repli utilisée.', e); }
+}
+
+function secteurLabelChamp() {
+  var lang = (typeof AT_LANG !== 'undefined' && AT_LANG) || 'fr';
+  return lang === 'en' ? 'label_en' : lang === 'es' ? 'label_es' : 'label_fr';
+}
+
 function secteurLabel(code) {
-  var s = SECTEURS.find(function(x){ return x.code === code; });
-  return s ? s.icon + ' ' + T('sec_' + code) : escHtml(code);
+  var s = _secteursCache.find(function(x){ return x.code === code; });
+  if (!s) return escHtml(code);
+  var champ = secteurLabelChamp();
+  var libelle = s[champ] || s.label_fr || s.code;
+  return (s.icon || '') + ' ' + libelle;
 }
 
 const ZONES_COORDS = {
@@ -203,6 +221,10 @@ function renderHero() {
           '<button class="filter-pill" title="' + T('filter_bientot_title') + '" style="opacity:.55;cursor:not-allowed;" onclick="return false;">' + T('filter_dispo') + '</button>' +
           '<button class="filter-pill' + (_searchState.tri==='tarif'?' active':'') + '" onclick="trierPar(\'tarif\')">' + T('filter_tarif') + '</button>' +
           '<button class="filter-pill' + (_searchState.tri==='note'?' active':'') + '" onclick="trierPar(\'note\')">' + T('filter_note') + '</button>' +
+        '</div>' +
+        '<div style="margin-top:14px;font-size:12.5px;color:var(--mu);">' +
+          '📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">Faire une demande générale</a>' +
+          ' — visible par tous les artisans du secteur et de la commune choisis' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -457,6 +479,69 @@ function ouvrirModalDevis(artisanId, nomArtisan) {
 }
 function fermerModalDevis() { var div = document.getElementById('modal-devis'); if (div) div.innerHTML = ''; }
 
+// ── Demande générale (hors fiche) — ouverte à tous les artisans du secteur/commune ──
+function ouvrirModalDevisGeneral() {
+  var div = document.getElementById('modal-devis');
+  if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
+  var champLabel = secteurLabelChamp();
+  var options = _secteursCache.map(function(s) {
+    return '<option value="' + escHtml(s.code) + '">' + (s.icon||'') + ' ' + escHtml(s[champLabel] || s.label_fr) + '</option>';
+  }).join('');
+  div.innerHTML =
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)fermerModalDevis()">' +
+      '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;">' +
+        '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">📢 Demande générale</div>' +
+        '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">Votre demande sera visible par tous les artisans du secteur et de la commune choisis — idéal pour comparer plusieurs devis.</div>' +
+        '<select id="devis-secteur" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Outfit\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:6px;">' + options + '</select>' +
+        '<div style="font-size:11px;color:var(--mu,#999);margin-bottom:10px;">Vous ne voyez pas votre secteur ? <a href="mailto:contact@learnlogicstudio.com" style="color:var(--ac);">Écrivez-nous</a> pour qu\'on l\'ajoute.</div>' +
+        '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        '<input id="devis-commune" type="text" placeholder="' + T('ph_commune') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        '<textarea id="devis-message" rows="4" placeholder="' + T('ph_message') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
+        '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button id="btn-devis" onclick="envoyerDemandeDevisGenerale()" style="flex:1;padding:11px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">' + T('btn_envoyer') + '</button>' +
+          '<button onclick="fermerModalDevis()" style="flex:1;padding:11px;border-radius:9px;border:1px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);cursor:pointer;">' + T('btn_annuler') + '</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+async function envoyerDemandeDevisGenerale() {
+  var secteur = document.getElementById('devis-secteur').value;
+  var nom = document.getElementById('devis-nom').value.trim();
+  var tel = document.getElementById('devis-tel').value.trim();
+  var commune = document.getElementById('devis-commune').value.trim();
+  var message = document.getElementById('devis-message').value.trim();
+  var err = document.getElementById('devis-err');
+  var btn = document.getElementById('btn-devis');
+
+  if (!nom || !tel || !commune || !message) {
+    err.textContent = T('err_champs'); err.style.display = 'block'; return;
+  }
+  btn.disabled = true; btn.textContent = T('btn_envoi_cours');
+
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/soumettre-demande-devis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
+      body: JSON.stringify({
+        client_nom: nom, client_telephone: tel, commune: commune,
+        description_besoin: message, secteur: secteur,
+        // pas d'artisan_id : demande ouverte, visible par tous les artisans du secteur/commune
+      }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    fermerModalDevis();
+    showToast(T('toast_envoye'));
+  } catch(e) {
+    err.textContent = e.message; err.style.display = 'block';
+    btn.disabled = false; btn.textContent = T('btn_envoyer');
+  }
+}
+
 async function envoyerDemandeDevis(artisanId) {
   var nom = document.getElementById('devis-nom').value.trim();
   var tel = document.getElementById('devis-tel').value.trim();
@@ -586,7 +671,8 @@ function ouvrirModalLegal(type) {
 }
 
 // ── Init ──
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+  await chargerSecteurs();
   renderNav();
   renderHero();
   renderResults();
