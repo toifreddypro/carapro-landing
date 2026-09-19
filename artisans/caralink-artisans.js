@@ -449,7 +449,7 @@ function buildProfilHTML(data) {
       '<div style="font-weight:700;margin-bottom:6px;">' + T('services_titre') + '</div>' + servicesHtml +
       photosHtml +
       '<div style="font-weight:700;margin:18px 0 6px;">' + T('avis_titre') + (data.note_moyenne ? ' — ' + data.note_moyenne + '/5 (' + data.nb_avis + ')' : '') + '</div>' + avisHtml +
-      '<button onclick="ouvrirModalDevis(' + jsAttr(a.id) + ',' + jsAttr(a.nom_entreprise) + ')" style="width:100%;margin-top:18px;padding:13px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">' + T('demander_devis') + '</button>' +
+      '<button onclick="ouvrirModalDevis(' + jsAttr(a.id) + ',' + jsAttr(a.nom_entreprise) + ',' + jsAttr(a.secteur) + ')" style="width:100%;margin-top:18px;padding:13px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">' + T('demander_devis') + '</button>' +
     '</div>' +
   '</div>';
 }
@@ -457,7 +457,7 @@ function buildProfilHTML(data) {
 // ════════════════════════════════════════
 //  DEMANDE DE DEVIS
 // ════════════════════════════════════════
-function ouvrirModalDevis(artisanId, nomArtisan) {
+function ouvrirModalDevis(artisanId, nomArtisan, secteurArtisan) {
   var div = document.getElementById('modal-devis');
   if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
   div.innerHTML =
@@ -471,7 +471,7 @@ function ouvrirModalDevis(artisanId, nomArtisan) {
         '<textarea id="devis-message" rows="4" placeholder="' + T('ph_message') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
         '<div style="display:flex;gap:8px;">' +
-          '<button id="btn-devis" onclick="envoyerDemandeDevis(' + jsAttr(artisanId) + ')" style="flex:1;padding:11px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">' + T('btn_envoyer') + '</button>' +
+          '<button id="btn-devis" onclick="envoyerDemandeDevis(' + jsAttr(artisanId) + ',' + jsAttr(secteurArtisan||'autre') + ')" style="flex:1;padding:11px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">' + T('btn_envoyer') + '</button>' +
           '<button onclick="fermerModalDevis()" style="flex:1;padding:11px;border-radius:9px;border:1px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);cursor:pointer;">' + T('btn_annuler') + '</button>' +
         '</div>' +
       '</div>' +
@@ -542,7 +542,7 @@ async function envoyerDemandeDevisGenerale() {
   }
 }
 
-async function envoyerDemandeDevis(artisanId) {
+async function envoyerDemandeDevis(artisanId, secteurArtisan) {
   var nom = document.getElementById('devis-nom').value.trim();
   var tel = document.getElementById('devis-tel').value.trim();
   var commune = document.getElementById('devis-commune').value.trim();
@@ -561,7 +561,7 @@ async function envoyerDemandeDevis(artisanId) {
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
       body: JSON.stringify({
         client_nom: nom, client_telephone: tel, commune: commune,
-        description_besoin: message, secteur: _searchState.secteur || 'autre',
+        description_besoin: message, secteur: secteurArtisan || 'autre',
         artisan_id: artisanId,
       }),
     });
