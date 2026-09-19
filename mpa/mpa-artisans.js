@@ -178,6 +178,7 @@ async function init() {
 
   renderFiche();
   await chargerClients();
+  await chargerDemandes();
   await chargerServices();
   await initPlanning();
   await chargerCompta();
@@ -340,6 +341,109 @@ async function avancerStatut(id, ev) {
   await chargerInterventions();
   if (document.getElementById('p2').classList.contains('active')) await chargerCompta();
 }
+
+// ════════════════════════════════════════
+//  DEMANDES DE DEVIS — boîte de réception
+// ════════════════════════════════════════
+
+async function chargerDemandes() {
+  var zone = document.getElementById('zone-demandes');
+  if (!zone) return;
+
+  // Demandes privées : déjà adressées à moi (via devis_reponses)
+  var { data: privees, error: err1 } = await sb.from('devis_reponses')
+    .select('*, demandes_devis(*)')
+    .eq('artisan_id', _artisan.id);
+  if (err1) { zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(err1.message) + '</p>'; return; }
+
+  // Demandes ouvertes dans mon secteur, pas encore prises en charge par moi
+  var idsDejaPris = (privees || []).map(function(p) { return p.demande_id; });
+  var { data: ouvertes, error: err2 } = await sb.from('demandes_devis')
+    .select('*')
+    .eq('statut', 'ouverte')
+    .eq('secteur', _artisan.secteur);
+  if (err2) { zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(err2.message) + '</p>'; return; }
+
+  var liste = [];
+  (privees || []).forEach(function(p) {
+    if (!p.demandes_devis) return;
+    liste.push({ type: 'privee', reponse_id: p.id, reponse_statut: p.statut, demande: p.demandes_devis });
+  });
+  (ouvertes || []).forEach(function(d) {
+    if (idsDejaPris.indexOf(d.id) !== -1) return; // déjà prise en charge par moi, déjà listée ci-dessus
+    liste.push({ type: 'ouverte', demande_id: d.id, demande: d });
+  });
+  liste.sort(function(a, b) { return new Date(b.demande.created_at) - new Date(a.demande.created_at); });
+
+  var nbNouvelles = liste.filter(function(l) { return l.type === 'ouverte' || l.reponse_statut === 'envoyee'; }).length;
+  var badge = document.getElementById('cnt-demandes');
+  if (nbNouvelles > 0) { badge.textContent = nbNouvelles; badge.style.display = 'inline-flex'; }
+  else { badge.style.display = 'none'; }
+
+  if (!liste.length) {
+    zone.innerHTML = '<div class="etat-vide-tbl">Aucune demande pour l\'instant.</div>';
+    return;
+  }
+
+  zone.innerHTML = liste.map(function(l) {
+    var d = l.demande;
+    var dateAff = new Date(d.created_at).toLocaleDateString('fr-FR');
+    var badgeType = l.type === 'privee'
+      ? '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(181,80,47,.1);color:var(--ac);">Privée</span>'
+      : '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(59,130,246,.1);color:#3b82f6;">Ouverte</span>';
+    var actionBtn = l.type === 'ouverte'
+      ? '<button class="addb" onclick="prendreEnCharge(\'' + d.id + '\')">Prendre en charge</button>'
+      : (l.reponse_statut === 'envoyee'
+          ? '<button class="addb" onclick="marquerTraitee(\'' + l.reponse_id + '\')">Marquer traitée</button>'
+          : '<span style="font-size:11.5px;color:var(--mu);">✓ Traitée</span>');
+    return '<div style="border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">' +
+        '<div>' +
+          '<strong>' + escHtml(d.client_nom) + '</strong> ' + badgeType + '<br>' +
+          '<span style="font-size:12.5px;color:var(--mu);">' + secteurLabelLocal(d.secteur) + ' · 📍 ' + escHtml(d.commune) + ' · ' + dateAff + '</span>' +
+        '</div>' +
+        actionBtn +
+      '</div>' +
+      '<div style="font-size:13px;margin-bottom:8px;">' + escHtml(d.description_besoin) + '</div>' +
+      '<div style="font-size:12.5px;color:var(--mu2);">☎ <a href="tel:' + escHtml(d.client_telephone) + '" style="color:var(--ac);">' + escHtml(d.client_telephone) + '</a></div>' +
+      '<button onclick="creerClientDepuisDemande(' + jsAttrLocal(d.client_nom) + ',' + jsAttrLocal(d.commune) + ')" style="margin-top:8px;background:none;border:none;color:var(--ac);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;">+ Ajouter comme client habituel</button>' +
+    '</div>';
+  }).join('');
+}
+
+function secteurLabelLocal(code) {
+  // MPA Artisans n'a pas la table secteurs chargée en mémoire comme CaraLink Artisans —
+  // on affiche simplement le code proprement capitalisé, suffisant pour un usage interne.
+  if (!code) return '—';
+  return code.charAt(0).toUpperCase() + code.slice(1);
+}
+
+function jsAttrLocal(val) {
+  return JSON.stringify(val == null ? '' : String(val)).replace(/"/g, '&quot;');
+}
+
+async function prendreEnCharge(demandeId) {
+  var { error } = await sb.from('devis_reponses').insert({
+    demande_id: demandeId, artisan_id: _artisan.id, message: '', statut: 'envoyee',
+  });
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerDemandes();
+}
+
+async function marquerTraitee(reponseId) {
+  var { error } = await sb.from('devis_reponses').update({ statut: 'traitee' }).eq('id', reponseId).eq('artisan_id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerDemandes();
+}
+
+function creerClientDepuisDemande(nom, commune) {
+  switchTab(1); switchBdd(0);
+  openAjouterClient();
+  document.getElementById('c-nom').value = nom || '';
+  document.getElementById('c-com').value = commune || '';
+}
+
+
 
 // ════════════════════════════════════════
 //  SMART DISPATCH IA — géocodage, trajets, créneaux suggérés
