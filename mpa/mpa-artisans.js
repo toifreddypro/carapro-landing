@@ -434,6 +434,8 @@ function choisirCreneau(debut) {
 
 var _calculCreneauxToken = 0;
 
+var MARGE_SECURITE_MIN = 10; // tampon de sécurité ajouté après chaque trajet calculé
+
 async function calculerCreneaux() {
   var zone = document.getElementById('mi-creneaux-zone');
   if (!zone) return;
@@ -444,15 +446,7 @@ async function calculerCreneaux() {
   var adresse = document.getElementById('mi-adr').value.trim();
 
   if (!dateStr || !adresse || !duree) {
-    zone.innerHTML = 'Renseignez la date, l\'adresse et la durée pour voir les créneaux qui tiennent compte de vos trajets.';
-    return;
-  }
-  zone.innerHTML = '⏳ Calcul des créneaux…';
-
-  var pt = await geocoderInterventionCourante();
-  if (monToken !== _calculCreneauxToken) return;
-  if (!pt) {
-    zone.innerHTML = '<span style="color:var(--gold);">⚠ Adresse introuvable — vous pouvez saisir l\'heure manuellement, mais je ne peux pas vérifier le trajet.</span>';
+    zone.innerHTML = 'Renseignez la date, l\'adresse et la durée pour voir un créneau suggéré à la suite de votre dernier rendez-vous du jour.';
     return;
   }
 
@@ -460,40 +454,40 @@ async function calculerCreneaux() {
     return i.date_intervention === dateStr && i.id !== _interventionEnCours && i.statut !== 'annulee' && i.heure_debut && i.heure_fin;
   }).sort(function(a, b) { return a.heure_debut.localeCompare(b.heure_debut); });
 
-  var base = (_artisan.latitude != null && _artisan.longitude != null) ? { lat: _artisan.latitude, lon: _artisan.longitude } : null;
+  if (!duJour.length) {
+    zone.innerHTML = 'C\'est votre première intervention de la journée — choisissez vous-même l\'heure de début (07:00 par défaut).';
+    return;
+  }
 
-  // Points de la journée : [base] puis chaque intervention existante, dans l'ordre
-  var points = [];
-  if (base) points.push({ lat: base.lat, lon: base.lon, finMin: null }); // null = pas d'heure de fin imposée (départ libre le matin)
-  duJour.forEach(function(i) {
-    points.push({
-      lat: i.latitude, lon: i.longitude,
-      debutMin: heureVersMin(i.heure_debut.slice(0,5)),
-      finMin: heureVersMin(i.heure_fin.slice(0,5)),
-    });
-  });
+  zone.innerHTML = '⏳ Calcul du créneau…';
+  var pt = await geocoderInterventionCourante();
+  if (monToken !== _calculCreneauxToken) return;
+  if (!pt) {
+    zone.innerHTML = '<span style="color:var(--gold);">⚠ Adresse introuvable — vous pouvez saisir l\'heure manuellement, mais je ne peux pas vérifier le trajet.</span>';
+    return;
+  }
 
   var creneaux = [];
-  for (var k = 0; k < points.length; k++) {
-    var prev = points[k];
-    var next = points[k + 1] || null;
-    if (prev.lat == null) continue; // intervention jamais géocodée : on ne devine pas, on saute ce trou par prudence
+  for (var k = 0; k < duJour.length; k++) {
+    var prev = duJour[k];
+    var next = duJour[k + 1] || null;
+    if (prev.latitude == null) continue; // intervention jamais géocodée : on ne devine pas, on saute ce trou par prudence
 
-    var travelIn = await tempsTrajetMinutes(prev.lat, prev.lon, pt.lat, pt.lon);
+    var travelIn = await tempsTrajetMinutes(prev.latitude, prev.longitude, pt.lat, pt.lon);
     if (monToken !== _calculCreneauxToken) return;
     if (travelIn == null) continue;
 
-    var debutMin = arrondirQuart((prev.finMin != null ? prev.finMin : 7 * 60) + travelIn);
+    var debutMin = arrondirQuart(heureVersMin(prev.heure_fin.slice(0, 5)) + travelIn + MARGE_SECURITE_MIN);
 
     if (next) {
-      if (next.lat == null) continue;
-      var travelOut = await tempsTrajetMinutes(pt.lat, pt.lon, next.lat, next.lon);
+      if (next.latitude == null) continue;
+      var travelOut = await tempsTrajetMinutes(pt.lat, pt.lon, next.latitude, next.longitude);
       if (monToken !== _calculCreneauxToken) return;
       if (travelOut == null) continue;
-      if (debutMin + duree + travelOut > next.debutMin) continue; // ne rentre pas dans le trou disponible
+      if (debutMin + duree + travelOut + MARGE_SECURITE_MIN > heureVersMin(next.heure_debut.slice(0, 5))) continue; // ne rentre pas dans le trou disponible
     }
 
-    creneaux.push({ debut: minVersHeure(debutMin), travelIn: travelIn });
+    creneaux.push({ debut: minVersHeure(debutMin), travelIn: travelIn, apres: prev.heure_fin.slice(0, 5) });
   }
 
   if (!creneaux.length) {
@@ -503,7 +497,7 @@ async function calculerCreneaux() {
 
   zone.innerHTML = creneaux.map(function(c) {
     return '<button type="button" onclick="choisirCreneau(\'' + c.debut + '\')" style="padding:7px 12px;margin:3px 4px 3px 0;border-radius:8px;border:1px solid var(--ac-brd);background:var(--panel);color:var(--ac);font-weight:700;font-size:13px;cursor:pointer;">' +
-      c.debut + '<span style="display:block;font-weight:400;color:var(--mu);font-size:9.5px;">+' + c.travelIn + ' min trajet</span></button>';
+      c.debut + '<span style="display:block;font-weight:400;color:var(--mu);font-size:9.5px;">après ' + c.apres + ' +' + c.travelIn + ' min trajet</span></button>';
   }).join('');
 }
 
@@ -545,8 +539,17 @@ async function ouvrirNouvelleIntervention(dateStr, creneau) {
   document.getElementById('mi-titre').textContent = 'Nouvelle intervention';
   document.getElementById('mi-date').value = dateStr;
   document.getElementById('mi-creneau').value = creneau;
-  document.getElementById('mi-heure-debut').value = creneau === 'matin' ? '08:00' : '14:00';
-  document.getElementById('mi-heure-fin').value = creneau === 'matin' ? '10:00' : '16:00';
+
+  var premiereDuJour = !_interventionsCache.some(function(i) {
+    return i.date_intervention === dateStr && i.statut !== 'annulee' && i.heure_debut;
+  });
+  if (premiereDuJour) {
+    document.getElementById('mi-heure-debut').value = creneau === 'matin' ? '07:00' : '14:00';
+    document.getElementById('mi-heure-fin').value = creneau === 'matin' ? '09:00' : '16:00';
+  } else {
+    document.getElementById('mi-heure-debut').value = '';
+    document.getElementById('mi-heure-fin').value = '';
+  }
   document.getElementById('mi-client').value = '';
   document.getElementById('mi-adr').value = '';
   document.getElementById('mi-cp').value = '';
@@ -1215,6 +1218,11 @@ async function sauverFiche() {
     email: document.getElementById('m-email').value.trim(),
     site_web: document.getElementById('m-web').value.trim(),
   };
+  // Géocodage de l'adresse pro — sert de point de départ pour le calcul des trajets (Smart Dispatch)
+  if (maj.adresse) {
+    var pt = await geocoderAdresse(maj.adresse, maj.code_postal, maj.commune);
+    if (pt) { maj.latitude = pt.lat; maj.longitude = pt.lon; }
+  }
   var { error } = await sb.from('artisans').update(maj).eq('id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
   Object.assign(_artisan, maj);
@@ -1246,7 +1254,7 @@ async function chargerClients() {
 function renderClients(liste) {
   var tbody = document.getElementById('tbody-clients');
   if (!liste.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="etat-vide-tbl">Aucun client habituel pour l\'instant.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="etat-vide-tbl">Aucun client habituel pour l\'instant.</td></tr>';
     return;
   }
   tbody.innerHTML = liste.map(function(c) {
@@ -1256,7 +1264,6 @@ function renderClients(liste) {
       '<td>' + escHtml(c.code_postal||'—') + '</td>' +
       '<td>' + escHtml(c.commune||'—') + '</td>' +
       '<td>' + (c.delai_paiement||30) + ' j</td>' +
-      '<td>' + escHtml(c.referent||'—') + '</td>' +
       '<td><button class="icbtn danger" onclick="supprimerClient(\'' + c.id + '\')" title="Supprimer">🗑</button></td>' +
     '</tr>';
   }).join('');
@@ -1276,7 +1283,6 @@ function openAjouterClient() {
   document.getElementById('c-cp').value = '';
   document.getElementById('c-com').value = '';
   document.getElementById('c-delai').value = 30;
-  document.getElementById('c-ref').value = '';
   ouvrirModale('modal-client');
 }
 
@@ -1290,7 +1296,6 @@ async function sauverClient() {
     code_postal: document.getElementById('c-cp').value.trim() || null,
     commune: document.getElementById('c-com').value.trim() || null,
     delai_paiement: parseInt(document.getElementById('c-delai').value, 10) || 30,
-    referent: document.getElementById('c-ref').value.trim() || null,
   };
   var { error } = await sb.from('mpa_artisans_clients').insert(nouveau);
   if (error) { alert('Erreur : ' + error.message); return; }
