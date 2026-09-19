@@ -16,6 +16,13 @@
 const SUPABASE_URL  = 'https://uzgboxfxpxazhysusewv.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
 
+// Encode une valeur de façon sûre pour l'insérer dans un attribut onclick="...(ICI)" —
+// gère absolument tous les caractères spéciaux (apostrophes, guillemets, retours à la
+// ligne...), contrairement à un simple remplacement d'apostrophes qui casse facilement.
+function jsAttr(val) {
+  return JSON.stringify(val == null ? '' : String(val)).replace(/"/g, '&quot;');
+}
+
 const SECTEURS = [
   { code:'jardinage',     icon:'🌿' },
   { code:'plomberie',     icon:'🔧' },
@@ -336,7 +343,7 @@ function renderArtisanCard(a) {
   var badgeTarif = a.tarif_min != null
     ? '<span class="badge-trust" style="background:rgba(45,93,74,.1);color:#2D5D4A;">' + T('des_prefix') + ' ' + a.tarif_min + '€</span>'
     : '';
-  return '<div class="formateur-card" onclick="ouvrirProfil(\'' + a.id + '\')">' +
+  return '<div class="formateur-card" onclick="ouvrirProfil(' + jsAttr(a.id) + ')">' +
     '<div class="card-top-row">' + photo +
       '<div class="card-info">' +
         '<div class="card-name">' + escHtml(a.nom_entreprise) + '</div>' +
@@ -420,7 +427,7 @@ function buildProfilHTML(data) {
       '<div style="font-weight:700;margin-bottom:6px;">' + T('services_titre') + '</div>' + servicesHtml +
       photosHtml +
       '<div style="font-weight:700;margin:18px 0 6px;">' + T('avis_titre') + (data.note_moyenne ? ' — ' + data.note_moyenne + '/5 (' + data.nb_avis + ')' : '') + '</div>' + avisHtml +
-      '<button onclick="ouvrirModalDevis(\'' + a.id + '\',\'' + escHtml(a.nom_entreprise).replace(/'/g,"\\'") + '\')" style="width:100%;margin-top:18px;padding:13px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">' + T('demander_devis') + '</button>' +
+      '<button onclick="ouvrirModalDevis(' + jsAttr(a.id) + ',' + jsAttr(a.nom_entreprise) + ')" style="width:100%;margin-top:18px;padding:13px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">' + T('demander_devis') + '</button>' +
     '</div>' +
   '</div>';
 }
@@ -442,7 +449,7 @@ function ouvrirModalDevis(artisanId, nomArtisan) {
         '<textarea id="devis-message" rows="4" placeholder="' + T('ph_message') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
         '<div style="display:flex;gap:8px;">' +
-          '<button id="btn-devis" onclick="envoyerDemandeDevis(\'' + artisanId + '\')" style="flex:1;padding:11px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">' + T('btn_envoyer') + '</button>' +
+          '<button id="btn-devis" onclick="envoyerDemandeDevis(' + jsAttr(artisanId) + ')" style="flex:1;padding:11px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">' + T('btn_envoyer') + '</button>' +
           '<button onclick="fermerModalDevis()" style="flex:1;padding:11px;border-radius:9px;border:1px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);cursor:pointer;">' + T('btn_annuler') + '</button>' +
         '</div>' +
       '</div>' +
