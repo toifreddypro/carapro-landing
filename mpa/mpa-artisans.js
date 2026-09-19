@@ -163,6 +163,11 @@ async function init() {
   _session = sessionData.session;
   document.getElementById('uname').textContent = _session.user.email;
 
+  var ADMIN_EMAIL = 'toifreddypro@gmail.com'; // même adresse que admin.html
+  if (_session.user.email === ADMIN_EMAIL) {
+    document.getElementById('btn-admin-topbar').style.display = 'inline-flex';
+  }
+
   var { data: artisan, error } = await sb.from('artisans').select('*').eq('user_id', _session.user.id).maybeSingle();
   if (error || !artisan) {
     alert('Aucun profil artisan trouvé pour ce compte. Créez d\'abord votre profil sur CaraLink Artisans.');
