@@ -99,15 +99,8 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
           <label for="f-secteur">Secteur</label>
           <select id="f-secteur" required>
             <option value="">Choisir…</option>
-            <option value="jardinage">Jardinage</option>
-            <option value="plomberie">Plomberie</option>
-            <option value="electricite">Électricité</option>
-            <option value="peinture">Peinture</option>
-            <option value="maconnerie">Maçonnerie</option>
-            <option value="menuiserie">Menuiserie</option>
-            <option value="climatisation">Climatisation</option>
-            <option value="autre">Autre</option>
           </select>
+          <div class="field-note">Vous ne voyez pas votre secteur ? <a href="mailto:contact@learnlogicstudio.com">Écrivez-nous</a> pour qu'on l'ajoute.</div>
         </div>
         <div class="field">
           <label for="f-commune">Commune</label>
@@ -166,6 +159,30 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 var _fichierChoisi = null;
+
+async function chargerSecteurs() {
+  var sel = document.getElementById('f-secteur');
+  try {
+    var { data, error } = await sb.from('secteurs').select('*').order('ordre', { ascending: true });
+    if (error || !data || !data.length) throw error || new Error('vide');
+    data.forEach(function(s) {
+      var opt = document.createElement('option');
+      opt.value = s.code;
+      opt.textContent = (s.icon ? s.icon + ' ' : '') + s.label_fr;
+      sel.appendChild(opt);
+    });
+  } catch (e) {
+    // Repli si jamais la table est inaccessible — mieux vaut une liste figée qu'un select vide
+    [['jardinage','🌿 Jardinage'],['plomberie','🔧 Plomberie'],['electricite','⚡ Électricité'],
+     ['peinture','🎨 Peinture'],['maconnerie','🧱 Maçonnerie'],['menuiserie','🪚 Menuiserie'],
+     ['climatisation','❄️ Climatisation'],['autre','✨ Autre']].forEach(function(s) {
+      var opt = document.createElement('option');
+      opt.value = s[0]; opt.textContent = s[1];
+      sel.appendChild(opt);
+    });
+  }
+}
+chargerSecteurs();
 
 function onFichierChoisi() {
   var input = document.getElementById('f-document');
