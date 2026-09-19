@@ -1,0 +1,204 @@
+<!--
+================================================================
+  MPA ARTISANS — admin.html
+  Panneau d'administration — réservé à Freddy
+----------------------------------------------------------------
+  ⚠️ Même modèle de sécurité que admin.html côté Formation :
+  toute action sensible (suppression) passe par une Edge Function
+  qui vérifie l'admin côté serveur, jamais une écriture directe
+  depuis le client.
+================================================================
+-->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MPA Artisans — Administration</title>
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" href="/favicon.ico">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f9fc; --panel:#ffffff; --p2:#f6f9fe; --brd:#e3eaf4; --b2:#c9d8ef;
+  --ac:#B5502F; --tx:#13223c; --mu:#6b7c96; --mu2:#4a5c78; --danger:#dc2626;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;}
+#topbar{display:flex;align-items:center;gap:14px;padding:14px 24px;background:var(--panel);border-bottom:1px solid var(--brd);}
+.tbtitle{font-family:'Bricolage Grotesque',sans-serif;font-size:17px;font-weight:800;}
+.tbtitle span{color:var(--ac);}
+.badge-admin{font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(181,80,47,.1);color:var(--ac);padding:3px 9px;border-radius:20px;font-weight:700;}
+#wrap{max-width:1100px;margin:0 auto;padding:24px;}
+.dcard{background:var(--panel);border:1px solid var(--brd);border-radius:14px;overflow:hidden;margin-bottom:20px;}
+.dchdr{padding:14px 18px;border-bottom:1px solid var(--brd);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:space-between;}
+.dcbdy{overflow-x:auto;}
+.dtbl{width:100%;border-collapse:collapse;font-size:13px;}
+.dtbl th{text-align:left;padding:10px 14px;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--mu);border-bottom:1px solid var(--brd);white-space:nowrap;}
+.dtbl td{padding:10px 14px;border-bottom:1px solid var(--brd);white-space:nowrap;}
+.dtbl tr:last-child td{border-bottom:none;}
+.badge-ok{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(34,197,94,.1);color:#16a34a;}
+.badge-attente{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,158,11,.1);color:#b45309;}
+.badge-abo{font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--p2);color:var(--mu);}
+.btn-del{padding:5px 11px;border-radius:7px;border:1px solid rgba(220,38,38,.3);background:rgba(220,38,38,.06);color:var(--danger);font-size:11.5px;font-weight:700;cursor:pointer;}
+.btn-del:hover{background:rgba(220,38,38,.12);}
+.access-denied{text-align:center;padding:80px 20px;}
+.access-denied h1{font-size:22px;margin-bottom:10px;}
+.loader{text-align:center;padding:40px;color:var(--mu);}
+.note{font-size:12px;color:var(--mu);padding:12px 18px;border-top:1px solid var(--brd);}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="tbtitle">MPA <span>Artisans</span></div>
+  <span class="badge-admin">🔒 Administration</span>
+</div>
+
+<div id="wrap">
+  <div class="loader" id="loader">Vérification…</div>
+</div>
+
+<script>
+const SUPABASE_URL  = 'https://uzgboxfxpxazhysusewv.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+const ADMIN_EMAIL = 'toifreddypro@gmail.com';
+
+var _session = null;
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function slugify(s) {
+  return String(s||'').toLowerCase().trim()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // retire les accents
+    .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+async function chargerSecteurs() {
+  var { data: secteurs, error } = await sb.from('secteurs').select('*').order('ordre', { ascending: true });
+  if (error) {
+    document.getElementById('zone-secteurs').innerHTML = '<p style="color:var(--danger);">Erreur secteurs : ' + escHtml(error.message) + '</p>';
+    return;
+  }
+  document.getElementById('zone-secteurs').innerHTML =
+    '<div class="dcard">' +
+      '<div class="dchdr"><span>Secteurs d\'activité (' + secteurs.length + ')</span></div>' +
+      '<div class="dcbdy"><table class="dtbl">' +
+        '<thead><tr><th>Icône</th><th>Nom (FR)</th><th>Code</th><th></th></tr></thead>' +
+        '<tbody>' + secteurs.map(renderLigneSecteur).join('') + '</tbody>' +
+      '</table></div>' +
+      '<div style="padding:14px 18px;border-top:1px solid var(--brd);display:flex;gap:8px;align-items:center;">' +
+        '<input id="nouveau-secteur" type="text" placeholder="Ex : Esthétique, Comptabilité…" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--b2);font-family:\'Outfit\',sans-serif;font-size:13px;" onkeydown="if(event.key===\'Enter\')ajouterSecteur()">' +
+        '<button onclick="ajouterSecteur()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">+ Ajouter</button>' +
+      '</div>' +
+      '<div class="note">💡 L\'icône et les traductions anglais/espagnol se règlent à "✨" et vide par défaut — modifiables plus tard directement en base si besoin.</div>' +
+    '</div>';
+}
+
+function renderLigneSecteur(s) {
+  return '<tr>' +
+    '<td>' + (s.icon || '✨') + '</td>' +
+    '<td><strong>' + escHtml(s.label_fr) + '</strong></td>' +
+    '<td style="color:var(--mu);font-family:\'JetBrains Mono\',monospace;font-size:11.5px;">' + escHtml(s.code) + '</td>' +
+    '<td><button class="btn-del" onclick="supprimerSecteur(\'' + s.id + '\',\'' + escHtml(s.label_fr).replace(/'/g,"\\'") + '\')">Supprimer</button></td>' +
+  '</tr>';
+}
+
+async function ajouterSecteur() {
+  var input = document.getElementById('nouveau-secteur');
+  var label = input.value.trim();
+  if (!label) return;
+  var code = slugify(label);
+  var { data: existant } = await sb.from('secteurs').select('id').eq('code', code).maybeSingle();
+  if (existant) { alert('Un secteur avec un code très proche existe déjà.'); return; }
+  var { data: max } = await sb.from('secteurs').select('ordre').order('ordre', { ascending: false }).limit(1).maybeSingle();
+  var { error } = await sb.from('secteurs').insert({
+    code: code, label_fr: label, icon: '✨', ordre: (max ? max.ordre : 0) + 1,
+  });
+  if (error) { alert('Erreur : ' + error.message); return; }
+  input.value = '';
+  await chargerSecteurs();
+}
+
+async function supprimerSecteur(id, nom) {
+  if (!confirm('Supprimer le secteur "' + nom + '" ?\n\nLes artisans déjà enregistrés sous ce secteur garderont ce code, mais il ne sera plus proposé pour les nouvelles inscriptions ni les recherches.')) return;
+  var { error } = await sb.from('secteurs').delete().eq('id', id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerSecteurs();
+}
+
+async function init() {
+  var { data } = await sb.auth.getSession();
+  if (!data.session || data.session.user.email !== ADMIN_EMAIL) {
+    document.getElementById('wrap').innerHTML =
+      '<div class="access-denied"><h1>Accès refusé</h1><p style="color:var(--mu);">Ce panneau est réservé à l\'administrateur.</p></div>';
+    return;
+  }
+  _session = data.session;
+  document.getElementById('wrap').innerHTML =
+    '<div id="zone-secteurs"></div>' +
+    '<div id="zone-artisans"></div>';
+  await chargerSecteurs();
+  await chargerArtisans();
+}
+
+async function chargerArtisans() {
+  var { data: artisans, error } = await sb.from('artisans').select('*').order('created_at', { ascending: false });
+  if (error) {
+    document.getElementById('zone-artisans').innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>';
+    return;
+  }
+
+  document.getElementById('zone-artisans').innerHTML =
+    '<div class="dcard">' +
+      '<div class="dchdr"><span>Tous les artisans (' + artisans.length + ')</span></div>' +
+      '<div class="dcbdy"><table class="dtbl">' +
+        '<thead><tr><th>Entreprise</th><th>Secteur</th><th>Commune</th><th>Vérifié</th><th>Abonnement</th><th>Inscrit le</th><th></th></tr></thead>' +
+        '<tbody>' + artisans.map(renderLigneArtisan).join('') + '</tbody>' +
+      '</table></div>' +
+      '<div class="note">💡 Colonne "Abonnement" : la facturation MPA Artisans n\'est pas encore branchée (Stripe à venir) — tous les comptes apparaissent "Non facturé" pour l\'instant.</div>' +
+    '</div>';
+}
+
+function renderLigneArtisan(a) {
+  var dateAff = new Date(a.created_at).toLocaleDateString('fr-FR');
+  var badgeVerifie = a.verifie
+    ? '<span class="badge-ok">Vérifié</span>'
+    : '<span class="badge-attente">' + (a.verification_statut === 'en_attente' ? 'En attente' : 'Non vérifié') + '</span>';
+  return '<tr>' +
+    '<td><strong>' + escHtml(a.nom_entreprise) + '</strong></td>' +
+    '<td>' + escHtml(a.secteur) + '</td>' +
+    '<td>' + escHtml(a.commune) + '</td>' +
+    '<td>' + badgeVerifie + '</td>' +
+    '<td><span class="badge-abo">Non facturé</span></td>' +
+    '<td>' + dateAff + '</td>' +
+    '<td><button class="btn-del" onclick="supprimerCompte(\'' + a.user_id + '\',\'' + escHtml(a.nom_entreprise).replace(/'/g,"\\'") + '\')">Supprimer</button></td>' +
+  '</tr>';
+}
+
+async function supprimerCompte(userId, nom) {
+  if (!confirm('Supprimer définitivement le compte de "' + nom + '" ?\n\nCette action est irréversible : profil, services, photos, clients, interventions et factures seront tous effacés.')) return;
+  if (!confirm('Vraiment sûr ? Il n\'y a aucun moyen de revenir en arrière.')) return;
+
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/admin-supprimer-artisan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _session.access_token },
+      body: JSON.stringify({ user_id: userId }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    alert('Compte supprimé : ' + data.email);
+    await chargerArtisans();
+  } catch(e) {
+    alert('Erreur : ' + e.message);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
