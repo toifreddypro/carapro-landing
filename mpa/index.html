@@ -503,20 +503,23 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
       </div>
     </div>
 
-    <!-- Mes services (lecture seule — géré depuis CaraLink Artisans) -->
+    <!-- Mes services -->
     <div class="bpnl" id="bp2">
       <div class="dcard">
         <div class="dchdr">
           <div class="dctit"><svg viewBox="0 0 24 24" fill="none" stroke="#B5502F" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Mes services</div>
-          <a href="https://caralink.app/artisans/espace.html" class="sbtn sm" style="text-decoration:none;">✎ Gérer sur CaraLink Artisans</a>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" class="sinp" id="sinp-services" placeholder="Rechercher…" oninput="filtrerServices()">
+            <button class="addb" onclick="openAjouterService()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter</button>
+          </div>
         </div>
         <div class="dcbdy">
           <table class="dtbl">
-            <thead><tr><th>Service</th><th>Description</th><th>Tarif indicatif</th></tr></thead>
+            <thead><tr><th>Service</th><th>Description</th><th>Durée estimée</th><th>Tarif indicatif</th><th></th></tr></thead>
             <tbody id="tbody-services"></tbody>
           </table>
         </div>
-        <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Cette liste vient directement de votre profil CaraLink Artisans — elle sert aussi bien à votre vitrine publique qu'à votre facturation ici. Modifiez-la depuis votre espace CaraLink pour qu'elle se mette à jour partout.</div>
+        <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Cette liste alimente aussi bien votre vitrine CaraLink Artisans que la durée par défaut utilisée pour vos interventions.</div>
       </div>
     </div>
   </div>
@@ -714,6 +717,34 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
     <div class="modal-actions">
       <button class="btn-primary" onclick="sauverClient()">Ajouter</button>
       <button class="btn-secondary" onclick="fermerModale('modal-client')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-service">
+  <div class="modal-box">
+    <h3 id="modal-service-titre">Ajouter un service</h3>
+    <div class="modal-field"><label>Nom du service</label><input type="text" id="s-nom" placeholder="Ex : Tonte de pelouse"></div>
+    <div class="modal-field"><label>Description</label><input type="text" id="s-desc" placeholder="Ex : Entretien complet, évacuation des déchets comprise"></div>
+    <div class="modal-field">
+      <label>Durée estimée</label>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input type="number" id="s-duree" min="0" step="15" style="width:100px;" placeholder="60">
+        <span style="font-size:12px;color:var(--mu);">minutes</span>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu);margin-top:4px;">Sert de valeur de départ pour vos interventions — modifiable à chaque fois.</div>
+    </div>
+    <div class="modal-field">
+      <label>Tarif indicatif</label>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input type="number" id="s-prix" min="0" step="0.5" style="width:100px;">
+        <span style="font-size:13px;color:var(--mu);">€ /</span>
+        <input type="text" id="s-unite" placeholder="ex : heure, m², forfait" style="flex:1;">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" id="modal-service-btn" onclick="sauverService()">Ajouter</button>
+      <button class="btn-secondary" onclick="fermerModale('modal-service')">Annuler</button>
     </div>
   </div>
 </div>

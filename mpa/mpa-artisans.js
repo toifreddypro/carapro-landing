@@ -192,7 +192,8 @@ async function init() {
 // ════════════════════════════════════════
 var _calAnnee, _calMois; // _calMois : 0-11
 var _interventionsCache = [];
-var _interventionEnCours = null; // id de l'intervention ouverte dans la modale, ou null si création
+var _interventionEnCours = null;
+var _serviceEnCours = null; // id de l'intervention ouverte dans la modale, ou null si création
 
 const MOIS_NOMS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 const JOURS_NOMS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
@@ -1086,27 +1087,108 @@ async function supprimerClient(id) {
 }
 
 // ════════════════════════════════════════
-//  MES SERVICES — lecture seule (source unique : CaraLink Artisans)
+//  MES SERVICES — gestion complète (source unique, partagée avec CaraLink Artisans)
 // ════════════════════════════════════════
+
 async function chargerServices() {
   var { data, error } = await sb.from('artisans_services').select('*').eq('artisan_id', _artisan.id).order('ordre', { ascending: true });
   if (error) { console.error(error); return; }
   _servicesCache = data || [];
   document.getElementById('cnt-s').textContent = _servicesCache.length;
+  renderServices(_servicesCache);
+}
 
+function renderServices(liste) {
   var tbody = document.getElementById('tbody-services');
-  if (!_servicesCache.length) {
-    tbody.innerHTML = '<tr><td colspan="3" class="etat-vide-tbl">Aucun service défini pour l\'instant — ajoutez-en depuis votre espace CaraLink Artisans.</td></tr>';
+  if (!liste.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="etat-vide-tbl">Aucun service défini pour l\'instant.</td></tr>';
     return;
   }
-  tbody.innerHTML = _servicesCache.map(function(s) {
+  tbody.innerHTML = liste.map(function(s) {
     var prix = s.prix_indicatif ? (s.prix_indicatif + '€' + (s.unite ? '/' + s.unite : '')) : 'Sur devis';
+    var duree = s.duree_estimee_min ? formatDuree(s.duree_estimee_min) : '—';
     return '<tr>' +
       '<td><strong>' + escHtml(s.nom_service) + '</strong></td>' +
       '<td>' + escHtml(s.description||'—') + '</td>' +
+      '<td>' + duree + '</td>' +
       '<td>' + prix + '</td>' +
+      '<td style="white-space:nowrap;">' +
+        '<button class="icbtn" onclick="ouvrirService(\'' + s.id + '\')" title="Modifier">✎</button>' +
+        '<button class="icbtn danger" onclick="supprimerService(\'' + s.id + '\')" title="Supprimer">🗑</button>' +
+      '</td>' +
     '</tr>';
   }).join('');
+}
+
+function formatDuree(min) {
+  var h = Math.floor(min / 60), m = min % 60;
+  if (h && m) return h + 'h' + (m < 10 ? '0' : '') + m;
+  if (h) return h + 'h';
+  return m + ' min';
+}
+
+function filtrerServices() {
+  var q = document.getElementById('sinp-services').value.trim().toLowerCase();
+  if (!q) { renderServices(_servicesCache); return; }
+  renderServices(_servicesCache.filter(function(s) {
+    return (s.nom_service + ' ' + (s.description||'')).toLowerCase().indexOf(q) !== -1;
+  }));
+}
+
+function openAjouterService() {
+  _serviceEnCours = null;
+  document.getElementById('modal-service-titre').textContent = 'Ajouter un service';
+  document.getElementById('modal-service-btn').textContent = 'Ajouter';
+  document.getElementById('s-nom').value = '';
+  document.getElementById('s-desc').value = '';
+  document.getElementById('s-duree').value = '';
+  document.getElementById('s-prix').value = '';
+  document.getElementById('s-unite').value = '';
+  ouvrirModale('modal-service');
+}
+
+function ouvrirService(id) {
+  var s = _servicesCache.find(function(x) { return x.id === id; });
+  if (!s) return;
+  _serviceEnCours = id;
+  document.getElementById('modal-service-titre').textContent = 'Modifier ce service';
+  document.getElementById('modal-service-btn').textContent = 'Enregistrer';
+  document.getElementById('s-nom').value = s.nom_service || '';
+  document.getElementById('s-desc').value = s.description || '';
+  document.getElementById('s-duree').value = s.duree_estimee_min || '';
+  document.getElementById('s-prix').value = s.prix_indicatif || '';
+  document.getElementById('s-unite').value = s.unite || '';
+  ouvrirModale('modal-service');
+}
+
+async function sauverService() {
+  var nom = document.getElementById('s-nom').value.trim();
+  if (!nom) { alert('Le nom du service est obligatoire.'); return; }
+  var maj = {
+    artisan_id: _artisan.id,
+    nom_service: nom,
+    description: document.getElementById('s-desc').value.trim() || null,
+    duree_estimee_min: parseInt(document.getElementById('s-duree').value, 10) || null,
+    prix_indicatif: parseFloat(document.getElementById('s-prix').value) || null,
+    unite: document.getElementById('s-unite').value.trim() || null,
+  };
+  var res;
+  if (_serviceEnCours) {
+    res = await sb.from('artisans_services').update(maj).eq('id', _serviceEnCours).eq('artisan_id', _artisan.id);
+  } else {
+    maj.ordre = _servicesCache.length;
+    res = await sb.from('artisans_services').insert(maj);
+  }
+  if (res.error) { alert('Erreur : ' + res.error.message); return; }
+  fermerModale('modal-service');
+  await chargerServices();
+}
+
+async function supprimerService(id) {
+  if (!confirm('Supprimer ce service ?')) return;
+  var { error } = await sb.from('artisans_services').delete().eq('id', id).eq('artisan_id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerServices();
 }
 
 init();
