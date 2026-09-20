@@ -431,6 +431,12 @@ async function chargerDemandes() {
         actionsHaut +
       '</div>' +
       '<div style="font-size:13px;margin-bottom:10px;">' + escHtml(d.description_besoin) + '</div>' +
+      ((d.photos && d.photos.length) ?
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' +
+          d.photos.map(function(url) {
+            return '<a href="' + escHtml(url) + '" target="_blank" rel="noopener"><img src="' + escHtml(url) + '" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--brd);"></a>';
+          }).join('') +
+        '</div>' : '') +
       '<div style="margin-bottom:8px;">' + blocContact + '</div>' +
       '<button onclick="creerClientDepuisDemande(' + jsAttrLocal(d.client_nom) + ',' + jsAttrLocal(d.commune) + ')" style="background:none;border:none;color:var(--ac);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;">+ Ajouter comme client habituel</button>' +
     '</div>';
