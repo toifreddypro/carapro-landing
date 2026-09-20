@@ -38,8 +38,11 @@ var _secteursCache = [
 
 async function chargerSecteurs() {
   try {
-    var { data, error } = await sb.from('secteurs').select('*').order('ordre', { ascending: true });
-    if (!error && data && data.length) _secteursCache = data;
+    var res = await fetch(SUPABASE_URL + '/rest/v1/secteurs?select=*&order=ordre.asc', {
+      headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON },
+    });
+    var data = await res.json();
+    if (res.ok && Array.isArray(data) && data.length) _secteursCache = data;
   } catch (e) { console.warn('Chargement des secteurs échoué, liste de repli utilisée.', e); }
 }
 
@@ -340,6 +343,8 @@ async function chargerArtisans() {
       ? artisans.map(renderArtisanCard).join('')
       : '<div class="etat-vide"><div class="etat-vide-titre">' + T('aucun_artisan_titre') + '</div>' + T('aucun_artisan_texte') + '</div>';
 
+    artisans.forEach(function(a) { chargerApercuDispoCarte(a.id); });
+
     mettreAJourCarte(artisans);
 
   } catch(e) {
@@ -376,6 +381,7 @@ function renderArtisanCard(a) {
       '<div class="card-badges">' + badgeVerifie + badgeNote + badgeTarif + '</div>' +
     '</div>' +
     (a.bio ? '<div style="font-size:13px;color:var(--mu2);margin-top:8px;">' + escHtml(a.bio) + '</div>' : '') +
+    '<div id="apercu-carte-' + a.id + '" style="margin-top:8px;"></div>' +
   '</div>';
 }
 
@@ -466,6 +472,21 @@ window._dispoContexte = null;
 
 function heureVersMinPublic(hhmm) { var p = hhmm.split(':'); return parseInt(p[0],10)*60 + parseInt(p[1],10); }
 function minVersHeurePublic(min) { min = Math.max(0, Math.round(min)); var h = Math.floor(min/60), m = min%60; return (h<10?'0':'')+h+':'+(m<10?'0':'')+m; }
+
+async function chargerApercuDispoCarte(artisanId) {
+  var zone = document.getElementById('apercu-carte-' + artisanId);
+  if (!zone) return;
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/verifier-disponibilite-artisan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
+      body: JSON.stringify({ mode: 'apercu', artisan_id: artisanId }),
+    });
+    var data = await res.json();
+    if (data.error || !data.prochaine_date) { zone.innerHTML = ''; return; }
+    zone.innerHTML = '<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:rgba(22,163,74,.08);color:#16a34a;font-size:11.5px;font-weight:700;">📅 Disponible ' + data.label + '</span>';
+  } catch (e) { zone.innerHTML = ''; }
+}
 
 async function chargerApercuDispo(artisanId) {
   var zone = document.getElementById('dispo-zone-' + artisanId);
