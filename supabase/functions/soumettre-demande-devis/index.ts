@@ -50,19 +50,52 @@ async function envoyerEmail(to: string, subject: string, html: string) {
   }
 }
 
-function emailHtmlDemande(clientNom: string, clientTel: string, clientEmail: string | null, contactPrefere: string, commune: string, description: string, secteur: string): string {
+function emailHtmlDemande(clientNom: string, clientTel: string, clientEmail: string | null, contactPrefere: string, commune: string, description: string, secteur: string, nbPhotos: number): string {
   const contactHtml = contactPrefere === "email"
     ? `<p>📧 Préfère être recontacté(e) par email : <a href="mailto:${clientEmail}">${clientEmail}</a></p>`
     : `<p>📞 Préfère être recontacté(e) par téléphone : <a href="tel:${clientTel}">${clientTel}</a></p>`;
+  const photosHtml = nbPhotos > 0
+    ? `<p>📷 ${nbPhotos} photo${nbPhotos > 1 ? "s" : ""} jointe${nbPhotos > 1 ? "s" : ""} — à consulter dans votre espace MPA Artisans.</p>`
+    : "";
   return `
     <div style="font-family:sans-serif;max-width:480px;">
       <h2 style="color:#B5502F;">📢 Nouvelle demande de devis</h2>
       <p><strong>${clientNom}</strong> (${commune}) recherche un artisan en <strong>${secteur}</strong>.</p>
       <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${description}</p>
       ${contactHtml}
+      ${photosHtml}
       <p style="font-size:12px;color:#6b7c96;margin-top:20px;">Répondez directement depuis votre espace MPA Artisans, onglet « Demandes ».</p>
     </div>
   `;
+}
+
+const BUCKET_PHOTOS = "devis-photos";
+
+// Décode et téléverse jusqu'à 4 photos (data URLs base64) envoyées par le client, retourne leurs URLs publiques.
+// Jamais bloquant : une photo qui échoue est simplement ignorée, la demande reste valide sans elle.
+async function uploaderPhotos(sb: any, demandeId: string, photosBase64: unknown): Promise<string[]> {
+  if (!Array.isArray(photosBase64)) return [];
+  const urls: string[] = [];
+  for (let i = 0; i < Math.min(photosBase64.length, 4); i++) {
+    try {
+      const dataUrl = photosBase64[i];
+      if (typeof dataUrl !== "string") continue;
+      const match = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
+      if (!match) continue;
+      const mime = match[1];
+      const bytes = Uint8Array.from(atob(match[2]), (c) => c.charCodeAt(0));
+      if (bytes.length > 3 * 1024 * 1024) continue; // garde-fou : 3 Mo max par photo après compression
+      const ext = mime.split("/")[1] || "jpg";
+      const path = `${demandeId}/${i}.${ext}`;
+      const { error } = await sb.storage.from(BUCKET_PHOTOS).upload(path, bytes, { contentType: mime, upsert: true });
+      if (error) { console.error("[soumettre-demande-devis] upload photo échoué:", error); continue; }
+      const { data: pub } = sb.storage.from(BUCKET_PHOTOS).getPublicUrl(path);
+      if (pub?.publicUrl) urls.push(pub.publicUrl);
+    } catch (e) {
+      console.error("[soumettre-demande-devis] erreur traitement photo:", e);
+    }
+  }
+  return urls;
 }
 
 Deno.serve(async (req: Request) => {
@@ -78,7 +111,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => null);
     if (!body) return json({ error: "Requête invalide." }, 400);
 
-    const { client_nom, client_telephone, client_email, contact_prefere, secteur, description_besoin, commune, artisan_id } = body;
+    const { client_nom, client_telephone, client_email, contact_prefere, secteur, description_besoin, commune, artisan_id, photos } = body;
 
     if (!client_nom || !client_telephone || !secteur || !description_besoin || !commune) {
       return json({ error: "Champs obligatoires manquants." }, 400);
@@ -107,9 +140,21 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // ── Photos jointes — jamais bloquant pour la demande elle-même ──
+    let nbPhotos = 0;
+    try {
+      const urls = await uploaderPhotos(sb, demande.id, photos);
+      if (urls.length) {
+        await sb.from("demandes_devis").update({ photos: urls }).eq("id", demande.id);
+        nbPhotos = urls.length;
+      }
+    } catch (photoErr) {
+      console.error("[soumettre-demande-devis] Téléversement des photos échoué (demande créée quand même) :", photoErr);
+    }
+
     // ── Notification email — jamais bloquante pour la demande elle-même ──
     try {
-      const emailHtml = emailHtmlDemande(client_nom, client_telephone, client_email || null, contactChoisi, commune, description_besoin, secteur);
+      const emailHtml = emailHtmlDemande(client_nom, client_telephone, client_email || null, contactChoisi, commune, description_besoin, secteur, nbPhotos);
 
       if (artisan_id) {
         // Demande privée : uniquement l'artisan visé
