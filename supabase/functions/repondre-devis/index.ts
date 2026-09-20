@@ -8,16 +8,28 @@
 // office de preuve d'identité pour CETTE demande précise uniquement.
 //
 // GET ?token=xxx&action=confirmer|refuser
+//   → affiche une petite page avec un champ de message optionnel
+//     (impossible de taper un message directement depuis un lien
+//     d'email — d'où cette étape intermédiaire, un simple formulaire
+//     HTML sans JavaScript, qui fonctionne dans n'importe quel client
+//     mail).
+//
+// GET ?token=xxx&action=confirmer|refuser&execute=1&message=...
+//   → exécute réellement l'action (utilisé par le formulaire ci-dessus,
+//     et directement par les boutons in-app de MPA Artisans qui
+//     demandent le message via une simple invite avant l'appel).
 //
 // Si "confirmer" :
 //   - crée (ou réutilise) un client habituel pour cet artisan
 //   - crée directement l'intervention dans son planning MPA Artisans
-//   - envoie un email de confirmation au client, si celui-ci avait
-//     choisi d'être recontacté par email
+//   - envoie un email de confirmation au client, avec le message
+//     éventuel de l'artisan, si celui-ci avait donné son email
 // Si "refuser" :
-//   - marque simplement la demande comme refusée
+//   - marque la demande comme refusée
+//   - envoie un email au client avec le message éventuel, s'il avait
+//     donné son email
 //
-// Retourne une page HTML simple (pas du JSON) puisque c'est ouvert
+// Retourne toujours une page HTML (pas du JSON) puisque c'est ouvert
 // directement dans un navigateur depuis un clic d'email.
 // ═══════════════════════════════════════════════════════════
 
@@ -38,6 +50,35 @@ function pageHtml(titre: string, message: string, couleur: string): Response {
   return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
 
+function formulaireMessageHtml(token: string, action: string, dateAff: string, heure: string): Response {
+  const estConfirmer = action === "confirmer";
+  const titre = estConfirmer ? "Confirmer ce créneau" : "Refuser ce créneau";
+  const couleur = estConfirmer ? "#16a34a" : "#6b7c96";
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${titre}</title>
+    <style>
+      body{font-family:'Outfit',Arial,sans-serif;background:#f7f9fc;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;}
+      .box{background:#fff;border-radius:16px;padding:32px;max-width:420px;width:100%;box-shadow:0 8px 32px rgba(19,34,60,.1);}
+      h1{color:${couleur};font-size:19px;margin-bottom:6px;}
+      p.sub{color:#6b7c96;font-size:13.5px;margin-bottom:18px;}
+      textarea{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:9px;border:1.5px solid #e3eaf4;font-family:'Outfit',Arial,sans-serif;font-size:13.5px;resize:vertical;margin-bottom:16px;}
+      button{width:100%;padding:12px;border-radius:9px;border:none;background:${couleur};color:#fff;font-size:14px;font-weight:700;cursor:pointer;}
+    </style></head>
+    <body><div class="box">
+      <h1>${titre}</h1>
+      <p class="sub">Rendez-vous du ${dateAff} à ${heure}. Vous pouvez laisser un message optionnel (pour préciser une contrainte, ou justifier un refus) — le client le recevra par email si vous avez son adresse.</p>
+      <form method="GET" action="">
+        <input type="hidden" name="token" value="${token}">
+        <input type="hidden" name="action" value="${action}">
+        <input type="hidden" name="execute" value="1">
+        <textarea name="message" rows="3" placeholder="Message optionnel…"></textarea>
+        <button type="submit">${estConfirmer ? "✅ Confirmer" : "❌ Refuser"}</button>
+      </form>
+    </div></body></html>`;
+  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+}
+
 async function envoyerEmail(to: string, subject: string, html: string) {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   if (!apiKey) { console.warn("[repondre-devis] RESEND_API_KEY absente — email non envoyé."); return; }
@@ -55,6 +96,8 @@ Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
   const action = url.searchParams.get("action");
+  const execute = url.searchParams.get("execute") === "1";
+  const message = (url.searchParams.get("message") || "").trim() || null;
 
   if (!token || (action !== "confirmer" && action !== "refuser")) {
     return pageHtml("Lien invalide", "Ce lien de confirmation est incomplet ou incorrect.", "#dc2626");
@@ -76,6 +119,13 @@ Deno.serve(async (req: Request) => {
       return pageHtml("Déjà traité", `Cette proposition de créneau a été ${dejaTraite} — aucune action supplémentaire n'est nécessaire.`, "#6b7c96");
     }
 
+    const dateAff = new Date(demande.date_intervention).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+
+    // ── Étape 1 : pas encore "execute" → on affiche le petit formulaire de message ──
+    if (!execute) {
+      return formulaireMessageHtml(token, action, dateAff, (demande.heure_debut || "").slice(0, 5));
+    }
+
     // ── Récupérer l'artisan visé, via la demande de devis correspondante ──
     const { data: reponse } = await sb.from("devis_reponses").select("artisan_id").eq("demande_id", demande.id).maybeSingle();
     const artisanId = reponse?.artisan_id;
@@ -84,8 +134,21 @@ Deno.serve(async (req: Request) => {
     }
 
     if (action === "refuser") {
-      await sb.from("demandes_devis").update({ statut: "creneau_refuse" }).eq("id", demande.id);
-      return pageHtml("Créneau refusé", "C'est noté — ce créneau a été refusé. Le client n'a pas été notifié automatiquement ; pensez à le prévenir vous-même si besoin.", "#6b7c96");
+      await sb.from("demandes_devis").update({ statut: "creneau_refuse", reponse_message: message }).eq("id", demande.id);
+
+      try {
+        if (demande.client_email) {
+          const html = `<div style="font-family:sans-serif;max-width:480px;">
+            <h2 style="color:#6b7c96;">Créneau non disponible</h2>
+            <p>Votre demande pour le <strong>${dateAff} à ${(demande.heure_debut || "").slice(0, 5)}</strong> n'a malheureusement pas pu être retenue.</p>
+            ${message ? `<p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${message}</p>` : ""}
+            <p style="font-size:12px;color:#6b7c96;">N'hésitez pas à consulter d'autres créneaux ou d'autres artisans sur CaraLink.</p>
+          </div>`;
+          await envoyerEmail(demande.client_email, `Créneau non disponible — ${dateAff}`, html);
+        }
+      } catch (e) { console.error("[repondre-devis] Email de refus client échoué :", e); }
+
+      return pageHtml("Créneau refusé", "C'est noté — ce créneau a été refusé. Le client a été notifié par email s'il avait laissé son adresse.", "#6b7c96");
     }
 
     // ── action === "confirmer" ──
@@ -103,6 +166,7 @@ Deno.serve(async (req: Request) => {
     if (errClient) throw errClient;
 
     // 2) Intervention créée directement dans le planning
+    const notesIntervention = message ? `${demande.description_besoin}\n\nNote de l'artisan : ${message}` : demande.description_besoin;
     const { error: errInter } = await sb.from("mpa_artisans_interventions").insert({
       artisan_id: artisanId,
       client_id: client.id,
@@ -116,20 +180,20 @@ Deno.serve(async (req: Request) => {
       commune: demande.commune,
       latitude: demande.latitude,
       longitude: demande.longitude,
-      notes: demande.description_besoin,
+      notes: notesIntervention,
       statut: "planifiee",
     });
     if (errInter) throw errInter;
 
-    await sb.from("demandes_devis").update({ statut: "creneau_confirme" }).eq("id", demande.id);
+    await sb.from("demandes_devis").update({ statut: "creneau_confirme", reponse_message: message }).eq("id", demande.id);
 
-    // 3) Email de confirmation au client, si celui-ci avait choisi ce canal — jamais bloquant
+    // 3) Email de confirmation au client, avec le message éventuel — jamais bloquant
     try {
-      if (demande.contact_prefere === "email" && demande.client_email) {
-        const dateAff = new Date(demande.date_intervention).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+      if (demande.client_email) {
         const html = `<div style="font-family:sans-serif;max-width:480px;">
           <h2 style="color:#16a34a;">✅ Rendez-vous confirmé</h2>
-          <p>Votre intervention du <strong>${dateAff} à ${demande.heure_debut}</strong> est confirmée.</p>
+          <p>Votre intervention du <strong>${dateAff} à ${(demande.heure_debut || "").slice(0, 5)}</strong> est confirmée.</p>
+          ${message ? `<p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${message}</p>` : ""}
           <p style="font-size:12px;color:#6b7c96;">À bientôt !</p>
         </div>`;
         await envoyerEmail(demande.client_email, `Rendez-vous confirmé — ${dateAff}`, html);

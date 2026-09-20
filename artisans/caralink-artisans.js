@@ -481,7 +481,9 @@ async function chargerApercuDispo(artisanId) {
       zone.innerHTML = '';
       return;
     }
-    zone.innerHTML = '<button type="button" onclick="ouvrirVerifDispo(' + jsAttr(artisanId) + ')" style="width:100%;text-align:left;padding:12px 14px;border-radius:10px;border:1px solid var(--ac-brd,#e8c4b8);background:rgba(181,80,47,.06);color:var(--ac,#B5502F);font-size:13.5px;font-weight:700;cursor:pointer;">📅 Prochaine disponibilité : ' + data.label + ' →</button>';
+    zone.innerHTML =
+      '<button type="button" onclick="ouvrirVerifDispo(' + jsAttr(artisanId) + ')" style="width:100%;text-align:left;padding:12px 14px;border-radius:10px;border:1px solid var(--ac-brd,#e8c4b8);background:rgba(181,80,47,.06);color:var(--ac,#B5502F);font-size:13.5px;font-weight:700;cursor:pointer;">📅 Prochaine disponibilité : ' + data.label + ' →</button>' +
+      '<div style="font-size:11.5px;color:var(--mu,#999);margin-top:5px;text-align:center;"><a href="#" onclick="ouvrirVerifDispo(' + jsAttr(artisanId) + ');return false;" style="color:var(--mu2,#777);">Cliquez ici pour découvrir d\'autres créneaux</a></div>';
   } catch (e) {
     zone.innerHTML = '';
   }
@@ -508,49 +510,72 @@ function ouvrirVerifDispo(artisanId) {
     '</div>';
 }
 
-async function verifierDispoReelle(artisanId) {
-  var adresse = document.getElementById('dispo-adresse').value.trim();
-  var cp = document.getElementById('dispo-cp').value.trim();
-  var commune = document.getElementById('dispo-commune').value.trim();
+async function verifierDispoReelle(artisanId, dateDebut) {
   var resultat = document.getElementById('dispo-resultat');
-  if (!adresse || !commune) { resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">Adresse et commune obligatoires.</div>'; return; }
+  var adresse, cp, commune, dureeMin, serviceId;
 
-  var selService = document.getElementById('dispo-service');
-  var dureeMin = selService ? parseInt(selService.selectedOptions[0].getAttribute('data-duree'), 10) : 60;
-  var serviceId = selService ? selService.value : null;
+  if (dateDebut && window._dispoContexte) {
+    // Navigation semaine suivante/précédente : on réutilise le contexte déjà validé
+    adresse = window._dispoContexte.adresse; cp = window._dispoContexte.cp; commune = window._dispoContexte.commune;
+    dureeMin = window._dispoContexte.duree; serviceId = window._dispoContexte.serviceId;
+  } else {
+    adresse = document.getElementById('dispo-adresse').value.trim();
+    cp = document.getElementById('dispo-cp').value.trim();
+    commune = document.getElementById('dispo-commune').value.trim();
+    if (!adresse || !commune) { resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">Adresse et commune obligatoires.</div>'; return; }
+    var selService = document.getElementById('dispo-service');
+    dureeMin = selService ? parseInt(selService.selectedOptions[0].getAttribute('data-duree'), 10) : 60;
+    serviceId = selService ? selService.value : null;
+  }
 
   resultat.innerHTML = '<div style="font-size:12.5px;color:var(--mu,#999);">⏳ Calcul en cours, ça peut prendre quelques secondes…</div>';
   try {
     var res = await fetch(SUPABASE_URL + '/functions/v1/verifier-disponibilite-artisan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
-      body: JSON.stringify({ mode: 'creneaux', artisan_id: artisanId, adresse: adresse, code_postal: cp, commune: commune, duree_min: dureeMin }),
+      body: JSON.stringify({ mode: 'creneaux', artisan_id: artisanId, adresse: adresse, code_postal: cp, commune: commune, duree_min: dureeMin, date_debut: dateDebut || undefined }),
     });
     var data = await res.json();
     if (data.error) { resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">' + escHtml(data.error) + '</div>'; return; }
-    if (!data.jours || !data.jours.length) {
-      resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">Aucun créneau ne semble tenir compte-tenu des trajets, pour l\'instant. Essayez « Demander un devis » pour convenir d\'une date directement avec l\'artisan.</div>';
-      return;
-    }
 
     window._dispoContexte = {
       artisanId: artisanId, adresse: adresse, cp: cp, commune: commune, serviceId: serviceId, duree: dureeMin,
       secteur: (_profilDataCourant && _profilDataCourant.artisan.secteur) || 'autre',
-      latitude: data.latitude, longitude: data.longitude,
+      latitude: data.latitude, longitude: data.longitude, dateDebutFenetre: data.date_debut_fenetre,
     };
 
-    resultat.innerHTML = data.jours.map(function(j) {
-      var dateAff = new Date(j.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-      return '<div style="margin-bottom:10px;">' +
-        '<div style="font-size:12px;font-weight:700;text-transform:capitalize;margin-bottom:4px;">' + dateAff + '</div>' +
-        j.creneaux.map(function(h) {
-          return '<button type="button" onclick="choisirCreneauPublic(' + jsAttr(j.date) + ',' + jsAttr(h) + ')" style="padding:6px 12px;margin:0 4px 4px 0;border-radius:7px;border:1px solid var(--ac-brd,#e8c4b8);background:#fff;color:var(--ac,#B5502F);font-weight:700;font-size:12.5px;cursor:pointer;">' + h + '</button>';
+    var auMoinsUnCreneau = data.jours.some(function(j) { return j.creneaux.length > 0; });
+    var grille = '<div style="display:flex;align-items:stretch;gap:4px;">' +
+      '<button type="button" onclick="' + (data.peut_reculer ? "naviguerSemaineDispo(-1)" : '') + '" ' + (data.peut_reculer ? '' : 'disabled') + ' style="border:none;background:none;font-size:20px;color:' + (data.peut_reculer ? 'var(--ac,#B5502F)' : 'var(--line,#ddd)') + ';cursor:' + (data.peut_reculer ? 'pointer' : 'default') + ';padding:0 4px;">‹</button>' +
+      '<div style="flex:1;display:grid;grid-template-columns:repeat(' + data.jours.length + ',1fr);gap:4px;">' +
+        data.jours.map(function(j) {
+          var dateAff = new Date(j.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long' });
+          return '<div style="text-align:center;">' +
+            '<div style="font-size:10.5px;font-weight:700;text-transform:capitalize;color:var(--mu2,#555);">' + dateAff + '</div>' +
+            '<div style="font-size:10.5px;color:var(--mu,#999);margin-bottom:6px;">' + j.jour_num + ' ' + j.mois_label + '</div>' +
+            (j.creneaux.length
+              ? j.creneaux.map(function(h) {
+                  return '<button type="button" onclick="choisirCreneauPublic(' + jsAttr(j.date) + ',' + jsAttr(h) + ')" style="display:block;width:100%;padding:5px 2px;margin-bottom:4px;border-radius:6px;border:1px solid var(--ac-brd,#e8c4b8);background:#eef7f2;color:var(--ac,#B5502F);font-weight:700;font-size:11.5px;cursor:pointer;">' + h + '</button>';
+                }).join('')
+              : '<div style="color:var(--line,#ccc);font-size:13px;padding:5px 0;">—</div>') +
+          '</div>';
         }).join('') +
-      '</div>';
-    }).join('');
+      '</div>' +
+      '<button type="button" onclick="' + (data.peut_avancer ? "naviguerSemaineDispo(1)" : '') + '" ' + (data.peut_avancer ? '' : 'disabled') + ' style="border:none;background:none;font-size:20px;color:' + (data.peut_avancer ? 'var(--ac,#B5502F)' : 'var(--line,#ddd)') + ';cursor:' + (data.peut_avancer ? 'pointer' : 'default') + ';padding:0 4px;">›</button>' +
+    '</div>';
+
+    resultat.innerHTML = grille + (auMoinsUnCreneau ? '' : '<div style="font-size:11.5px;color:var(--mu,#999);text-align:center;margin-top:8px;">Rien sur cette période — essayez la semaine suivante, ou « Demander un devis » pour convenir d\'une date directement.</div>');
   } catch (e) {
     resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">Erreur de connexion, réessayez.</div>';
   }
+}
+
+function naviguerSemaineDispo(direction) {
+  var ctx = window._dispoContexte;
+  if (!ctx) return;
+  var d = new Date(ctx.dateDebutFenetre + 'T00:00:00');
+  d.setDate(d.getDate() + direction * 5);
+  verifierDispoReelle(ctx.artisanId, d.toISOString().slice(0, 10));
 }
 
 function choisirCreneauPublic(dateStr, heureDebut) {
@@ -565,7 +590,6 @@ function choisirCreneauPublic(dateStr, heureDebut) {
 function ouvrirModalCreneau() {
   var ctx = window._dispoContexte;
   if (!ctx) return;
-  _devisContactPref = 'telephone';
   _devisPhotos = [];
   var div = document.getElementById('modal-devis');
   if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
@@ -577,7 +601,7 @@ function ouvrirModalCreneau() {
         '<div style="font-size:12.5px;color:var(--mu2,#777);margin-bottom:16px;text-transform:capitalize;">' + dateAff + ' à ' + ctx.heureDebut + ' — ' + escHtml(ctx.adresse) + '</div>' +
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
-        contactPrefHTML() +
+        '<input id="devis-email" type="email" placeholder="Email (optionnel — pour recevoir la confirmation automatiquement)" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<textarea id="devis-message" rows="3" placeholder="Précisions pour l\'artisan (optionnel)" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         photosPickerHTML() +
         '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
@@ -600,9 +624,6 @@ async function envoyerCreneauDevis() {
   var btn = document.getElementById('btn-devis');
 
   if (!nom || !tel) { err.textContent = T('err_champs'); err.style.display = 'block'; return; }
-  if (_devisContactPref === 'email' && !email) {
-    err.textContent = 'Merci de renseigner votre email — vous avez choisi d\'être recontacté(e) par ce canal.'; err.style.display = 'block'; return;
-  }
   btn.disabled = true; btn.textContent = T('btn_envoi_cours');
 
   try {
@@ -610,7 +631,7 @@ async function envoyerCreneauDevis() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
       body: JSON.stringify({
-        client_nom: nom, client_telephone: tel, client_email: email || null, contact_prefere: _devisContactPref,
+        client_nom: nom, client_telephone: tel, client_email: email || null, contact_prefere: email ? 'email' : 'telephone',
         commune: ctx.commune, description_besoin: message, secteur: ctx.secteur, photos: _devisPhotos,
         artisan_id: ctx.artisanId,
         date_intervention: ctx.date, heure_debut: ctx.heureDebut, heure_fin: ctx.heureFin,

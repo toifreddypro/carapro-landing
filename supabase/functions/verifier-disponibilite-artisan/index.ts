@@ -36,8 +36,11 @@ function json(payload: unknown, status = 200): Response {
 }
 
 const MARGE_SECURITE_MIN = 10;
-const HORIZON_JOURS = 14;
+const HORIZON_JOURS = 14; // pour le mode aperçu
+const FENETRE_JOURS = 5;  // nombre de colonnes affichées d'un coup en mode créneaux
+const HORIZON_PAGINATION_JOURS = 84; // 12 semaines — limite de navigation "semaine suivante"
 const JOURS_NOMS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+const MOIS_NOMS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
 
 function heureVersMin(hhmmss: string): number {
   const [h, m] = hhmmss.split(":");
@@ -102,7 +105,7 @@ Deno.serve(async (req: Request) => {
     const aujourdhui = new Date();
     const dateDebut = dateISO(aujourdhui);
     const dateFinHorizon = new Date(aujourdhui);
-    dateFinHorizon.setDate(dateFinHorizon.getDate() + HORIZON_JOURS);
+    dateFinHorizon.setDate(dateFinHorizon.getDate() + HORIZON_PAGINATION_JOURS);
 
     const { data: interventions, error: errI } = await sb.from("mpa_artisans_interventions")
       .select("date_intervention, heure_debut, heure_fin, latitude, longitude")
@@ -143,78 +146,96 @@ Deno.serve(async (req: Request) => {
     }
 
     // ═══ MODE CRÉNEAUX — vrai calcul avec trajet, une fois l'adresse connue ═══
+    // Retourne toujours FENETRE_JOURS jours consécutifs (même sans créneau, pour un
+    // affichage en grille façon Doctolib) — date_debut permet de paginer vers l'avant.
     if (mode === "creneaux") {
       const { adresse, code_postal, commune } = body;
       const duree = parseInt(body.duree_min, 10) || 60;
       if (!adresse) return json({ error: "Adresse manquante." }, 400);
+
+      let dateDebutFenetre = body.date_debut ? new Date(body.date_debut + "T00:00:00") : new Date(aujourdhui);
+      const dateMaxAutorisee = new Date(aujourdhui);
+      dateMaxAutorisee.setDate(dateMaxAutorisee.getDate() + HORIZON_PAGINATION_JOURS - FENETRE_JOURS);
+      if (dateDebutFenetre < aujourdhui) dateDebutFenetre = new Date(aujourdhui);
+      if (dateDebutFenetre > dateMaxAutorisee) dateDebutFenetre = dateMaxAutorisee;
 
       const pt = await geocoderAdresse(adresse, code_postal, commune);
       if (!pt) return json({ error: "Adresse introuvable — vérifiez l'orthographe." }, 422);
 
       const joursDispo: any[] = [];
 
-      for (let i = 0; i < HORIZON_JOURS && joursDispo.length < 5; i++) {
-        const jour = new Date(aujourdhui);
+      for (let i = 0; i < FENETRE_JOURS; i++) {
+        const jour = new Date(dateDebutFenetre);
         jour.setDate(jour.getDate() + i);
         const jourStr = dateISO(jour);
         const joursemaine = jour.getDay();
         const blocsJour = horaires.filter((h: any) => h.jour_semaine === joursemaine);
-        if (!blocsJour.length) continue;
-
-        const interDuJour = (interventions || [])
-          .filter((x: any) => x.date_intervention === jourStr)
-          .sort((a: any, b: any) => a.heure_debut.localeCompare(b.heure_debut));
 
         const creneauxJour: string[] = [];
 
-        for (const bloc of blocsJour) {
-          const debutBloc = heureVersMin(bloc.heure_debut);
-          const finBloc = heureVersMin(bloc.heure_fin);
-          const interDansBloc = interDuJour.filter((x: any) =>
-            heureVersMin(x.heure_debut) >= debutBloc && heureVersMin(x.heure_fin) <= finBloc);
+        if (blocsJour.length) {
+          const interDuJour = (interventions || [])
+            .filter((x: any) => x.date_intervention === jourStr)
+            .sort((a: any, b: any) => a.heure_debut.localeCompare(b.heure_debut));
 
-          // Points de la journée pour ce bloc : [début de bloc] puis chaque intervention, dans l'ordre
-          const points: any[] = [{ estAncre: true, finMin: debutBloc, lat: null, lon: null }];
-          interDansBloc.forEach((x: any) => points.push({
-            estAncre: false, debutMin: heureVersMin(x.heure_debut), finMin: heureVersMin(x.heure_fin),
-            lat: x.latitude, lon: x.longitude,
-          }));
+          for (const bloc of blocsJour) {
+            const debutBloc = heureVersMin(bloc.heure_debut);
+            const finBloc = heureVersMin(bloc.heure_fin);
+            const interDansBloc = interDuJour.filter((x: any) =>
+              heureVersMin(x.heure_debut) >= debutBloc && heureVersMin(x.heure_fin) <= finBloc);
 
-          for (let k = 0; k < points.length; k++) {
-            const prev = points[k];
-            const next = points[k + 1] || null;
+            const points: any[] = [{ estAncre: true, finMin: debutBloc, lat: null, lon: null }];
+            interDansBloc.forEach((x: any) => points.push({
+              estAncre: false, debutMin: heureVersMin(x.heure_debut), finMin: heureVersMin(x.heure_fin),
+              lat: x.latitude, lon: x.longitude,
+            }));
 
-            let travelIn = 0;
-            if (!prev.estAncre) {
-              if (prev.lat == null) continue; // intervention jamais géocodée : trou ignoré par prudence
-              const t = await tempsTrajetMinutes(prev.lat, prev.lon, pt.lat, pt.lon);
-              if (t == null) continue;
-              travelIn = t;
+            for (let k = 0; k < points.length; k++) {
+              const prev = points[k];
+              const next = points[k + 1] || null;
+
+              let travelIn = 0;
+              if (!prev.estAncre) {
+                if (prev.lat == null) continue;
+                const t = await tempsTrajetMinutes(prev.lat, prev.lon, pt.lat, pt.lon);
+                if (t == null) continue;
+                travelIn = t;
+              }
+
+              let debutMin = arrondirQuart(prev.finMin + travelIn + (prev.estAncre ? 0 : MARGE_SECURITE_MIN));
+              const finDispoBloc = next ? next.debutMin : finBloc;
+
+              if (next) {
+                if (next.lat == null) continue;
+                const travelOut = await tempsTrajetMinutes(pt.lat, pt.lon, next.lat, next.lon);
+                if (travelOut == null) continue;
+                if (debutMin + duree + travelOut + MARGE_SECURITE_MIN > finDispoBloc) continue;
+              } else {
+                if (debutMin + duree > finDispoBloc) continue;
+              }
+
+              if (debutMin < debutBloc) debutMin = debutBloc;
+              creneauxJour.push(minVersHeure(debutMin));
             }
-
-            let debutMin = arrondirQuart(prev.finMin + travelIn + (prev.estAncre ? 0 : MARGE_SECURITE_MIN));
-            const finDispoBloc = next ? next.debutMin : finBloc;
-
-            if (next) {
-              if (next.lat == null) continue;
-              const travelOut = await tempsTrajetMinutes(pt.lat, pt.lon, next.lat, next.lon);
-              if (travelOut == null) continue;
-              if (debutMin + duree + travelOut + MARGE_SECURITE_MIN > finDispoBloc) continue;
-            } else {
-              if (debutMin + duree > finDispoBloc) continue;
-            }
-
-            if (debutMin < debutBloc) debutMin = debutBloc;
-            creneauxJour.push(minVersHeure(debutMin));
           }
         }
 
-        if (creneauxJour.length) {
-          joursDispo.push({ date: jourStr, jour_label: JOURS_NOMS[joursemaine], creneaux: creneauxJour.slice(0, 4) });
-        }
+        joursDispo.push({
+          date: jourStr,
+          jour_label: JOURS_NOMS[joursemaine],
+          jour_num: jour.getDate(),
+          mois_label: MOIS_NOMS[jour.getMonth()],
+          creneaux: creneauxJour.slice(0, 4),
+        });
       }
 
-      return json({ adresse_geocodee: true, latitude: pt.lat, longitude: pt.lon, jours: joursDispo });
+      return json({
+        adresse_geocodee: true, latitude: pt.lat, longitude: pt.lon,
+        date_debut_fenetre: dateISO(dateDebutFenetre),
+        peut_reculer: dateISO(dateDebutFenetre) > dateISO(aujourdhui),
+        peut_avancer: dateISO(dateDebutFenetre) < dateISO(dateMaxAutorisee),
+        jours: joursDispo,
+      });
     }
 
     return json({ error: "mode invalide (attendu : apercu | creneaux)." }, 400);
