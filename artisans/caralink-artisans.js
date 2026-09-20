@@ -494,7 +494,7 @@ function ouvrirVerifDispo(artisanId) {
   if (!zone || !_profilDataCourant) return;
   var services = _profilDataCourant.services || [];
   var options = services.map(function(s) {
-    return '<option value="' + s.id + '" data-duree="' + (s.duree_estimee_min || 60) + '">' + escHtml(s.nom_service) + '</option>';
+    return '<option value="' + (s.id || '') + '" data-duree="' + (s.duree_estimee_min || 60) + '">' + escHtml(s.nom_service) + '</option>';
   }).join('');
   zone.innerHTML =
     '<div style="border:1px solid var(--line,#eee);border-radius:10px;padding:14px;">' +
@@ -526,6 +526,7 @@ async function verifierDispoReelle(artisanId, dateDebut) {
     var selService = document.getElementById('dispo-service');
     dureeMin = selService ? parseInt(selService.selectedOptions[0].getAttribute('data-duree'), 10) : 60;
     serviceId = selService ? selService.value : null;
+    if (!serviceId || serviceId === 'undefined' || serviceId === 'null') serviceId = null;
   }
 
   resultat.innerHTML = '<div style="font-size:12.5px;color:var(--mu,#999);">⏳ Calcul en cours, ça peut prendre quelques secondes…</div>';
