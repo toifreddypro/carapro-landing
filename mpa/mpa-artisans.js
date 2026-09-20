@@ -429,7 +429,8 @@ async function chargerDemandes() {
     }
 
     var ligneCreneau = estCreneau && d.date_intervention
-      ? '<div style="font-size:13px;font-weight:700;color:var(--ac);margin-bottom:6px;">📅 ' + new Date(d.date_intervention).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' }) + ' à ' + (d.heure_debut||'').slice(0,5) + '</div>'
+      ? '<div style="font-size:13px;font-weight:700;color:var(--ac);margin-bottom:6px;">📅 ' + new Date(d.date_intervention).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' }) + ' à ' + (d.heure_debut||'').slice(0,5) + '</div>' +
+        (d.reponse_message ? '<div style="font-size:12px;color:var(--mu2);font-style:italic;margin-bottom:6px;">Votre message : « ' + escHtml(d.reponse_message) + ' »</div>' : '')
       : '';
 
     // Le canal choisi par le client devient l'action principale — l'autre reste visible en secours.
@@ -477,9 +478,14 @@ function jsAttrLocal(val) {
 }
 
 async function repondreCreneauInApp(token, action) {
-  if (action === 'refuser' && !confirm('Refuser ce créneau ? Le client ne sera pas notifié automatiquement — pensez à le prévenir vous-même si besoin.')) return;
+  var message = prompt(action === 'confirmer'
+    ? 'Un message pour le client ? (optionnel, laissez vide pour aucun)'
+    : 'Une raison à préciser au client ? (optionnel, laissez vide pour aucune)', '');
+  if (message === null) return; // annulé
+  if (action === 'refuser' && !confirm('Confirmer le refus de ce créneau ?')) return;
   try {
-    var res = await fetch(SUPABASE_URL + '/functions/v1/repondre-devis?token=' + encodeURIComponent(token) + '&action=' + action);
+    var url = SUPABASE_URL + '/functions/v1/repondre-devis?token=' + encodeURIComponent(token) + '&action=' + action + '&execute=1&message=' + encodeURIComponent(message);
+    var res = await fetch(url);
     if (!res.ok) throw new Error('Erreur serveur (' + res.status + ')');
     await chargerDemandes();
     if (action === 'confirmer') await chargerInterventions();
