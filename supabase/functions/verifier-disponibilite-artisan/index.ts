@@ -242,7 +242,7 @@ Deno.serve(async (req: Request) => {
 
   } catch (e) {
     console.error("[verifier-disponibilite-artisan]", e);
-    const msg = (e instanceof Error) ? e.message : "Erreur serveur.";
+    const msg = (e instanceof Error) ? e.message : (e && typeof e === "object" && "message" in e) ? String((e as any).message) : "Erreur serveur.";
     return json({ error: msg }, 500);
   }
 });

@@ -204,6 +204,7 @@ Deno.serve(async (req: Request) => {
 
   } catch (e) {
     console.error("[repondre-devis]", e);
-    return pageHtml("Erreur", "Une erreur est survenue. Réessayez ou contactez le support.", "#dc2626");
+    const msg = (e instanceof Error) ? e.message : (e && typeof e === "object" && "message" in e) ? String((e as any).message) : "Erreur inconnue.";
+    return pageHtml("Erreur", `Une erreur est survenue : ${msg}. Réessayez ou contactez le support.`, "#dc2626");
   }
 });
