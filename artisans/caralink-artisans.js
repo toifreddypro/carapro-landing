@@ -457,7 +457,37 @@ function buildProfilHTML(data) {
 // ════════════════════════════════════════
 //  DEMANDE DE DEVIS
 // ════════════════════════════════════════
+// ── Préférence de contact (téléphone ou email) — partagée entre les 2 modales de devis ──
+var _devisContactPref = 'telephone';
+
+function contactPrefHTML() {
+  return '<div style="margin-bottom:10px;">' +
+      '<div style="font-size:11.5px;font-weight:600;color:var(--mu2,#777);margin-bottom:6px;">Comment souhaitez-vous être recontacté(e) ?</div>' +
+      '<div style="display:flex;gap:8px;">' +
+        '<button type="button" id="pref-tel-btn" onclick="choisirContactPref(\'telephone\')" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--ac,#B5502F);background:var(--ac,#B5502F);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;">📞 Téléphone</button>' +
+        '<button type="button" id="pref-email-btn" onclick="choisirContactPref(\'email\')" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);font-size:12.5px;font-weight:600;cursor:pointer;">📧 Email</button>' +
+      '</div>' +
+    '</div>' +
+    '<input id="devis-email" type="email" placeholder="votre@email.com" style="display:none;width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">';
+}
+
+function choisirContactPref(pref) {
+  _devisContactPref = pref;
+  var btnTel = document.getElementById('pref-tel-btn');
+  var btnEmail = document.getElementById('pref-email-btn');
+  var champEmail = document.getElementById('devis-email');
+  if (!btnTel || !btnEmail) return;
+  btnTel.style.background = pref === 'telephone' ? 'var(--ac,#B5502F)' : 'transparent';
+  btnTel.style.color = pref === 'telephone' ? '#fff' : 'var(--mu2,#777)';
+  btnTel.style.borderColor = pref === 'telephone' ? 'var(--ac,#B5502F)' : 'var(--line,#ddd)';
+  btnEmail.style.background = pref === 'email' ? 'var(--ac,#B5502F)' : 'transparent';
+  btnEmail.style.color = pref === 'email' ? '#fff' : 'var(--mu2,#777)';
+  btnEmail.style.borderColor = pref === 'email' ? 'var(--ac,#B5502F)' : 'var(--line,#ddd)';
+  if (champEmail) champEmail.style.display = pref === 'email' ? 'block' : 'none';
+}
+
 function ouvrirModalDevis(artisanId, nomArtisan, secteurArtisan) {
+  _devisContactPref = 'telephone'; // réinitialisé à chaque ouverture
   var div = document.getElementById('modal-devis');
   if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
   div.innerHTML =
@@ -467,6 +497,7 @@ function ouvrirModalDevis(artisanId, nomArtisan, secteurArtisan) {
         '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">' + (nomArtisan ? T('devis_sub_a') + ' ' + escHtml(nomArtisan) + '. ' : '') + T('devis_sub_suite') + '</div>' +
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        contactPrefHTML() +
         '<input id="devis-commune" type="text" placeholder="' + T('ph_commune') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<textarea id="devis-message" rows="4" placeholder="' + T('ph_message') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
@@ -481,6 +512,7 @@ function fermerModalDevis() { var div = document.getElementById('modal-devis'); 
 
 // ── Demande générale (hors fiche) — ouverte à tous les artisans du secteur/commune ──
 function ouvrirModalDevisGeneral() {
+  _devisContactPref = 'telephone'; // réinitialisé à chaque ouverture
   var div = document.getElementById('modal-devis');
   if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
   var champLabel = secteurLabelChamp();
@@ -496,6 +528,7 @@ function ouvrirModalDevisGeneral() {
         '<div style="font-size:11px;color:var(--mu,#999);margin-bottom:10px;">Vous ne voyez pas votre secteur ? <a href="mailto:contact@learnlogicstudio.com" style="color:var(--ac);">Écrivez-nous</a> pour qu\'on l\'ajoute.</div>' +
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        contactPrefHTML() +
         '<input id="devis-commune" type="text" placeholder="' + T('ph_commune') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<textarea id="devis-message" rows="4" placeholder="' + T('ph_message') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
@@ -511,6 +544,7 @@ async function envoyerDemandeDevisGenerale() {
   var secteur = document.getElementById('devis-secteur').value;
   var nom = document.getElementById('devis-nom').value.trim();
   var tel = document.getElementById('devis-tel').value.trim();
+  var email = document.getElementById('devis-email').value.trim();
   var commune = document.getElementById('devis-commune').value.trim();
   var message = document.getElementById('devis-message').value.trim();
   var err = document.getElementById('devis-err');
@@ -519,6 +553,9 @@ async function envoyerDemandeDevisGenerale() {
   if (!nom || !tel || !commune || !message) {
     err.textContent = T('err_champs'); err.style.display = 'block'; return;
   }
+  if (_devisContactPref === 'email' && !email) {
+    err.textContent = 'Merci de renseigner votre email — vous avez choisi d\'être recontacté(e) par ce canal.'; err.style.display = 'block'; return;
+  }
   btn.disabled = true; btn.textContent = T('btn_envoi_cours');
 
   try {
@@ -526,8 +563,8 @@ async function envoyerDemandeDevisGenerale() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
       body: JSON.stringify({
-        client_nom: nom, client_telephone: tel, commune: commune,
-        description_besoin: message, secteur: secteur,
+        client_nom: nom, client_telephone: tel, client_email: email || null, contact_prefere: _devisContactPref,
+        commune: commune, description_besoin: message, secteur: secteur,
         // pas d'artisan_id : demande ouverte, visible par tous les artisans du secteur/commune
       }),
     });
@@ -545,6 +582,7 @@ async function envoyerDemandeDevisGenerale() {
 async function envoyerDemandeDevis(artisanId, secteurArtisan) {
   var nom = document.getElementById('devis-nom').value.trim();
   var tel = document.getElementById('devis-tel').value.trim();
+  var email = document.getElementById('devis-email').value.trim();
   var commune = document.getElementById('devis-commune').value.trim();
   var message = document.getElementById('devis-message').value.trim();
   var err = document.getElementById('devis-err');
@@ -553,6 +591,9 @@ async function envoyerDemandeDevis(artisanId, secteurArtisan) {
   if (!nom || !tel || !commune || !message) {
     err.textContent = T('err_champs'); err.style.display = 'block'; return;
   }
+  if (_devisContactPref === 'email' && !email) {
+    err.textContent = 'Merci de renseigner votre email — vous avez choisi d\'être recontacté(e) par ce canal.'; err.style.display = 'block'; return;
+  }
   btn.disabled = true; btn.textContent = T('btn_envoi_cours');
 
   try {
@@ -560,8 +601,8 @@ async function envoyerDemandeDevis(artisanId, secteurArtisan) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
       body: JSON.stringify({
-        client_nom: nom, client_telephone: tel, commune: commune,
-        description_besoin: message, secteur: secteurArtisan || 'autre',
+        client_nom: nom, client_telephone: tel, client_email: email || null, contact_prefere: _devisContactPref,
+        commune: commune, description_besoin: message, secteur: secteurArtisan || 'autre',
         artisan_id: artisanId,
       }),
     });

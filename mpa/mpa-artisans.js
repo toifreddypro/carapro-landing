@@ -399,22 +399,38 @@ async function chargerDemandes() {
     var badgeType = l.type === 'privee'
       ? '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(181,80,47,.1);color:var(--ac);">Privée</span>'
       : '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(59,130,246,.1);color:#3b82f6;">Ouverte</span>';
-    var actionBtn = l.type === 'ouverte'
+
+    var actionsHaut = l.type === 'ouverte'
       ? '<button class="addb" onclick="prendreEnCharge(\'' + d.id + '\')">Prendre en charge</button>'
       : (l.reponse_statut === 'envoyee'
-          ? '<button class="addb" onclick="marquerTraitee(\'' + l.reponse_id + '\')">Marquer traitée</button>'
-          : '<span style="font-size:11.5px;color:var(--mu);">✓ Traitée</span>');
+          ? '<div style="display:flex;gap:6px;">' +
+              '<button class="addb" onclick="marquerTraitee(\'' + l.reponse_id + '\')">Marquer traitée</button>' +
+              '<button class="icbtn danger" onclick="supprimerDemande(\'' + l.reponse_id + '\')" title="Supprimer">🗑</button>' +
+            '</div>'
+          : '<div style="display:flex;align-items:center;gap:8px;">' +
+              '<span style="font-size:11.5px;color:var(--mu);">✓ Traitée</span>' +
+              '<button class="icbtn danger" onclick="supprimerDemande(\'' + l.reponse_id + '\')" title="Supprimer">🗑</button>' +
+            '</div>');
+
+    // Le canal choisi par le client devient l'action principale — l'autre reste visible en secours
+    var contactPref = d.contact_prefere || 'telephone';
+    var blocContact = (contactPref === 'email' && d.client_email)
+      ? '<a href="mailto:' + escHtml(d.client_email) + '" style="display:inline-block;padding:8px 16px;border-radius:8px;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;text-decoration:none;">📧 Écrire à ' + escHtml(d.client_nom) + '</a>' +
+        (d.client_telephone ? '<div style="font-size:11px;color:var(--mu);margin-top:6px;">ou par téléphone : <a href="tel:' + escHtml(d.client_telephone) + '" style="color:var(--mu2);">' + escHtml(d.client_telephone) + '</a></div>' : '')
+      : '<a href="tel:' + escHtml(d.client_telephone) + '" style="display:inline-block;padding:8px 16px;border-radius:8px;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;text-decoration:none;">📞 Rappeler ' + escHtml(d.client_nom) + '</a>' +
+        (d.client_email ? '<div style="font-size:11px;color:var(--mu);margin-top:6px;">ou par email : <a href="mailto:' + escHtml(d.client_email) + '" style="color:var(--mu2);">' + escHtml(d.client_email) + '</a></div>' : '');
+
     return '<div style="border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">' +
         '<div>' +
           '<strong>' + escHtml(d.client_nom) + '</strong> ' + badgeType + '<br>' +
           '<span style="font-size:12.5px;color:var(--mu);">' + secteurLabelLocal(d.secteur) + ' · 📍 ' + escHtml(d.commune) + ' · ' + dateAff + '</span>' +
         '</div>' +
-        actionBtn +
+        actionsHaut +
       '</div>' +
-      '<div style="font-size:13px;margin-bottom:8px;">' + escHtml(d.description_besoin) + '</div>' +
-      '<div style="font-size:12.5px;color:var(--mu2);">☎ <a href="tel:' + escHtml(d.client_telephone) + '" style="color:var(--ac);">' + escHtml(d.client_telephone) + '</a></div>' +
-      '<button onclick="creerClientDepuisDemande(' + jsAttrLocal(d.client_nom) + ',' + jsAttrLocal(d.commune) + ')" style="margin-top:8px;background:none;border:none;color:var(--ac);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;">+ Ajouter comme client habituel</button>' +
+      '<div style="font-size:13px;margin-bottom:10px;">' + escHtml(d.description_besoin) + '</div>' +
+      '<div style="margin-bottom:8px;">' + blocContact + '</div>' +
+      '<button onclick="creerClientDepuisDemande(' + jsAttrLocal(d.client_nom) + ',' + jsAttrLocal(d.commune) + ')" style="background:none;border:none;color:var(--ac);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;">+ Ajouter comme client habituel</button>' +
     '</div>';
   }).join('');
 }
@@ -440,6 +456,13 @@ async function prendreEnCharge(demandeId) {
 
 async function marquerTraitee(reponseId) {
   var { error } = await sb.from('devis_reponses').update({ statut: 'traitee' }).eq('id', reponseId).eq('artisan_id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerDemandes();
+}
+
+async function supprimerDemande(reponseId) {
+  if (!confirm('Retirer cette demande de votre liste ?\n\nElle ne sera plus visible pour vous. Si elle était ouverte à tout votre secteur, les autres artisans continueront de la voir.')) return;
+  var { error } = await sb.from('devis_reponses').delete().eq('id', reponseId).eq('artisan_id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
   await chargerDemandes();
 }

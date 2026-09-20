@@ -50,13 +50,16 @@ async function envoyerEmail(to: string, subject: string, html: string) {
   }
 }
 
-function emailHtmlDemande(clientNom: string, clientTel: string, commune: string, description: string, secteur: string): string {
+function emailHtmlDemande(clientNom: string, clientTel: string, clientEmail: string | null, contactPrefere: string, commune: string, description: string, secteur: string): string {
+  const contactHtml = contactPrefere === "email"
+    ? `<p>📧 Préfère être recontacté(e) par email : <a href="mailto:${clientEmail}">${clientEmail}</a></p>`
+    : `<p>📞 Préfère être recontacté(e) par téléphone : <a href="tel:${clientTel}">${clientTel}</a></p>`;
   return `
     <div style="font-family:sans-serif;max-width:480px;">
       <h2 style="color:#B5502F;">📢 Nouvelle demande de devis</h2>
       <p><strong>${clientNom}</strong> (${commune}) recherche un artisan en <strong>${secteur}</strong>.</p>
       <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${description}</p>
-      <p>☎ <a href="tel:${clientTel}">${clientTel}</a></p>
+      ${contactHtml}
       <p style="font-size:12px;color:#6b7c96;margin-top:20px;">Répondez directement depuis votre espace MPA Artisans, onglet « Demandes ».</p>
     </div>
   `;
@@ -75,7 +78,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => null);
     if (!body) return json({ error: "Requête invalide." }, 400);
 
-    const { client_nom, client_telephone, secteur, description_besoin, commune, artisan_id } = body;
+    const { client_nom, client_telephone, client_email, contact_prefere, secteur, description_besoin, commune, artisan_id } = body;
 
     if (!client_nom || !client_telephone || !secteur || !description_besoin || !commune) {
       return json({ error: "Champs obligatoires manquants." }, 400);
@@ -83,9 +86,14 @@ Deno.serve(async (req: Request) => {
     if (!/^[0-9+\s.-]{8,20}$/.test(client_telephone)) {
       return json({ error: "Numéro de téléphone invalide." }, 400);
     }
+    const contactChoisi = (contact_prefere === "email") ? "email" : "telephone";
+    if (contactChoisi === "email" && (!client_email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(client_email))) {
+      return json({ error: "Adresse email invalide." }, 400);
+    }
 
     const { data: demande, error } = await sb.from("demandes_devis").insert({
-      client_nom, client_telephone, secteur, description_besoin, commune,
+      client_nom, client_telephone, client_email: client_email || null, contact_prefere: contactChoisi,
+      secteur, description_besoin, commune,
       statut: artisan_id ? "directe" : "ouverte",
     }).select().single();
     if (error) throw error;
@@ -101,7 +109,7 @@ Deno.serve(async (req: Request) => {
 
     // ── Notification email — jamais bloquante pour la demande elle-même ──
     try {
-      const emailHtml = emailHtmlDemande(client_nom, client_telephone, commune, description_besoin, secteur);
+      const emailHtml = emailHtmlDemande(client_nom, client_telephone, client_email || null, contactChoisi, commune, description_besoin, secteur);
 
       if (artisan_id) {
         // Demande privée : uniquement l'artisan visé
