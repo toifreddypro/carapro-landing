@@ -45,7 +45,7 @@ Deno.serve(async (req: Request) => {
     if (!artisan) return json({ error: "Artisan introuvable." }, 404);
 
     const { data: services } = await sb.from("artisans_services")
-      .select("nom_service, description, prix_indicatif, unite")
+      .select("id, nom_service, description, prix_indicatif, unite, duree_estimee_min")
       .eq("artisan_id", id)
       .order("ordre", { ascending: true });
 
@@ -75,7 +75,7 @@ Deno.serve(async (req: Request) => {
 
   } catch (e) {
     console.error("[lire-artisan]", e);
-    const msg = (e instanceof Error) ? e.message : "Erreur serveur.";
+    const msg = (e instanceof Error) ? e.message : (e && typeof e === "object" && "message" in e) ? String((e as any).message) : "Erreur serveur.";
     return json({ error: msg }, 500);
   }
 });
