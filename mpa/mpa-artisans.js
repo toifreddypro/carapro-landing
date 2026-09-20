@@ -412,13 +412,15 @@ async function chargerDemandes() {
               '<button class="icbtn danger" onclick="supprimerDemande(\'' + l.reponse_id + '\')" title="Supprimer">🗑</button>' +
             '</div>');
 
-    // Le canal choisi par le client devient l'action principale — l'autre reste visible en secours
+    // Le canal choisi par le client devient l'action principale — l'autre reste visible en secours.
+    // L'email est toujours affiché en clair (mailto peu fiable sous Windows) — jamais caché derrière un bouton.
+    var noteEmail = '<div style="font-size:10.5px;color:var(--mu);margin-top:5px;">⚠️ Cette adresse vous est communiquée uniquement pour répondre à cette demande — pas pour de la prospection commerciale.</div>';
+    var blocEmail = '<a href="mailto:' + escHtml(d.client_email) + '" style="display:inline-block;padding:8px 14px;border-radius:8px;background:rgba(181,80,47,.08);border:1px solid var(--ac-brd);color:var(--ac);font-size:13px;font-weight:700;text-decoration:none;font-family:\'JetBrains Mono\',monospace;">📧 ' + escHtml(d.client_email) + '</a>' + noteEmail;
     var contactPref = d.contact_prefere || 'telephone';
     var blocContact = (contactPref === 'email' && d.client_email)
-      ? '<a href="mailto:' + escHtml(d.client_email) + '" style="display:inline-block;padding:8px 16px;border-radius:8px;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;text-decoration:none;">📧 Écrire à ' + escHtml(d.client_nom) + '</a>' +
-        (d.client_telephone ? '<div style="font-size:11px;color:var(--mu);margin-top:6px;">ou par téléphone : <a href="tel:' + escHtml(d.client_telephone) + '" style="color:var(--mu2);">' + escHtml(d.client_telephone) + '</a></div>' : '')
+      ? blocEmail + (d.client_telephone ? '<div style="font-size:11px;color:var(--mu);margin-top:8px;">ou par téléphone : <a href="tel:' + escHtml(d.client_telephone) + '" style="color:var(--mu2);">' + escHtml(d.client_telephone) + '</a></div>' : '')
       : '<a href="tel:' + escHtml(d.client_telephone) + '" style="display:inline-block;padding:8px 16px;border-radius:8px;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;text-decoration:none;">📞 Rappeler ' + escHtml(d.client_nom) + '</a>' +
-        (d.client_email ? '<div style="font-size:11px;color:var(--mu);margin-top:6px;">ou par email : <a href="mailto:' + escHtml(d.client_email) + '" style="color:var(--mu2);">' + escHtml(d.client_email) + '</a></div>' : '');
+        (d.client_email ? '<div style="margin-top:8px;">ou par email : ' + blocEmail + '</div>' : '');
 
     return '<div style="border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">' +
