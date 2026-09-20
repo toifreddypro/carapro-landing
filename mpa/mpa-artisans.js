@@ -351,13 +351,20 @@ async function chargerDemandes() {
   if (!zone) return;
 
   // Demandes privées : déjà adressées à moi (via devis_reponses)
-  var { data: privees, error: err1 } = await sb.from('devis_reponses')
-    .select('*, demandes_devis(*)')
+  var { data: reponses, error: err1 } = await sb.from('devis_reponses')
+    .select('*')
     .eq('artisan_id', _artisan.id);
   if (err1) { zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(err1.message) + '</p>'; return; }
 
+  var idsPrivees = (reponses || []).map(function(r) { return r.demande_id; });
+  var demandesPrivees = [];
+  if (idsPrivees.length) {
+    var { data: dp, error: errDp } = await sb.from('demandes_devis').select('*').in('id', idsPrivees);
+    if (errDp) { zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(errDp.message) + '</p>'; return; }
+    demandesPrivees = dp || [];
+  }
+
   // Demandes ouvertes dans mon secteur, pas encore prises en charge par moi
-  var idsDejaPris = (privees || []).map(function(p) { return p.demande_id; });
   var { data: ouvertes, error: err2 } = await sb.from('demandes_devis')
     .select('*')
     .eq('statut', 'ouverte')
@@ -365,12 +372,13 @@ async function chargerDemandes() {
   if (err2) { zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(err2.message) + '</p>'; return; }
 
   var liste = [];
-  (privees || []).forEach(function(p) {
-    if (!p.demandes_devis) return;
-    liste.push({ type: 'privee', reponse_id: p.id, reponse_statut: p.statut, demande: p.demandes_devis });
+  (reponses || []).forEach(function(r) {
+    var d = demandesPrivees.find(function(x) { return x.id === r.demande_id; });
+    if (!d) return;
+    liste.push({ type: 'privee', reponse_id: r.id, reponse_statut: r.statut, demande: d });
   });
   (ouvertes || []).forEach(function(d) {
-    if (idsDejaPris.indexOf(d.id) !== -1) return; // déjà prise en charge par moi, déjà listée ci-dessus
+    if (idsPrivees.indexOf(d.id) !== -1) return; // déjà prise en charge par moi, déjà listée ci-dessus
     liste.push({ type: 'ouverte', demande_id: d.id, demande: d });
   });
   liste.sort(function(a, b) { return new Date(b.demande.created_at) - new Date(a.demande.created_at); });
