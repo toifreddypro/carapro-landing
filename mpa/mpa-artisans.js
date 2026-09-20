@@ -1145,10 +1145,16 @@ async function imprimerFacture(factureId) {
   var c = facture.mpa_artisans_clients;
   var dateFactureAff = new Date(facture.date_facture).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
 
+  var delaiPaiement = (c && c.delai_paiement) || 30;
+  var dateEcheance = new Date(facture.date_facture);
+  dateEcheance.setDate(dateEcheance.getDate() + delaiPaiement);
+  var dateEcheanceAff = dateEcheance.toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
+
   var lignesHtml = (lignes||[]).map(function(l) {
     var service = l.artisans_services ? l.artisans_services.nom_service : '(sans service)';
     var dateAff = new Date(l.date_intervention).toLocaleDateString('fr-FR', { day:'numeric', month:'short', year:'numeric' });
-    return '<tr><td>' + dateAff + '</td><td>' + escHtml(service) + (l.notes ? ' — ' + escHtml(l.notes) : '') + '</td><td>' + (l.prix||0).toFixed(2) + '€</td></tr>';
+    var montant = l.prix || 0;
+    return '<tr><td>' + dateAff + '</td><td>' + escHtml(service) + (l.notes ? ' — ' + escHtml(l.notes) : '') + '</td><td>1</td><td>' + montant.toFixed(2) + '€</td><td>' + montant.toFixed(2) + '€</td></tr>';
   }).join('');
 
   document.getElementById('facture-print').innerHTML =
@@ -1174,11 +1180,12 @@ async function imprimerFacture(factureId) {
         '</div>' +
       '</div>' +
       '<table class="fp-table">' +
-        '<thead><tr><th>Date</th><th>Prestation</th><th>Montant</th></tr></thead>' +
+        '<thead><tr><th>Date</th><th>Prestation</th><th>Qté</th><th>Prix unit.</th><th>Montant</th></tr></thead>' +
         '<tbody>' + lignesHtml + '</tbody>' +
       '</table>' +
-      '<div class="fp-total-row"><span>Total</span><span>' + facture.montant_total.toFixed(2) + '€</span></div>' +
+      '<div class="fp-total-row"><span>Total TTC</span><span>' + facture.montant_total.toFixed(2) + '€</span></div>' +
       (a.tva_config && a.tva_config !== 'Non assujetti' ? '' : '<p style="font-size:11px;color:#6b7c96;">TVA non applicable, art. 293 B du CGI.</p>') +
+      '<p style="font-size:11px;color:#6b7c96;">Conditions de règlement : paiement sous ' + delaiPaiement + ' jours — échéance le ' + dateEcheanceAff + '. En cas de retard de paiement, indemnité forfaitaire de recouvrement de 40€ (art. L441-10 du Code de commerce), applicable aux relations entre professionnels.</p>' +
       '<div class="fp-footer">' + escHtml(a.nom_entreprise||'') + (a.siret ? ' — SIRET ' + escHtml(a.siret) : '') + '</div>' +
     '</div>';
 
