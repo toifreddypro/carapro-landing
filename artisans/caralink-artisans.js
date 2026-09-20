@@ -395,6 +395,8 @@ async function ouvrirProfil(id) {
     if (data.error) throw new Error(data.error);
 
     div.innerHTML = buildProfilHTML(data);
+    _profilDataCourant = data;
+    chargerApercuDispo(data.artisan.id);
 
   } catch(e) {
     div.innerHTML = '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;"><div style="background:var(--panel,#fff);border-radius:14px;padding:30px;color:var(--danger,#dc2626);">Erreur : ' + escHtml(e.message) + '</div></div>';
@@ -448,10 +450,184 @@ function buildProfilHTML(data) {
       (a.bio ? '<p style="font-size:14px;line-height:1.6;margin-bottom:18px;">' + escHtml(a.bio) + '</p>' : '') +
       '<div style="font-weight:700;margin-bottom:6px;">' + T('services_titre') + '</div>' + servicesHtml +
       photosHtml +
+      '<div id="dispo-zone-' + a.id + '" style="margin:16px 0;"><div style="font-size:12.5px;color:var(--mu,#999);">⏳ Vérification des disponibilités…</div></div>' +
       '<div style="font-weight:700;margin:18px 0 6px;">' + T('avis_titre') + (data.note_moyenne ? ' — ' + data.note_moyenne + '/5 (' + data.nb_avis + ')' : '') + '</div>' + avisHtml +
       '<button onclick="ouvrirModalDevis(' + jsAttr(a.id) + ',' + jsAttr(a.nom_entreprise) + ',' + jsAttr(a.secteur) + ')" style="width:100%;margin-top:18px;padding:13px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">' + T('demander_devis') + '</button>' +
     '</div>' +
   '</div>';
+}
+
+// ════════════════════════════════════════
+//  DISPONIBILITÉS — aperçu + vérification réelle (Smart Dispatch public)
+// ════════════════════════════════════════
+
+var _profilDataCourant = null;
+window._dispoContexte = null;
+
+function heureVersMinPublic(hhmm) { var p = hhmm.split(':'); return parseInt(p[0],10)*60 + parseInt(p[1],10); }
+function minVersHeurePublic(min) { min = Math.max(0, Math.round(min)); var h = Math.floor(min/60), m = min%60; return (h<10?'0':'')+h+':'+(m<10?'0':'')+m; }
+
+async function chargerApercuDispo(artisanId) {
+  var zone = document.getElementById('dispo-zone-' + artisanId);
+  if (!zone) return;
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/verifier-disponibilite-artisan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
+      body: JSON.stringify({ mode: 'apercu', artisan_id: artisanId }),
+    });
+    var data = await res.json();
+    if (data.error || !data.prochaine_date) {
+      zone.innerHTML = '';
+      return;
+    }
+    zone.innerHTML = '<button type="button" onclick="ouvrirVerifDispo(' + jsAttr(artisanId) + ')" style="width:100%;text-align:left;padding:12px 14px;border-radius:10px;border:1px solid var(--ac-brd,#e8c4b8);background:rgba(181,80,47,.06);color:var(--ac,#B5502F);font-size:13.5px;font-weight:700;cursor:pointer;">📅 Prochaine disponibilité : ' + data.label + ' →</button>';
+  } catch (e) {
+    zone.innerHTML = '';
+  }
+}
+
+function ouvrirVerifDispo(artisanId) {
+  var zone = document.getElementById('dispo-zone-' + artisanId);
+  if (!zone || !_profilDataCourant) return;
+  var services = _profilDataCourant.services || [];
+  var options = services.map(function(s) {
+    return '<option value="' + s.id + '" data-duree="' + (s.duree_estimee_min || 60) + '">' + escHtml(s.nom_service) + '</option>';
+  }).join('');
+  zone.innerHTML =
+    '<div style="border:1px solid var(--line,#eee);border-radius:10px;padding:14px;">' +
+      '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:10px;">CaraLink calcule les disponibilités réelles en tenant compte des trajets de l\'artisan — indiquez où l\'intervention doit avoir lieu.</div>' +
+      (options ? '<select id="dispo-service" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' + options + '</select>' : '') +
+      '<input id="dispo-adresse" type="text" placeholder="Adresse de l\'intervention" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' +
+      '<div style="display:flex;gap:8px;margin-bottom:8px;">' +
+        '<input id="dispo-cp" type="text" placeholder="Code postal" style="flex:1;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);box-sizing:border-box;">' +
+        '<input id="dispo-commune" type="text" placeholder="Commune" style="flex:2;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);box-sizing:border-box;">' +
+      '</div>' +
+      '<button type="button" onclick="verifierDispoReelle(' + jsAttr(artisanId) + ')" style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--ac,#B5502F);color:#fff;font-weight:700;cursor:pointer;">Vérifier la disponibilité</button>' +
+      '<div id="dispo-resultat" style="margin-top:10px;"></div>' +
+    '</div>';
+}
+
+async function verifierDispoReelle(artisanId) {
+  var adresse = document.getElementById('dispo-adresse').value.trim();
+  var cp = document.getElementById('dispo-cp').value.trim();
+  var commune = document.getElementById('dispo-commune').value.trim();
+  var resultat = document.getElementById('dispo-resultat');
+  if (!adresse || !commune) { resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">Adresse et commune obligatoires.</div>'; return; }
+
+  var selService = document.getElementById('dispo-service');
+  var dureeMin = selService ? parseInt(selService.selectedOptions[0].getAttribute('data-duree'), 10) : 60;
+  var serviceId = selService ? selService.value : null;
+
+  resultat.innerHTML = '<div style="font-size:12.5px;color:var(--mu,#999);">⏳ Calcul en cours, ça peut prendre quelques secondes…</div>';
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/verifier-disponibilite-artisan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
+      body: JSON.stringify({ mode: 'creneaux', artisan_id: artisanId, adresse: adresse, code_postal: cp, commune: commune, duree_min: dureeMin }),
+    });
+    var data = await res.json();
+    if (data.error) { resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">' + escHtml(data.error) + '</div>'; return; }
+    if (!data.jours || !data.jours.length) {
+      resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">Aucun créneau ne semble tenir compte-tenu des trajets, pour l\'instant. Essayez « Demander un devis » pour convenir d\'une date directement avec l\'artisan.</div>';
+      return;
+    }
+
+    window._dispoContexte = {
+      artisanId: artisanId, adresse: adresse, cp: cp, commune: commune, serviceId: serviceId, duree: dureeMin,
+      secteur: (_profilDataCourant && _profilDataCourant.artisan.secteur) || 'autre',
+      latitude: data.latitude, longitude: data.longitude,
+    };
+
+    resultat.innerHTML = data.jours.map(function(j) {
+      var dateAff = new Date(j.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+      return '<div style="margin-bottom:10px;">' +
+        '<div style="font-size:12px;font-weight:700;text-transform:capitalize;margin-bottom:4px;">' + dateAff + '</div>' +
+        j.creneaux.map(function(h) {
+          return '<button type="button" onclick="choisirCreneauPublic(' + jsAttr(j.date) + ',' + jsAttr(h) + ')" style="padding:6px 12px;margin:0 4px 4px 0;border-radius:7px;border:1px solid var(--ac-brd,#e8c4b8);background:#fff;color:var(--ac,#B5502F);font-weight:700;font-size:12.5px;cursor:pointer;">' + h + '</button>';
+        }).join('') +
+      '</div>';
+    }).join('');
+  } catch (e) {
+    resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">Erreur de connexion, réessayez.</div>';
+  }
+}
+
+function choisirCreneauPublic(dateStr, heureDebut) {
+  var ctx = window._dispoContexte;
+  if (!ctx) return;
+  ctx.date = dateStr;
+  ctx.heureDebut = heureDebut;
+  ctx.heureFin = minVersHeurePublic(heureVersMinPublic(heureDebut) + (ctx.duree || 60));
+  ouvrirModalCreneau();
+}
+
+function ouvrirModalCreneau() {
+  var ctx = window._dispoContexte;
+  if (!ctx) return;
+  _devisContactPref = 'telephone';
+  _devisPhotos = [];
+  var div = document.getElementById('modal-devis');
+  if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
+  var dateAff = new Date(ctx.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  div.innerHTML =
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)fermerModalDevis()">' +
+      '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;">' +
+        '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">📅 Confirmer ce créneau</div>' +
+        '<div style="font-size:12.5px;color:var(--mu2,#777);margin-bottom:16px;text-transform:capitalize;">' + dateAff + ' à ' + ctx.heureDebut + ' — ' + escHtml(ctx.adresse) + '</div>' +
+        '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        contactPrefHTML() +
+        '<textarea id="devis-message" rows="3" placeholder="Précisions pour l\'artisan (optionnel)" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
+        photosPickerHTML() +
+        '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button id="btn-devis" onclick="envoyerCreneauDevis()" style="flex:1;padding:11px;border-radius:9px;border:none;background:#16a34a;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Envoyer à l\'artisan</button>' +
+          '<button onclick="fermerModalDevis()" style="flex:1;padding:11px;border-radius:9px;border:1px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);cursor:pointer;">Annuler</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+async function envoyerCreneauDevis() {
+  var ctx = window._dispoContexte;
+  if (!ctx) return;
+  var nom = document.getElementById('devis-nom').value.trim();
+  var tel = document.getElementById('devis-tel').value.trim();
+  var email = document.getElementById('devis-email').value.trim();
+  var message = document.getElementById('devis-message').value.trim() || 'Proposition de créneau via la disponibilité en ligne CaraLink Artisans.';
+  var err = document.getElementById('devis-err');
+  var btn = document.getElementById('btn-devis');
+
+  if (!nom || !tel) { err.textContent = T('err_champs'); err.style.display = 'block'; return; }
+  if (_devisContactPref === 'email' && !email) {
+    err.textContent = 'Merci de renseigner votre email — vous avez choisi d\'être recontacté(e) par ce canal.'; err.style.display = 'block'; return;
+  }
+  btn.disabled = true; btn.textContent = T('btn_envoi_cours');
+
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/soumettre-demande-devis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
+      body: JSON.stringify({
+        client_nom: nom, client_telephone: tel, client_email: email || null, contact_prefere: _devisContactPref,
+        commune: ctx.commune, description_besoin: message, secteur: ctx.secteur, photos: _devisPhotos,
+        artisan_id: ctx.artisanId,
+        date_intervention: ctx.date, heure_debut: ctx.heureDebut, heure_fin: ctx.heureFin,
+        adresse: ctx.adresse, code_postal: ctx.cp, service_id: ctx.serviceId,
+        latitude: ctx.latitude, longitude: ctx.longitude,
+      }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    fermerModalDevis();
+    fermerProfil({ target: null, currentTarget: null });
+    showToast('Votre demande a été envoyée à l\'artisan — vous recevrez une confirmation dès qu\'il aura validé.');
+  } catch (e) {
+    err.textContent = e.message; err.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Envoyer à l\'artisan';
+  }
 }
 
 // ════════════════════════════════════════
