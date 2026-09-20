@@ -69,6 +69,30 @@ function emailHtmlDemande(clientNom: string, clientTel: string, clientEmail: str
   `;
 }
 
+function emailHtmlCreneau(clientNom: string, clientTel: string, clientEmail: string | null, contactPrefere: string, commune: string, adresse: string, description: string, dateAff: string, heureDebut: string, heureFin: string, nbPhotos: number, token: string): string {
+  const base = Deno.env.get("SUPABASE_URL") ?? "";
+  const lienConfirmer = `${base}/functions/v1/repondre-devis?token=${token}&action=confirmer`;
+  const lienRefuser = `${base}/functions/v1/repondre-devis?token=${token}&action=refuser`;
+  const contactHtml = contactPrefere === "email"
+    ? `📧 <a href="mailto:${clientEmail}">${clientEmail}</a>`
+    : `📞 <a href="tel:${clientTel}">${clientTel}</a>`;
+  const photosHtml = nbPhotos > 0 ? `<p>📷 ${nbPhotos} photo${nbPhotos > 1 ? "s" : ""} jointe${nbPhotos > 1 ? "s" : ""} — à consulter dans votre espace MPA Artisans.</p>` : "";
+  return `
+    <div style="font-family:sans-serif;max-width:480px;">
+      <h2 style="color:#B5502F;">📅 Proposition de créneau</h2>
+      <p><strong>${clientNom}</strong> (${commune}) souhaite une intervention le <strong>${dateAff} entre ${heureDebut} et ${heureFin}</strong>, à cette adresse : ${adresse}.</p>
+      <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${description}</p>
+      <p>Contact : ${contactHtml}</p>
+      ${photosHtml}
+      <div style="margin:24px 0;">
+        <a href="${lienConfirmer}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#16a34a;color:#fff;font-weight:700;text-decoration:none;margin-right:10px;">✅ Confirmer ce créneau</a>
+        <a href="${lienRefuser}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#f1f5f9;color:#475569;font-weight:700;text-decoration:none;">❌ Refuser</a>
+      </div>
+      <p style="font-size:12px;color:#6b7c96;">En confirmant, ce rendez-vous sera automatiquement ajouté à votre planning MPA Artisans, sans avoir à vous connecter.</p>
+    </div>
+  `;
+}
+
 const BUCKET_PHOTOS = "devis-photos";
 
 // Décode et téléverse jusqu'à 4 photos (data URLs base64) envoyées par le client, retourne leurs URLs publiques.
@@ -111,7 +135,8 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => null);
     if (!body) return json({ error: "Requête invalide." }, 400);
 
-    const { client_nom, client_telephone, client_email, contact_prefere, secteur, description_besoin, commune, artisan_id, photos } = body;
+    const { client_nom, client_telephone, client_email, contact_prefere, secteur, description_besoin, commune, artisan_id, photos,
+            date_intervention, heure_debut, heure_fin, adresse, code_postal, latitude, longitude, service_id } = body;
 
     if (!client_nom || !client_telephone || !secteur || !description_besoin || !commune) {
       return json({ error: "Champs obligatoires manquants." }, 400);
@@ -124,10 +149,22 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Adresse email invalide." }, 400);
     }
 
+    const estUneProposionDeCreneau = !!(date_intervention && heure_debut && artisan_id);
+    if (estUneProposionDeCreneau && !adresse) {
+      return json({ error: "Adresse d'intervention manquante." }, 400);
+    }
+
+    const token = estUneProposionDeCreneau ? crypto.randomUUID() : null;
+
     const { data: demande, error } = await sb.from("demandes_devis").insert({
       client_nom, client_telephone, client_email: client_email || null, contact_prefere: contactChoisi,
       secteur, description_besoin, commune,
-      statut: artisan_id ? "directe" : "ouverte",
+      statut: estUneProposionDeCreneau ? "creneau_propose" : (artisan_id ? "directe" : "ouverte"),
+      ...(estUneProposionDeCreneau ? {
+        token, date_intervention, heure_debut, heure_fin: heure_fin || null,
+        adresse, code_postal: code_postal || null, latitude: latitude ?? null, longitude: longitude ?? null,
+        service_id: service_id || null,
+      } : {}),
     }).select().single();
     if (error) throw error;
 
@@ -154,24 +191,35 @@ Deno.serve(async (req: Request) => {
 
     // ── Notification email — jamais bloquante pour la demande elle-même ──
     try {
-      const emailHtml = emailHtmlDemande(client_nom, client_telephone, client_email || null, contactChoisi, commune, description_besoin, secteur, nbPhotos);
-
-      if (artisan_id) {
-        // Demande privée : uniquement l'artisan visé
-        const { data: artisan } = await sb.from("artisans").select("user_id, nom_entreprise").eq("id", artisan_id).maybeSingle();
+      if (estUneProposionDeCreneau) {
+        const { data: artisan } = await sb.from("artisans").select("user_id").eq("id", artisan_id).maybeSingle();
         if (artisan?.user_id) {
           const { data: userData } = await sb.auth.admin.getUserById(artisan.user_id);
           if (userData?.user?.email) {
-            await envoyerEmail(userData.user.email, `Nouvelle demande de devis — ${client_nom}`, emailHtml);
+            const dateAff = new Date(date_intervention).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+            const emailHtml = emailHtmlCreneau(client_nom, client_telephone, client_email || null, contactChoisi, commune, adresse, description_besoin, dateAff, heure_debut, heure_fin || "?", nbPhotos, token as string);
+            await envoyerEmail(userData.user.email, `Proposition de créneau — ${client_nom} le ${dateAff}`, emailHtml);
           }
         }
       } else {
-        // Demande ouverte : tous les artisans du secteur
-        const { data: artisans } = await sb.from("artisans").select("user_id").eq("secteur", secteur);
-        for (const a of artisans ?? []) {
-          const { data: userData } = await sb.auth.admin.getUserById(a.user_id);
-          if (userData?.user?.email) {
-            await envoyerEmail(userData.user.email, `Nouvelle demande dans votre secteur — ${client_nom}`, emailHtml);
+        const emailHtml = emailHtmlDemande(client_nom, client_telephone, client_email || null, contactChoisi, commune, description_besoin, secteur, nbPhotos);
+        if (artisan_id) {
+          // Demande privée : uniquement l'artisan visé
+          const { data: artisan } = await sb.from("artisans").select("user_id, nom_entreprise").eq("id", artisan_id).maybeSingle();
+          if (artisan?.user_id) {
+            const { data: userData } = await sb.auth.admin.getUserById(artisan.user_id);
+            if (userData?.user?.email) {
+              await envoyerEmail(userData.user.email, `Nouvelle demande de devis — ${client_nom}`, emailHtml);
+            }
+          }
+        } else {
+          // Demande ouverte : tous les artisans du secteur
+          const { data: artisans } = await sb.from("artisans").select("user_id").eq("secteur", secteur);
+          for (const a of artisans ?? []) {
+            const { data: userData } = await sb.auth.admin.getUserById(a.user_id);
+            if (userData?.user?.email) {
+              await envoyerEmail(userData.user.email, `Nouvelle demande dans votre secteur — ${client_nom}`, emailHtml);
+            }
           }
         }
       }
