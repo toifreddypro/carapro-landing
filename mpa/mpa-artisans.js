@@ -179,6 +179,7 @@ async function init() {
   renderFiche();
   await chargerClients();
   await chargerDemandes();
+  await chargerHoraires();
   await chargerServices();
   await initPlanning();
   await chargerCompta();
@@ -395,22 +396,41 @@ async function chargerDemandes() {
 
   zone.innerHTML = liste.map(function(l) {
     var d = l.demande;
+    var estCreneau = ['creneau_propose', 'creneau_confirme', 'creneau_refuse'].indexOf(d.statut) !== -1;
     var dateAff = new Date(d.created_at).toLocaleDateString('fr-FR');
-    var badgeType = l.type === 'privee'
-      ? '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(181,80,47,.1);color:var(--ac);">Privée</span>'
-      : '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(59,130,246,.1);color:#3b82f6;">Ouverte</span>';
 
-    var actionsHaut = l.type === 'ouverte'
-      ? '<button class="addb" onclick="prendreEnCharge(\'' + d.id + '\')">Prendre en charge</button>'
-      : (l.reponse_statut === 'envoyee'
-          ? '<div style="display:flex;gap:6px;">' +
-              '<button class="addb" onclick="marquerTraitee(\'' + l.reponse_id + '\')">Marquer traitée</button>' +
-              '<button class="icbtn danger" onclick="supprimerDemande(\'' + l.reponse_id + '\')" title="Supprimer">🗑</button>' +
-            '</div>'
-          : '<div style="display:flex;align-items:center;gap:8px;">' +
-              '<span style="font-size:11.5px;color:var(--mu);">✓ Traitée</span>' +
-              '<button class="icbtn danger" onclick="supprimerDemande(\'' + l.reponse_id + '\')" title="Supprimer">🗑</button>' +
-            '</div>');
+    var badgeType;
+    if (d.statut === 'creneau_propose') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(180,83,9,.1);color:#b45309;">📅 Créneau proposé</span>';
+    else if (d.statut === 'creneau_confirme') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(22,163,74,.1);color:#16a34a;">✅ Confirmé</span>';
+    else if (d.statut === 'creneau_refuse') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--brd);color:var(--mu);">❌ Refusé</span>';
+    else if (l.type === 'privee') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(181,80,47,.1);color:var(--ac);">Privée</span>';
+    else badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(59,130,246,.1);color:#3b82f6;">Ouverte</span>';
+
+    var actionsHaut;
+    if (d.statut === 'creneau_propose') {
+      actionsHaut = '<div style="display:flex;gap:6px;">' +
+          '<button class="addb" style="background:#16a34a;" onclick="repondreCreneauInApp(\'' + d.token + '\',\'confirmer\')">✅ Confirmer</button>' +
+          '<button class="addb" style="background:var(--mu2);" onclick="repondreCreneauInApp(\'' + d.token + '\',\'refuser\')">❌ Refuser</button>' +
+        '</div>';
+    } else if (estCreneau) {
+      actionsHaut = '<span style="font-size:11.5px;color:var(--mu);">Traité</span>';
+    } else if (l.type === 'ouverte') {
+      actionsHaut = '<button class="addb" onclick="prendreEnCharge(\'' + d.id + '\')">Prendre en charge</button>';
+    } else if (l.reponse_statut === 'envoyee') {
+      actionsHaut = '<div style="display:flex;gap:6px;">' +
+          '<button class="addb" onclick="marquerTraitee(\'' + l.reponse_id + '\')">Marquer traitée</button>' +
+          '<button class="icbtn danger" onclick="supprimerDemande(\'' + l.reponse_id + '\')" title="Supprimer">🗑</button>' +
+        '</div>';
+    } else {
+      actionsHaut = '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<span style="font-size:11.5px;color:var(--mu);">✓ Traitée</span>' +
+          '<button class="icbtn danger" onclick="supprimerDemande(\'' + l.reponse_id + '\')" title="Supprimer">🗑</button>' +
+        '</div>';
+    }
+
+    var ligneCreneau = estCreneau && d.date_intervention
+      ? '<div style="font-size:13px;font-weight:700;color:var(--ac);margin-bottom:6px;">📅 ' + new Date(d.date_intervention).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' }) + ' à ' + (d.heure_debut||'').slice(0,5) + '</div>'
+      : '';
 
     // Le canal choisi par le client devient l'action principale — l'autre reste visible en secours.
     // L'email est toujours affiché en clair (mailto peu fiable sous Windows) — jamais caché derrière un bouton.
@@ -430,6 +450,7 @@ async function chargerDemandes() {
         '</div>' +
         actionsHaut +
       '</div>' +
+      ligneCreneau +
       '<div style="font-size:13px;margin-bottom:10px;">' + escHtml(d.description_besoin) + '</div>' +
       ((d.photos && d.photos.length) ?
         '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' +
@@ -438,7 +459,8 @@ async function chargerDemandes() {
           }).join('') +
         '</div>' : '') +
       '<div style="margin-bottom:8px;">' + blocContact + '</div>' +
-      '<button onclick="creerClientDepuisDemande(' + jsAttrLocal(d.client_nom) + ',' + jsAttrLocal(d.commune) + ')" style="background:none;border:none;color:var(--ac);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;">+ Ajouter comme client habituel</button>' +
+      (d.statut === 'creneau_confirme' ? '' :
+        '<button onclick="creerClientDepuisDemande(' + jsAttrLocal(d.client_nom) + ',' + jsAttrLocal(d.commune) + ')" style="background:none;border:none;color:var(--ac);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;">+ Ajouter comme client habituel</button>') +
     '</div>';
   }).join('');
 }
@@ -452,6 +474,18 @@ function secteurLabelLocal(code) {
 
 function jsAttrLocal(val) {
   return JSON.stringify(val == null ? '' : String(val)).replace(/"/g, '&quot;');
+}
+
+async function repondreCreneauInApp(token, action) {
+  if (action === 'refuser' && !confirm('Refuser ce créneau ? Le client ne sera pas notifié automatiquement — pensez à le prévenir vous-même si besoin.')) return;
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/repondre-devis?token=' + encodeURIComponent(token) + '&action=' + action);
+    if (!res.ok) throw new Error('Erreur serveur (' + res.status + ')');
+    await chargerDemandes();
+    if (action === 'confirmer') await chargerInterventions();
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+  }
 }
 
 async function prendreEnCharge(demandeId) {
@@ -1357,6 +1391,72 @@ function openModifierFiche() {
   document.getElementById('m-email').value = a.email || '';
   document.getElementById('m-web').value = a.site_web || '';
   ouvrirModale('modal-fiche');
+}
+
+// ════════════════════════════════════════
+//  HORAIRES HABITUELS — utilisés pour les disponibilités publiques
+// ════════════════════════════════════════
+
+var _horairesCache = [];
+var JOURS_SEMAINE_LABEL = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+var ORDRE_JOURS_AFFICHAGE = [1, 2, 3, 4, 5, 6, 0]; // lundi en premier, dimanche en dernier
+
+async function chargerHoraires() {
+  var zone = document.getElementById('zone-horaires');
+  if (!zone) return;
+  var { data, error } = await sb.from('artisans_horaires').select('*').eq('artisan_id', _artisan.id)
+    .order('jour_semaine', { ascending: true }).order('heure_debut', { ascending: true });
+  if (error) { zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>'; return; }
+  _horairesCache = data || [];
+  renderHoraires();
+}
+
+function renderHoraires() {
+  var zone = document.getElementById('zone-horaires');
+  if (!zone) return;
+  zone.innerHTML = ORDRE_JOURS_AFFICHAGE.map(function(jour) {
+    var blocs = _horairesCache.filter(function(h) { return h.jour_semaine === jour; });
+    return '<div>' +
+      '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--brd);flex-wrap:wrap;">' +
+        '<div style="width:90px;font-weight:600;font-size:13px;">' + JOURS_SEMAINE_LABEL[jour] + '</div>' +
+        '<div style="flex:1;display:flex;gap:6px;flex-wrap:wrap;">' +
+          (blocs.length ? blocs.map(function(b) {
+            return '<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:7px;background:var(--p2);font-family:\'JetBrains Mono\',monospace;font-size:11.5px;">' +
+              b.heure_debut.slice(0, 5) + '–' + b.heure_fin.slice(0, 5) +
+              '<button onclick="supprimerPlageHoraire(\'' + b.id + '\')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:12px;padding:0;">✕</button></span>';
+          }).join('') : '<span style="font-size:12px;color:var(--mu);">Ne travaille pas</span>') +
+        '</div>' +
+        '<button onclick="ouvrirAjoutPlage(' + jour + ')" style="background:none;border:1px dashed var(--b2);border-radius:6px;padding:4px 10px;font-size:11.5px;color:var(--mu2);cursor:pointer;">+ Plage</button>' +
+      '</div>' +
+      '<div id="plage-form-' + jour + '" style="display:none;padding:8px 0 8px 100px;gap:6px;align-items:center;">' +
+        '<input type="time" id="plage-debut-' + jour + '" style="padding:5px 8px;border-radius:6px;border:1px solid var(--b2);">' +
+        '<span style="font-size:12px;color:var(--mu);">à</span>' +
+        '<input type="time" id="plage-fin-' + jour + '" style="padding:5px 8px;border-radius:6px;border:1px solid var(--b2);">' +
+        '<button onclick="confirmerAjoutPlage(' + jour + ')" style="padding:5px 10px;border-radius:6px;border:none;background:var(--ac);color:#fff;font-size:11.5px;font-weight:700;cursor:pointer;">OK</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function ouvrirAjoutPlage(jour) {
+  var div = document.getElementById('plage-form-' + jour);
+  if (!div) return;
+  div.style.display = (div.style.display === 'none' || !div.style.display) ? 'flex' : 'none';
+}
+
+async function confirmerAjoutPlage(jour) {
+  var debut = document.getElementById('plage-debut-' + jour).value;
+  var fin = document.getElementById('plage-fin-' + jour).value;
+  if (!debut || !fin || debut >= fin) { alert('Merci de renseigner une heure de début et une heure de fin valides (fin après le début).'); return; }
+  var { error } = await sb.from('artisans_horaires').insert({ artisan_id: _artisan.id, jour_semaine: jour, heure_debut: debut, heure_fin: fin });
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerHoraires();
+}
+
+async function supprimerPlageHoraire(id) {
+  var { error } = await sb.from('artisans_horaires').delete().eq('id', id).eq('artisan_id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerHoraires();
 }
 
 async function sauverFiche() {
