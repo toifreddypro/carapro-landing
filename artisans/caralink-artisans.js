@@ -223,7 +223,7 @@ function renderHero() {
           '<button class="filter-pill' + (_searchState.tri==='note'?' active':'') + '" onclick="trierPar(\'note\')">' + T('filter_note') + '</button>' +
         '</div>' +
         '<div style="margin-top:14px;font-size:12.5px;color:var(--mu);">' +
-          '📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">Faire une demande générale</a>' +
+          '📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">Faire une demande de devis générale</a>' +
           ' — visible par tous les artisans du secteur et de la commune choisis' +
         '</div>' +
       '</div>' +
@@ -522,7 +522,7 @@ function ouvrirModalDevisGeneral() {
   div.innerHTML =
     '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)fermerModalDevis()">' +
       '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;">' +
-        '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">📢 Demande générale</div>' +
+        '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">📢 Demande de devis générale</div>' +
         '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">Votre demande sera visible par tous les artisans du secteur et de la commune choisis — idéal pour comparer plusieurs devis.</div>' +
         '<select id="devis-secteur" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Outfit\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:6px;">' + options + '</select>' +
         '<div style="font-size:11px;color:var(--mu,#999);margin-bottom:10px;">Vous ne voyez pas votre secteur ? <a href="mailto:contact@learnlogicstudio.com" style="color:var(--ac);">Écrivez-nous</a> pour qu\'on l\'ajoute.</div>' +
