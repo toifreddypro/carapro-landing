@@ -226,7 +226,7 @@ function renderHero() {
           '<button class="filter-pill' + (_searchState.tri==='note'?' active':'') + '" onclick="trierPar(\'note\')">' + T('filter_note') + '</button>' +
         '</div>' +
         '<div style="margin-top:14px;font-size:12.5px;color:var(--mu);">' +
-          '📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">Faire une demande de devis générale</a>' +
+          '📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">' + T('hero_devisgen_lien') + '</a>' +
           ' — visible par tous les artisans du secteur et de la commune choisis' +
         '</div>' +
       '</div>' +
@@ -526,7 +526,7 @@ async function chargerApercuDispoCarte(artisanId) {
     });
     var data = await res.json();
     if (data.error || !data.prochaine_date) { zone.style.display = 'none'; return; }
-    zone.innerHTML = '<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:rgba(22,163,74,.08);color:#16a34a;font-size:11.5px;font-weight:700;">📅 Disponible ' + data.label + '</span> <span style="font-size:11px;color:var(--mu,#999);">— cliquez pour prendre rendez-vous</span>';
+    zone.innerHTML = '<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:rgba(22,163,74,.08);color:#16a34a;font-size:11.5px;font-weight:700;">' + T('dispo_apercu_prefix') + ' ' + data.label + '</span> <span style="font-size:11px;color:var(--mu,#999);">— ' + T('dispo_cliquez_rdv') + '</span>';
   } catch (e) { zone.innerHTML = ''; }
 }
 
@@ -545,8 +545,8 @@ async function chargerApercuDispo(artisanId) {
       return;
     }
     zone.innerHTML =
-      '<button type="button" onclick="ouvrirVerifDispo(' + jsAttr(artisanId) + ')" style="width:100%;text-align:left;padding:12px 14px;border-radius:10px;border:1px solid var(--ac-brd,#e8c4b8);background:rgba(181,80,47,.06);color:var(--ac,#B5502F);font-size:13.5px;font-weight:700;cursor:pointer;">📅 Prochaine disponibilité : ' + data.label + ' →</button>' +
-      '<div style="font-size:11.5px;color:var(--mu,#999);margin-top:5px;text-align:center;"><a href="#" onclick="ouvrirVerifDispo(' + jsAttr(artisanId) + ');return false;" style="color:var(--mu2,#777);">Cliquez ici pour découvrir d\'autres créneaux</a></div>';
+      '<button type="button" onclick="ouvrirVerifDispo(' + jsAttr(artisanId) + ')" style="width:100%;text-align:left;padding:12px 14px;border-radius:10px;border:1px solid var(--ac-brd,#e8c4b8);background:rgba(181,80,47,.06);color:var(--ac,#B5502F);font-size:13.5px;font-weight:700;cursor:pointer;">' + T('dispo_apercu_prefix') + ' ' + data.label + ' →</button>' +
+      '<div style="font-size:11.5px;color:var(--mu,#999);margin-top:5px;text-align:center;"><a href="#" onclick="ouvrirVerifDispo(' + jsAttr(artisanId) + ');return false;" style="color:var(--mu2,#777);">' + T('dispo_autres_creneaux') + '</a></div>';
   } catch (e) {
     zone.innerHTML = '';
   }
@@ -561,14 +561,14 @@ function ouvrirVerifDispo(artisanId) {
   }).join('');
   zone.innerHTML =
     '<div style="border:1px solid var(--line,#eee);border-radius:10px;padding:14px;">' +
-      '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:10px;">CaraLink calcule les disponibilités réelles en tenant compte des trajets de l\'artisan — indiquez où l\'intervention doit avoir lieu.</div>' +
+      '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:10px;">' + T('dispo_intro') + '</div>' +
       (options ? '<select id="dispo-service" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' + options + '</select>' : '') +
-      '<input id="dispo-adresse" type="text" placeholder="Adresse de l\'intervention" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' +
+      '<input id="dispo-adresse" type="text" placeholder="' + T('ph_adresse_interv') + '" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' +
       '<div style="display:flex;gap:8px;margin-bottom:8px;">' +
-        '<input id="dispo-cp" type="text" placeholder="Code postal" style="flex:1;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);box-sizing:border-box;">' +
-        '<input id="dispo-commune" type="text" placeholder="Commune" style="flex:2;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);box-sizing:border-box;">' +
+        '<input id="dispo-cp" type="text" placeholder="' + T('ph_cp') + '" style="flex:1;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);box-sizing:border-box;">' +
+        '<input id="dispo-commune" type="text" placeholder="' + T('ph_commune') + '" style="flex:2;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);box-sizing:border-box;">' +
       '</div>' +
-      '<button type="button" onclick="verifierDispoReelle(' + jsAttr(artisanId) + ')" style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--ac,#B5502F);color:#fff;font-weight:700;cursor:pointer;">Vérifier la disponibilité</button>' +
+      '<button type="button" onclick="verifierDispoReelle(' + jsAttr(artisanId) + ')" style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--ac,#B5502F);color:#fff;font-weight:700;cursor:pointer;">' + T('dispo_verifier_btn') + '</button>' +
       '<div id="dispo-resultat" style="margin-top:10px;"></div>' +
     '</div>';
 }
@@ -585,14 +585,14 @@ async function verifierDispoReelle(artisanId, dateDebut) {
     adresse = document.getElementById('dispo-adresse').value.trim();
     cp = document.getElementById('dispo-cp').value.trim();
     commune = document.getElementById('dispo-commune').value.trim();
-    if (!adresse || !commune) { resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">Adresse et commune obligatoires.</div>'; return; }
+    if (!adresse || !commune) { resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">' + T('err_champs') + '</div>'; return; }
     var selService = document.getElementById('dispo-service');
     dureeMin = selService ? parseInt(selService.selectedOptions[0].getAttribute('data-duree'), 10) : 60;
     serviceId = selService ? selService.value : null;
     if (!serviceId || serviceId === 'undefined' || serviceId === 'null') serviceId = null;
   }
 
-  resultat.innerHTML = '<div style="font-size:12.5px;color:var(--mu,#999);">⏳ Calcul en cours, ça peut prendre quelques secondes…</div>';
+  resultat.innerHTML = '<div style="font-size:12.5px;color:var(--mu,#999);">' + T('dispo_calcul_cours') + '</div>';
   try {
     var res = await fetch(SUPABASE_URL + '/functions/v1/verifier-disponibilite-artisan', {
       method: 'POST',
@@ -629,10 +629,10 @@ async function verifierDispoReelle(artisanId, dateDebut) {
     '</div>';
 
     resultat.innerHTML = grille +
-      '<div style="font-size:10.5px;color:var(--mu,#999);text-align:center;margin-top:10px;">ℹ️ Les horaires affichés sont estimés à partir du trajet théorique — ils ne tiennent pas compte des imprévus sur la route.</div>' +
-      (auMoinsUnCreneau ? '' : '<div style="font-size:11.5px;color:var(--mu,#999);text-align:center;margin-top:8px;">Rien sur cette période — essayez la semaine suivante, ou une demande sur-mesure ci-dessous.</div>') +
+      '<div style="font-size:10.5px;color:var(--mu,#999);text-align:center;margin-top:10px;">' + T('dispo_disclaimer') + '</div>' +
+      (auMoinsUnCreneau ? '' : '<div style="font-size:11.5px;color:var(--mu,#999);text-align:center;margin-top:8px;">' + T('dispo_rien_periode') + '</div>') +
       '<div style="text-align:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--line,#eee);">' +
-        '<a href="#" onclick="ouvrirModalSurMesure();return false;" style="font-size:12px;color:var(--mu2,#777);">Vous ne trouvez pas le créneau idéal ? <strong style="color:var(--ac,#B5502F);">Faire une demande sur-mesure →</strong></a>' +
+        '<a href="#" onclick="ouvrirModalSurMesure();return false;" style="font-size:12px;color:var(--mu2,#777);">' + T('dispo_sur_mesure_q') + ' <strong style="color:var(--ac,#B5502F);">' + T('dispo_sur_mesure_lien') + '</strong></a>' +
       '</div>';
   } catch (e) {
     resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">Erreur de connexion, réessayez.</div>';
@@ -667,18 +667,18 @@ function ouvrirModalCreneau() {
   div.innerHTML =
     '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)fermerModalDevis()">' +
       '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;">' +
-        '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">📅 Confirmer ce créneau</div>' +
+        '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">' + T('creneau_titre') + '</div>' +
         '<div style="font-size:12.5px;color:var(--mu2,#777);margin-bottom:16px;text-transform:capitalize;">' + dateAff + ' à ' + ctx.heureDebut + ' — ' + escHtml(ctx.adresse) + '</div>' +
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
-        '<input id="devis-email" type="email" placeholder="Email (optionnel — pour recevoir la confirmation automatiquement)" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        '<input id="devis-email" type="email" placeholder="' + T('ph_email_optionnel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         typeInterventionPickerHTML() +
-        '<textarea id="devis-message" rows="3" placeholder="Précisions pour l\'artisan (optionnel)" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
+        '<textarea id="devis-message" rows="3" placeholder="' + T('ph_precisions') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         photosPickerHTML() +
         '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
         '<div style="display:flex;gap:8px;">' +
-          '<button id="btn-devis" onclick="envoyerCreneauDevis()" style="flex:1;padding:11px;border-radius:9px;border:none;background:#16a34a;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Envoyer à l\'artisan</button>' +
-          '<button onclick="fermerModalDevis()" style="flex:1;padding:11px;border-radius:9px;border:1px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);cursor:pointer;">Annuler</button>' +
+          '<button id="btn-devis" onclick="envoyerCreneauDevis()" style="flex:1;padding:11px;border-radius:9px;border:none;background:#16a34a;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">' + T('btn_envoyer_artisan') + '</button>' +
+          '<button onclick="fermerModalDevis()" style="flex:1;padding:11px;border-radius:9px;border:1px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);cursor:pointer;">' + T('btn_annuler') + '</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -691,10 +691,10 @@ function afficherConfirmationDemande(nomArtisan, emailDonne) {
     '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)fermerConfirmationDemande()">' +
       '<div style="background:var(--panel,#fff);border-radius:14px;padding:28px;max-width:420px;width:100%;text-align:center;">' +
         '<div style="font-size:38px;margin-bottom:10px;">✅</div>' +
-        '<div style="font-size:16px;font-weight:700;margin-bottom:10px;">Demande envoyée !</div>' +
-        '<div style="font-size:13.5px;color:var(--mu2,#555);line-height:1.5;margin-bottom:6px;">Votre demande de rendez-vous a bien été transmise à <strong>' + escHtml(nomArtisan || 'l\'artisan') + '</strong>. Il a été prévenu et vous répondra sous 24h.</div>' +
-        (emailDonne ? '<div style="font-size:12.5px;color:var(--mu,#999);margin-bottom:16px;">Un récapitulatif vous a été envoyé par email.</div>' : '<div style="margin-bottom:16px;"></div>') +
-        '<button onclick="fermerConfirmationDemande()" style="width:100%;padding:11px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Fermer</button>' +
+        '<div style="font-size:16px;font-weight:700;margin-bottom:10px;">' + T('confirmation_titre') + '</div>' +
+        '<div style="font-size:13.5px;color:var(--mu2,#555);line-height:1.5;margin-bottom:6px;">' + T('confirmation_texte1') + ' <strong>' + escHtml(nomArtisan || 'l\'artisan') + '</strong>' + T('confirmation_texte2') + '</div>' +
+        (emailDonne ? '<div style="font-size:12.5px;color:var(--mu,#999);margin-bottom:16px;">' + T('confirmation_email') + '</div>' : '<div style="margin-bottom:16px;"></div>') +
+        '<button onclick="fermerConfirmationDemande()" style="width:100%;padding:11px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">' + T('btn_fermer') + '</button>' +
       '</div>' +
     '</div>';
 }
@@ -736,7 +736,7 @@ async function envoyerCreneauDevis() {
     afficherConfirmationDemande(_profilDataCourant && _profilDataCourant.artisan && _profilDataCourant.artisan.nom_entreprise, !!email);
   } catch (e) {
     err.textContent = e.message; err.style.display = 'block';
-    btn.disabled = false; btn.textContent = 'Envoyer à l\'artisan';
+    btn.disabled = false; btn.textContent = T('btn_envoyer_artisan');
   }
 }
 
@@ -753,22 +753,22 @@ function ouvrirModalSurMesure() {
   div.innerHTML =
     '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)fermerModalDevis()">' +
       '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;">' +
-        '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">✍️ Demande sur-mesure</div>' +
-        '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">Cet horaire n\'est pas dans les créneaux habituellement calculés — l\'artisan devra le valider lui-même avant que ce soit définitif.<br>📍 ' + escHtml(ctx.adresse) + '</div>' +
+        '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">' + T('surmesure_titre') + '</div>' +
+        '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">' + T('surmesure_intro1') + '<br>📍 ' + escHtml(ctx.adresse) + '</div>' +
         '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
           '<input id="sm-date" type="date" style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-size:13px;box-sizing:border-box;">' +
           '<input id="sm-heure" type="time" style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-size:13px;box-sizing:border-box;">' +
         '</div>' +
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
-        '<input id="devis-email" type="email" placeholder="Email (optionnel — pour recevoir la confirmation automatiquement)" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        '<input id="devis-email" type="email" placeholder="' + T('ph_email_optionnel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         typeInterventionPickerHTML() +
-        '<textarea id="devis-message" rows="3" placeholder="Pourquoi cet horaire vous conviendrait particulièrement ? (optionnel)" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
+        '<textarea id="devis-message" rows="3" placeholder="' + T('ph_pourquoi') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         photosPickerHTML() +
         '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
         '<div style="display:flex;gap:8px;">' +
-          '<button id="btn-devis" onclick="envoyerSurMesureDevis()" style="flex:1;padding:11px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Envoyer ma demande</button>' +
-          '<button onclick="fermerModalDevis()" style="flex:1;padding:11px;border-radius:9px;border:1px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);cursor:pointer;">Annuler</button>' +
+          '<button id="btn-devis" onclick="envoyerSurMesureDevis()" style="flex:1;padding:11px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">' + T('btn_envoyer_demande') + '</button>' +
+          '<button onclick="fermerModalDevis()" style="flex:1;padding:11px;border-radius:9px;border:1px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);cursor:pointer;">' + T('btn_annuler') + '</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -811,7 +811,7 @@ async function envoyerSurMesureDevis() {
     afficherConfirmationDemande(_profilDataCourant && _profilDataCourant.artisan && _profilDataCourant.artisan.nom_entreprise, !!email);
   } catch (e) {
     err.textContent = e.message; err.style.display = 'block';
-    btn.disabled = false; btn.textContent = 'Envoyer ma demande';
+    btn.disabled = false; btn.textContent = T('btn_envoyer_demande');
   }
 }
 
@@ -845,18 +845,18 @@ function redimensionnerImage(file, maxWidth) {
 // ── Type d'intervention (étiquettes rapides) — partagé entre les 4 formulaires de devis ──
 var _typeInterventionChoisi = null;
 var TYPES_INTERVENTION = [
-  { code: 'urgence', label: '🚨 Dépannage / Urgence' },
-  { code: 'installation', label: '🔧 Installation / Pose' },
-  { code: 'devis', label: '📋 Devis / Conseil' },
-  { code: 'entretien', label: '🧹 Entretien' },
+  { code: 'urgence', labelKey: 'type_urgence' },
+  { code: 'installation', labelKey: 'type_installation' },
+  { code: 'devis', labelKey: 'type_devis' },
+  { code: 'entretien', labelKey: 'type_entretien' },
 ];
 
 function typeInterventionPickerHTML() {
   return '<div style="margin-bottom:10px;">' +
-      '<div style="font-size:11.5px;font-weight:600;color:var(--mu2,#777);margin-bottom:6px;">Nature de l\'intervention (optionnel, aide l\'artisan à se projeter vite)</div>' +
+      '<div style="font-size:11.5px;font-weight:600;color:var(--mu2,#777);margin-bottom:6px;">' + T('type_interv_titre') + '</div>' +
       '<div id="type-interv-pills" style="display:flex;gap:6px;flex-wrap:wrap;">' +
         TYPES_INTERVENTION.map(function(t) {
-          return '<button type="button" id="type-interv-' + t.code + '" onclick="choisirTypeIntervention(\'' + t.code + '\')" style="padding:6px 11px;border-radius:20px;border:1.5px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);font-size:12px;font-weight:600;cursor:pointer;">' + t.label + '</button>';
+          return '<button type="button" id="type-interv-' + t.code + '" onclick="choisirTypeIntervention(\'' + t.code + '\')" style="padding:6px 11px;border-radius:20px;border:1.5px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);font-size:12px;font-weight:600;cursor:pointer;">' + T(t.labelKey) + '</button>';
         }).join('') +
       '</div>' +
     '</div>';
@@ -876,14 +876,14 @@ function choisirTypeIntervention(code) {
 
 function typeInterventionLabel(code) {
   var t = TYPES_INTERVENTION.find(function(x) { return x.code === code; });
-  return t ? t.label : null;
+  return t ? T(t.labelKey) : null;
 }
 
 function photosPickerHTML() {
   return '<div style="margin-bottom:10px;">' +
-      '<div style="font-size:11.5px;font-weight:600;color:var(--mu2,#777);margin-bottom:6px;">📷 Une ou plusieurs photos (optionnel)</div>' +
+      '<div style="font-size:11.5px;font-weight:600;color:var(--mu2,#777);margin-bottom:6px;">' + T('photos_titre') + '</div>' +
       '<input type="file" id="devis-photos-input" accept="image/*" multiple style="display:none;" onchange="ajouterPhotosDevis(this.files)">' +
-      '<button type="button" onclick="document.getElementById(\'devis-photos-input\').click()" style="width:100%;padding:9px;border-radius:8px;border:1.5px dashed var(--line,#ddd);background:transparent;color:var(--mu2,#777);font-size:12.5px;font-weight:600;cursor:pointer;">+ Ajouter des photos — ça aide l\'artisan à évaluer le travail</button>' +
+      '<button type="button" onclick="document.getElementById(\'devis-photos-input\').click()" style="width:100%;padding:9px;border-radius:8px;border:1.5px dashed var(--line,#ddd);background:transparent;color:var(--mu2,#777);font-size:12.5px;font-weight:600;cursor:pointer;">' + T('photos_btn') + '</button>' +
       '<div id="devis-photos-preview" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"></div>' +
     '</div>';
 }
@@ -922,10 +922,10 @@ var _devisContactPref = 'telephone';
 
 function contactPrefHTML() {
   return '<div style="margin-bottom:10px;">' +
-      '<div style="font-size:11.5px;font-weight:600;color:var(--mu2,#777);margin-bottom:6px;">Comment souhaitez-vous être recontacté(e) ?</div>' +
+      '<div style="font-size:11.5px;font-weight:600;color:var(--mu2,#777);margin-bottom:6px;">' + T('pref_contact_titre') + '</div>' +
       '<div style="display:flex;gap:8px;">' +
-        '<button type="button" id="pref-tel-btn" onclick="choisirContactPref(\'telephone\')" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--ac,#B5502F);background:var(--ac,#B5502F);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;">📞 Téléphone</button>' +
-        '<button type="button" id="pref-email-btn" onclick="choisirContactPref(\'email\')" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);font-size:12.5px;font-weight:600;cursor:pointer;">📧 Email</button>' +
+        '<button type="button" id="pref-tel-btn" onclick="choisirContactPref(\'telephone\')" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--ac,#B5502F);background:var(--ac,#B5502F);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;">' + T('pref_tel') + '</button>' +
+        '<button type="button" id="pref-email-btn" onclick="choisirContactPref(\'email\')" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);font-size:12.5px;font-weight:600;cursor:pointer;">' + T('pref_email') + '</button>' +
       '</div>' +
     '</div>' +
     '<input id="devis-email" type="email" placeholder="votre@email.com" style="display:none;width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">';
@@ -988,10 +988,10 @@ function ouvrirModalDevisGeneral() {
   div.innerHTML =
     '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)fermerModalDevis()">' +
       '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;">' +
-        '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">📢 Demande de devis générale</div>' +
-        '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">Votre demande sera visible par tous les artisans du secteur et de la commune choisis — idéal pour comparer plusieurs devis.</div>' +
+        '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">' + T('devisgen_titre') + '</div>' +
+        '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">' + T('devisgen_intro') + '</div>' +
         '<select id="devis-secteur" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Outfit\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:6px;">' + options + '</select>' +
-        '<div style="font-size:11px;color:var(--mu,#999);margin-bottom:10px;">Vous ne voyez pas votre secteur ? <a href="mailto:contact@learnlogicstudio.com" style="color:var(--ac);">Écrivez-nous</a> pour qu\'on l\'ajoute.</div>' +
+        '<div style="font-size:11px;color:var(--mu,#999);margin-bottom:10px;">' + T('secteur_manquant_q') + ' <a href="mailto:contact@learnlogicstudio.com" style="color:var(--ac);">' + T('secteur_manquant_lien') + '</a> ' + T('secteur_manquant_suite') + '</div>' +
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         contactPrefHTML() +
@@ -1022,7 +1022,7 @@ async function envoyerDemandeDevisGenerale() {
     err.textContent = T('err_champs'); err.style.display = 'block'; return;
   }
   if (_devisContactPref === 'email' && !email) {
-    err.textContent = 'Merci de renseigner votre email — vous avez choisi d\'être recontacté(e) par ce canal.'; err.style.display = 'block'; return;
+    err.textContent = T('err_email_requis'); err.style.display = 'block'; return;
   }
   btn.disabled = true; btn.textContent = T('btn_envoi_cours');
 
@@ -1060,7 +1060,7 @@ async function envoyerDemandeDevis(artisanId, secteurArtisan) {
     err.textContent = T('err_champs'); err.style.display = 'block'; return;
   }
   if (_devisContactPref === 'email' && !email) {
-    err.textContent = 'Merci de renseigner votre email — vous avez choisi d\'être recontacté(e) par ce canal.'; err.style.display = 'block'; return;
+    err.textContent = T('err_email_requis'); err.style.display = 'block'; return;
   }
   btn.disabled = true; btn.textContent = T('btn_envoi_cours');
 
