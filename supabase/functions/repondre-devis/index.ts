@@ -174,7 +174,7 @@ Deno.serve(async (req: Request) => {
     if (errClient) throw errClient;
 
     // 2) Intervention créée directement dans le planning
-    const notesIntervention = message ? `${demande.description_besoin}\n\nNote de l'artisan : ${message}` : demande.description_besoin;
+    const notesIntervention = message ? `${demande.description_besoin} (Note de l'artisan à la confirmation : ${message})` : demande.description_besoin;
     const { error: errInter } = await sb.from("mpa_artisans_interventions").insert({
       artisan_id: artisanId,
       client_id: client.id,
