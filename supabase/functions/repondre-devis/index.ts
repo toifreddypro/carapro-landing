@@ -52,7 +52,7 @@ function pageHtml(titre: string, message: string, couleur: string): Response {
       a{color:#B5502F;font-weight:700;text-decoration:none;}
     </style></head>
     <body><div class="box"><h1>${titre}</h1><p>${message}</p></div></body></html>`;
-  return new Response(html, { headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" } });
+  return new Response(html, { headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8", "Content-Disposition": "inline" } });
 }
 
 function formulaireMessageHtml(token: string, action: string, dateAff: string, heure: string): Response {
@@ -82,7 +82,7 @@ function formulaireMessageHtml(token: string, action: string, dateAff: string, h
         <button type="submit">${estConfirmer ? "✅ Confirmer" : "❌ Refuser"}</button>
       </form>
     </div></body></html>`;
-  return new Response(html, { headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" } });
+  return new Response(html, { headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8", "Content-Disposition": "inline" } });
 }
 
 async function envoyerEmail(to: string, subject: string, html: string) {
