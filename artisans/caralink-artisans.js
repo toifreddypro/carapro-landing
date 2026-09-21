@@ -370,6 +370,7 @@ function renderArtisanCard(a) {
   var badgeTarif = a.tarif_min != null
     ? '<span class="badge-trust" style="background:rgba(45,93,74,.1);color:#2D5D4A;">' + T('des_prefix') + ' ' + a.tarif_min + '€</span>'
     : '';
+  var badgesTxt = badgeVerifie + badgeNote + badgeTarif;
   return '<div class="formateur-card" onclick="ouvrirProfil(' + jsAttr(a.id) + ')">' +
     '<div class="card-top-row">' + photo +
       '<div class="card-info">' +
@@ -378,10 +379,8 @@ function renderArtisanCard(a) {
         '<div id="horaires-carte-' + a.id + '" style="margin-top:3px;"></div>' +
       '</div>' +
     '</div>' +
-    '<div class="card-meta">' +
-      '<div class="card-badges">' + badgeVerifie + badgeNote + badgeTarif + '</div>' +
-    '</div>' +
-    (a.bio ? '<div style="font-size:13px;color:var(--mu2);margin-top:8px;">' + escHtml(a.bio) + '</div>' : '') +
+    (badgesTxt ? '<div class="card-meta"><div class="card-badges">' + badgesTxt + '</div></div>' : '') +
+    (a.bio ? '<div style="font-size:13px;color:var(--mu2);">' + escHtml(a.bio) + '</div>' : '') +
     '<div id="apercu-carte-' + a.id + '" style="margin-top:8px;"></div>' +
   '</div>';
 }
@@ -485,7 +484,7 @@ async function chargerHorairesCarte(artisanId) {
       headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON },
     });
     var data = await res.json();
-    if (!res.ok || !Array.isArray(data) || !data.length) { zone.innerHTML = ''; return; }
+    if (!res.ok || !Array.isArray(data) || !data.length) { zone.style.display = 'none'; return; }
 
     var parJour = {};
     data.forEach(function(h) {
@@ -526,7 +525,7 @@ async function chargerApercuDispoCarte(artisanId) {
       body: JSON.stringify({ mode: 'apercu', artisan_id: artisanId }),
     });
     var data = await res.json();
-    if (data.error || !data.prochaine_date) { zone.innerHTML = ''; return; }
+    if (data.error || !data.prochaine_date) { zone.style.display = 'none'; return; }
     zone.innerHTML = '<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:rgba(22,163,74,.08);color:#16a34a;font-size:11.5px;font-weight:700;">📅 Disponible ' + data.label + '</span> <span style="font-size:11px;color:var(--mu,#999);">— cliquez pour prendre rendez-vous</span>';
   } catch (e) { zone.innerHTML = ''; }
 }
