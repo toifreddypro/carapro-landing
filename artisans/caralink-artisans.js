@@ -343,7 +343,7 @@ async function chargerArtisans() {
       ? artisans.map(renderArtisanCard).join('')
       : '<div class="etat-vide"><div class="etat-vide-titre">' + T('aucun_artisan_titre') + '</div>' + T('aucun_artisan_texte') + '</div>';
 
-    artisans.forEach(function(a) { chargerApercuDispoCarte(a.id); });
+    artisans.forEach(function(a) { chargerApercuDispoCarte(a.id); chargerHorairesCarte(a.id); });
 
     mettreAJourCarte(artisans);
 
@@ -375,6 +375,7 @@ function renderArtisanCard(a) {
       '<div class="card-info">' +
         '<div class="card-name">' + escHtml(a.nom_entreprise) + '</div>' +
         '<div class="card-title">' + secteurLabel(a.secteur) + ' · 📍 ' + escHtml(a.commune) + '</div>' +
+        '<div id="horaires-carte-' + a.id + '" style="margin-top:3px;"></div>' +
       '</div>' +
     '</div>' +
     '<div class="card-meta">' +
@@ -473,6 +474,48 @@ window._dispoContexte = null;
 function heureVersMinPublic(hhmm) { var p = hhmm.split(':'); return parseInt(p[0],10)*60 + parseInt(p[1],10); }
 function minVersHeurePublic(min) { min = Math.max(0, Math.round(min)); var h = Math.floor(min/60), m = min%60; return (h<10?'0':'')+h+':'+(m<10?'0':'')+m; }
 
+var JOURS_COURT_CARTE = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+var ORDRE_AFFICHAGE_JOURS_CARTE = [1, 2, 3, 4, 5, 6, 0]; // lundi en premier, dimanche en dernier
+
+async function chargerHorairesCarte(artisanId) {
+  var zone = document.getElementById('horaires-carte-' + artisanId);
+  if (!zone) return;
+  try {
+    var res = await fetch(SUPABASE_URL + '/rest/v1/artisans_horaires?artisan_id=eq.' + encodeURIComponent(artisanId) + '&select=jour_semaine,heure_debut,heure_fin&order=jour_semaine.asc,heure_debut.asc', {
+      headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON },
+    });
+    var data = await res.json();
+    if (!res.ok || !Array.isArray(data) || !data.length) { zone.innerHTML = ''; return; }
+
+    var parJour = {};
+    data.forEach(function(h) {
+      var txt = h.heure_debut.slice(0, 5) + '-' + h.heure_fin.slice(0, 5);
+      parJour[h.jour_semaine] = (parJour[h.jour_semaine] ? parJour[h.jour_semaine] + ', ' : '') + txt;
+    });
+
+    // Regroupe les jours consécutifs partageant exactement les mêmes horaires (ex : "Lun-Ven 08:00-17:00")
+    var groupes = [];
+    var courant = null;
+    ORDRE_AFFICHAGE_JOURS_CARTE.forEach(function(j) {
+      var val = parJour[j] || null;
+      if (courant && courant.val === val) {
+        courant.fin = j;
+      } else {
+        if (courant) groupes.push(courant);
+        courant = { debut: j, fin: j, val: val };
+      }
+    });
+    if (courant) groupes.push(courant);
+
+    var texte = groupes.filter(function(g) { return g.val; }).map(function(g) {
+      var label = g.debut === g.fin ? JOURS_COURT_CARTE[g.debut] : JOURS_COURT_CARTE[g.debut] + '-' + JOURS_COURT_CARTE[g.fin];
+      return label + ' ' + g.val;
+    }).join(' · ');
+
+    zone.innerHTML = texte ? '<div style="font-size:12px;color:var(--mu2,#666);">🕐 ' + escHtml(texte) + '</div>' : '';
+  } catch (e) { zone.innerHTML = ''; }
+}
+
 async function chargerApercuDispoCarte(artisanId) {
   var zone = document.getElementById('apercu-carte-' + artisanId);
   if (!zone) return;
@@ -484,7 +527,7 @@ async function chargerApercuDispoCarte(artisanId) {
     });
     var data = await res.json();
     if (data.error || !data.prochaine_date) { zone.innerHTML = ''; return; }
-    zone.innerHTML = '<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:rgba(22,163,74,.08);color:#16a34a;font-size:11.5px;font-weight:700;">📅 Disponible ' + data.label + '</span>';
+    zone.innerHTML = '<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:rgba(22,163,74,.08);color:#16a34a;font-size:11.5px;font-weight:700;">📅 Disponible ' + data.label + '</span> <span style="font-size:11px;color:var(--mu,#999);">— cliquez pour prendre rendez-vous</span>';
   } catch (e) { zone.innerHTML = ''; }
 }
 
