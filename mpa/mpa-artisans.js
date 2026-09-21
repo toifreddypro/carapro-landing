@@ -429,7 +429,8 @@ async function chargerDemandes() {
     }
 
     var ligneCreneau = estCreneau && d.date_intervention
-      ? '<div style="font-size:13px;font-weight:700;color:var(--ac);margin-bottom:6px;">📅 ' + new Date(d.date_intervention).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' }) + ' à ' + (d.heure_debut||'').slice(0,5) + '</div>' +
+      ? (d.hors_horaires ? '<div style="font-size:12px;font-weight:700;color:#9a3412;background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:4px 8px;margin-bottom:6px;display:inline-block;">⚠️ Hors horaires habituels</div><br>' : '') +
+        '<div style="font-size:13px;font-weight:700;color:var(--ac);margin-bottom:6px;">📅 ' + new Date(d.date_intervention).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' }) + ' à ' + (d.heure_debut||'').slice(0,5) + '</div>' +
         (d.reponse_message ? '<div style="font-size:12px;color:var(--mu2);font-style:italic;margin-bottom:6px;">Votre message : « ' + escHtml(d.reponse_message) + ' »</div>' : '')
       : '';
 
@@ -480,7 +481,8 @@ function jsAttrLocal(val) {
 async function repondreCreneauInApp(token, action) {
   var message = prompt(action === 'confirmer'
     ? 'Un message pour le client ? (optionnel, laissez vide pour aucun)'
-    : 'Une raison à préciser au client ? (optionnel, laissez vide pour aucune)', '');
+    : 'Une raison à préciser au client ? (modifiable, ou laissez vide pour aucune)',
+    action === 'refuser' ? 'Désolé, ce créneau n\'est finalement plus disponible.' : '');
   if (message === null) return; // annulé
   if (action === 'refuser' && !confirm('Confirmer le refus de ce créneau ?')) return;
   try {
