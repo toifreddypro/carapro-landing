@@ -1320,6 +1320,37 @@ async function initDashboard() {
   _dispoAnnee = new Date().getFullYear();
   _dispoMois = new Date().getMonth();
   await renderDispoCalendrier();
+  demarrerEncartAlternance();
+}
+
+// ── Encart croisé vers CaraLink Alternance — "Essor de CaraLink" ──
+var PHRASES_ENCART_ALTERNANCE = [
+  'Un artisan a aussi besoin de prospecter. <strong style="color:var(--tx);">Il vous faut un commercial.</strong>',
+  'Un artisan a aussi besoin de se faire connaître. <strong style="color:var(--tx);">Il vous faut quelqu\'un en communication.</strong>',
+  'Un artisan a aussi besoin de gérer sa paperasse. <strong style="color:var(--tx);">Il vous faut un assistant administratif.</strong>',
+  'Un artisan a aussi besoin de chiffrer ses projets. <strong style="color:var(--tx);">Il vous faut quelqu\'un en comptabilité/gestion.</strong>',
+];
+var _indexEncartAlternance = 0;
+var _timerEncartAlternance = null;
+
+function demarrerEncartAlternance() {
+  var zone = document.getElementById('encart-alternance-texte');
+  if (!zone) return;
+  afficherPhraseEncartAlternance();
+  if (_timerEncartAlternance) clearInterval(_timerEncartAlternance);
+  _timerEncartAlternance = setInterval(function() {
+    zone.style.opacity = '0';
+    setTimeout(function() {
+      _indexEncartAlternance = (_indexEncartAlternance + 1) % PHRASES_ENCART_ALTERNANCE.length;
+      afficherPhraseEncartAlternance();
+      zone.style.opacity = '1';
+    }, 400);
+  }, 5000);
+}
+
+function afficherPhraseEncartAlternance() {
+  var zone = document.getElementById('encart-alternance-texte');
+  if (zone) zone.innerHTML = PHRASES_ENCART_ALTERNANCE[_indexEncartAlternance];
 }
 
 async function calculerDashboardFiscal() {
