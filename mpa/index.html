@@ -819,10 +819,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
     <div class="modal-field"><label>Notes</label><input type="text" id="mi-notes" placeholder="Optionnel"></div>
     <div class="modal-field"><label>Statut</label>
       <select id="mi-statut" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;" onchange="toggleDatePaiement()">
-        <option value="planifiee">Planifiée</option>
-        <option value="terminee">Terminée</option>
-        <option value="payee">Payée</option>
-        <option value="annulee">Annulée</option>
+        <option value="planifiee">🟠 Planifiée</option>
+        <option value="terminee">🔵 Terminée</option>
+        <option value="payee">🟢 Payée</option>
+        <option value="annulee">⚫ Annulée</option>
       </select>
     </div>
     <div class="modal-field" id="mi-date-paiement-wrap" style="display:none;">
