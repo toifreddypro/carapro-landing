@@ -341,8 +341,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .cal-pill.st-terminee{border-left-color:#3b82f6;background:rgba(59,130,246,.06);}
 .cal-pill.st-payee{border-left-color:#22c55e;background:rgba(34,197,94,.08);}
 .cal-pill.st-annulee{border-left-color:var(--mu);background:var(--p2);opacity:.55;text-decoration:line-through;}
-.cal-pill-edit{flex-shrink:0;opacity:.4;font-size:9px;padding:0 2px;}
-.cal-pill-edit:hover{opacity:1;}
+.cal-status-dot{flex-shrink:0;width:9px;height:9px;border-radius:50%;cursor:pointer;box-shadow:0 0 0 2px var(--panel);}
+.cal-status-dot:hover{transform:scale(1.25);}
+.cal-status-dot.cal-status-planifiee{background:#f59e0b;}
+.cal-status-dot.cal-status-terminee{background:#3b82f6;}
+.cal-status-dot.cal-status-payee{background:#22c55e;}
 .cal-pill:hover{border-color:var(--ac);transform:translateX(1px);}
 .cal-pill-heure{color:var(--mu);font-family:'JetBrains Mono',monospace;font-size:9px;}
 .cal-add-btn{width:100%;text-align:center;font-size:9px;color:var(--mu);background:none;border:1px dashed var(--b2);border-radius:5px;cursor:pointer;padding:2px 0;opacity:0;transition:opacity .15s;}

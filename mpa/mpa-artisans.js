@@ -290,17 +290,23 @@ function renderCreneauHtml(creneau, dateStr, liste) {
   var visibles = liste.slice(0, maxVisible);
   var reste = liste.length - maxVisible;
 
+  var LABEL_STATUT = { planifiee: 'Planifiée', terminee: 'Terminée', payee: 'Payée' };
+
   var pills = visibles.map(function(i) {
     var client = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '';
     var service = i.artisans_services ? i.artisans_services.nom_service : '(sans service)';
     var heure = i.heure_debut ? i.heure_debut.slice(0,5) : '';
     var statut = i.statut || 'planifiee';
-    return '<div class="cal-pill st-' + statut + '" onclick="avancerStatut(\'' + i.id + '\',event)" title="Cliquer pour faire avancer le statut">' +
+    var statutSuivant = CYCLE_STATUT[statut] || 'planifiee';
+    var titreStatut = statut === 'annulee' ? 'Intervention annulée' : 'Statut : ' + LABEL_STATUT[statut] + ' — cliquer pour passer à ' + LABEL_STATUT[statutSuivant];
+    return '<div class="cal-pill st-' + statut + '" onclick="ouvrirIntervention(\'' + i.id + '\')" title="Cliquer pour voir/modifier les détails">' +
       '<span class="cal-pill-txt">' +
         (heure ? '<span class="cal-pill-heure">' + heure + '</span> ' : '') +
         escHtml(service) + (client ? ' — ' + escHtml(client) : '') +
       '</span>' +
-      '<span class="cal-pill-edit" onclick="event.stopPropagation();ouvrirIntervention(\'' + i.id + '\')" title="Modifier les détails">✎</span>' +
+      (statut !== 'annulee'
+        ? '<span class="cal-status-dot cal-status-' + statut + '" onclick="event.stopPropagation();avancerStatut(\'' + i.id + '\',event)" title="' + titreStatut + '"></span>'
+        : '') +
     '</div>';
   }).join('');
 
