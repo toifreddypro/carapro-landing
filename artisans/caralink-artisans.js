@@ -660,6 +660,7 @@ function ouvrirModalCreneau() {
   var ctx = window._dispoContexte;
   if (!ctx) return;
   _devisPhotos = [];
+  _typeInterventionChoisi = null;
   var div = document.getElementById('modal-devis');
   if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
   var dateAff = new Date(ctx.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -671,6 +672,7 @@ function ouvrirModalCreneau() {
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-email" type="email" placeholder="Email (optionnel — pour recevoir la confirmation automatiquement)" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        typeInterventionPickerHTML() +
         '<textarea id="devis-message" rows="3" placeholder="Précisions pour l\'artisan (optionnel)" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         photosPickerHTML() +
         '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
@@ -680,6 +682,26 @@ function ouvrirModalCreneau() {
         '</div>' +
       '</div>' +
     '</div>';
+}
+
+function afficherConfirmationDemande(nomArtisan, emailDonne) {
+  var div = document.getElementById('modal-devis');
+  if (!div) return;
+  div.innerHTML =
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)fermerConfirmationDemande()">' +
+      '<div style="background:var(--panel,#fff);border-radius:14px;padding:28px;max-width:420px;width:100%;text-align:center;">' +
+        '<div style="font-size:38px;margin-bottom:10px;">✅</div>' +
+        '<div style="font-size:16px;font-weight:700;margin-bottom:10px;">Demande envoyée !</div>' +
+        '<div style="font-size:13.5px;color:var(--mu2,#555);line-height:1.5;margin-bottom:6px;">Votre demande de rendez-vous a bien été transmise à <strong>' + escHtml(nomArtisan || 'l\'artisan') + '</strong>. Il a été prévenu et vous répondra sous 24h.</div>' +
+        (emailDonne ? '<div style="font-size:12.5px;color:var(--mu,#999);margin-bottom:16px;">Un récapitulatif vous a été envoyé par email.</div>' : '<div style="margin-bottom:16px;"></div>') +
+        '<button onclick="fermerConfirmationDemande()" style="width:100%;padding:11px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Fermer</button>' +
+      '</div>' +
+    '</div>';
+}
+
+function fermerConfirmationDemande() {
+  fermerModalDevis();
+  fermerProfil({ target: null, currentTarget: null });
 }
 
 async function envoyerCreneauDevis() {
@@ -702,7 +724,7 @@ async function envoyerCreneauDevis() {
       body: JSON.stringify({
         client_nom: nom, client_telephone: tel, client_email: email || null, contact_prefere: email ? 'email' : 'telephone',
         commune: ctx.commune, description_besoin: message, secteur: ctx.secteur, photos: _devisPhotos,
-        artisan_id: ctx.artisanId,
+        artisan_id: ctx.artisanId, type_intervention: _typeInterventionChoisi,
         date_intervention: ctx.date, heure_debut: ctx.heureDebut, heure_fin: ctx.heureFin,
         adresse: ctx.adresse, code_postal: ctx.cp, service_id: ctx.serviceId,
         latitude: ctx.latitude, longitude: ctx.longitude,
@@ -711,9 +733,7 @@ async function envoyerCreneauDevis() {
     var data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    fermerModalDevis();
-    fermerProfil({ target: null, currentTarget: null });
-    showToast('Votre demande a été envoyée à l\'artisan — vous recevrez une confirmation dès qu\'il aura validé.');
+    afficherConfirmationDemande(_profilDataCourant && _profilDataCourant.artisan && _profilDataCourant.artisan.nom_entreprise, !!email);
   } catch (e) {
     err.textContent = e.message; err.style.display = 'block';
     btn.disabled = false; btn.textContent = 'Envoyer à l\'artisan';
@@ -727,6 +747,7 @@ function ouvrirModalSurMesure() {
   var ctx = window._dispoContexte;
   if (!ctx) return;
   _devisPhotos = [];
+  _typeInterventionChoisi = null;
   var div = document.getElementById('modal-devis');
   if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
   div.innerHTML =
@@ -741,6 +762,7 @@ function ouvrirModalSurMesure() {
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-email" type="email" placeholder="Email (optionnel — pour recevoir la confirmation automatiquement)" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        typeInterventionPickerHTML() +
         '<textarea id="devis-message" rows="3" placeholder="Pourquoi cet horaire vous conviendrait particulièrement ? (optionnel)" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         photosPickerHTML() +
         '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
@@ -776,7 +798,7 @@ async function envoyerSurMesureDevis() {
       body: JSON.stringify({
         client_nom: nom, client_telephone: tel, client_email: email || null, contact_prefere: email ? 'email' : 'telephone',
         commune: ctx.commune, description_besoin: message, secteur: ctx.secteur, photos: _devisPhotos,
-        artisan_id: ctx.artisanId,
+        artisan_id: ctx.artisanId, type_intervention: _typeInterventionChoisi,
         date_intervention: dateVal, heure_debut: heureVal, heure_fin: heureFin,
         adresse: ctx.adresse, code_postal: ctx.cp, service_id: ctx.serviceId,
         latitude: ctx.latitude, longitude: ctx.longitude,
@@ -786,9 +808,7 @@ async function envoyerSurMesureDevis() {
     var data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    fermerModalDevis();
-    fermerProfil({ target: null, currentTarget: null });
-    showToast('Votre demande sur-mesure a été envoyée à l\'artisan pour validation.');
+    afficherConfirmationDemande(_profilDataCourant && _profilDataCourant.artisan && _profilDataCourant.artisan.nom_entreprise, !!email);
   } catch (e) {
     err.textContent = e.message; err.style.display = 'block';
     btn.disabled = false; btn.textContent = 'Envoyer ma demande';
@@ -820,6 +840,43 @@ function redimensionnerImage(file, maxWidth) {
     reader.onerror = function() { reject(new Error('Lecture du fichier échouée')); };
     reader.readAsDataURL(file);
   });
+}
+
+// ── Type d'intervention (étiquettes rapides) — partagé entre les 4 formulaires de devis ──
+var _typeInterventionChoisi = null;
+var TYPES_INTERVENTION = [
+  { code: 'urgence', label: '🚨 Dépannage / Urgence' },
+  { code: 'installation', label: '🔧 Installation / Pose' },
+  { code: 'devis', label: '📋 Devis / Conseil' },
+  { code: 'entretien', label: '🧹 Entretien' },
+];
+
+function typeInterventionPickerHTML() {
+  return '<div style="margin-bottom:10px;">' +
+      '<div style="font-size:11.5px;font-weight:600;color:var(--mu2,#777);margin-bottom:6px;">Nature de l\'intervention (optionnel, aide l\'artisan à se projeter vite)</div>' +
+      '<div id="type-interv-pills" style="display:flex;gap:6px;flex-wrap:wrap;">' +
+        TYPES_INTERVENTION.map(function(t) {
+          return '<button type="button" id="type-interv-' + t.code + '" onclick="choisirTypeIntervention(\'' + t.code + '\')" style="padding:6px 11px;border-radius:20px;border:1.5px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);font-size:12px;font-weight:600;cursor:pointer;">' + t.label + '</button>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+}
+
+function choisirTypeIntervention(code) {
+  _typeInterventionChoisi = (_typeInterventionChoisi === code) ? null : code; // recliquer désélectionne
+  TYPES_INTERVENTION.forEach(function(t) {
+    var btn = document.getElementById('type-interv-' + t.code);
+    if (!btn) return;
+    var actif = _typeInterventionChoisi === t.code;
+    btn.style.background = actif ? 'var(--ac,#B5502F)' : 'transparent';
+    btn.style.color = actif ? '#fff' : 'var(--mu2,#777)';
+    btn.style.borderColor = actif ? 'var(--ac,#B5502F)' : 'var(--line,#ddd)';
+  });
+}
+
+function typeInterventionLabel(code) {
+  var t = TYPES_INTERVENTION.find(function(x) { return x.code === code; });
+  return t ? t.label : null;
 }
 
 function photosPickerHTML() {
@@ -892,6 +949,7 @@ function choisirContactPref(pref) {
 function ouvrirModalDevis(artisanId, nomArtisan, secteurArtisan) {
   _devisContactPref = 'telephone'; // réinitialisé à chaque ouverture
   _devisPhotos = []; document.getElementById('devis-photos-preview') && (document.getElementById('devis-photos-preview').innerHTML = '');
+  _typeInterventionChoisi = null;
   var div = document.getElementById('modal-devis');
   if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
   div.innerHTML =
@@ -903,6 +961,7 @@ function ouvrirModalDevis(artisanId, nomArtisan, secteurArtisan) {
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         contactPrefHTML() +
         '<input id="devis-commune" type="text" placeholder="' + T('ph_commune') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        typeInterventionPickerHTML() +
         '<textarea id="devis-message" rows="4" placeholder="' + T('ph_message') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         photosPickerHTML() +
         '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
@@ -919,6 +978,7 @@ function fermerModalDevis() { var div = document.getElementById('modal-devis'); 
 function ouvrirModalDevisGeneral() {
   _devisContactPref = 'telephone'; // réinitialisé à chaque ouverture
   _devisPhotos = []; document.getElementById('devis-photos-preview') && (document.getElementById('devis-photos-preview').innerHTML = '');
+  _typeInterventionChoisi = null;
   var div = document.getElementById('modal-devis');
   if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
   var champLabel = secteurLabelChamp();
@@ -936,6 +996,7 @@ function ouvrirModalDevisGeneral() {
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         contactPrefHTML() +
         '<input id="devis-commune" type="text" placeholder="' + T('ph_commune') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        typeInterventionPickerHTML() +
         '<textarea id="devis-message" rows="4" placeholder="' + T('ph_message') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         photosPickerHTML() +
         '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
@@ -971,7 +1032,7 @@ async function envoyerDemandeDevisGenerale() {
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
       body: JSON.stringify({
         client_nom: nom, client_telephone: tel, client_email: email || null, contact_prefere: _devisContactPref,
-        commune: commune, description_besoin: message, secteur: secteur, photos: _devisPhotos,
+        commune: commune, description_besoin: message, secteur: secteur, photos: _devisPhotos, type_intervention: _typeInterventionChoisi,
         // pas d'artisan_id : demande ouverte, visible par tous les artisans du secteur/commune
       }),
     });
@@ -1010,7 +1071,7 @@ async function envoyerDemandeDevis(artisanId, secteurArtisan) {
       body: JSON.stringify({
         client_nom: nom, client_telephone: tel, client_email: email || null, contact_prefere: _devisContactPref,
         commune: commune, description_besoin: message, secteur: secteurArtisan || 'autre', photos: _devisPhotos,
-        artisan_id: artisanId,
+        artisan_id: artisanId, type_intervention: _typeInterventionChoisi,
       }),
     });
     var data = await res.json();

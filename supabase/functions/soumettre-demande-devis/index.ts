@@ -50,7 +50,18 @@ async function envoyerEmail(to: string, subject: string, html: string) {
   }
 }
 
-function emailHtmlDemande(clientNom: string, clientTel: string, clientEmail: string | null, contactPrefere: string, commune: string, description: string, secteur: string, nbPhotos: number): string {
+const LABELS_TYPE_INTERVENTION: Record<string, string> = {
+  urgence: "🚨 Dépannage / Urgence",
+  installation: "🔧 Installation / Pose",
+  devis: "📋 Devis / Conseil",
+  entretien: "🧹 Entretien",
+};
+function badgeTypeIntervention(type: string | null | undefined): string {
+  if (!type || !LABELS_TYPE_INTERVENTION[type]) return "";
+  return `<p style="display:inline-block;background:#eef2ff;color:#4338ca;padding:4px 10px;border-radius:20px;font-weight:700;font-size:13px;">${LABELS_TYPE_INTERVENTION[type]}</p>`;
+}
+
+function emailHtmlDemande(clientNom: string, clientTel: string, clientEmail: string | null, contactPrefere: string, commune: string, description: string, secteur: string, nbPhotos: number, typeIntervention: string | null): string {
   const contactHtml = contactPrefere === "email"
     ? `<p>📧 Préfère être recontacté(e) par email : <a href="mailto:${clientEmail}">${clientEmail}</a></p>`
     : `<p>📞 Préfère être recontacté(e) par téléphone : <a href="tel:${clientTel}">${clientTel}</a></p>`;
@@ -60,6 +71,7 @@ function emailHtmlDemande(clientNom: string, clientTel: string, clientEmail: str
   return `
     <div style="font-family:sans-serif;max-width:480px;">
       <h2 style="color:#B5502F;">📢 Nouvelle demande de devis</h2>
+      ${badgeTypeIntervention(typeIntervention)}
       <p><strong>${clientNom}</strong> (${commune}) recherche un artisan en <strong>${secteur}</strong>.</p>
       <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${description}</p>
       ${contactHtml}
@@ -82,7 +94,7 @@ async function geocoderAdresse(adresse: string, cp: string | null, commune: stri
   return null;
 }
 
-function emailHtmlCreneau(clientNom: string, clientTel: string, clientEmail: string | null, contactPrefere: string, commune: string, adresse: string, description: string, dateAff: string, heureDebut: string, heureFin: string, nbPhotos: number, token: string, horsHoraires: boolean): string {
+function emailHtmlCreneau(clientNom: string, clientTel: string, clientEmail: string | null, contactPrefere: string, commune: string, adresse: string, description: string, dateAff: string, heureDebut: string, heureFin: string, nbPhotos: number, token: string, horsHoraires: boolean, typeIntervention: string | null): string {
   const base = Deno.env.get("SUPABASE_URL") ?? "";
   const lienConfirmer = `${base}/functions/v1/repondre-devis?token=${token}&action=confirmer`;
   const lienRefuser = `${base}/functions/v1/repondre-devis?token=${token}&action=refuser`;
@@ -97,6 +109,7 @@ function emailHtmlCreneau(clientNom: string, clientTel: string, clientEmail: str
     <div style="font-family:sans-serif;max-width:480px;">
       <h2 style="color:#B5502F;">📅 Proposition de créneau</h2>
       ${alerteHorsHoraires}
+      ${badgeTypeIntervention(typeIntervention)}
       <p><strong>${clientNom}</strong> (${commune}) souhaite une intervention le <strong>${dateAff} entre ${heureDebut} et ${heureFin}</strong>, à cette adresse : ${adresse}.</p>
       <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${description}</p>
       <p>Contact : ${contactHtml}</p>
@@ -149,11 +162,12 @@ function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): num
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function emailHtmlDemandeOuverte(commune: string, description: string, secteur: string, nbPhotos: number): string {
+function emailHtmlDemandeOuverte(commune: string, description: string, secteur: string, nbPhotos: number, typeIntervention: string | null): string {
   const photosHtml = nbPhotos > 0 ? `<p>📷 ${nbPhotos} photo${nbPhotos > 1 ? "s" : ""} jointe${nbPhotos > 1 ? "s" : ""} — à consulter dans votre espace MPA Artisans.</p>` : "";
   return `
     <div style="font-family:sans-serif;max-width:480px;">
       <h2 style="color:#B5502F;">📢 Un client vous cherche</h2>
+      ${badgeTypeIntervention(typeIntervention)}
       <p>Un client recherche un professionnel en <strong>${secteur}</strong>, disponible rapidement, à <strong>${commune}</strong>.</p>
       <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${description}</p>
       ${photosHtml}
@@ -176,7 +190,7 @@ Deno.serve(async (req: Request) => {
     if (!body) return json({ error: "Requête invalide." }, 400);
 
     const { client_nom, client_telephone, client_email, contact_prefere, secteur, description_besoin, commune, artisan_id, photos,
-            date_intervention, heure_debut, heure_fin, adresse, code_postal, latitude, longitude, service_id, hors_horaires } = body;
+            date_intervention, heure_debut, heure_fin, adresse, code_postal, latitude, longitude, service_id, hors_horaires, type_intervention } = body;
 
     if (!client_nom || !client_telephone || !secteur || !description_besoin || !commune) {
       return json({ error: "Champs obligatoires manquants." }, 400);
@@ -207,7 +221,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: demande, error } = await sb.from("demandes_devis").insert({
       client_nom, client_telephone, client_email: client_email || null, contact_prefere: contactChoisi,
-      secteur, description_besoin, commune,
+      secteur, description_besoin, commune, type_intervention: type_intervention || null,
       statut: estUneProposionDeCreneau ? "creneau_propose" : (artisan_id ? "directe" : "ouverte"),
       ...(estUneProposionDeCreneau ? {
         token, date_intervention, heure_debut, heure_fin: heure_fin || null,
@@ -246,12 +260,12 @@ Deno.serve(async (req: Request) => {
           const { data: userData } = await sb.auth.admin.getUserById(artisan.user_id);
           if (userData?.user?.email) {
             const dateAff = new Date(date_intervention).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
-            const emailHtml = emailHtmlCreneau(client_nom, client_telephone, client_email || null, contactChoisi, commune, adresse, description_besoin, dateAff, heure_debut, heure_fin || "?", nbPhotos, token as string, !!hors_horaires);
+            const emailHtml = emailHtmlCreneau(client_nom, client_telephone, client_email || null, contactChoisi, commune, adresse, description_besoin, dateAff, heure_debut, heure_fin || "?", nbPhotos, token as string, !!hors_horaires, type_intervention || null);
             await envoyerEmail(userData.user.email, `${hors_horaires ? "⚠️ Demande hors horaires — " : ""}Proposition de créneau — ${client_nom} le ${dateAff}`, emailHtml);
           }
         }
       } else {
-        const emailHtml = emailHtmlDemande(client_nom, client_telephone, client_email || null, contactChoisi, commune, description_besoin, secteur, nbPhotos);
+        const emailHtml = emailHtmlDemande(client_nom, client_telephone, client_email || null, contactChoisi, commune, description_besoin, secteur, nbPhotos, type_intervention || null);
         if (artisan_id) {
           // Demande privée : uniquement l'artisan visé
           const { data: artisan } = await sb.from("artisans").select("user_id, nom_entreprise").eq("id", artisan_id).maybeSingle();
@@ -268,7 +282,7 @@ Deno.serve(async (req: Request) => {
           const ptClient = await geocoderAdresse("", null, commune);
           const { data: artisans } = await sb.from("artisans")
             .select("user_id, latitude, longitude, rayon_intervention_km").eq("secteur", secteur);
-          const emailOuverte = emailHtmlDemandeOuverte(commune, description_besoin, secteur, nbPhotos);
+          const emailOuverte = emailHtmlDemandeOuverte(commune, description_besoin, secteur, nbPhotos, type_intervention || null);
           for (const a of artisans ?? []) {
             if (!ptClient || a.latitude == null || a.longitude == null) continue; // impossible de vérifier la distance : on ne notifie pas par prudence
             const rayon = a.rayon_intervention_km || 15;

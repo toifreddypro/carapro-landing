@@ -163,6 +163,8 @@ Deno.serve(async (req: Request) => {
 
     // 1) Client habituel : on en crée un nouveau à partir des infos de la demande
     //    (plus simple et plus sûr que de deviner un doublon existant — l'artisan pourra fusionner à la main si besoin)
+    const { data: artisanInfos } = await sb.from("artisans").select("nom_entreprise, telephone").eq("id", artisanId).maybeSingle();
+
     const { data: client, error: errClient } = await sb.from("mpa_artisans_clients").insert({
       artisan_id: artisanId,
       nom: demande.client_nom,
@@ -200,8 +202,9 @@ Deno.serve(async (req: Request) => {
       if (demande.client_email) {
         const html = `<div style="font-family:sans-serif;max-width:480px;">
           <h2 style="color:#16a34a;">✅ Rendez-vous confirmé</h2>
-          <p>Votre intervention du <strong>${dateAff} à ${(demande.heure_debut || "").slice(0, 5)}</strong> est confirmée.</p>
+          <p>Votre intervention du <strong>${dateAff} à ${(demande.heure_debut || "").slice(0, 5)}</strong> est confirmée${artisanInfos?.nom_entreprise ? ` avec <strong>${artisanInfos.nom_entreprise}</strong>` : ""}.</p>
           ${message ? `<p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${message}</p>` : ""}
+          ${artisanInfos?.telephone ? `<p style="font-size:12.5px;color:#6b7c96;">En cas d'empêchement, vous pouvez contacter directement l'artisan au <a href="tel:${artisanInfos.telephone}">${artisanInfos.telephone}</a>.</p>` : ""}
           <p style="font-size:12px;color:#6b7c96;">À bientôt !</p>
         </div>`;
         await envoyerEmail(demande.client_email, `Rendez-vous confirmé — ${dateAff}`, html);
