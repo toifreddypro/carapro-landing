@@ -409,7 +409,7 @@ async function chargerDemandes() {
     if (d.statut === 'creneau_propose') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(180,83,9,.1);color:#b45309;">📅 Créneau proposé</span>';
     else if (d.statut === 'creneau_confirme') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(22,163,74,.1);color:#16a34a;">✅ Confirmé</span>';
     else if (d.statut === 'creneau_refuse') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--brd);color:var(--mu);">❌ Refusé</span>';
-    else if (l.type === 'privee') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(181,80,47,.1);color:var(--ac);">Privée</span>';
+    else if (l.type === 'privee') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(181,80,47,.1);color:var(--ac);">🔓 Privée</span>';
     else badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(59,130,246,.1);color:#3b82f6;">📢 Ouverte (mise en concurrence)</span>';
 
     var actionsHaut;
