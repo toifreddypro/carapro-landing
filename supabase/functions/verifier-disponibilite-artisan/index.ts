@@ -115,6 +115,16 @@ Deno.serve(async (req: Request) => {
       .lte("date_intervention", dateISO(dateFinHorizon));
     if (errI) throw errI;
 
+    const { data: indispos } = await sb.from("artisans_indisponibilites")
+      .select("date_debut, date_fin")
+      .eq("artisan_id", artisan_id)
+      .gte("date_fin", dateDebut)
+      .lte("date_debut", dateISO(dateFinHorizon));
+
+    function estJourBloque(jourStr: string): boolean {
+      return (indispos || []).some((i: any) => jourStr >= i.date_debut && jourStr <= i.date_fin);
+    }
+
     // ═══ MODE APERÇU — pas de trajet, juste "y a-t-il un trou dans le planning" ═══
     if (mode === "apercu") {
       for (let i = 0; i < HORIZON_JOURS; i++) {
@@ -122,6 +132,7 @@ Deno.serve(async (req: Request) => {
         jour.setDate(jour.getDate() + i);
         const jourStr = dateISO(jour);
         const joursemaine = jour.getDay();
+        if (estJourBloque(jourStr)) continue; // journée bloquée par l'artisan (congés, absence...)
         const blocsJour = horaires.filter((h: any) => h.jour_semaine === joursemaine);
         if (!blocsJour.length) continue; // l'artisan ne travaille pas ce jour-là
 
@@ -169,7 +180,7 @@ Deno.serve(async (req: Request) => {
         jour.setDate(jour.getDate() + i);
         const jourStr = dateISO(jour);
         const joursemaine = jour.getDay();
-        const blocsJour = horaires.filter((h: any) => h.jour_semaine === joursemaine);
+        const blocsJour = estJourBloque(jourStr) ? [] : horaires.filter((h: any) => h.jour_semaine === joursemaine);
 
         const creneauxJour: string[] = [];
 

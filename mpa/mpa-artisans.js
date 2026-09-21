@@ -169,7 +169,16 @@ async function init() {
   }
 
   var { data: artisan, error } = await sb.from('artisans').select('*').eq('user_id', _session.user.id).maybeSingle();
-  if (error || !artisan) {
+  if (error) {
+    // Une erreur (session expirée, réseau...) n'est jamais la preuve d'une absence de profil —
+    // renvoyer vers l'inscription dans ce cas ferait croire à tort qu'il faut recréer un compte.
+    // On déconnecte proprement et on renvoie vers la connexion, la vraie sortie de secours.
+    await sb.auth.signOut();
+    alert('Votre session a expiré. Merci de vous reconnecter.');
+    window.location.href = 'https://caralink.app/artisans/connexion.html';
+    return;
+  }
+  if (!artisan) {
     alert('Aucun profil artisan trouvé pour ce compte. Créez d\'abord votre profil sur CaraLink Artisans.');
     window.location.href = 'https://caralink.app/artisans/inscription.html';
     return;
@@ -180,6 +189,7 @@ async function init() {
   await chargerClients();
   await chargerDemandes();
   await chargerHoraires();
+  await chargerIndispos();
   await chargerServices();
   await initPlanning();
   await chargerCompta();
@@ -1490,6 +1500,67 @@ async function supprimerPlageHoraire(id) {
   var { error } = await sb.from('artisans_horaires').delete().eq('id', id).eq('artisan_id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
   await chargerHoraires();
+}
+
+// ════════════════════════════════════════
+//  JOURNÉES BLOQUÉES — congés, jours fériés, absences ponctuelles
+// ════════════════════════════════════════
+
+var _indisposCache = [];
+
+async function chargerIndispos() {
+  var zone = document.getElementById('zone-indispo');
+  if (!zone) return;
+  var aujourdhui = new Date().toISOString().slice(0, 10);
+  var { data, error } = await sb.from('artisans_indisponibilites').select('*').eq('artisan_id', _artisan.id)
+    .gte('date_fin', aujourdhui).order('date_debut', { ascending: true });
+  if (error) { zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>'; return; }
+  _indisposCache = data || [];
+  renderIndispos();
+}
+
+function renderIndispos() {
+  var zone = document.getElementById('zone-indispo');
+  if (!zone) return;
+  var liste = _indisposCache.map(function(i) {
+    var debutAff = new Date(i.date_debut + 'T00:00:00').toLocaleDateString('fr-FR');
+    var finAff = new Date(i.date_fin + 'T00:00:00').toLocaleDateString('fr-FR');
+    var periode = i.date_debut === i.date_fin ? debutAff : (debutAff + ' → ' + finAff);
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--brd);">' +
+      '<div>' +
+        '<span style="font-weight:600;font-size:13px;">' + periode + '</span>' +
+        (i.motif ? '<span style="font-size:12px;color:var(--mu);margin-left:8px;">' + escHtml(i.motif) + '</span>' : '') +
+      '</div>' +
+      '<button onclick="supprimerIndispo(\'' + i.id + '\')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;padding:0;">✕</button>' +
+    '</div>';
+  }).join('');
+
+  zone.innerHTML =
+    (liste || '<div style="font-size:12.5px;color:var(--mu);margin-bottom:10px;">Aucune journée bloquée à venir.</div>') +
+    '<div style="display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;">' +
+      '<input type="date" id="indispo-debut" style="padding:6px 8px;border-radius:6px;border:1px solid var(--b2);font-size:12.5px;">' +
+      '<span style="font-size:12px;color:var(--mu);">au</span>' +
+      '<input type="date" id="indispo-fin" style="padding:6px 8px;border-radius:6px;border:1px solid var(--b2);font-size:12.5px;">' +
+      '<input type="text" id="indispo-motif" placeholder="Motif (optionnel)" style="flex:1;min-width:120px;padding:6px 8px;border-radius:6px;border:1px solid var(--b2);font-size:12.5px;">' +
+      '<button onclick="ajouterIndispo()" style="padding:6px 12px;border-radius:6px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">+ Bloquer</button>' +
+    '</div>';
+}
+
+async function ajouterIndispo() {
+  var debut = document.getElementById('indispo-debut').value;
+  var fin = document.getElementById('indispo-fin').value || debut;
+  var motif = document.getElementById('indispo-motif').value.trim() || null;
+  if (!debut) { alert('Merci de renseigner au moins une date de début.'); return; }
+  if (fin < debut) { alert('La date de fin ne peut pas être avant la date de début.'); return; }
+  var { error } = await sb.from('artisans_indisponibilites').insert({ artisan_id: _artisan.id, date_debut: debut, date_fin: fin, motif: motif });
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerIndispos();
+}
+
+async function supprimerIndispo(id) {
+  var { error } = await sb.from('artisans_indisponibilites').delete().eq('id', id).eq('artisan_id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerIndispos();
 }
 
 async function sauverFiche() {
