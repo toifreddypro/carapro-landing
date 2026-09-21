@@ -139,6 +139,29 @@ async function uploaderPhotos(sb: any, demandeId: string, photosBase64: unknown)
   return urls;
 }
 
+// Distance à vol d'oiseau (km) — suffisant pour filtrer des notifications par rayon,
+// pas besoin d'un vrai calcul de trajet ici (contrairement au Smart Dispatch).
+function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function emailHtmlDemandeOuverte(commune: string, description: string, secteur: string, nbPhotos: number): string {
+  const photosHtml = nbPhotos > 0 ? `<p>📷 ${nbPhotos} photo${nbPhotos > 1 ? "s" : ""} jointe${nbPhotos > 1 ? "s" : ""} — à consulter dans votre espace MPA Artisans.</p>` : "";
+  return `
+    <div style="font-family:sans-serif;max-width:480px;">
+      <h2 style="color:#B5502F;">📢 Un client vous cherche</h2>
+      <p>Un client recherche un professionnel en <strong>${secteur}</strong>, disponible rapidement, à <strong>${commune}</strong>.</p>
+      <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${description}</p>
+      ${photosHtml}
+      <p style="font-size:13px;">Soyez le premier à lui proposer un créneau — ses coordonnées apparaissent dès que vous prenez la demande en charge, depuis votre espace MPA Artisans, onglet « Demandes ».</p>
+    </div>
+  `;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
@@ -239,12 +262,20 @@ Deno.serve(async (req: Request) => {
             }
           }
         } else {
-          // Demande ouverte : tous les artisans du secteur
-          const { data: artisans } = await sb.from("artisans").select("user_id").eq("secteur", secteur);
+          // Demande ouverte : uniquement les artisans du secteur dont le rayon
+          // d'intervention déclaré couvre la commune du client — jamais un envoi
+          // en masse à tout le secteur, peu importe la distance réelle.
+          const ptClient = await geocoderAdresse("", null, commune);
+          const { data: artisans } = await sb.from("artisans")
+            .select("user_id, latitude, longitude, rayon_intervention_km").eq("secteur", secteur);
+          const emailOuverte = emailHtmlDemandeOuverte(commune, description_besoin, secteur, nbPhotos);
           for (const a of artisans ?? []) {
+            if (!ptClient || a.latitude == null || a.longitude == null) continue; // impossible de vérifier la distance : on ne notifie pas par prudence
+            const rayon = a.rayon_intervention_km || 15;
+            if (distanceKm(ptClient.lat, ptClient.lon, a.latitude, a.longitude) > rayon) continue;
             const { data: userData } = await sb.auth.admin.getUserById(a.user_id);
             if (userData?.user?.email) {
-              await envoyerEmail(userData.user.email, `Nouvelle demande dans votre secteur — ${client_nom}`, emailHtml);
+              await envoyerEmail(userData.user.email, `Un client vous cherche à ${commune}`, emailOuverte);
             }
           }
         }

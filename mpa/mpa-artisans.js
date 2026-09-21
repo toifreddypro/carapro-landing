@@ -410,7 +410,7 @@ async function chargerDemandes() {
     else if (d.statut === 'creneau_confirme') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(22,163,74,.1);color:#16a34a;">✅ Confirmé</span>';
     else if (d.statut === 'creneau_refuse') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--brd);color:var(--mu);">❌ Refusé</span>';
     else if (l.type === 'privee') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(181,80,47,.1);color:var(--ac);">Privée</span>';
-    else badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(59,130,246,.1);color:#3b82f6;">Ouverte</span>';
+    else badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(59,130,246,.1);color:#3b82f6;">📢 Ouverte (mise en concurrence)</span>';
 
     var actionsHaut;
     if (d.statut === 'creneau_propose') {
@@ -442,13 +442,21 @@ async function chargerDemandes() {
 
     // Le canal choisi par le client devient l'action principale — l'autre reste visible en secours.
     // L'email est toujours affiché en clair (mailto peu fiable sous Windows) — jamais caché derrière un bouton.
+    // Sur une demande OUVERTE pas encore prise en charge, les coordonnées restent masquées :
+    // l'artisan doit s'engager (Prendre en charge) avant d'y accéder, pour éviter que le client
+    // ne se fasse contacter par des artisans qui n'ont jamais vraiment l'intention de répondre.
     var noteEmail = '<div style="font-size:10.5px;color:var(--mu);margin-top:5px;">⚠️ Cette adresse vous est communiquée uniquement pour répondre à cette demande — pas pour de la prospection commerciale.</div>';
     var blocEmail = '<a href="mailto:' + escHtml(d.client_email) + '" style="display:inline-block;padding:8px 14px;border-radius:8px;background:rgba(181,80,47,.08);border:1px solid var(--ac-brd);color:var(--ac);font-size:13px;font-weight:700;text-decoration:none;font-family:\'JetBrains Mono\',monospace;">📧 ' + escHtml(d.client_email) + '</a>' + noteEmail;
     var contactPref = d.contact_prefere || 'telephone';
-    var blocContact = (contactPref === 'email' && d.client_email)
-      ? blocEmail + (d.client_telephone ? '<div style="font-size:11px;color:var(--mu);margin-top:8px;">ou par téléphone : <a href="tel:' + escHtml(d.client_telephone) + '" style="color:var(--mu2);">' + escHtml(d.client_telephone) + '</a></div>' : '')
-      : '<a href="tel:' + escHtml(d.client_telephone) + '" style="display:inline-block;padding:8px 16px;border-radius:8px;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;text-decoration:none;">📞 Rappeler ' + escHtml(d.client_nom) + '</a>' +
-        (d.client_email ? '<div style="margin-top:8px;">ou par email : ' + blocEmail + '</div>' : '');
+    var blocContact;
+    if (l.type === 'ouverte') {
+      blocContact = '<div style="font-size:12px;color:var(--mu);padding:8px 12px;background:var(--p2);border-radius:8px;">🔒 Coordonnées visibles après prise en charge</div>';
+    } else {
+      blocContact = (contactPref === 'email' && d.client_email)
+        ? blocEmail + (d.client_telephone ? '<div style="font-size:11px;color:var(--mu);margin-top:8px;">ou par téléphone : <a href="tel:' + escHtml(d.client_telephone) + '" style="color:var(--mu2);">' + escHtml(d.client_telephone) + '</a></div>' : '')
+        : '<a href="tel:' + escHtml(d.client_telephone) + '" style="display:inline-block;padding:8px 16px;border-radius:8px;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;text-decoration:none;">📞 Rappeler ' + escHtml(d.client_nom) + '</a>' +
+          (d.client_email ? '<div style="margin-top:8px;">ou par email : ' + blocEmail + '</div>' : '');
+    }
 
     return '<div style="border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">' +
