@@ -35,6 +35,11 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 function pageHtml(titre: string, message: string, couleur: string): Response {
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -47,7 +52,7 @@ function pageHtml(titre: string, message: string, couleur: string): Response {
       a{color:#B5502F;font-weight:700;text-decoration:none;}
     </style></head>
     <body><div class="box"><h1>${titre}</h1><p>${message}</p></div></body></html>`;
-  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+  return new Response(html, { headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" } });
 }
 
 function formulaireMessageHtml(token: string, action: string, dateAff: string, heure: string): Response {
@@ -77,7 +82,7 @@ function formulaireMessageHtml(token: string, action: string, dateAff: string, h
         <button type="submit">${estConfirmer ? "✅ Confirmer" : "❌ Refuser"}</button>
       </form>
     </div></body></html>`;
-  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+  return new Response(html, { headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" } });
 }
 
 async function envoyerEmail(to: string, subject: string, html: string) {
@@ -94,6 +99,8 @@ async function envoyerEmail(to: string, subject: string, html: string) {
 }
 
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
   const action = url.searchParams.get("action");

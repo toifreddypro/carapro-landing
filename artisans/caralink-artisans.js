@@ -629,6 +629,7 @@ async function verifierDispoReelle(artisanId, dateDebut) {
     '</div>';
 
     resultat.innerHTML = grille +
+      '<div style="font-size:10.5px;color:var(--mu,#999);text-align:center;margin-top:10px;">ℹ️ Les horaires affichés sont estimés à partir du trajet théorique — ils ne tiennent pas compte des imprévus sur la route.</div>' +
       (auMoinsUnCreneau ? '' : '<div style="font-size:11.5px;color:var(--mu,#999);text-align:center;margin-top:8px;">Rien sur cette période — essayez la semaine suivante, ou une demande sur-mesure ci-dessous.</div>') +
       '<div style="text-align:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--line,#eee);">' +
         '<a href="#" onclick="ouvrirModalSurMesure();return false;" style="font-size:12px;color:var(--mu2,#777);">Vous ne trouvez pas le créneau idéal ? <strong style="color:var(--ac,#B5502F);">Faire une demande sur-mesure →</strong></a>' +
