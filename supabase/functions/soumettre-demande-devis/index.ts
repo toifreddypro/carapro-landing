@@ -69,7 +69,20 @@ function emailHtmlDemande(clientNom: string, clientTel: string, clientEmail: str
   `;
 }
 
-function emailHtmlCreneau(clientNom: string, clientTel: string, clientEmail: string | null, contactPrefere: string, commune: string, adresse: string, description: string, dateAff: string, heureDebut: string, heureFin: string, nbPhotos: number, token: string): string {
+async function geocoderAdresse(adresse: string, cp: string | null, commune: string) {
+  const q = [adresse, cp, commune].filter(Boolean).join(", ");
+  if (!q) return null;
+  try {
+    const res = await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(q), {
+      headers: { "User-Agent": "CaraLinkArtisans/1.0" },
+    });
+    const data = await res.json();
+    if (data && data[0]) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+  } catch (e) { console.warn("[soumettre-demande-devis] Géocodage échoué :", e); }
+  return null;
+}
+
+function emailHtmlCreneau(clientNom: string, clientTel: string, clientEmail: string | null, contactPrefere: string, commune: string, adresse: string, description: string, dateAff: string, heureDebut: string, heureFin: string, nbPhotos: number, token: string, horsHoraires: boolean): string {
   const base = Deno.env.get("SUPABASE_URL") ?? "";
   const lienConfirmer = `${base}/functions/v1/repondre-devis?token=${token}&action=confirmer`;
   const lienRefuser = `${base}/functions/v1/repondre-devis?token=${token}&action=refuser`;
@@ -77,9 +90,13 @@ function emailHtmlCreneau(clientNom: string, clientTel: string, clientEmail: str
     ? `📧 <a href="mailto:${clientEmail}">${clientEmail}</a>`
     : `📞 <a href="tel:${clientTel}">${clientTel}</a>`;
   const photosHtml = nbPhotos > 0 ? `<p>📷 ${nbPhotos} photo${nbPhotos > 1 ? "s" : ""} jointe${nbPhotos > 1 ? "s" : ""} — à consulter dans votre espace MPA Artisans.</p>` : "";
+  const alerteHorsHoraires = horsHoraires
+    ? `<p style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;padding:10px 14px;border-radius:8px;font-weight:700;">⚠️ Demande hors de vos horaires habituels — vérifiez que ça vous convient avant de confirmer.</p>`
+    : "";
   return `
     <div style="font-family:sans-serif;max-width:480px;">
       <h2 style="color:#B5502F;">📅 Proposition de créneau</h2>
+      ${alerteHorsHoraires}
       <p><strong>${clientNom}</strong> (${commune}) souhaite une intervention le <strong>${dateAff} entre ${heureDebut} et ${heureFin}</strong>, à cette adresse : ${adresse}.</p>
       <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${description}</p>
       <p>Contact : ${contactHtml}</p>
@@ -136,7 +153,7 @@ Deno.serve(async (req: Request) => {
     if (!body) return json({ error: "Requête invalide." }, 400);
 
     const { client_nom, client_telephone, client_email, contact_prefere, secteur, description_besoin, commune, artisan_id, photos,
-            date_intervention, heure_debut, heure_fin, adresse, code_postal, latitude, longitude, service_id } = body;
+            date_intervention, heure_debut, heure_fin, adresse, code_postal, latitude, longitude, service_id, hors_horaires } = body;
 
     if (!client_nom || !client_telephone || !secteur || !description_besoin || !commune) {
       return json({ error: "Champs obligatoires manquants." }, 400);
@@ -154,6 +171,15 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Adresse d'intervention manquante." }, 400);
     }
 
+    // Coordonnées : reçues du client (vérification préalable), sinon géocodées ici
+    // (cas de la demande sur-mesure, qui ne passe pas par la vérification de dispo)
+    let lat = latitude ?? null;
+    let lon = longitude ?? null;
+    if (estUneProposionDeCreneau && (lat == null || lon == null)) {
+      const pt = await geocoderAdresse(adresse, code_postal || null, commune);
+      if (pt) { lat = pt.lat; lon = pt.lon; }
+    }
+
     const token = estUneProposionDeCreneau ? crypto.randomUUID() : null;
 
     const { data: demande, error } = await sb.from("demandes_devis").insert({
@@ -162,8 +188,8 @@ Deno.serve(async (req: Request) => {
       statut: estUneProposionDeCreneau ? "creneau_propose" : (artisan_id ? "directe" : "ouverte"),
       ...(estUneProposionDeCreneau ? {
         token, date_intervention, heure_debut, heure_fin: heure_fin || null,
-        adresse, code_postal: code_postal || null, latitude: latitude ?? null, longitude: longitude ?? null,
-        service_id: service_id || null,
+        adresse, code_postal: code_postal || null, latitude: lat, longitude: lon,
+        service_id: service_id || null, hors_horaires: !!hors_horaires,
       } : {}),
     }).select().single();
     if (error) throw error;
@@ -197,8 +223,8 @@ Deno.serve(async (req: Request) => {
           const { data: userData } = await sb.auth.admin.getUserById(artisan.user_id);
           if (userData?.user?.email) {
             const dateAff = new Date(date_intervention).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
-            const emailHtml = emailHtmlCreneau(client_nom, client_telephone, client_email || null, contactChoisi, commune, adresse, description_besoin, dateAff, heure_debut, heure_fin || "?", nbPhotos, token as string);
-            await envoyerEmail(userData.user.email, `Proposition de créneau — ${client_nom} le ${dateAff}`, emailHtml);
+            const emailHtml = emailHtmlCreneau(client_nom, client_telephone, client_email || null, contactChoisi, commune, adresse, description_besoin, dateAff, heure_debut, heure_fin || "?", nbPhotos, token as string, !!hors_horaires);
+            await envoyerEmail(userData.user.email, `${hors_horaires ? "⚠️ Demande hors horaires — " : ""}Proposition de créneau — ${client_nom} le ${dateAff}`, emailHtml);
           }
         }
       } else {

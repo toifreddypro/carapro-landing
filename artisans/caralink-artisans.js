@@ -628,7 +628,11 @@ async function verifierDispoReelle(artisanId, dateDebut) {
       '<button type="button" onclick="' + (data.peut_avancer ? "naviguerSemaineDispo(1)" : '') + '" ' + (data.peut_avancer ? '' : 'disabled') + ' style="border:none;background:none;font-size:20px;color:' + (data.peut_avancer ? 'var(--ac,#B5502F)' : 'var(--line,#ddd)') + ';cursor:' + (data.peut_avancer ? 'pointer' : 'default') + ';padding:0 4px;">›</button>' +
     '</div>';
 
-    resultat.innerHTML = grille + (auMoinsUnCreneau ? '' : '<div style="font-size:11.5px;color:var(--mu,#999);text-align:center;margin-top:8px;">Rien sur cette période — essayez la semaine suivante, ou « Demander un devis » pour convenir d\'une date directement.</div>');
+    resultat.innerHTML = grille +
+      (auMoinsUnCreneau ? '' : '<div style="font-size:11.5px;color:var(--mu,#999);text-align:center;margin-top:8px;">Rien sur cette période — essayez la semaine suivante, ou une demande sur-mesure ci-dessous.</div>') +
+      '<div style="text-align:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--line,#eee);">' +
+        '<a href="#" onclick="ouvrirModalSurMesure();return false;" style="font-size:12px;color:var(--mu2,#777);">Vous ne trouvez pas le créneau idéal ? <strong style="color:var(--ac,#B5502F);">Faire une demande sur-mesure →</strong></a>' +
+      '</div>';
   } catch (e) {
     resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">Erreur de connexion, réessayez.</div>';
   }
@@ -712,6 +716,81 @@ async function envoyerCreneauDevis() {
   } catch (e) {
     err.textContent = e.message; err.style.display = 'block';
     btn.disabled = false; btn.textContent = 'Envoyer à l\'artisan';
+  }
+}
+
+// ── Demande sur-mesure — le client choisit un horaire hors des créneaux calculés,
+// l'artisan valide manuellement (jamais automatique, pour ne pas geler un créneau
+// flexible sur une demande qui aurait pu être casée ailleurs) ──
+function ouvrirModalSurMesure() {
+  var ctx = window._dispoContexte;
+  if (!ctx) return;
+  _devisPhotos = [];
+  var div = document.getElementById('modal-devis');
+  if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
+  div.innerHTML =
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)fermerModalDevis()">' +
+      '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;">' +
+        '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">✍️ Demande sur-mesure</div>' +
+        '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">Cet horaire n\'est pas dans les créneaux habituellement calculés — l\'artisan devra le valider lui-même avant que ce soit définitif.<br>📍 ' + escHtml(ctx.adresse) + '</div>' +
+        '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
+          '<input id="sm-date" type="date" style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-size:13px;box-sizing:border-box;">' +
+          '<input id="sm-heure" type="time" style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-size:13px;box-sizing:border-box;">' +
+        '</div>' +
+        '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        '<input id="devis-email" type="email" placeholder="Email (optionnel — pour recevoir la confirmation automatiquement)" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        '<textarea id="devis-message" rows="3" placeholder="Pourquoi cet horaire vous conviendrait particulièrement ? (optionnel)" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
+        photosPickerHTML() +
+        '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button id="btn-devis" onclick="envoyerSurMesureDevis()" style="flex:1;padding:11px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Envoyer ma demande</button>' +
+          '<button onclick="fermerModalDevis()" style="flex:1;padding:11px;border-radius:9px;border:1px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);cursor:pointer;">Annuler</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+async function envoyerSurMesureDevis() {
+  var ctx = window._dispoContexte;
+  if (!ctx) return;
+  var dateVal = document.getElementById('sm-date').value;
+  var heureVal = document.getElementById('sm-heure').value;
+  var nom = document.getElementById('devis-nom').value.trim();
+  var tel = document.getElementById('devis-tel').value.trim();
+  var email = document.getElementById('devis-email').value.trim();
+  var message = document.getElementById('devis-message').value.trim() || 'Demande sur-mesure via la disponibilité en ligne CaraLink Artisans.';
+  var err = document.getElementById('devis-err');
+  var btn = document.getElementById('btn-devis');
+
+  if (!dateVal || !heureVal || !nom || !tel) { err.textContent = T('err_champs'); err.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = T('btn_envoi_cours');
+
+  var heureFin = minVersHeurePublic(heureVersMinPublic(heureVal) + (ctx.duree || 60));
+
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/soumettre-demande-devis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
+      body: JSON.stringify({
+        client_nom: nom, client_telephone: tel, client_email: email || null, contact_prefere: email ? 'email' : 'telephone',
+        commune: ctx.commune, description_besoin: message, secteur: ctx.secteur, photos: _devisPhotos,
+        artisan_id: ctx.artisanId,
+        date_intervention: dateVal, heure_debut: heureVal, heure_fin: heureFin,
+        adresse: ctx.adresse, code_postal: ctx.cp, service_id: ctx.serviceId,
+        latitude: ctx.latitude, longitude: ctx.longitude,
+        hors_horaires: true,
+      }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    fermerModalDevis();
+    fermerProfil({ target: null, currentTarget: null });
+    showToast('Votre demande sur-mesure a été envoyée à l\'artisan pour validation.');
+  } catch (e) {
+    err.textContent = e.message; err.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Envoyer ma demande';
   }
 }
 

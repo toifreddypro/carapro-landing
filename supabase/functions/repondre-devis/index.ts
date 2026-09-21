@@ -54,6 +54,7 @@ function formulaireMessageHtml(token: string, action: string, dateAff: string, h
   const estConfirmer = action === "confirmer";
   const titre = estConfirmer ? "Confirmer ce créneau" : "Refuser ce créneau";
   const couleur = estConfirmer ? "#16a34a" : "#6b7c96";
+  const valeurDefaut = estConfirmer ? "" : "Désolé, ce créneau n'est finalement plus disponible.";
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${titre}</title>
@@ -72,7 +73,7 @@ function formulaireMessageHtml(token: string, action: string, dateAff: string, h
         <input type="hidden" name="token" value="${token}">
         <input type="hidden" name="action" value="${action}">
         <input type="hidden" name="execute" value="1">
-        <textarea name="message" rows="3" placeholder="Message optionnel…"></textarea>
+        <textarea name="message" rows="3" placeholder="Message optionnel…">${valeurDefaut}</textarea>
         <button type="submit">${estConfirmer ? "✅ Confirmer" : "❌ Refuser"}</button>
       </form>
     </div></body></html>`;
