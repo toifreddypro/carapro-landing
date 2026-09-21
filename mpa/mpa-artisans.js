@@ -467,6 +467,7 @@ async function chargerDemandes() {
         actionsHaut +
       '</div>' +
       ligneCreneau +
+      (typeInterventionLabelLocal(d.type_intervention) ? '<div style="display:inline-block;font-size:12px;font-weight:700;color:#4338ca;background:#eef2ff;padding:3px 10px;border-radius:20px;margin-bottom:8px;">' + typeInterventionLabelLocal(d.type_intervention) + '</div><br>' : '') +
       '<div style="font-size:13px;margin-bottom:10px;">' + escHtml(d.description_besoin) + '</div>' +
       ((d.photos && d.photos.length) ?
         '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' +
@@ -479,6 +480,16 @@ async function chargerDemandes() {
         '<button onclick="creerClientDepuisDemande(' + jsAttrLocal(d.client_nom) + ',' + jsAttrLocal(d.commune) + ')" style="background:none;border:none;color:var(--ac);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;">+ Ajouter comme client habituel</button>') +
     '</div>';
   }).join('');
+}
+
+var LABELS_TYPE_INTERVENTION = {
+  urgence: '🚨 Dépannage / Urgence',
+  installation: '🔧 Installation / Pose',
+  devis: '📋 Devis / Conseil',
+  entretien: '🧹 Entretien',
+};
+function typeInterventionLabelLocal(code) {
+  return LABELS_TYPE_INTERVENTION[code] || null;
 }
 
 function secteurLabelLocal(code) {
