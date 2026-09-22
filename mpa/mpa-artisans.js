@@ -343,6 +343,7 @@ var CYCLE_STATUT = { planifiee: 'terminee', terminee: 'payee', payee: 'planifiee
 
 async function avancerStatut(id, ev) {
   if (ev) ev.stopPropagation();
+  if (!verifierAccesEcriture()) return;
   var i = _interventionsCache.find(function(x) { return x.id === id; });
   if (!i) return;
   var statutActuel = i.statut || 'planifiee';
@@ -514,6 +515,7 @@ function jsAttrLocal(val) {
 }
 
 async function repondreCreneauInApp(token, action) {
+  if (!verifierAccesEcriture()) return;
   var message = prompt(action === 'confirmer'
     ? 'Un message pour le client ? (optionnel, laissez vide pour aucun)'
     : 'Une raison à préciser au client ? (modifiable, ou laissez vide pour aucune)',
@@ -532,6 +534,7 @@ async function repondreCreneauInApp(token, action) {
 }
 
 async function prendreEnCharge(demandeId) {
+  if (!verifierAccesEcriture()) return;
   var { error } = await sb.from('devis_reponses').insert({
     demande_id: demandeId, artisan_id: _artisan.id, message: '', statut: 'envoyee',
   });
@@ -540,12 +543,14 @@ async function prendreEnCharge(demandeId) {
 }
 
 async function marquerTraitee(reponseId) {
+  if (!verifierAccesEcriture()) return;
   var { error } = await sb.from('devis_reponses').update({ statut: 'traitee' }).eq('id', reponseId).eq('artisan_id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
   await chargerDemandes();
 }
 
 async function supprimerDemande(reponseId) {
+  if (!verifierAccesEcriture()) return;
   if (!confirm('Retirer cette demande de votre liste ?\n\nElle ne sera plus visible pour vous. Si elle était ouverte à tout votre secteur, les autres artisans continueront de la voir.')) return;
   var { error } = await sb.from('devis_reponses').delete().eq('id', reponseId).eq('artisan_id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
@@ -826,7 +831,20 @@ function toggleDatePaiement() {
   }
 }
 
+// ── Garde d'accès en lecture seule (essai expiré sans carte) ──
+// Appelée en tout début des actions qui créent/modifient/suppriment des données métier
+// (interventions, clients, factures, services, horaires, demandes). Ne bloque jamais la
+// consultation, ni l'édition de la fiche profil ou du calcul fiscal.
+function verifierAccesEcriture() {
+  if (_artisan.abonnement_statut === 'lecture_seule') {
+    alert('Votre essai gratuit est terminé. Abonnez-vous (19,99€/mois) pour continuer à créer et modifier vos données — allez sur le Tableau de bord pour vous abonner.');
+    return false;
+  }
+  return true;
+}
+
 async function sauverIntervention() {
+  if (!verifierAccesEcriture()) return;
   var adresse = document.getElementById('mi-adr').value.trim() || null;
   var cp = document.getElementById('mi-cp').value.trim() || null;
   var commune = document.getElementById('mi-com').value.trim() || null;
@@ -870,6 +888,7 @@ async function sauverIntervention() {
 }
 
 async function supprimerIntervention() {
+  if (!verifierAccesEcriture()) return;
   if (!_interventionEnCours) return;
   if (!confirm('Supprimer cette intervention ?')) return;
   var { error } = await sb.from('mpa_artisans_interventions').delete().eq('id', _interventionEnCours).eq('artisan_id', _artisan.id);
@@ -1168,6 +1187,7 @@ function recalculerPanier() {
 }
 
 async function genererFacture() {
+  if (!verifierAccesEcriture()) return;
   var clientId = document.getElementById('fact-client').value;
   var checked = Array.from(document.querySelectorAll('.panier-check:checked'));
   if (!checked.length) { alert('Sélectionnez au moins une intervention.'); return; }
@@ -1630,6 +1650,7 @@ function ouvrirAjoutPlage(jour) {
 }
 
 async function confirmerAjoutPlage(jour) {
+  if (!verifierAccesEcriture()) return;
   var debut = document.getElementById('plage-debut-' + jour).value;
   var fin = document.getElementById('plage-fin-' + jour).value;
   if (!debut || !fin || debut >= fin) { alert('Merci de renseigner une heure de début et une heure de fin valides (fin après le début).'); return; }
@@ -1639,6 +1660,7 @@ async function confirmerAjoutPlage(jour) {
 }
 
 async function supprimerPlageHoraire(id) {
+  if (!verifierAccesEcriture()) return;
   var { error } = await sb.from('artisans_horaires').delete().eq('id', id).eq('artisan_id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
   await chargerHoraires();
@@ -1689,6 +1711,7 @@ function renderIndispos() {
 }
 
 async function ajouterIndispo() {
+  if (!verifierAccesEcriture()) return;
   var debut = document.getElementById('indispo-debut').value;
   var fin = document.getElementById('indispo-fin').value || debut;
   var motif = document.getElementById('indispo-motif').value.trim() || null;
@@ -1700,6 +1723,7 @@ async function ajouterIndispo() {
 }
 
 async function supprimerIndispo(id) {
+  if (!verifierAccesEcriture()) return;
   var { error } = await sb.from('artisans_indisponibilites').delete().eq('id', id).eq('artisan_id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
   await chargerIndispos();
@@ -1788,6 +1812,7 @@ function openAjouterClient() {
 }
 
 async function sauverClient() {
+  if (!verifierAccesEcriture()) return;
   var nom = document.getElementById('c-nom').value.trim();
   if (!nom) { alert('Le nom du client est obligatoire.'); return; }
   var nouveau = {
@@ -1805,6 +1830,7 @@ async function sauverClient() {
 }
 
 async function supprimerClient(id) {
+  if (!verifierAccesEcriture()) return;
   if (!confirm('Supprimer ce client ?')) return;
   var { error } = await sb.from('mpa_artisans_clients').delete().eq('id', id).eq('artisan_id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
@@ -1887,6 +1913,7 @@ function ouvrirService(id) {
 }
 
 async function sauverService() {
+  if (!verifierAccesEcriture()) return;
   var nom = document.getElementById('s-nom').value.trim();
   if (!nom) { alert('Le nom du service est obligatoire.'); return; }
   var maj = {
@@ -1910,6 +1937,7 @@ async function sauverService() {
 }
 
 async function supprimerService(id) {
+  if (!verifierAccesEcriture()) return;
   if (!confirm('Supprimer ce service ?')) return;
   var { error } = await sb.from('artisans_services').delete().eq('id', id).eq('artisan_id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
