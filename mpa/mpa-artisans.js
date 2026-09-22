@@ -1320,7 +1320,62 @@ async function initDashboard() {
   _dispoAnnee = new Date().getFullYear();
   _dispoMois = new Date().getMonth();
   await renderDispoCalendrier();
+  renderEncartAbonnement();
   renderEncartAlternance();
+}
+
+// ── Abonnement Stripe — essai 14 jours, 19,99€/mois ──
+function renderEncartAbonnement() {
+  var zone = document.getElementById('encart-abonnement');
+  if (!zone) return;
+  var statut = _artisan.abonnement_statut || 'essai';
+
+  if (statut === 'actif') { zone.innerHTML = ''; return; } // abonné, rien à afficher
+
+  if (statut === 'lecture_seule') {
+    zone.innerHTML =
+      '<div style="background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.3);border-radius:14px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
+        '<div style="flex:1;min-width:240px;">' +
+          '<div style="font-size:13px;font-weight:700;color:var(--danger,#dc2626);margin-bottom:4px;">🔒 Accès en lecture seule</div>' +
+          '<div style="font-size:12.5px;color:var(--mu2);">Votre essai gratuit est terminé. Abonnez-vous pour continuer à créer et modifier vos interventions, clients et factures.</div>' +
+        '</div>' +
+        '<button onclick="lancerAbonnement()" id="btn-abonnement" style="flex-shrink:0;padding:10px 18px;border-radius:8px;border:none;background:var(--danger,#dc2626);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;">S\'abonner — 19,99€/mois →</button>' +
+      '</div>';
+    return;
+  }
+
+  // statut === 'essai'
+  var joursRestants = null;
+  if (_artisan.essai_fin) {
+    var ms = new Date(_artisan.essai_fin).getTime() - Date.now();
+    joursRestants = Math.max(0, Math.ceil(ms / 86400000));
+  }
+  zone.innerHTML =
+    '<div style="background:rgba(181,80,47,.05);border:1px solid var(--ac-brd,#e8c4b8);border-radius:14px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
+      '<div style="flex:1;min-width:220px;font-size:12.5px;color:var(--mu2);">' +
+        '🎁 Essai gratuit' + (joursRestants !== null ? ' — <strong style="color:var(--tx);">' + joursRestants + ' jour' + (joursRestants > 1 ? 's' : '') + ' restant' + (joursRestants > 1 ? 's' : '') + '</strong>' : '') +
+      '</div>' +
+      '<button onclick="lancerAbonnement()" id="btn-abonnement" style="flex-shrink:0;padding:8px 16px;border-radius:8px;border:1.5px solid var(--ac,#B5502F);background:transparent;color:var(--ac,#B5502F);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">S\'abonner maintenant →</button>' +
+    '</div>';
+}
+
+async function lancerAbonnement() {
+  var btn = document.getElementById('btn-abonnement');
+  if (btn) { btn.disabled = true; btn.textContent = 'Redirection vers Stripe…'; }
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/create-checkout-session-artisans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({ origin: window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '') }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    window.location.href = data.url;
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'S\'abonner maintenant →'; }
+  }
 }
 
 // ── Encart croisé vers CaraLink Alternance — "Essor de CaraLink" ──
