@@ -96,24 +96,60 @@ async function chargerArtisans() {
         '<thead><tr><th>Entreprise</th><th>Secteur</th><th>Commune</th><th>Vérifié</th><th>Abonnement</th><th>Inscrit le</th><th></th></tr></thead>' +
         '<tbody>' + artisans.map(renderLigneArtisan).join('') + '</tbody>' +
       '</table></div>' +
-      '<div class="note">💡 Colonne "Abonnement" : la facturation MPA Artisans n\'est pas encore branchée (Stripe à venir) — tous les comptes apparaissent "Non facturé" pour l\'instant.</div>' +
+      '<div class="note">💡 Cliquez sur le badge "Vérifié" ou choisissez un statut d\'abonnement pour les modifier directement — l\'action passe par une fonction serveur sécurisée, jamais une écriture directe.</div>' +
     '</div>';
 }
 
 function renderLigneArtisan(a) {
   var dateAff = new Date(a.created_at).toLocaleDateString('fr-FR');
   var badgeVerifie = a.verifie
-    ? '<span class="badge-ok">Vérifié</span>'
-    : '<span class="badge-attente">' + (a.verification_statut === 'en_attente' ? 'En attente' : 'Non vérifié') + '</span>';
+    ? '<span class="badge-ok" style="cursor:pointer;" title="Cliquer pour retirer la vérification" onclick="toggleVerifie(\'' + a.id + '\', false)">Vérifié</span>'
+    : '<span class="badge-attente" style="cursor:pointer;" title="Cliquer pour marquer comme vérifié" onclick="toggleVerifie(\'' + a.id + '\', true)">' + (a.verification_statut === 'en_attente' ? 'En attente' : 'Non vérifié') + '</span>';
+
+  var statut = a.abonnement_statut || 'essai';
+  var LABELS_STATUT = { essai: '🎁 Essai', actif: '✅ Actif', lecture_seule: '🔒 Lecture seule', annule: '⛔ Annulé' };
+  var joursRestants = '';
+  if (statut === 'essai' && a.essai_fin) {
+    var j = Math.max(0, Math.ceil((new Date(a.essai_fin).getTime() - Date.now()) / 86400000));
+    joursRestants = ' (' + j + 'j)';
+  }
+  var optionsStatut = ['essai', 'actif', 'lecture_seule', 'annule'].map(function(s) {
+    return '<option value="' + s + '"' + (s === statut ? ' selected' : '') + '>' + LABELS_STATUT[s] + '</option>';
+  }).join('');
+
   return '<tr>' +
     '<td><strong>' + escHtml(a.nom_entreprise) + '</strong></td>' +
     '<td>' + escHtml(a.secteur) + '</td>' +
     '<td>' + escHtml(a.commune) + '</td>' +
     '<td>' + badgeVerifie + '</td>' +
-    '<td><span class="badge-abo">Non facturé</span></td>' +
+    '<td><select onchange="changerAbonnement(\'' + a.id + '\', this.value)" style="font-size:11.5px;font-weight:600;padding:3px 6px;border-radius:6px;border:1px solid var(--brd);background:var(--p2);color:var(--mu2);">' + optionsStatut + '</select><span style="font-size:10.5px;color:var(--mu);">' + joursRestants + '</span></td>' +
     '<td>' + dateAff + '</td>' +
     '<td><button class="btn-del" onclick="supprimerCompte(\'' + a.user_id + '\',\'' + escHtml(a.nom_entreprise).replace(/'/g,"\\'") + '\')">Supprimer</button></td>' +
   '</tr>';
+}
+
+async function appelerActionAdmin(artisanId, champs) {
+  var res = await fetch(SUPABASE_URL + '/functions/v1/admin-modifier-artisan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _session.access_token },
+    body: JSON.stringify({ artisan_id: artisanId, ...champs }),
+  });
+  var data = await res.json();
+  if (data.error) throw new Error(data.error);
+}
+
+async function toggleVerifie(artisanId, nouvelleValeur) {
+  try {
+    await appelerActionAdmin(artisanId, { verifie: nouvelleValeur });
+    await chargerArtisans();
+  } catch (e) { alert('Erreur : ' + e.message); }
+}
+
+async function changerAbonnement(artisanId, nouveauStatut) {
+  try {
+    await appelerActionAdmin(artisanId, { abonnement_statut: nouveauStatut });
+    await chargerArtisans();
+  } catch (e) { alert('Erreur : ' + e.message); await chargerArtisans(); }
 }
 
 async function supprimerCompte(userId, nom) {
