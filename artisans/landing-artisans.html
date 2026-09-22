@@ -1,0 +1,408 @@
+<!--
+================================================================
+  LearnLogic Studio — landing-artisans.html
+  Landing dédiée : CaraLink Artisans (clients ↔ artisans)
+----------------------------------------------------------------
+  © 2026 LearnLogic Studio — Tous droits réservés
+================================================================
+-->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CaraLink Artisans — Trouvez un artisan de confiance aux Antilles-Guyane | LearnLogic Studio</title>
+  <meta name="description" content="L'annuaire qui connecte clients et artisans de confiance aux Antilles-Guyane. SIRET vérifié, avis authentiques, devis gratuit.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#f7f9fc; --panel:#ffffff; --brd:#e3eaf4; --b2:#c9d8ef;
+      --ac:#B5502F; --ac-dim:rgba(181,80,47,.08); --ac-brd:rgba(181,80,47,.25);
+      --tx:#13223c; --mu:#6b7c96; --mu2:#4a5c78;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html{scroll-behavior:smooth;}
+    body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);overflow-x:hidden;}
+    body::before{content:'';position:fixed;inset:0;z-index:0;
+      background-image:linear-gradient(rgba(181,80,47,.025) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(181,80,47,.025) 1px,transparent 1px);
+      background-size:70px 70px;pointer-events:none;}
+    section,nav,footer{position:relative;z-index:1;}
+
+    nav{position:fixed;top:0;left:0;right:0;z-index:100;
+      display:flex;align-items:center;justify-content:space-between;
+      padding:14px 48px;
+      background:rgba(255,255,255,.92);backdrop-filter:blur(20px);
+      border-bottom:1px solid var(--brd);}
+    .nav-logo{display:flex;align-items:center;gap:12px;text-decoration:none;}
+    .nav-brand{font-family:'Bricolage Grotesque',sans-serif;font-size:18px;font-weight:700;letter-spacing:.3px;}
+    .nav-brand .learn{color:var(--tx);} .nav-brand .logic{color:var(--ac);} .nav-brand .studio{color:var(--mu2);font-weight:400;}
+    .nav-links{display:flex;align-items:center;gap:32px;}
+    .nav-links a{color:var(--mu2);text-decoration:none;font-size:14px;font-weight:500;transition:color .2s;}
+    .nav-links a:hover{color:var(--tx);}
+    .nav-right{display:flex;align-items:center;gap:14px;}
+    .nav-cta{padding:9px 22px;border-radius:9px;font-size:14px;font-weight:600;
+      background:var(--ac);color:#fff;text-decoration:none;
+      transition:all .2s;box-shadow:0 2px 12px rgba(181,80,47,.3);}
+    .nav-cta:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(181,80,47,.45);}
+
+    .flag-swatch{display:inline-block;width:16px;height:11px;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.12);flex-shrink:0;vertical-align:middle;}
+    .flag-fr{background:linear-gradient(90deg,#002395 33.33%,#ffffff 33.33% 66.66%,#ED2939 66.66%);}
+    .flag-es{background:linear-gradient(180deg,#AA151B 25%,#F1BF00 25% 75%,#AA151B 75%);}
+    .flag-gb{background:#012169;position:relative;overflow:hidden;}
+    .flag-gb::before{content:'';position:absolute;inset:0;background:
+      linear-gradient(to bottom right, transparent 46%, #fff 46% 54%, transparent 54%),
+      linear-gradient(to bottom left, transparent 46%, #fff 46% 54%, transparent 54%),
+      linear-gradient(to bottom, transparent 42%, #fff 42% 58%, transparent 58%),
+      linear-gradient(to right, transparent 42%, #fff 42% 58%, transparent 58%);}
+    .flag-gb::after{content:'';position:absolute;inset:0;background:
+      linear-gradient(to bottom right, transparent 48%, #C8102E 48% 52%, transparent 52%),
+      linear-gradient(to bottom left, transparent 48%, #C8102E 48% 52%, transparent 52%),
+      linear-gradient(to bottom, transparent 45%, #C8102E 45% 55%, transparent 55%),
+      linear-gradient(to right, transparent 45%, #C8102E 45% 55%, transparent 55%);}
+    .lang-dropdown-wrap{position:relative;}
+    #lang-dropdown-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;
+      border:1px solid var(--brd);background:var(--panel);color:var(--tx);font-size:13px;
+      font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;}
+    #lang-dropdown-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--panel);
+      border:1px solid var(--brd);border-radius:10px;box-shadow:0 8px 24px rgba(19,34,60,.12);
+      min-width:160px;z-index:200;overflow:hidden;}
+    .lang-item{display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;font-size:13px;
+      color:var(--tx);font-family:'Outfit',sans-serif;transition:background .15s;}
+    .lang-item:hover,.lang-item.active{background:var(--ac-dim);}
+    .lang-item.active{font-weight:700;}
+
+    .hero{min-height:74vh;display:flex;align-items:center;
+      padding:130px 40px 60px;position:relative;overflow:hidden;
+      background:linear-gradient(180deg,#fdf1ec 0%,var(--bg) 45%);}
+    .hero-inner{max-width:1360px;margin:0 auto;display:grid;grid-template-columns:1fr 1.1fr;gap:56px;align-items:center;width:100%;}
+    .hero-content{position:relative;z-index:1;max-width:600px;text-align:left;}
+    .hero-kicker{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ac);
+      letter-spacing:2px;text-transform:uppercase;margin-bottom:18px;}
+    .hero-kicker::before{content:"// ";opacity:.5;}
+    .hero-intro{font-size:16px;color:var(--mu2);font-weight:500;margin-bottom:14px;}
+    .hero h1{font-size:clamp(30px,4.6vw,52px);font-weight:800;line-height:1.15;
+      font-family:'Bricolage Grotesque',sans-serif;margin:0 0 20px;color:var(--tx);}
+    .hero h1 .hl{color:var(--ac);}
+    .hero-sub{font-size:17px;color:var(--mu2);font-weight:300;line-height:1.6;margin:0 0 34px;}
+    .hero-tagline{font-family:'Bricolage Grotesque',sans-serif;font-size:clamp(17px,2vw,22px);font-weight:700;color:var(--ac);margin:0 0 14px;}
+    .hero-ctas{display:flex;gap:14px;flex-wrap:wrap;}
+    .hero-visual{position:relative;border-radius:24px;overflow:hidden;
+      box-shadow:0 30px 60px -20px rgba(181,80,47,.35);aspect-ratio:1536/1024;}
+    .hero-visual img{width:100%;height:100%;object-fit:cover;object-position:center;display:block;}
+    .hero-visual::after{content:"";position:absolute;inset:0;border-radius:24px;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.4);pointer-events:none;}
+    .hero-visual::before{content:"";position:absolute;left:0;top:0;bottom:0;width:10%;z-index:1;
+      background:linear-gradient(to right, rgba(253,241,236,.55), transparent);pointer-events:none;}
+    @media(max-width:900px){.hero-inner{grid-template-columns:1fr;} .hero-visual{order:-1;}}
+    .btn-solid{padding:15px 32px;border-radius:12px;background:var(--ac);color:#fff;
+      font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 8px 24px rgba(181,80,47,.35);transition:all .2s;}
+    .btn-solid:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(181,80,47,.45);}
+    .btn-outline{padding:15px 32px;border-radius:12px;border:1px solid var(--brd);background:#fff;
+      color:var(--tx);font-weight:600;font-size:15px;text-decoration:none;transition:all .2s;}
+    .btn-outline:hover{border-color:var(--ac);color:var(--ac);}
+
+    .section-wrap{padding:90px 40px;max-width:1180px;margin:0 auto;}
+    .section-kicker{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ac);
+      letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;}
+    .section-kicker::before{content:"//";opacity:.4;}
+    .section-title{font-size:clamp(26px,3.2vw,38px);font-weight:800;line-height:1.2;
+      font-family:'Bricolage Grotesque',sans-serif;color:var(--tx);max-width:680px;margin-bottom:12px;}
+    .section-sub{font-size:15.5px;color:var(--mu2);font-weight:300;line-height:1.7;max-width:620px;margin-bottom:36px;}
+
+    .bloc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:8px;}
+    @media(max-width:800px){.bloc-grid{grid-template-columns:1fr;}}
+    .bloc-simple{background:var(--panel);border:1px solid var(--brd);border-radius:14px;padding:22px 24px;}
+    .bloc-simple-icon{font-size:22px;margin-bottom:10px;}
+    .bloc-simple-title{font-size:14px;font-weight:700;color:var(--tx);margin-bottom:6px;}
+    .bloc-simple-desc{font-size:13px;color:var(--mu2);line-height:1.6;}
+
+    .audience-cta{text-align:center;margin-top:36px;}
+
+    .cta-final{text-align:center;padding:100px 40px;background:linear-gradient(135deg,var(--ac),#8F3D22);}
+    .cta-final h2{color:#fff;font-size:clamp(24px,3vw,36px);font-weight:800;font-family:'Bricolage Grotesque',sans-serif;margin-bottom:14px;}
+    .cta-final p{color:rgba(255,255,255,.85);font-size:15px;margin-bottom:30px;}
+    .cta-final .btn-solid{background:#fff;color:var(--ac);}
+    .cta-final-two{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
+
+    footer{padding:40px 48px;display:flex;align-items:center;justify-content:space-between;
+      border-top:1px solid var(--brd);flex-wrap:wrap;gap:16px;background:var(--panel);}
+    .footer-brand{font-family:'Bricolage Grotesque',sans-serif;font-size:15px;font-weight:700;}
+    .footer-brand .fl{color:var(--tx);} .footer-brand .flo{color:var(--ac);}
+    footer p{font-size:12.5px;color:var(--mu);}
+    .footer-links{display:flex;gap:20px;}
+    .footer-links a{font-size:12.5px;color:var(--mu2);text-decoration:none;}
+    .footer-links a:hover{color:var(--tx);}
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">
+    <img src="/apple-touch-icon.png" alt="LearnLogic Studio" style="width:28px;height:28px;border-radius:7px;">
+    <div class="nav-brand"><span class="learn">Learn</span><span class="logic">Logic</span> <span class="studio">Studio</span></div>
+  </a>
+  <div class="nav-links">
+    <a href="/" data-i18n="nav_back">← Tous les produits</a>
+  </div>
+  <div class="nav-right">
+    <div class="lang-dropdown-wrap">
+      <button id="lang-dropdown-btn" onclick="toggleLangMenu(event)">
+        <span class="flag-swatch flag-fr" id="lang-current-flag"></span>
+        <span id="lang-current-label">Français</span>
+        <span style="font-size:9px;opacity:.6;">▼</span>
+      </button>
+      <div id="lang-dropdown-menu">
+        <div class="lang-item active" data-lang="fr" onclick="selectLang('fr',event)"><span class="flag-swatch flag-fr"></span> Français</div>
+        <div class="lang-item" data-lang="en" onclick="selectLang('en',event)"><span class="flag-swatch flag-gb"></span> English</div>
+        <div class="lang-item" data-lang="es" onclick="selectLang('es',event)"><span class="flag-swatch flag-es"></span> Español</div>
+      </div>
+    </div>
+    <a href="https://caralink.app/artisans/" class="nav-cta" data-i18n="nav_cta">Découvrir CaraLink Artisans →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-content">
+      <div class="hero-kicker" data-i18n="hero_kicker">🔧 CaraLink Artisans</div>
+      <div class="hero-intro" data-i18n="hero_intro">Avant tout, un annuaire qui connecte clients et artisans de confiance aux Antilles-Guyane.</div>
+      <h1 data-i18n="hero_title">Trouvez un artisan <span class="hl">disponible pour vos travaux.</span></h1>
+      <div class="hero-tagline" data-i18n="hero_tagline">Trouvez, réservez ! Soyez visible, travaillez !</div>
+      <p class="hero-sub" data-i18n="hero_sub">Recherche gratuite, sans inscription, SIRET vérifié.</p>
+      <div class="hero-ctas">
+        <a href="https://caralink.app/artisans/" class="btn-solid" data-i18n="hero_cta">Découvrir CaraLink Artisans →</a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <img src="https://caralink.app/artisans/img/hero-artisans-groupe.png" alt="Coiffeuse, prothésiste ongulaire, mécanicien, pâtissière et agent logistique, artisans de Guadeloupe">
+    </div>
+  </div>
+</section>
+
+<!-- BLOC CLIENT -->
+<section id="client" style="background:var(--panel);border-top:1px solid var(--brd);">
+  <div class="section-wrap">
+    <div class="section-kicker" data-i18n="sec2_kicker">Vous cherchez un artisan</div>
+    <h2 class="section-title" data-i18n="sec2_title">Un artisan vérifié, <span style="color:var(--ac);">en quelques clics.</span></h2>
+    <p class="section-sub" data-i18n="sec2_sub">SIRET vérifié, avis authentiques, devis gratuit — sans créer de compte.</p>
+
+    <div class="bloc-grid">
+      <div class="bloc-simple">
+        <div class="bloc-simple-icon">🔍</div>
+        <div class="bloc-simple-title" data-i18n="f1_title">Recherche par secteur et lieu</div>
+        <div class="bloc-simple-desc" data-i18n="f1_desc">Plomberie, jardinage, électricité… filtrez par secteur et par commune, avec une carte interactive.</div>
+      </div>
+      <div class="bloc-simple">
+        <div class="bloc-simple-icon">✅</div>
+        <div class="bloc-simple-title" data-i18n="f2_title">Badge Vérifié</div>
+        <div class="bloc-simple-desc" data-i18n="f2_desc">SIRET contrôlé automatiquement, attestation d'assurance examinée — une vraie sécurité.</div>
+      </div>
+      <div class="bloc-simple">
+        <div class="bloc-simple-icon">📝</div>
+        <div class="bloc-simple-title" data-i18n="f3_title">Devis gratuit, sans engagement</div>
+        <div class="bloc-simple-desc" data-i18n="f3_desc">Juste votre nom et votre numéro — l'artisan vous recontacte directement.</div>
+      </div>
+    </div>
+
+    <div class="audience-cta">
+      <a href="https://caralink.app/artisans/" class="btn-solid" data-i18n="sec2_cta">Trouver un artisan →</a>
+    </div>
+  </div>
+</section>
+
+<!-- BLOC ARTISAN -->
+<section id="artisan" style="background:var(--bg);border-top:1px solid var(--brd);">
+  <div class="section-wrap">
+    <div class="section-kicker" data-i18n="sec3_kicker">Vous êtes artisan</div>
+    <h2 class="section-title" data-i18n="sec3_title">Votre vitrine, <span style="color:var(--ac);">visible gratuitement.</span></h2>
+    <p class="section-sub" data-i18n="sec3_sub">Créez votre profil en une page, recevez des demandes de devis directement.</p>
+
+    <div class="bloc-grid">
+      <div class="bloc-simple">
+        <div class="bloc-simple-icon">✍️</div>
+        <div class="bloc-simple-title" data-i18n="c1_title">Inscription en une seule page</div>
+        <div class="bloc-simple-desc" data-i18n="c1_desc">Compte, profil, SIRET, document d'assurance — tout d'un coup, visible immédiatement dans l'annuaire.</div>
+      </div>
+      <div class="bloc-simple">
+        <div class="bloc-simple-icon">💶</div>
+        <div class="bloc-simple-title" data-i18n="c2_title">Services et tarifs visibles</div>
+        <div class="bloc-simple-desc" data-i18n="c2_desc">Photos de vos réalisations, tarifs indicatifs — votre vraie vitrine, gratuite.</div>
+      </div>
+      <div class="bloc-simple">
+        <div class="bloc-simple-icon">📬</div>
+        <div class="bloc-simple-title" data-i18n="c3_title">Demandes reçues directement</div>
+        <div class="bloc-simple-desc" data-i18n="c3_desc">Un espace connecté pour gérer votre profil et répondre à vos devis, sans intermédiaire.</div>
+      </div>
+    </div>
+
+    <div class="audience-cta">
+      <a href="https://caralink.app/artisans/inscription.html" class="btn-solid" data-i18n="sec3_cta">Créer mon profil artisan →</a>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="cta-final">
+  <h2 data-i18n="ctafinal_title">Prêt à trouver votre artisan ?</h2>
+  <p data-i18n="ctafinal_sub">Accès libre, aucune inscription requise pour parcourir l'annuaire.</p>
+  <div class="cta-final-two">
+    <a href="https://caralink.app/artisans/" class="btn-solid" data-i18n="hero_cta">Découvrir CaraLink Artisans →</a>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-brand"><span class="fl">Learn</span><span class="flo">Logic</span> <span class="fl">Studio</span></div>
+  <p><span data-i18n="footer_copy">© 2026 LearnLogic Studio.</span> <span data-i18n="footer_rights">Tous droits réservés.</span></p>
+  <div class="footer-links">
+    <a href="/" data-i18n="footer_home">Accueil</a>
+    <a href="https://caralink.app/artisans/inscription.html" data-i18n="footer_artisan">Devenir artisan</a>
+    <a href="mailto:contact@learnlogicstudio.com" data-i18n="footer_contact">Contact</a>
+  </div>
+</footer>
+
+<script>
+var TR = {
+  fr: {
+    nav_back:"← Tous les produits", nav_cta:"Découvrir CaraLink Artisans →",
+    hero_kicker:"🔧 CaraLink Artisans",
+    hero_intro:"Avant tout, un annuaire qui connecte clients et artisans de confiance aux Antilles-Guyane.",
+    hero_title:"Trouvez un artisan <span class=\"hl\">disponible pour vos travaux.</span>",
+    hero_tagline:"Trouvez, réservez ! Soyez visible, travaillez !",
+    hero_sub:"Recherche gratuite, sans inscription, SIRET vérifié.",
+    hero_cta:"Découvrir CaraLink Artisans →",
+    sec2_kicker:"Vous cherchez un artisan",
+    sec2_title:"Un artisan vérifié, <span style=\"color:var(--ac);\">en quelques clics.</span>",
+    sec2_sub:"SIRET vérifié, avis authentiques, devis gratuit — sans créer de compte.",
+    f1_title:"Recherche par secteur et lieu", f1_desc:"Plomberie, jardinage, électricité… filtrez par secteur et par commune, avec une carte interactive.",
+    f2_title:"Badge Vérifié", f2_desc:"SIRET contrôlé automatiquement, attestation d'assurance examinée — une vraie sécurité.",
+    f3_title:"Devis gratuit, sans engagement", f3_desc:"Juste votre nom et votre numéro — l'artisan vous recontacte directement.",
+    sec2_cta:"Trouver un artisan →",
+    sec3_kicker:"Vous êtes artisan",
+    sec3_title:"Votre vitrine, <span style=\"color:var(--ac);\">visible gratuitement.</span>",
+    sec3_sub:"Créez votre profil en une page, recevez des demandes de devis directement.",
+    c1_title:"Inscription en une seule page", c1_desc:"Compte, profil, SIRET, document d'assurance — tout d'un coup, visible immédiatement dans l'annuaire.",
+    c2_title:"Services et tarifs visibles", c2_desc:"Photos de vos réalisations, tarifs indicatifs — votre vraie vitrine, gratuite.",
+    c3_title:"Demandes reçues directement", c3_desc:"Un espace connecté pour gérer votre profil et répondre à vos devis, sans intermédiaire.",
+    sec3_cta:"Créer mon profil artisan →",
+    ctafinal_title:"Prêt à trouver votre artisan ?",
+    ctafinal_sub:"Accès libre, aucune inscription requise pour parcourir l'annuaire.",
+    footer_copy:"© 2026 LearnLogic Studio.", footer_rights:"Tous droits réservés.",
+    footer_home:"Accueil", footer_artisan:"Devenir artisan", footer_contact:"Contact",
+  },
+  en: {
+    nav_back:"← All products", nav_cta:"Discover CaraLink Artisans →",
+    hero_kicker:"🔧 CaraLink Artisans",
+    hero_intro:"First and foremost, a directory connecting clients and trusted craftsmen across the French Caribbean.",
+    hero_title:"Find a craftsman <span class=\"hl\">available for your project.</span>",
+    hero_tagline:"Find, book! Be visible, get work!",
+    hero_sub:"Free search, no sign-up, verified SIRET.",
+    hero_cta:"Discover CaraLink Artisans →",
+    sec2_kicker:"You're looking for a craftsman",
+    sec2_title:"A verified craftsman, <span style=\"color:var(--ac);\">in a few clicks.</span>",
+    sec2_sub:"Verified SIRET, authentic reviews, free quote — no account needed.",
+    f1_title:"Search by trade and location", f1_desc:"Plumbing, gardening, electrical work… filter by trade and town, with an interactive map.",
+    f2_title:"Verified badge", f2_desc:"SIRET automatically checked, insurance certificate reviewed — real security.",
+    f3_title:"Free quote, no commitment", f3_desc:"Just your name and phone number — the craftsman calls you back directly.",
+    sec2_cta:"Find a craftsman →",
+    sec3_kicker:"You're a craftsman",
+    sec3_title:"Your showcase, <span style=\"color:var(--ac);\">visible for free.</span>",
+    sec3_sub:"Create your profile in one page, receive quote requests directly.",
+    c1_title:"Sign-up in a single page", c1_desc:"Account, profile, SIRET, insurance document — all at once, visible immediately in the directory.",
+    c2_title:"Services and prices visible", c2_desc:"Photos of your work, indicative prices — your real showcase, free.",
+    c3_title:"Requests received directly", c3_desc:"A connected space to manage your profile and respond to quotes, no middleman.",
+    sec3_cta:"Create my craftsman profile →",
+    ctafinal_title:"Ready to find your craftsman?",
+    ctafinal_sub:"Open access, no sign-up required to browse the directory.",
+    footer_copy:"© 2026 LearnLogic Studio.", footer_rights:"All rights reserved.",
+    footer_home:"Home", footer_artisan:"Become a craftsman", footer_contact:"Contact",
+  },
+  es: {
+    nav_back:"← Todos los productos", nav_cta:"Descubrir CaraLink Artisans →",
+    hero_kicker:"🔧 CaraLink Artisans",
+    hero_intro:"Ante todo, un directorio que conecta clientes y artesanos de confianza en las Antillas-Guayana.",
+    hero_title:"Encuentra un artesano <span class=\"hl\">disponible para tu proyecto.</span>",
+    hero_tagline:"¡Busca, reserva! ¡Hazte visible, trabaja!",
+    hero_sub:"Búsqueda gratuita, sin registro, SIRET verificado.",
+    hero_cta:"Descubrir CaraLink Artisans →",
+    sec2_kicker:"Buscas un artesano",
+    sec2_title:"Un artesano verificado, <span style=\"color:var(--ac);\">en unos clics.</span>",
+    sec2_sub:"SIRET verificado, reseñas auténticas, presupuesto gratis — sin crear cuenta.",
+    f1_title:"Búsqueda por oficio y lugar", f1_desc:"Fontanería, jardinería, electricidad… filtra por oficio y localidad, con un mapa interactivo.",
+    f2_title:"Insignia Verificado", f2_desc:"SIRET comprobado automáticamente, certificado de seguro revisado — una seguridad real.",
+    f3_title:"Presupuesto gratis, sin compromiso", f3_desc:"Solo tu nombre y tu número — el artesano te vuelve a llamar directamente.",
+    sec2_cta:"Encontrar un artesano →",
+    sec3_kicker:"Eres artesano",
+    sec3_title:"Tu vitrina, <span style=\"color:var(--ac);\">visible gratis.</span>",
+    sec3_sub:"Crea tu perfil en una página, recibe solicitudes de presupuesto directamente.",
+    c1_title:"Registro en una sola página", c1_desc:"Cuenta, perfil, SIRET, documento de seguro — todo de una vez, visible de inmediato en el directorio.",
+    c2_title:"Servicios y tarifas visibles", c2_desc:"Fotos de tus trabajos, tarifas indicativas — tu vitrina real, gratis.",
+    c3_title:"Solicitudes recibidas directamente", c3_desc:"Un espacio conectado para gestionar tu perfil y responder a los presupuestos, sin intermediarios.",
+    sec3_cta:"Crear mi perfil de artesano →",
+    ctafinal_title:"¿Listo para encontrar tu artesano?",
+    ctafinal_sub:"Acceso libre, sin registro necesario para explorar el directorio.",
+    footer_copy:"© 2026 LearnLogic Studio.", footer_rights:"Todos los derechos reservados.",
+    footer_home:"Inicio", footer_artisan:"Hazte artesano", footer_contact:"Contacto",
+  }
+};
+
+var LANG_LABELS = { fr: 'Français', en: 'English', es: 'Español' };
+var LANG_FLAG_CLASS = { fr: 'flag-fr', en: 'flag-gb', es: 'flag-es' };
+var LANG = 'fr';
+
+function setLang(lang) {
+  LANG = lang;
+  localStorage.setItem('cr_lang', lang);
+  document.querySelectorAll('.lang-item').forEach(function(el){
+    el.classList.toggle('active', el.getAttribute('data-lang') === lang);
+  });
+  var flagEl = document.getElementById('lang-current-flag');
+  var labelEl = document.getElementById('lang-current-label');
+  if (flagEl) flagEl.className = 'flag-swatch ' + LANG_FLAG_CLASS[lang];
+  if (labelEl) labelEl.textContent = LANG_LABELS[lang];
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n');
+    var val = TR[lang] && TR[lang][key];
+    if (val) el.innerHTML = val;
+  });
+  document.documentElement.lang = lang;
+}
+
+function toggleLangMenu(e) {
+  if (e) e.stopPropagation();
+  var menu = document.getElementById('lang-dropdown-menu');
+  if (!menu) return;
+  var isOpen = menu.style.display === 'block';
+  menu.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    setTimeout(function() {
+      document.addEventListener('click', function fermerLangMenu() {
+        var m = document.getElementById('lang-dropdown-menu');
+        if (m) m.style.display = 'none';
+        document.removeEventListener('click', fermerLangMenu);
+      });
+    }, 0);
+  }
+}
+
+function selectLang(lang, e) {
+  if (e) e.stopPropagation();
+  setLang(lang);
+}
+
+(function(){
+  var saved = localStorage.getItem('cr_lang');
+  if (saved && ['fr','en','es'].indexOf(saved) >= 0) { setLang(saved); return; }
+  var bl = (navigator.language || navigator.userLanguage || 'fr').substring(0,2).toLowerCase();
+  var lang = ['fr','en','es'].indexOf(bl) >= 0 ? bl : 'en';
+  setLang(lang);
+})();
+</script>
+
+</body>
+</html>
