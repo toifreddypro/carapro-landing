@@ -71,65 +71,6 @@ var _session = null;
 
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-function slugify(s) {
-  return String(s||'').toLowerCase().trim()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // retire les accents
-    .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-}
-
-async function chargerSecteurs() {
-  var { data: secteurs, error } = await sb.from('secteurs').select('*').order('ordre', { ascending: true });
-  if (error) {
-    document.getElementById('zone-secteurs').innerHTML = '<p style="color:var(--danger);">Erreur secteurs : ' + escHtml(error.message) + '</p>';
-    return;
-  }
-  document.getElementById('zone-secteurs').innerHTML =
-    '<div class="dcard">' +
-      '<div class="dchdr"><span>Secteurs d\'activité (' + secteurs.length + ')</span></div>' +
-      '<div class="dcbdy"><table class="dtbl">' +
-        '<thead><tr><th>Icône</th><th>Nom (FR)</th><th>Code</th><th></th></tr></thead>' +
-        '<tbody>' + secteurs.map(renderLigneSecteur).join('') + '</tbody>' +
-      '</table></div>' +
-      '<div style="padding:14px 18px;border-top:1px solid var(--brd);display:flex;gap:8px;align-items:center;">' +
-        '<input id="nouveau-secteur" type="text" placeholder="Ex : Esthétique, Comptabilité…" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--b2);font-family:\'Outfit\',sans-serif;font-size:13px;" onkeydown="if(event.key===\'Enter\')ajouterSecteur()">' +
-        '<button onclick="ajouterSecteur()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">+ Ajouter</button>' +
-      '</div>' +
-      '<div class="note">💡 L\'icône et les traductions anglais/espagnol se règlent à "✨" et vide par défaut — modifiables plus tard directement en base si besoin.</div>' +
-    '</div>';
-}
-
-function renderLigneSecteur(s) {
-  return '<tr>' +
-    '<td>' + (s.icon || '✨') + '</td>' +
-    '<td><strong>' + escHtml(s.label_fr) + '</strong></td>' +
-    '<td style="color:var(--mu);font-family:\'JetBrains Mono\',monospace;font-size:11.5px;">' + escHtml(s.code) + '</td>' +
-    '<td><button class="btn-del" onclick="supprimerSecteur(\'' + s.id + '\',\'' + escHtml(s.label_fr).replace(/'/g,"\\'") + '\')">Supprimer</button></td>' +
-  '</tr>';
-}
-
-async function ajouterSecteur() {
-  var input = document.getElementById('nouveau-secteur');
-  var label = input.value.trim();
-  if (!label) return;
-  var code = slugify(label);
-  var { data: existant } = await sb.from('secteurs').select('id').eq('code', code).maybeSingle();
-  if (existant) { alert('Un secteur avec un code très proche existe déjà.'); return; }
-  var { data: max } = await sb.from('secteurs').select('ordre').order('ordre', { ascending: false }).limit(1).maybeSingle();
-  var { error } = await sb.from('secteurs').insert({
-    code: code, label_fr: label, icon: '✨', ordre: (max ? max.ordre : 0) + 1,
-  });
-  if (error) { alert('Erreur : ' + error.message); return; }
-  input.value = '';
-  await chargerSecteurs();
-}
-
-async function supprimerSecteur(id, nom) {
-  if (!confirm('Supprimer le secteur "' + nom + '" ?\n\nLes artisans déjà enregistrés sous ce secteur garderont ce code, mais il ne sera plus proposé pour les nouvelles inscriptions ni les recherches.')) return;
-  var { error } = await sb.from('secteurs').delete().eq('id', id);
-  if (error) { alert('Erreur : ' + error.message); return; }
-  await chargerSecteurs();
-}
-
 async function init() {
   var { data } = await sb.auth.getSession();
   if (!data.session || data.session.user.email !== ADMIN_EMAIL) {
@@ -138,45 +79,77 @@ async function init() {
     return;
   }
   _session = data.session;
-  document.getElementById('wrap').innerHTML =
-    '<div id="zone-secteurs"></div>' +
-    '<div id="zone-artisans"></div>';
-  await chargerSecteurs();
   await chargerArtisans();
 }
 
 async function chargerArtisans() {
   var { data: artisans, error } = await sb.from('artisans').select('*').order('created_at', { ascending: false });
   if (error) {
-    document.getElementById('zone-artisans').innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>';
+    document.getElementById('wrap').innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>';
     return;
   }
 
-  document.getElementById('zone-artisans').innerHTML =
+  document.getElementById('wrap').innerHTML =
     '<div class="dcard">' +
       '<div class="dchdr"><span>Tous les artisans (' + artisans.length + ')</span></div>' +
       '<div class="dcbdy"><table class="dtbl">' +
         '<thead><tr><th>Entreprise</th><th>Secteur</th><th>Commune</th><th>Vérifié</th><th>Abonnement</th><th>Inscrit le</th><th></th></tr></thead>' +
         '<tbody>' + artisans.map(renderLigneArtisan).join('') + '</tbody>' +
       '</table></div>' +
-      '<div class="note">💡 Colonne "Abonnement" : la facturation MPA Artisans n\'est pas encore branchée (Stripe à venir) — tous les comptes apparaissent "Non facturé" pour l\'instant.</div>' +
+      '<div class="note">💡 Cliquez sur le badge "Vérifié" ou choisissez un statut d\'abonnement pour les modifier directement — l\'action passe par une fonction serveur sécurisée, jamais une écriture directe.</div>' +
     '</div>';
 }
 
 function renderLigneArtisan(a) {
   var dateAff = new Date(a.created_at).toLocaleDateString('fr-FR');
   var badgeVerifie = a.verifie
-    ? '<span class="badge-ok">Vérifié</span>'
-    : '<span class="badge-attente">' + (a.verification_statut === 'en_attente' ? 'En attente' : 'Non vérifié') + '</span>';
+    ? '<span class="badge-ok" style="cursor:pointer;" title="Cliquer pour retirer la vérification" onclick="toggleVerifie(\'' + a.id + '\', false)">Vérifié</span>'
+    : '<span class="badge-attente" style="cursor:pointer;" title="Cliquer pour marquer comme vérifié" onclick="toggleVerifie(\'' + a.id + '\', true)">' + (a.verification_statut === 'en_attente' ? 'En attente' : 'Non vérifié') + '</span>';
+
+  var statut = a.abonnement_statut || 'essai';
+  var LABELS_STATUT = { essai: '🎁 Essai', actif: '✅ Actif', lecture_seule: '🔒 Lecture seule', annule: '⛔ Annulé' };
+  var joursRestants = '';
+  if (statut === 'essai' && a.essai_fin) {
+    var j = Math.max(0, Math.ceil((new Date(a.essai_fin).getTime() - Date.now()) / 86400000));
+    joursRestants = ' (' + j + 'j)';
+  }
+  var optionsStatut = ['essai', 'actif', 'lecture_seule', 'annule'].map(function(s) {
+    return '<option value="' + s + '"' + (s === statut ? ' selected' : '') + '>' + LABELS_STATUT[s] + '</option>';
+  }).join('');
+
   return '<tr>' +
     '<td><strong>' + escHtml(a.nom_entreprise) + '</strong></td>' +
     '<td>' + escHtml(a.secteur) + '</td>' +
     '<td>' + escHtml(a.commune) + '</td>' +
     '<td>' + badgeVerifie + '</td>' +
-    '<td><span class="badge-abo">Non facturé</span></td>' +
+    '<td><select onchange="changerAbonnement(\'' + a.id + '\', this.value)" style="font-size:11.5px;font-weight:600;padding:3px 6px;border-radius:6px;border:1px solid var(--brd);background:var(--p2);color:var(--mu2);">' + optionsStatut + '</select><span style="font-size:10.5px;color:var(--mu);">' + joursRestants + '</span></td>' +
     '<td>' + dateAff + '</td>' +
     '<td><button class="btn-del" onclick="supprimerCompte(\'' + a.user_id + '\',\'' + escHtml(a.nom_entreprise).replace(/'/g,"\\'") + '\')">Supprimer</button></td>' +
   '</tr>';
+}
+
+async function appelerActionAdmin(artisanId, champs) {
+  var res = await fetch(SUPABASE_URL + '/functions/v1/admin-modifier-artisan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _session.access_token },
+    body: JSON.stringify({ artisan_id: artisanId, ...champs }),
+  });
+  var data = await res.json();
+  if (data.error) throw new Error(data.error);
+}
+
+async function toggleVerifie(artisanId, nouvelleValeur) {
+  try {
+    await appelerActionAdmin(artisanId, { verifie: nouvelleValeur });
+    await chargerArtisans();
+  } catch (e) { alert('Erreur : ' + e.message); }
+}
+
+async function changerAbonnement(artisanId, nouveauStatut) {
+  try {
+    await appelerActionAdmin(artisanId, { abonnement_statut: nouveauStatut });
+    await chargerArtisans();
+  } catch (e) { alert('Erreur : ' + e.message); await chargerArtisans(); }
 }
 
 async function supprimerCompte(userId, nom) {
