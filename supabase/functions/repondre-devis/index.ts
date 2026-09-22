@@ -141,6 +141,17 @@ Deno.serve(async (req: Request) => {
       return pageHtml("Erreur", "Impossible de retrouver l'artisan associé à cette demande. Contactez le support.", "#dc2626");
     }
 
+    // L'essai gratuit de l'artisan est terminé sans carte enregistrée : mêmes règles qu'en app,
+    // pour qu'un lien email ne contourne pas le verrouillage en lecture seule.
+    const { data: artisanStatut } = await sb.from("artisans").select("abonnement_statut").eq("id", artisanId).maybeSingle();
+    if (artisanStatut?.abonnement_statut === "lecture_seule") {
+      return pageHtml(
+        "Action indisponible",
+        "L'essai gratuit de cet artisan sur MPA Artisans est terminé — il doit s'abonner pour pouvoir confirmer ou refuser de nouveaux rendez-vous. Le client sera contacté directement par l'artisan.",
+        "#dc2626"
+      );
+    }
+
     if (action === "refuser") {
       await sb.from("demandes_devis").update({ statut: "creneau_refuse", reponse_message: message }).eq("id", demande.id);
 
