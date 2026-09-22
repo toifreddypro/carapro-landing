@@ -1320,10 +1320,11 @@ async function initDashboard() {
   _dispoAnnee = new Date().getFullYear();
   _dispoMois = new Date().getMonth();
   await renderDispoCalendrier();
-  demarrerEncartAlternance();
+  renderEncartAlternance();
 }
 
 // ── Encart croisé vers CaraLink Alternance — "Essor de CaraLink" ──
+// 3 niveaux : 0=jamais vu le calculateur, 1=intérêt exprimé, 2=offre publiée (badge Tremplin des jeunes)
 var PHRASES_ENCART_ALTERNANCE = [
   'Un artisan a aussi besoin de prospecter. <strong style="color:var(--tx);">Il vous faut un commercial.</strong>',
   'Un artisan a aussi besoin de se faire connaître. <strong style="color:var(--tx);">Il vous faut quelqu\'un en communication.</strong>',
@@ -1332,6 +1333,46 @@ var PHRASES_ENCART_ALTERNANCE = [
 ];
 var _indexEncartAlternance = 0;
 var _timerEncartAlternance = null;
+
+function renderEncartAlternance() {
+  var zone = document.getElementById('encart-alternance');
+  if (!zone) return;
+  var niveau = _artisan.alternance_niveau || 0;
+
+  if (niveau >= 2) {
+    zone.innerHTML =
+      '<div style="background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(245,158,11,.04));border:1px solid rgba(245,158,11,.35);border-radius:14px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">' +
+        '<span style="font-size:22px;">🟠</span>' +
+        '<div>' +
+          '<div style="font-size:13px;font-weight:700;color:#b45309;">Tremplin des jeunes</div>' +
+          '<div style="font-size:12px;color:var(--mu2);">Merci de vous engager pour l\'alternance en Guadeloupe — ce badge apparaît désormais sur votre fiche publique CaraLink Artisans.</div>' +
+        '</div>' +
+      '</div>';
+    return;
+  }
+
+  if (niveau === 1) {
+    zone.innerHTML =
+      '<div style="background:linear-gradient(135deg,rgba(15,157,120,.08),rgba(15,157,120,.03));border:1px solid rgba(15,157,120,.25);border-radius:14px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
+        '<div style="flex:1;min-width:240px;">' +
+          '<div style="font-size:13px;font-weight:700;color:#0f9d78;margin-bottom:4px;">✅ Intérêt exprimé pour l\'alternance</div>' +
+          '<div style="font-size:12.5px;color:var(--mu2);">Une fois votre offre publiée sur CaraLink Alternance, revenez cocher la case ci-dessous — vous obtiendrez le badge "Tremplin des jeunes" sur votre fiche publique.</div>' +
+        '</div>' +
+        '<button onclick="declarerOffreAlternance()" style="flex-shrink:0;padding:9px 16px;border-radius:8px;border:1.5px solid #0f9d78;background:transparent;color:#0f9d78;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;">✓ J\'ai publié une offre</button>' +
+      '</div>';
+    return;
+  }
+
+  zone.innerHTML =
+    '<div style="background:linear-gradient(135deg,rgba(15,157,120,.08),rgba(15,157,120,.03));border:1px solid rgba(15,157,120,.25);border-radius:14px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
+      '<div style="flex:1;min-width:240px;">' +
+        '<div style="font-size:13px;font-weight:700;color:#0f9d78;margin-bottom:4px;">Et si votre prochain alternant vous coûtait beaucoup moins que vous ne le pensez ?</div>' +
+        '<div id="encart-alternance-texte" style="font-size:12.5px;color:var(--mu2);min-height:18px;transition:opacity .4s;"></div>' +
+      '</div>' +
+      '<a href="https://learnlogicstudio.com/connect.html#section-calculateur" target="_blank" rel="noopener" onclick="declarerInteretAlternance()" style="flex-shrink:0;padding:9px 16px;border-radius:8px;background:#0f9d78;color:#fff;font-size:12.5px;font-weight:700;text-decoration:none;white-space:nowrap;">Calculez votre coût réel →</a>' +
+    '</div>';
+  demarrerEncartAlternance();
+}
 
 function demarrerEncartAlternance() {
   var zone = document.getElementById('encart-alternance-texte');
@@ -1351,6 +1392,21 @@ function demarrerEncartAlternance() {
 function afficherPhraseEncartAlternance() {
   var zone = document.getElementById('encart-alternance-texte');
   if (zone) zone.innerHTML = PHRASES_ENCART_ALTERNANCE[_indexEncartAlternance];
+}
+
+async function declarerInteretAlternance() {
+  if ((_artisan.alternance_niveau || 0) >= 1) return; // déjà fait, on ne rétrograde jamais
+  var { error } = await sb.from('artisans').update({ alternance_niveau: 1, alternance_date_interet: new Date().toISOString() }).eq('id', _artisan.id);
+  if (!error) { _artisan.alternance_niveau = 1; }
+  // Le lien continue de s'ouvrir normalement (onclick n'empêche pas le comportement par défaut) — pas besoin de preventDefault.
+}
+
+async function declarerOffreAlternance() {
+  if (!confirm('Confirmez-vous avoir publié une offre d\'alternance sur CaraLink Alternance ? Le badge "Tremplin des jeunes" apparaîtra sur votre fiche publique.')) return;
+  var { error } = await sb.from('artisans').update({ alternance_niveau: 2, alternance_date_offre: new Date().toISOString() }).eq('id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  _artisan.alternance_niveau = 2;
+  renderEncartAlternance();
 }
 
 async function calculerDashboardFiscal() {

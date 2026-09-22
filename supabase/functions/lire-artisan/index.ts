@@ -37,7 +37,7 @@ Deno.serve(async (req: Request) => {
     if (!id) return json({ error: "Identifiant manquant." }, 400);
 
     const { data: artisan, error } = await sb.from("artisans")
-      .select("id, nom_entreprise, secteur, commune, bio, photo_profil_url, verifie, rayon_intervention_km")
+      .select("id, nom_entreprise, secteur, commune, bio, photo_profil_url, verifie, rayon_intervention_km, alternance_niveau")
       .eq("id", id)
       .eq("actif", true)
       .maybeSingle();

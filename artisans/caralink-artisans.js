@@ -370,7 +370,10 @@ function renderArtisanCard(a) {
   var badgeTarif = a.tarif_min != null
     ? '<span class="badge-trust" style="background:rgba(45,93,74,.1);color:#2D5D4A;">' + T('des_prefix') + ' ' + a.tarif_min + '€</span>'
     : '';
-  var badgesTxt = badgeVerifie + badgeNote + badgeTarif;
+  var badgeAlternance = a.alternance_niveau >= 2
+    ? '<span class="badge-trust" title="Cette entreprise s\'engage activement pour la formation locale" style="background:rgba(245,158,11,.12);color:#b45309;">🟠 Tremplin des jeunes</span>'
+    : '';
+  var badgesTxt = badgeVerifie + badgeNote + badgeTarif + badgeAlternance;
   return '<div class="formateur-card" onclick="ouvrirProfil(' + jsAttr(a.id) + ')">' +
     '<div class="card-top-row">' + photo +
       '<div class="card-info">' +
@@ -449,6 +452,7 @@ function buildProfilHTML(data) {
           '<div><div style="font-family:Fraunces,serif;font-size:19px;font-weight:700;">' + escHtml(a.nom_entreprise) + '</div>' +
           '<div style="font-size:13px;color:var(--mu2,#777);">' + secteurLabel(a.secteur) + ' · 📍 ' + escHtml(a.commune) + '</div>' +
           (a.verifie ? '<span class="badge-trust" style="margin-top:4px;display:inline-block;">✅ ' + T('badge_verifie') + '</span>' : '') +
+          (a.alternance_niveau >= 2 ? '<span title="Cette entreprise s\'engage activement pour la formation locale" style="margin-top:4px;margin-left:6px;display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,158,11,.12);color:#b45309;">🟠 Tremplin des jeunes</span>' : '') +
           '</div>' +
         '</div>' +
         '<button onclick="fermerProfil({target:this,currentTarget:this})" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--mu,#999);">✕</button>' +
