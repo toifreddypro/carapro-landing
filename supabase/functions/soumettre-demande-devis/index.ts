@@ -51,10 +51,10 @@ async function envoyerEmail(to: string, subject: string, html: string) {
 }
 
 const LABELS_TYPE_INTERVENTION: Record<string, string> = {
-  urgence: "🚨 Dépannage / Urgence",
-  installation: "🔧 Installation / Pose",
-  devis: "📋 Devis / Conseil",
-  entretien: "🧹 Entretien",
+  urgence: "🔥 Urgent",
+  installation: "📅 Rendez-vous classique",
+  devis: "💬 Devis / Renseignement",
+  entretien: "🔁 Suivi / Habitué·e",
 };
 function badgeTypeIntervention(type: string | null | undefined): string {
   if (!type || !LABELS_TYPE_INTERVENTION[type]) return "";

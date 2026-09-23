@@ -496,10 +496,10 @@ async function chargerDemandes() {
 }
 
 var LABELS_TYPE_INTERVENTION = {
-  urgence: '🚨 Dépannage / Urgence',
-  installation: '🔧 Installation / Pose',
-  devis: '📋 Devis / Conseil',
-  entretien: '🧹 Entretien',
+  urgence: '🔥 Urgent',
+  installation: '📅 Rendez-vous classique',
+  devis: '💬 Devis / Renseignement',
+  entretien: '🔁 Suivi / Habitué·e',
 };
 function typeInterventionLabelLocal(code) {
   return LABELS_TYPE_INTERVENTION[code] || null;
