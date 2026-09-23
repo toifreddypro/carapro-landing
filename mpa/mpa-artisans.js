@@ -190,6 +190,7 @@ async function init() {
   await chargerClients();
   await chargerDemandes();
   await chargerAvis();
+  await chargerHoraires();
   await chargerIndispos();
   await chargerServices();
   await initPlanning();
