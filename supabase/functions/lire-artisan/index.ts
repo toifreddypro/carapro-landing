@@ -55,7 +55,7 @@ Deno.serve(async (req: Request) => {
       .order("ordre", { ascending: true });
 
     const { data: avis } = await sb.from("avis_carapro")
-      .select("client_nom, note, commentaire, created_at")
+      .select("client_nom, note, commentaire, created_at, reponse_artisan, reponse_le")
       .eq("artisan_id", id)
       .order("created_at", { ascending: false })
       .limit(10);
