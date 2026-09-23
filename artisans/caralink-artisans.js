@@ -168,39 +168,21 @@ function renderNav() {
         '<div class="nav-brand"><span class="learn">Learn</span><span class="logic">Logic</span> <span class="studio">Studio</span></div>' +
         '<div class="nav-kk"><span class="karuk">Cara</span><span class="connect">Link</span> <span class="nav-kk-suffix">Artisans</span></div>' +
       '</a>' +
+      /* ⚠️ 24/09 — Boutons toujours visibles, sans bouton hamburger ni panneau
+      caché : après plusieurs tentatives de menu mobile qui ne s'affichaient
+      pas chez certain·e·s utilisateur·rice·s (cause jamais confirmée avec
+      certitude), on abandonne toute logique JS d'ouverture/fermeture.
+      nav-wrap passe à la ligne naturellement (flex-wrap) s'il n'y a pas la
+      place — aucun code personnalisé, comportement natif du navigateur. */
+      '<div class="nav-links">' +
+        '<a href="https://caralink.app/mpa/" style="padding:6px 14px;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;text-decoration:none;white-space:nowrap;">' + T('nav_mon_espace') + '</a>' +
+        '<a href="/artisans/inscription.html" style="padding:6px 14px;border-radius:8px;border:1px solid var(--brd);color:var(--tx);font-weight:600;text-decoration:none;white-space:nowrap;">' + T('nav_devenir_artisan') + '</a>' +
+      '</div>' +
       '<div class="nav-right">' +
         renderLangSwitcher() +
-        '<button class="nav-toggle" id="nav-toggle" onclick="toggleNavMobile()" aria-label="Menu">☰</button>' +
-      '</div>' +
-    '</div>' +
-    '<div class="nav-links" id="nav-links">' +
-      /* ⚠️ 17/09 — "Mon espace" pointe directement vers MPA Artisans
-      (caralink.app/mpa/), plus vers une page de connexion propre à
-      CaraLink Artisans : MPA Artisans gère lui-même l'identification,
-      comme demandé par Freddy ("comme CaraLink Formation"). URL à
-      confirmer si elle diffère de caralink.app/mpa/. */
-      '<a href="https://caralink.app/mpa/" style="padding:6px 14px;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;text-decoration:none;">' + T('nav_mon_espace') + '</a>' +
-      '<a href="/artisans/inscription.html" style="padding:6px 14px;border-radius:8px;border:1px solid var(--brd);color:var(--tx);font-weight:600;text-decoration:none;">' + T('nav_devenir_artisan') + '</a>' +
-      '<div class="nav-links-lang" style="justify-content:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid var(--brd);">' +
-        ['fr','en','es'].map(function(code) {
-          var drapeaux = { fr: 'flag-fr', en: 'flag-gb', es: 'flag-es' };
-          var noms = { fr: 'FR', en: 'EN', es: 'ES' };
-          var actif = code === AT_LANG;
-          return '<button onclick="choisirLangArtisans(\'' + code + '\')" style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:7px;border:1px solid ' + (actif ? 'var(--ac)' : 'var(--brd)') + ';background:' + (actif ? 'rgba(181,80,47,.08)' : 'transparent') + ';color:var(--tx);font-size:12px;font-weight:600;cursor:pointer;">' +
-            '<span class="flag-swatch ' + drapeaux[code] + '"></span>' + noms[code] +
-          '</button>';
-        }).join('') +
       '</div>' +
     '</div>' +
     '<div class="nav-spacer"></div>';
-}
-
-function toggleNavMobile() {
-  var links = document.getElementById('nav-links');
-  var btn = document.getElementById('nav-toggle');
-  if (!links) return;
-  var ouvert = links.classList.toggle('mobile-open');
-  if (btn) btn.textContent = ouvert ? '✕' : '☰';
 }
 
 // ════════════════════════════════════════
