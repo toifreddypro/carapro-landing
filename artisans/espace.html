@@ -69,12 +69,21 @@ const SUPABASE_URL  = 'https://uzgboxfxpxazhysusewv.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-const SECTEURS = [
-  { code:'jardinage', label:'Jardinage' }, { code:'plomberie', label:'Plomberie' },
-  { code:'electricite', label:'Électricité' }, { code:'peinture', label:'Peinture' },
-  { code:'maconnerie', label:'Maçonnerie' }, { code:'menuiserie', label:'Menuiserie' },
-  { code:'climatisation', label:'Climatisation' }, { code:'autre', label:'Autre' },
-];
+// Chargé dynamiquement depuis la table `secteurs` (voir chargerSecteurs) — plus jamais
+// à mettre à jour ici quand un nouveau secteur est ajouté en base.
+var SECTEURS = [];
+
+async function chargerSecteurs() {
+  try {
+    var { data, error } = await sb.from('secteurs').select('code, label_fr').order('ordre', { ascending: true });
+    if (error) throw error;
+    SECTEURS = (data || []).map(function(s) { return { code: s.code, label: s.label_fr }; });
+  } catch(e) {
+    console.error('chargerSecteurs:', e);
+    // Filet de sécurité minimal si le chargement échoue — mieux qu'une liste vide.
+    SECTEURS = [{ code: 'autre', label: 'Autre' }];
+  }
+}
 
 var _session = null;
 var _data = null;
@@ -102,6 +111,7 @@ async function init() {
 
   try {
     _data = await appelerFonction('mon-espace-artisan', { method: 'GET' });
+    await chargerSecteurs();
     render();
   } catch(e) {
     document.getElementById('wrap').innerHTML = '<div class="loader">Erreur : ' + escHtml(e.message) + '</div>';
