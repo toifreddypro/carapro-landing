@@ -739,6 +739,31 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 
 </div>
 
+<footer style="max-width:1200px;margin:0 auto;padding:24px 20px 40px;text-align:center;border-top:1px solid var(--brd);margin-top:30px;">
+  <div style="font-size:11.5px;color:var(--mu);">
+    MPA Artisans — <a href="#" onclick="ouvrirSuppressionCompte();return false;" style="color:var(--mu);text-decoration:underline;">Supprimer mon compte</a>
+  </div>
+</footer>
+
+<!-- MODALE : Suppression de compte (RGPD) -->
+<div class="modal-overlay" id="modal-suppr-compte">
+  <div class="modal-box">
+    <h3>Supprimer mon compte</h3>
+    <p style="font-size:13px;color:var(--mu);margin-bottom:14px;line-height:1.6;">
+      Cette action est <strong>définitive et irréversible</strong>. Seront supprimés : votre fiche, vos services, vos photos, vos horaires, vos clients habituels, vos interventions, vos factures et vos demandes de devis. Votre abonnement en cours sera résilié.
+    </p>
+    <div class="modal-field">
+      <label>Pour confirmer, tapez SUPPRIMER ci-dessous</label>
+      <input type="text" id="suppr-confirm-texte" placeholder="SUPPRIMER">
+    </div>
+    <div id="suppr-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>
+    <div class="modal-actions">
+      <button class="btn-primary" style="background:var(--danger);" onclick="confirmerSuppressionCompte()" id="btn-suppr-compte">Supprimer définitivement mon compte</button>
+      <button class="btn-secondary" onclick="fermerModale('modal-suppr-compte')">Annuler</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODALE : Modifier la fiche -->
 <div class="modal-overlay" id="modal-fiche">
   <div class="modal-box">

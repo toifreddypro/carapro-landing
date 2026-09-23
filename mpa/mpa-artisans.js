@@ -946,6 +946,42 @@ function toggleDatePaiement() {
   }
 }
 
+// ── Suppression de compte (RGPD) ──
+function ouvrirSuppressionCompte() {
+  document.getElementById('suppr-confirm-texte').value = '';
+  document.getElementById('suppr-err').style.display = 'none';
+  ouvrirModale('modal-suppr-compte');
+}
+
+async function confirmerSuppressionCompte() {
+  var texte = document.getElementById('suppr-confirm-texte').value.trim();
+  var err = document.getElementById('suppr-err');
+  if (texte !== 'SUPPRIMER') {
+    err.textContent = 'Tapez exactement SUPPRIMER (en majuscules) pour confirmer.';
+    err.style.display = 'block';
+    return;
+  }
+  if (!confirm('Dernière confirmation : supprimer définitivement votre compte MPA Artisans et toutes vos données ?')) return;
+
+  var btn = document.getElementById('btn-suppr-compte');
+  btn.disabled = true; btn.textContent = 'Suppression en cours…';
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/supprimer-mon-compte', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    alert('Votre compte a bien été supprimé. Merci d\'avoir utilisé MPA Artisans.');
+    await sb.auth.signOut();
+    window.location.href = 'https://caralink.app/artisans/';
+  } catch (e) {
+    err.textContent = 'Erreur : ' + e.message;
+    err.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Supprimer définitivement mon compte';
+  }
+}
 // ── Garde d'accès en lecture seule (essai expiré sans carte) ──
 // Appelée en tout début des actions qui créent/modifient/suppriment des données métier
 // (interventions, clients, factures, services, horaires, demandes). Ne bloque jamais la
