@@ -918,6 +918,22 @@ body.theme-light footer { background:#fbfcfe; }
 <link rel="stylesheet" href="/artisans/effects.css">
 </head>
 <body class="theme-light">
+  <script>
+    // ⚠️ 24/09 — Certains téléphones (le nôtre et celui d'au moins une cliente) affichaient
+    // une version ancienne de cette page malgré un rafraîchissement forcé et un déploiement
+    // confirmé à jour — comportement typique d'un service worker qui met le site en cache de
+    // façon persistante. On le désinscrit ici pour tout le monde, une bonne fois pour toutes.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        regs.forEach(function(reg) { reg.unregister(); });
+      });
+    }
+    if (window.caches) {
+      caches.keys().then(function(noms) {
+        noms.forEach(function(nom) { caches.delete(nom); });
+      });
+    }
+  </script>
   <div style="background:#B5502F;padding:10px 16px;text-align:center;">
     <a href="https://caralink.app/mpa/" style="color:#ffffff;font-weight:700;text-decoration:underline;margin-right:18px;font-family:Arial,sans-serif;font-size:14px;">Mon espace artisan</a>
     <a href="/artisans/inscription.html" style="color:#ffffff;font-weight:700;text-decoration:underline;font-family:Arial,sans-serif;font-size:14px;">Devenir artisan</a>
