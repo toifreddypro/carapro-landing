@@ -168,20 +168,29 @@ function renderNav() {
         '<div class="nav-brand"><span class="learn">Learn</span><span class="logic">Logic</span> <span class="studio">Studio</span></div>' +
         '<div class="nav-kk"><span class="karuk">Cara</span><span class="connect">Link</span> <span class="nav-kk-suffix">Artisans</span></div>' +
       '</a>' +
-      '<div class="nav-links">' +
-        /* ⚠️ 17/09 — "Mon espace" pointe directement vers MPA Artisans
-        (caralink.app/mpa/), plus vers une page de connexion propre à
-        CaraLink Artisans : MPA Artisans gère lui-même l'identification,
-        comme demandé par Freddy ("comme CaraLink Formation"). URL à
-        confirmer si elle diffère de caralink.app/mpa/. */
-        '<a href="https://caralink.app/mpa/" style="padding:6px 14px;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;text-decoration:none;">' + T('nav_mon_espace') + '</a>' +
-        '<a href="/artisans/inscription.html" style="padding:6px 14px;border-radius:8px;border:1px solid var(--brd);color:var(--tx);font-weight:600;text-decoration:none;">' + T('nav_devenir_artisan') + '</a>' +
-      '</div>' +
       '<div class="nav-right">' +
         renderLangSwitcher() +
+        '<button class="nav-toggle" id="nav-toggle" onclick="toggleNavMobile()" aria-label="Menu">☰</button>' +
       '</div>' +
     '</div>' +
+    '<div class="nav-links" id="nav-links">' +
+      /* ⚠️ 17/09 — "Mon espace" pointe directement vers MPA Artisans
+      (caralink.app/mpa/), plus vers une page de connexion propre à
+      CaraLink Artisans : MPA Artisans gère lui-même l'identification,
+      comme demandé par Freddy ("comme CaraLink Formation"). URL à
+      confirmer si elle diffère de caralink.app/mpa/. */
+      '<a href="https://caralink.app/mpa/" style="padding:6px 14px;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;text-decoration:none;">' + T('nav_mon_espace') + '</a>' +
+      '<a href="/artisans/inscription.html" style="padding:6px 14px;border-radius:8px;border:1px solid var(--brd);color:var(--tx);font-weight:600;text-decoration:none;">' + T('nav_devenir_artisan') + '</a>' +
+    '</div>' +
     '<div class="nav-spacer"></div>';
+}
+
+function toggleNavMobile() {
+  var links = document.getElementById('nav-links');
+  var btn = document.getElementById('nav-toggle');
+  if (!links) return;
+  var ouvert = links.classList.toggle('mobile-open');
+  if (btn) btn.textContent = ouvert ? '✕' : '☰';
 }
 
 // ════════════════════════════════════════
@@ -222,7 +231,6 @@ function renderHero() {
         '</div>' +
         '<div class="filters-wrap">' +
           '<button class="filter-pill" title="' + T('filter_bientot_title') + '" style="opacity:.55;cursor:not-allowed;" onclick="return false;">' + T('filter_dispo') + '</button>' +
-          '<button class="filter-pill' + (_searchState.tri==='tarif'?' active':'') + '" onclick="trierPar(\'tarif\')">' + T('filter_tarif') + '</button>' +
           '<button class="filter-pill' + (_searchState.tri==='note'?' active':'') + '" onclick="trierPar(\'note\')">' + T('filter_note') + '</button>' +
         '</div>' +
         '<div style="margin-top:14px;font-size:12.5px;color:var(--mu);">' +
@@ -360,13 +368,7 @@ async function chargerArtisans() {
 
     var artisans = data.artisans || [];
 
-    if (_searchState.tri === 'tarif') {
-      artisans.sort(function(a, b) {
-        if (a.tarif_min == null) return 1;
-        if (b.tarif_min == null) return -1;
-        return a.tarif_min - b.tarif_min;
-      });
-    } else if (_searchState.tri === 'note') {
+    if (_searchState.tri === 'note') {
       artisans.sort(function(a, b) {
         if (a.note_moyenne == null) return 1;
         if (b.note_moyenne == null) return -1;
