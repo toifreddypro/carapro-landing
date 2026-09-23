@@ -193,6 +193,7 @@ async function init() {
   await chargerHoraires();
   await chargerIndispos();
   await chargerServices();
+  await chargerPhotos();
   await initPlanning();
   await chargerCompta();
   remplirSelectClientFacture();
@@ -1767,7 +1768,9 @@ function renderFiche() {
   document.getElementById('cfg-tva').value = a.tva_config || 'Non assujetti';
 }
 
-function openModifierFiche() {
+var _secteursCache = null;
+
+async function openModifierFiche() {
   var a = _artisan;
   document.getElementById('m-nom').value = a.nom_entreprise || '';
   document.getElementById('m-statut').value = a.statut || 'Artisan Indépendant';
@@ -1777,9 +1780,20 @@ function openModifierFiche() {
   document.getElementById('m-adr').value = a.adresse || '';
   document.getElementById('m-cp').value = a.code_postal || '';
   document.getElementById('m-com').value = a.commune || '';
+  document.getElementById('m-rayon').value = a.rayon_intervention_km || 15;
   document.getElementById('m-tel').value = a.telephone || '';
   document.getElementById('m-email').value = a.email || '';
   document.getElementById('m-web').value = a.site_web || '';
+  document.getElementById('m-bio').value = a.bio || '';
+
+  if (!_secteursCache) {
+    var { data } = await sb.from('secteurs').select('code, label_fr').order('ordre', { ascending: true });
+    _secteursCache = data || [];
+  }
+  document.getElementById('m-secteur').innerHTML = _secteursCache.map(function(s) {
+    return '<option value="' + s.code + '"' + (s.code === a.secteur ? ' selected' : '') + '>' + s.label_fr + '</option>';
+  }).join('');
+
   ouvrirModale('modal-fiche');
 }
 
@@ -1921,12 +1935,15 @@ async function sauverFiche() {
     siret: document.getElementById('m-siret').value.trim(),
     ape: document.getElementById('m-ape').value.trim(),
     tva_intra: document.getElementById('m-tva-intra').value.trim(),
+    secteur: document.getElementById('m-secteur').value,
     adresse: document.getElementById('m-adr').value.trim(),
     code_postal: document.getElementById('m-cp').value.trim(),
     commune: document.getElementById('m-com').value.trim(),
+    rayon_intervention_km: parseInt(document.getElementById('m-rayon').value, 10) || 15,
     telephone: document.getElementById('m-tel').value.trim(),
     email: document.getElementById('m-email').value.trim(),
     site_web: document.getElementById('m-web').value.trim(),
+    bio: document.getElementById('m-bio').value.trim(),
   };
   // Géocodage de l'adresse pro — sert de point de départ pour le calcul des trajets (Smart Dispatch)
   if (maj.adresse) {
@@ -2028,6 +2045,68 @@ async function supprimerClient(id) {
 // ════════════════════════════════════════
 //  MES SERVICES — gestion complète (source unique, partagée avec CaraLink Artisans)
 // ════════════════════════════════════════
+
+// ════════════════════════════════════════
+//  PHOTOS — visibles sur la fiche publique CaraLink Artisans
+// ════════════════════════════════════════
+
+var _photosCache = [];
+
+async function chargerPhotos() {
+  var zone = document.getElementById('zone-photos');
+  if (!zone) return;
+  var { data, error } = await sb.from('artisans_photos').select('*').eq('artisan_id', _artisan.id).order('ordre', { ascending: true });
+  if (error) { zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>'; return; }
+  _photosCache = data || [];
+  renderPhotosGrille();
+}
+
+function renderPhotosGrille() {
+  var zone = document.getElementById('zone-photos');
+  if (!zone) return;
+  if (!_photosCache.length) {
+    zone.innerHTML = '<p style="grid-column:1/-1;font-size:13px;color:var(--mu);">Aucune photo pour l\'instant — ajoutez vos plus belles réalisations pour rassurer vos futurs clients.</p>';
+    return;
+  }
+  zone.innerHTML = _photosCache.map(function(p) {
+    return '<div style="position:relative;border-radius:10px;overflow:hidden;aspect-ratio:1;background:var(--p2);">' +
+      '<img src="' + escHtml(p.url_photo) + '" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">' +
+      '<button onclick="supprimerPhoto(\'' + p.id + '\')" style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:7px;width:24px;height:24px;cursor:pointer;font-size:13px;">✕</button>' +
+    '</div>';
+  }).join('');
+}
+
+async function uploaderPhoto() {
+  if (!verifierAccesEcriture()) return;
+  var input = document.getElementById('photo-input');
+  var fichier = input.files[0];
+  if (!fichier) return;
+  var btn = document.getElementById('btn-ajouter-photo');
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    var chemin = _artisan.user_id + '/' + Date.now() + '_' + fichier.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    var up = await sb.storage.from('artisans-photos').upload(chemin, fichier);
+    if (up.error) throw new Error(up.error.message);
+    var { data: pub } = sb.storage.from('artisans-photos').getPublicUrl(chemin);
+    var { error } = await sb.from('artisans_photos').insert({
+      artisan_id: _artisan.id, url_photo: pub.publicUrl, ordre: _photosCache.length,
+    });
+    if (error) throw error;
+    await chargerPhotos();
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+  }
+  btn.disabled = false; btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter';
+  input.value = '';
+}
+
+async function supprimerPhoto(id) {
+  if (!verifierAccesEcriture()) return;
+  if (!confirm('Supprimer cette photo ?')) return;
+  var { error } = await sb.from('artisans_photos').delete().eq('id', id).eq('artisan_id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerPhotos();
+}
 
 async function chargerServices() {
   var { data, error } = await sb.from('artisans_services').select('*').eq('artisan_id', _artisan.id).order('ordre', { ascending: true });
