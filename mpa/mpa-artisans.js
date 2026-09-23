@@ -189,7 +189,7 @@ async function init() {
   renderFiche();
   await chargerClients();
   await chargerDemandes();
-  await chargerHoraires();
+  await chargerAvis();
   await chargerIndispos();
   await chargerServices();
   await initPlanning();
@@ -863,6 +863,80 @@ async function demanderAvis(interventionId) {
   }
 }
 
+// ── Onglet Avis ──
+var _avisCache = [];
+
+async function chargerAvis() {
+  var { data, error } = await sb.from('avis_carapro').select('*').eq('artisan_id', _artisan.id).order('created_at', { ascending: false });
+  if (error) { console.error('chargerAvis:', error); return; }
+  _avisCache = data || [];
+  renderAvis();
+}
+
+function renderAvis() {
+  var zone = document.getElementById('zone-avis');
+  var zoneMoyenne = document.getElementById('avis-moyenne');
+  if (!zone) return;
+
+  if (!_avisCache.length) {
+    zone.innerHTML = '<p style="font-size:13px;color:var(--mu);">Aucun avis pour l\'instant. Demandez-en un depuis une intervention Terminée ou Payée.</p>';
+    if (zoneMoyenne) zoneMoyenne.textContent = '';
+    return;
+  }
+
+  var moyenne = _avisCache.reduce(function(s, a) { return s + a.note; }, 0) / _avisCache.length;
+  if (zoneMoyenne) zoneMoyenne.textContent = '⭐ ' + moyenne.toFixed(1) + ' (' + _avisCache.length + ' avis)';
+
+  zone.innerHTML = _avisCache.map(function(a) {
+    var dateAff = new Date(a.created_at).toLocaleDateString('fr-FR');
+    var etoiles = '★'.repeat(a.note) + '☆'.repeat(5 - a.note);
+    var reponseHtml = a.reponse_artisan
+      ? '<div style="margin-top:10px;padding:10px 12px;background:var(--p2);border-radius:8px;font-size:12.5px;"><strong style="color:var(--ac);">Votre réponse :</strong> ' + escHtml(a.reponse_artisan) + '</div>'
+      : '<div style="margin-top:10px;">' +
+          '<button onclick="ouvrirReponseAvis(\'' + a.id + '\')" id="btn-repondre-' + a.id + '" style="background:none;border:none;color:var(--ac);font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline;">Répondre à cet avis</button>' +
+          '<div id="zone-reponse-' + a.id + '" style="display:none;margin-top:8px;">' +
+            '<textarea id="txt-reponse-' + a.id + '" rows="2" placeholder="Votre réponse publique…" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--b2);font-family:Outfit,sans-serif;font-size:13px;box-sizing:border-box;"></textarea>' +
+            '<button onclick="envoyerReponseAvis(\'' + a.id + '\')" style="margin-top:6px;padding:6px 14px;border-radius:7px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">Envoyer</button>' +
+          '</div>' +
+        '</div>';
+    return '<div style="border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+        '<strong style="font-size:13px;">' + escHtml(a.client_nom || 'Client CaraLink') + '</strong>' +
+        '<span style="font-size:11px;color:var(--mu);">' + dateAff + '</span>' +
+      '</div>' +
+      '<div style="color:#f59e0b;font-size:15px;letter-spacing:1px;">' + etoiles + '</div>' +
+      (a.commentaire ? '<div style="font-size:13px;color:var(--mu2);margin-top:6px;">' + escHtml(a.commentaire) + '</div>' : '') +
+      reponseHtml +
+    '</div>';
+  }).join('');
+}
+
+function ouvrirReponseAvis(avisId) {
+  var btn = document.getElementById('btn-repondre-' + avisId);
+  var zone = document.getElementById('zone-reponse-' + avisId);
+  if (btn) btn.style.display = 'none';
+  if (zone) zone.style.display = 'block';
+}
+
+async function envoyerReponseAvis(avisId) {
+  if (!verifierAccesEcriture()) return;
+  var texte = document.getElementById('txt-reponse-' + avisId).value.trim();
+  if (!texte) { alert('Écrivez une réponse avant d\'envoyer.'); return; }
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/repondre-avis-artisan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({ avis_id: avisId, reponse: texte }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    await chargerAvis();
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+  }
+}
+
 function toggleDatePaiement() {
   var statut = document.getElementById('mi-statut').value;
   var wrap = document.getElementById('mi-date-paiement-wrap');
@@ -1381,6 +1455,7 @@ async function initDashboard() {
   _dispoAnnee = new Date().getFullYear();
   _dispoMois = new Date().getMonth();
   await renderDispoCalendrier();
+  renderRappelCloture();
   renderEncartAbonnement();
   renderEncartAlternance();
 }
@@ -1454,6 +1529,30 @@ async function lancerAbonnement() {
     alert('Erreur : ' + e.message);
     if (btn) { btn.disabled = false; btn.textContent = 'S\'abonner maintenant →'; }
   }
+}
+
+// ── Rappel : interventions passées encore marquées "Planifiée" ──
+// Les empêche de rester coincées — sans statut Terminée/Payée, impossible de les facturer
+// ni de demander un avis au client.
+async function renderRappelCloture() {
+  var zone = document.getElementById('encart-rappel-cloture');
+  if (!zone) return;
+  var aujourdhui = new Date().toISOString().slice(0, 10);
+  var { count, error } = await sb.from('mpa_artisans_interventions')
+    .select('id', { count: 'exact', head: true })
+    .eq('artisan_id', _artisan.id)
+    .eq('statut', 'planifiee')
+    .lt('date_intervention', aujourdhui);
+  if (error) { console.error('renderRappelCloture:', error); return; }
+  if (!count) { zone.innerHTML = ''; return; }
+  zone.innerHTML =
+    '<div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.3);border-radius:14px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">' +
+      '<span style="font-size:20px;">⏰</span>' +
+      '<div style="flex:1;font-size:12.5px;color:var(--mu2);">' +
+        '<strong style="color:#b45309;">' + count + ' intervention' + (count > 1 ? 's' : '') + ' passée' + (count > 1 ? 's' : '') + '</strong> encore marquée' + (count > 1 ? 's' : '') + ' "Planifiée" — pensez à les clôturer (Terminée/Payée) pour pouvoir les facturer et demander un avis au client.' +
+      '</div>' +
+      '<button onclick="switchTab(0)" style="flex-shrink:0;padding:7px 14px;border-radius:7px;border:1.5px solid #b45309;background:transparent;color:#b45309;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">Voir le planning →</button>' +
+    '</div>';
 }
 
 // ── Encart croisé vers CaraLink Alternance — "Essor de CaraLink" ──
