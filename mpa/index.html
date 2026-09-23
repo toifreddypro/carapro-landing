@@ -402,6 +402,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
     Demandes
     <span class="bcnt" id="cnt-demandes" style="display:none;background:var(--danger);color:#fff;">0</span>
   </button>
+  <button class="ntab" onclick="switchTab(6)" id="nt6">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    Avis
+  </button>
 </div>
 
 <div id="content">
@@ -526,7 +530,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
         </div>
         <div class="dcbdy">
           <table class="dtbl">
-            <thead><tr><th>Nom</th><th>Adresse</th><th>CP</th><th>Commune</th><th>Délai paiement</th><th></th></tr></thead>
+            <thead><tr><th>Nom</th><th>Email</th><th>Adresse</th><th>CP</th><th>Commune</th><th>Délai paiement</th><th></th></tr></thead>
             <tbody id="tbody-clients"></tbody>
           </table>
         </div>
@@ -749,6 +753,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   <div class="modal-box">
     <h3>Ajouter un client habituel</h3>
     <div class="modal-field"><label>Nom</label><input type="text" id="c-nom"></div>
+    <div class="modal-field"><label>Email (optionnel — nécessaire pour demander un avis)</label><input type="email" id="c-email"></div>
     <div class="modal-field"><label>Adresse</label><input type="text" id="c-adr"></div>
     <div class="modal-field"><label>Code postal</label><input type="text" id="c-cp"></div>
     <div class="modal-field"><label>Commune</label><input type="text" id="c-com"></div>
@@ -843,6 +848,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
       <button class="btn-primary" onclick="sauverIntervention()">Enregistrer</button>
       <button class="btn-secondary" onclick="fermerModale('modal-intervention')">Annuler</button>
     </div>
+    <div id="mi-avis-wrap" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--brd);text-align:center;"></div>
     <div id="mi-delete-wrap" style="display:none;margin-top:10px;text-align:center;">
       <button onclick="supprimerIntervention()" style="background:none;border:none;color:var(--danger);font-size:12.5px;cursor:pointer;text-decoration:underline;">Supprimer cette intervention</button>
     </div>
@@ -866,7 +872,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 
 <div class="mpa-ai-panel" id="mpa-ai-panel">
   <div class="mpa-ai-panel-header">
-    <span>✨ MPA AI</span>
+    <div>
+      <span>✨ MPA AI</span>
+      <div id="mpa-ai-abonnement-info" style="font-size:10.5px;font-weight:400;opacity:.85;margin-top:2px;"></div>
+    </div>
     <button onclick="toggleMpaAi()">✕</button>
   </div>
   <div id="mpa-ai-feed"></div>

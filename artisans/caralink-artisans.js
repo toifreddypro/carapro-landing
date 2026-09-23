@@ -256,9 +256,7 @@ function renderResults() {
   if (!main) return;
   main.innerHTML =
     '<div class="results-layout">' +
-      '<div class="partner-panel">' +
-        '<div style="font-size:11px;font-weight:700;color:var(--mu2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px;">' + T('partner_titre') + '</div>' +
-        '<div style="font-size:13px;color:var(--mu);line-height:1.6;">' + T('partner_texte') + '</div>' +
+      '<div class="partner-panel" id="partner-panel">' +
       '</div>' +
       '<div class="results-panel">' +
         '<div class="results-header">' +
@@ -273,8 +271,47 @@ function renderResults() {
         '<div id="leaflet-map" style="width:100%;height:280px;border-radius:12px;border:1px solid var(--brd);overflow:hidden;"></div>' +
       '</div>' +
     '</div>';
+  renderPartnerPanel();
   chargerArtisans();
   setTimeout(initCarte, 100);
+}
+
+// ── Panneau croisé vers CaraLink Alternance — "Espace partenaire" réutilisé ──
+var BESOINS_ALTERNANCE_PUBLIC = [
+  { code: 'commercial', phrase: 'Un artisan a aussi besoin de prospecter.', metier: 'Il vous faut un commercial.' },
+  { code: 'communication', phrase: 'Un artisan a aussi besoin de se faire connaître.', metier: 'Il vous faut de la communication.' },
+  { code: 'administratif', phrase: 'Un artisan a aussi besoin de gérer sa paperasse.', metier: 'Il vous faut un assistant administratif.' },
+  { code: 'comptable', phrase: 'Un artisan a aussi besoin de chiffrer.', metier: 'Il vous faut un comptable.' },
+];
+var _indexBesoinAlternancePublic = 0;
+var _timerBesoinAlternancePublic = null;
+
+function htmlPartnerPanel() {
+  var b = BESOINS_ALTERNANCE_PUBLIC[_indexBesoinAlternancePublic];
+  return (
+    '<div style="font-size:11px;font-weight:700;color:var(--mu2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px;">Vous êtes artisan ?</div>' +
+    '<a href="https://learnlogicstudio.com/connect.html?besoin=' + b.code + '#section-calculateur" target="_blank" rel="noopener" id="besoin-alternance-lien-public" style="display:block;text-decoration:none;color:inherit;padding-bottom:10px;border-bottom:1px solid var(--brd);margin-bottom:10px;transition:opacity .4s;">' +
+      '<div style="font-size:12.5px;color:var(--mu);line-height:1.5;">' + b.phrase + '</div>' +
+      '<div style="font-size:13px;font-weight:700;color:var(--ac);">' + b.metier + ' →</div>' +
+    '</a>' +
+    '<div style="font-size:13px;color:var(--mu);line-height:1.6;margin-bottom:10px;">Voyez pourquoi un alternant peut vous coûter très peu en Guadeloupe.</div>' +
+    '<a href="https://learnlogicstudio.com/connect.html#section-calculateur" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;border-radius:8px;background:var(--ac);color:#fff;font-size:12px;font-weight:700;text-decoration:none;">Calculez votre coût réel →</a>'
+  );
+}
+
+function renderPartnerPanel() {
+  var zone = document.getElementById('partner-panel');
+  if (!zone) return;
+  zone.innerHTML = htmlPartnerPanel();
+  if (_timerBesoinAlternancePublic) clearInterval(_timerBesoinAlternancePublic);
+  _timerBesoinAlternancePublic = setInterval(function() {
+    var lien = document.getElementById('besoin-alternance-lien-public');
+    if (lien) lien.style.opacity = '0';
+    setTimeout(function() {
+      _indexBesoinAlternancePublic = (_indexBesoinAlternancePublic + 1) % BESOINS_ALTERNANCE_PUBLIC.length;
+      zone.innerHTML = htmlPartnerPanel();
+    }, 400);
+  }, 5000);
 }
 
 function initCarte() {

@@ -184,6 +184,7 @@ async function init() {
     return;
   }
   _artisan = artisan;
+  majInfoAbonnementMpaAi();
 
   renderFiche();
   await chargerClients();
@@ -818,8 +819,48 @@ async function ouvrirIntervention(id) {
   document.getElementById('mi-date-paiement').value = i.date_paiement || '';
   toggleDatePaiement();
   document.getElementById('mi-delete-wrap').style.display = 'block';
+  renderZoneAvisIntervention(i);
   ouvrirModale('modal-intervention');
   calculerCreneaux();
+}
+
+function renderZoneAvisIntervention(i) {
+  var zone = document.getElementById('mi-avis-wrap');
+  if (!zone) return;
+  if (!['terminee', 'payee'].includes(i.statut)) { zone.style.display = 'none'; return; }
+  zone.style.display = 'block';
+  if (i.avis_demande_le) {
+    var dateAff = new Date(i.avis_demande_le).toLocaleDateString('fr-FR');
+    zone.innerHTML =
+      '<div style="font-size:12px;color:var(--mu);margin-bottom:6px;">✅ Avis demandé le ' + dateAff + '</div>' +
+      '<button onclick="demanderAvis(\'' + i.id + '\')" style="background:none;border:none;color:var(--ac);font-size:12px;cursor:pointer;text-decoration:underline;">Renvoyer l\'email de demande</button>';
+  } else {
+    zone.innerHTML =
+      '<button id="btn-demander-avis" onclick="demanderAvis(\'' + i.id + '\')" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--ac);background:transparent;color:var(--ac);font-size:12.5px;font-weight:700;cursor:pointer;">⭐ Demander un avis au client</button>';
+  }
+}
+
+async function demanderAvis(interventionId) {
+  if (!verifierAccesEcriture()) return;
+  var btn = document.getElementById('btn-demander-avis');
+  if (btn) { btn.disabled = true; btn.textContent = 'Envoi…'; }
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/demander-avis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({ intervention_id: interventionId }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    var i = _interventionsCache.find(function(x) { return x.id === interventionId; });
+    if (i) i.avis_demande_le = new Date().toISOString();
+    renderZoneAvisIntervention(i);
+    alert('Demande d\'avis envoyée par email au client.');
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '⭐ Demander un avis au client'; }
+  }
 }
 
 function toggleDatePaiement() {
@@ -1344,6 +1385,23 @@ async function initDashboard() {
   renderEncartAlternance();
 }
 
+// ── Info abonnement affichée dans l'en-tête du panneau MPA-AI ──
+function majInfoAbonnementMpaAi() {
+  var zone = document.getElementById('mpa-ai-abonnement-info');
+  if (!zone) return;
+  var statut = _artisan.abonnement_statut || 'essai';
+  if (statut === 'actif') { zone.textContent = '✅ Abonnement actif'; return; }
+  if (statut === 'lecture_seule') { zone.textContent = '🔒 Essai terminé — abonnez-vous'; return; }
+  if (statut === 'annule') { zone.textContent = '⛔ Abonnement annulé'; return; }
+  // essai
+  if (_artisan.essai_fin) {
+    var j = Math.max(0, Math.ceil((new Date(_artisan.essai_fin).getTime() - Date.now()) / 86400000));
+    zone.textContent = '🎁 Essai : ' + j + ' jour' + (j > 1 ? 's' : '') + ' restant' + (j > 1 ? 's' : '');
+  } else {
+    zone.textContent = '🎁 Essai en cours';
+  }
+}
+
 // ── Abonnement Stripe — essai 14 jours, 19,99€/mois ──
 function renderEncartAbonnement() {
   var zone = document.getElementById('encart-abonnement');
@@ -1399,15 +1457,18 @@ async function lancerAbonnement() {
 }
 
 // ── Encart croisé vers CaraLink Alternance — "Essor de CaraLink" ──
-// 3 niveaux : 0=jamais vu le calculateur, 1=intérêt exprimé, 2=offre publiée (badge Tremplin des jeunes)
-var PHRASES_ENCART_ALTERNANCE = [
-  'Un artisan a aussi besoin de prospecter. <strong style="color:var(--tx);">Il vous faut un commercial.</strong>',
-  'Un artisan a aussi besoin de se faire connaître. <strong style="color:var(--tx);">Il vous faut quelqu\'un en communication.</strong>',
-  'Un artisan a aussi besoin de gérer sa paperasse. <strong style="color:var(--tx);">Il vous faut un assistant administratif.</strong>',
-  'Un artisan a aussi besoin de chiffrer ses projets. <strong style="color:var(--tx);">Il vous faut quelqu\'un en comptabilité/gestion.</strong>',
+// Panneau à double orientation : 4 phrases cliquables individuellement (chacune transmet le
+// besoin identifié au calculateur via ?besoin=X) + une accroche générale en dessous pour ceux
+// qui ne se reconnaissent dans aucune des 4 phrases. Le badge "Tremplin des jeunes" reste
+// auto-déclaré par l'artisan (aucun suivi automatique d'un simple clic, qui n'a pas de sens).
+var BESOINS_ALTERNANCE = [
+  { code: 'commercial', phrase: 'Un artisan a aussi besoin de prospecter.', metier: 'Il vous faut un commercial.' },
+  { code: 'communication', phrase: 'Un artisan a aussi besoin de se faire connaître.', metier: 'Il vous faut de la communication.' },
+  { code: 'administratif', phrase: 'Un artisan a aussi besoin de gérer sa paperasse.', metier: 'Il vous faut un assistant administratif.' },
+  { code: 'comptable', phrase: 'Un artisan a aussi besoin de chiffrer.', metier: 'Il vous faut un comptable.' },
 ];
-var _indexEncartAlternance = 0;
-var _timerEncartAlternance = null;
+var _indexBesoinAlternance = 0;
+var _timerBesoinAlternance = null;
 
 function renderEncartAlternance() {
   var zone = document.getElementById('encart-alternance');
@@ -1426,54 +1487,41 @@ function renderEncartAlternance() {
     return;
   }
 
-  if (niveau === 1) {
-    zone.innerHTML =
-      '<div style="background:linear-gradient(135deg,rgba(15,157,120,.08),rgba(15,157,120,.03));border:1px solid rgba(15,157,120,.25);border-radius:14px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
-        '<div style="flex:1;min-width:240px;">' +
-          '<div style="font-size:13px;font-weight:700;color:#0f9d78;margin-bottom:4px;">✅ Intérêt exprimé pour l\'alternance</div>' +
-          '<div style="font-size:12.5px;color:var(--mu2);">Une fois votre offre publiée sur CaraLink Alternance, revenez cocher la case ci-dessous — vous obtiendrez le badge "Tremplin des jeunes" sur votre fiche publique.</div>' +
-        '</div>' +
-        '<button onclick="declarerOffreAlternance()" style="flex-shrink:0;padding:9px 16px;border-radius:8px;border:1.5px solid #0f9d78;background:transparent;color:#0f9d78;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;">✓ J\'ai publié une offre</button>' +
-      '</div>';
-    return;
-  }
-
-  zone.innerHTML =
-    '<div style="background:linear-gradient(135deg,rgba(15,157,120,.08),rgba(15,157,120,.03));border:1px solid rgba(15,157,120,.25);border-radius:14px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
-      '<div style="flex:1;min-width:240px;">' +
-        '<div style="font-size:13px;font-weight:700;color:#0f9d78;margin-bottom:4px;">Et si votre prochain alternant vous coûtait beaucoup moins que vous ne le pensez ?</div>' +
-        '<div id="encart-alternance-texte" style="font-size:12.5px;color:var(--mu2);min-height:18px;transition:opacity .4s;"></div>' +
-      '</div>' +
-      '<a href="https://learnlogicstudio.com/connect.html#section-calculateur" target="_blank" rel="noopener" onclick="declarerInteretAlternance()" style="flex-shrink:0;padding:9px 16px;border-radius:8px;background:#0f9d78;color:#fff;font-size:12.5px;font-weight:700;text-decoration:none;white-space:nowrap;">Calculez votre coût réel →</a>' +
-    '</div>';
   demarrerEncartAlternance();
 }
 
+function htmlEncartAlternance() {
+  var b = BESOINS_ALTERNANCE[_indexBesoinAlternance];
+  return (
+    '<div style="background:linear-gradient(135deg,rgba(15,157,120,.08),rgba(15,157,120,.03));border:1px solid rgba(15,157,120,.25);border-radius:14px;padding:16px 20px;margin-bottom:20px;">' +
+      '<a href="https://learnlogicstudio.com/connect.html?besoin=' + b.code + '#section-calculateur" target="_blank" rel="noopener" id="besoin-alternance-lien" style="display:block;text-decoration:none;color:inherit;padding:8px 0;border-bottom:1px solid rgba(15,157,120,.15);margin-bottom:12px;transition:opacity .4s;">' +
+        '<div style="font-size:12.5px;color:var(--mu2);">' + b.phrase + '</div>' +
+        '<div style="font-size:13px;font-weight:700;color:#0f9d78;">' + b.metier + ' →</div>' +
+      '</a>' +
+      '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
+        '<div style="flex:1;min-width:220px;font-size:12.5px;color:var(--mu2);">Voyez pourquoi un alternant peut vous coûter très peu en Guadeloupe.</div>' +
+        '<a href="https://learnlogicstudio.com/connect.html#section-calculateur" target="_blank" rel="noopener" style="flex-shrink:0;padding:8px 14px;border-radius:8px;background:#0f9d78;color:#fff;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;">Calculez votre coût réel →</a>' +
+      '</div>' +
+      '<div style="text-align:center;margin-top:10px;">' +
+        '<a href="#" onclick="declarerOffreAlternance();return false;" style="font-size:11px;color:var(--mu);">✓ Vous avez déjà publié une offre d\'alternance ?</a>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
 function demarrerEncartAlternance() {
-  var zone = document.getElementById('encart-alternance-texte');
+  var zone = document.getElementById('encart-alternance');
   if (!zone) return;
-  afficherPhraseEncartAlternance();
-  if (_timerEncartAlternance) clearInterval(_timerEncartAlternance);
-  _timerEncartAlternance = setInterval(function() {
-    zone.style.opacity = '0';
+  zone.innerHTML = htmlEncartAlternance();
+  if (_timerBesoinAlternance) clearInterval(_timerBesoinAlternance);
+  _timerBesoinAlternance = setInterval(function() {
+    var lien = document.getElementById('besoin-alternance-lien');
+    if (lien) lien.style.opacity = '0';
     setTimeout(function() {
-      _indexEncartAlternance = (_indexEncartAlternance + 1) % PHRASES_ENCART_ALTERNANCE.length;
-      afficherPhraseEncartAlternance();
-      zone.style.opacity = '1';
+      _indexBesoinAlternance = (_indexBesoinAlternance + 1) % BESOINS_ALTERNANCE.length;
+      zone.innerHTML = htmlEncartAlternance();
     }, 400);
   }, 5000);
-}
-
-function afficherPhraseEncartAlternance() {
-  var zone = document.getElementById('encart-alternance-texte');
-  if (zone) zone.innerHTML = PHRASES_ENCART_ALTERNANCE[_indexEncartAlternance];
-}
-
-async function declarerInteretAlternance() {
-  if ((_artisan.alternance_niveau || 0) >= 1) return; // déjà fait, on ne rétrograde jamais
-  var { error } = await sb.from('artisans').update({ alternance_niveau: 1, alternance_date_interet: new Date().toISOString() }).eq('id', _artisan.id);
-  if (!error) { _artisan.alternance_niveau = 1; }
-  // Le lien continue de s'ouvrir normalement (onclick n'empêche pas le comportement par défaut) — pas besoin de preventDefault.
 }
 
 async function declarerOffreAlternance() {
@@ -1481,6 +1529,7 @@ async function declarerOffreAlternance() {
   var { error } = await sb.from('artisans').update({ alternance_niveau: 2, alternance_date_offre: new Date().toISOString() }).eq('id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
   _artisan.alternance_niveau = 2;
+  if (_timerBesoinAlternance) clearInterval(_timerBesoinAlternance);
   renderEncartAlternance();
 }
 
@@ -1785,6 +1834,7 @@ function renderClients(liste) {
   tbody.innerHTML = liste.map(function(c) {
     return '<tr>' +
       '<td><strong>' + escHtml(c.nom) + '</strong></td>' +
+      '<td>' + (c.email ? escHtml(c.email) : '<span style="color:var(--mu);">—</span>') + '</td>' +
       '<td>' + escHtml(c.adresse||'—') + '</td>' +
       '<td>' + escHtml(c.code_postal||'—') + '</td>' +
       '<td>' + escHtml(c.commune||'—') + '</td>' +
@@ -1804,6 +1854,7 @@ function filtrerClients() {
 
 function openAjouterClient() {
   document.getElementById('c-nom').value = '';
+  document.getElementById('c-email').value = '';
   document.getElementById('c-adr').value = '';
   document.getElementById('c-cp').value = '';
   document.getElementById('c-com').value = '';
@@ -1818,6 +1869,7 @@ async function sauverClient() {
   var nouveau = {
     artisan_id: _artisan.id,
     nom: nom,
+    email: document.getElementById('c-email').value.trim() || null,
     adresse: document.getElementById('c-adr').value.trim() || null,
     code_postal: document.getElementById('c-cp').value.trim() || null,
     commune: document.getElementById('c-com').value.trim() || null,
