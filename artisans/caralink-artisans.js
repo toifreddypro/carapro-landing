@@ -124,7 +124,7 @@ function showToast(msg) {
 function renderLangSwitcher() {
   var drapeaux = { fr: 'flag-fr', en: 'flag-gb', es: 'flag-es' };
   var noms = { fr: 'Français', en: 'English', es: 'Español' };
-  return '<div style="position:relative;display:inline-block;">' +
+  return '<div class="lang-switcher-desktop" style="position:relative;display:inline-block;">' +
     '<button onclick="toggleLangMenuArtisans()" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;border:1px solid var(--brd);background:var(--panel);cursor:pointer;font-size:12.5px;color:var(--tx);">' +
       '<span class="flag-swatch ' + drapeaux[AT_LANG] + '"></span>' + noms[AT_LANG] +
     '</button>' +
@@ -181,6 +181,16 @@ function renderNav() {
       confirmer si elle diffère de caralink.app/mpa/. */
       '<a href="https://caralink.app/mpa/" style="padding:6px 14px;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;text-decoration:none;">' + T('nav_mon_espace') + '</a>' +
       '<a href="/artisans/inscription.html" style="padding:6px 14px;border-radius:8px;border:1px solid var(--brd);color:var(--tx);font-weight:600;text-decoration:none;">' + T('nav_devenir_artisan') + '</a>' +
+      '<div class="nav-links-lang" style="justify-content:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid var(--brd);">' +
+        ['fr','en','es'].map(function(code) {
+          var drapeaux = { fr: 'flag-fr', en: 'flag-gb', es: 'flag-es' };
+          var noms = { fr: 'FR', en: 'EN', es: 'ES' };
+          var actif = code === AT_LANG;
+          return '<button onclick="choisirLangArtisans(\'' + code + '\')" style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:7px;border:1px solid ' + (actif ? 'var(--ac)' : 'var(--brd)') + ';background:' + (actif ? 'rgba(181,80,47,.08)' : 'transparent') + ';color:var(--tx);font-size:12px;font-weight:600;cursor:pointer;">' +
+            '<span class="flag-swatch ' + drapeaux[code] + '"></span>' + noms[code] +
+          '</button>';
+        }).join('') +
+      '</div>' +
     '</div>' +
     '<div class="nav-spacer"></div>';
 }
