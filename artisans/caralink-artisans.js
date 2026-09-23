@@ -478,6 +478,7 @@ function buildProfilHTML(data) {
         return '<div style="padding:10px 0;border-bottom:1px solid var(--line,#eee);font-size:13px;">' +
           '<strong>' + '★'.repeat(av.note) + '☆'.repeat(5-av.note) + '</strong> — ' + escHtml(av.client_nom) +
           (av.commentaire ? '<div style="color:var(--mu2,#777);margin-top:3px;">' + escHtml(av.commentaire) + '</div>' : '') +
+          (av.reponse_artisan ? '<div style="margin-top:6px;padding:8px 10px;background:var(--p2,#f6f9fe);border-radius:8px;font-size:12.5px;color:var(--mu2,#777);"><strong style="color:var(--ac,#B5502F);">' + T('reponse_artisan_prefix') + '</strong> ' + escHtml(av.reponse_artisan) + '</div>' : '') +
         '</div>';
       }).join('')
     : '<div style="color:var(--mu,#999);font-size:13px;">' + T('aucun_avis') + '</div>';

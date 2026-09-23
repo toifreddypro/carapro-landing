@@ -179,6 +179,7 @@ Deno.serve(async (req: Request) => {
     const { data: client, error: errClient } = await sb.from("mpa_artisans_clients").insert({
       artisan_id: artisanId,
       nom: demande.client_nom,
+      email: demande.client_email || null,
       adresse: demande.adresse,
       code_postal: demande.code_postal,
       commune: demande.commune,
