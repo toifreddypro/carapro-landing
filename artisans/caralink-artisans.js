@@ -726,7 +726,6 @@ function ouvrirModalCreneau() {
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-email" type="email" placeholder="' + T('ph_email_optionnel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
-        typeInterventionPickerHTML() +
         '<textarea id="devis-message" rows="3" placeholder="' + T('ph_precisions') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         photosPickerHTML() +
         '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
