@@ -52,6 +52,15 @@ const SUPABASE_URL  = 'https://uzgboxfxpxazhysusewv.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
+// Destination après connexion : MPA Artisans par défaut — c'est le seul vrai espace
+// connecté de CaraLink Artisans aujourd'hui. Un ?next=... dans l'URL peut la remplacer,
+// pour rester correct si cette page sert un jour depuis un autre point d'entrée.
+function destinationApresConnexion() {
+  var params = new URLSearchParams(window.location.search);
+  var next = params.get('next');
+  return next || 'https://caralink.app/mpa/';
+}
+
 async function seConnecter() {
   var email = document.getElementById('f-email').value.trim();
   var password = document.getElementById('f-password').value;
@@ -63,7 +72,7 @@ async function seConnecter() {
   try {
     var res = await sb.auth.signInWithPassword({ email, password });
     if (res.error) throw new Error('Email ou mot de passe incorrect.');
-    window.location.href = '/artisans/espace.html';
+    window.location.href = destinationApresConnexion();
   } catch(e) {
     err.textContent = e.message;
     err.classList.add('show');
