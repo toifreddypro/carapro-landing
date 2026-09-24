@@ -409,9 +409,8 @@ function renderArtisanCard(a) {
   var badgeVerifie = a.verifie
     ? '<span class="badge-trust" title="SIRET et assurance vérifiés">✅ ' + T('badge_verifie') + '</span>'
     : '';
-  var badgeNote = a.note_moyenne != null
-    ? '<span class="badge-trust" style="background:rgba(180,83,9,.1);color:#b45309;">⭐ ' + a.note_moyenne + '</span>'
-    : '';
+  var noteAff = a.note_moyenne != null ? a.note_moyenne : 0;
+  var badgeNote = '<span class="badge-trust" style="background:rgba(180,83,9,.1);color:#b45309;" title="' + (a.nb_avis ? a.nb_avis + ' avis' : 'Aucun avis pour l\'instant') + '">⭐ ' + noteAff.toFixed(1) + (a.nb_avis ? ' (' + a.nb_avis + ')' : '') + '</span>';
   var badgeTarif = a.tarif_min != null
     ? '<span class="badge-trust" style="background:rgba(45,93,74,.1);color:#2D5D4A;">' + T('des_prefix') + ' ' + a.tarif_min + '€</span>'
     : '';
