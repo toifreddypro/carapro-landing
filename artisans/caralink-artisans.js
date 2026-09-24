@@ -367,7 +367,10 @@ async function chargerArtisans() {
     if (_searchState.nom) {
       var qNom = _searchState.nom.toLowerCase();
       artisans = artisans.filter(function(a) {
-        return (a.nom_entreprise || '').toLowerCase().indexOf(qNom) !== -1;
+        var secteurTxt = secteurLabel(a.secteur) || '';
+        return (a.nom_entreprise || '').toLowerCase().indexOf(qNom) !== -1
+          || secteurTxt.toLowerCase().indexOf(qNom) !== -1
+          || (a.bio || '').toLowerCase().indexOf(qNom) !== -1;
       });
     }
 
