@@ -188,7 +188,7 @@ function renderNav() {
 // ════════════════════════════════════════
 //  HERO / RECHERCHE — secteur + commune, jamais de date (V2)
 // ════════════════════════════════════════
-var _searchState = { secteur:'', commune:'', tri:'' };
+var _searchState = { secteur:'', commune:'', nom:'', tri:'' };
 
 function renderHero() {
   var hero = document.getElementById('hero');
@@ -209,13 +209,16 @@ function renderHero() {
         '<p class="hero-note">' + T('hero_note_short') + '</p>' +
         '<div class="search-bar">' +
           '<div class="search-field"><label>' + T('search_secteur_label') + '</label>' +
-            '<input id="search-secteur" type="text" placeholder="' + T('search_secteur_ph') + '" value="' + escHtml(_searchState.secteur) + '" onkeydown="if(event.key===\'Enter\')lancerRecherche()"/></div>' +
+            '<select id="search-secteur" onkeydown="if(event.key===\'Enter\')lancerRecherche()">' +
+              '<option value="">' + T('search_secteur_tous') + '</option>' +
+              _secteursCache.map(function(s) {
+                return '<option value="' + s.code + '"' + (_searchState.secteur === s.code ? ' selected' : '') + '>' + (s.icon||'') + ' ' + escHtml(s[secteurLabelChamp()] || s.label_fr) + '</option>';
+              }).join('') +
+            '</select></div>' +
           '<div class="search-field"><label>' + T('search_lieu_label') + '</label>' +
             '<input id="search-commune" type="text" placeholder="' + T('search_lieu_ph') + '" value="' + escHtml(_searchState.commune) + '" onkeydown="if(event.key===\'Enter\')lancerRecherche()"/></div>' +
-          '<div class="search-field">' +
-            '<label>' + T('search_date_label') + ' <span style="font-weight:400;color:var(--mu2);text-transform:none;letter-spacing:0;">' + T('search_date_bientot') + '</span></label>' +
-            '<input id="search-date" type="date" disabled style="opacity:.55;cursor:not-allowed;"/>' +
-          '</div>' +
+          '<div class="search-field"><label>' + T('search_nom_label') + '</label>' +
+            '<input id="search-nom" type="text" placeholder="' + T('search_nom_ph') + '" value="' + escHtml(_searchState.nom) + '" onkeydown="if(event.key===\'Enter\')lancerRecherche()"/></div>' +
           '<button class="search-btn" onclick="lancerRecherche()">' +
             '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>' +
             T('search_btn') +
@@ -242,6 +245,7 @@ function trierPar(critere) {
 function lancerRecherche() {
   _searchState.secteur = document.getElementById('search-secteur').value.trim();
   _searchState.commune = document.getElementById('search-commune').value.trim();
+  _searchState.nom = document.getElementById('search-nom').value.trim();
   chargerArtisans();
 }
 
@@ -359,6 +363,13 @@ async function chargerArtisans() {
     if (data.error) throw new Error(data.error);
 
     var artisans = data.artisans || [];
+
+    if (_searchState.nom) {
+      var qNom = _searchState.nom.toLowerCase();
+      artisans = artisans.filter(function(a) {
+        return (a.nom_entreprise || '').toLowerCase().indexOf(qNom) !== -1;
+      });
+    }
 
     if (_searchState.tri === 'note') {
       artisans.sort(function(a, b) {
