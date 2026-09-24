@@ -592,10 +592,11 @@ async function geocoderAdresse(adresse, cp, commune) {
   if (!q) return null;
   if (_geocodeCache[q]) return _geocodeCache[q];
   try {
-    var res = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q));
+    var res = await fetch('https://api-adresse.data.gouv.fr/search/?limit=1&q=' + encodeURIComponent(q));
     var data = await res.json();
-    if (data && data[0]) {
-      var pt = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+    var feature = data && data.features && data.features[0];
+    if (feature && feature.geometry && feature.geometry.coordinates) {
+      var pt = { lat: feature.geometry.coordinates[1], lon: feature.geometry.coordinates[0] };
       _geocodeCache[q] = pt;
       return pt;
     }

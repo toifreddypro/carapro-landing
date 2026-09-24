@@ -82,14 +82,17 @@ function emailHtmlDemande(clientNom: string, clientTel: string, clientEmail: str
 }
 
 async function geocoderAdresse(adresse: string, cp: string | null, commune: string) {
-  const q = [adresse, cp, commune].filter(Boolean).join(", ");
+  const q = [adresse, cp, commune].filter(Boolean).join(" ");
   if (!q) return null;
   try {
-    const res = await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(q), {
-      headers: { "User-Agent": "CaraLinkArtisans/1.0" },
-    });
+    const res = await fetch("https://api-adresse.data.gouv.fr/search/?limit=1&q=" + encodeURIComponent(q));
+    if (!res.ok) { console.error("[soumettre-demande-devis] API Adresse a répondu " + res.status + " pour \"" + q + "\"."); return null; }
     const data = await res.json();
-    if (data && data[0]) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+    const feature = data?.features?.[0];
+    if (feature?.geometry?.coordinates) {
+      const [lon, lat] = feature.geometry.coordinates;
+      return { lat, lon };
+    }
   } catch (e) { console.warn("[soumettre-demande-devis] Géocodage échoué :", e); }
   return null;
 }

@@ -59,15 +59,27 @@ function dateISO(d: Date): string {
 }
 
 async function geocoderAdresse(adresse: string, cp: string, commune: string) {
-  const q = [adresse, cp, commune].filter(Boolean).join(", ");
+  const q = [adresse, cp, commune].filter(Boolean).join(" ");
   if (!q) return null;
   try {
-    const res = await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(q), {
-      headers: { "User-Agent": "CaraLinkArtisans/1.0" },
-    });
-    const data = await res.json();
-    if (data && data[0]) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
-  } catch (e) { console.warn("Géocodage échoué :", e); }
+    const res = await fetch("https://api-adresse.data.gouv.fr/search/?limit=1&q=" + encodeURIComponent(q));
+    const texte = await res.text();
+    if (!res.ok) {
+      console.error("[geocoderAdresse] API Adresse a répondu " + res.status + " pour \"" + q + "\" — corps : " + texte.slice(0, 300));
+      return null;
+    }
+    let data: any;
+    try { data = JSON.parse(texte); } catch {
+      console.error("[geocoderAdresse] Réponse non-JSON de l'API Adresse pour \"" + q + "\" — corps : " + texte.slice(0, 300));
+      return null;
+    }
+    const feature = data?.features?.[0];
+    if (feature?.geometry?.coordinates) {
+      const [lon, lat] = feature.geometry.coordinates;
+      return { lat, lon };
+    }
+    console.warn("[geocoderAdresse] Aucun résultat pour \"" + q + "\".");
+  } catch (e) { console.error("[geocoderAdresse] Erreur réseau pour \"" + q + "\" :", e); }
   return null;
 }
 
