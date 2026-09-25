@@ -226,6 +226,7 @@ async function initPlanning() {
   _calMois = auj.getMonth();
   renderDows();
   await chargerInterventions();
+  await renderItineraireWidget();
 }
 
 function renderDows() {
@@ -2407,6 +2408,121 @@ async function planifierLivraisonCommande(commandeId) {
 
   // Lie la commande à cette future intervention dès l'ouverture — sera bien réelle une fois "Enregistrer" cliqué.
   window._commandeEnLivraison = { commandeId: commandeId };
+}
+
+// ════════════════════════════════════════
+//  ITINÉRAIRE DU JOUR — trajet visuel, réutilise le calcul de Smart Dispatch
+// ════════════════════════════════════════
+
+var _itinDateChoisie = null;
+var _itinInterventionsSemaine = [];
+var _itinMap = null;
+
+async function renderItineraireWidget() {
+  var aujourdhui = new Date();
+  var fin = new Date(aujourdhui); fin.setDate(fin.getDate() + 6);
+  var debutStr = aujourdhui.toISOString().slice(0, 10);
+  var finStr = fin.toISOString().slice(0, 10);
+
+  var { data, error } = await sb.from('mpa_artisans_interventions')
+    .select('id, date_intervention, heure_debut, commune, latitude, longitude, mpa_artisans_clients(nom)')
+    .eq('artisan_id', _artisan.id)
+    .neq('statut', 'annulee')
+    .gte('date_intervention', debutStr)
+    .lte('date_intervention', finStr)
+    .order('heure_debut', { ascending: true });
+  if (error) { console.error('renderItineraireWidget:', error); return; }
+  _itinInterventionsSemaine = data || [];
+
+  var jours = document.getElementById('itin-jours');
+  var html = '';
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(aujourdhui); d.setDate(d.getDate() + i);
+    var dStr = d.toISOString().slice(0, 10);
+    var label = i === 0 ? 'Aujourd\'hui' : JOURS_NOMS[d.getDay() === 0 ? 6 : d.getDay() - 1] + ' ' + d.getDate();
+    var actif = (dStr === (_itinDateChoisie || debutStr));
+    html += '<button onclick="choisirJourItineraire(\'' + dStr + '\')" style="flex-shrink:0;padding:7px 12px;border-radius:8px;border:1px solid ' + (actif ? 'var(--ac)' : 'var(--brd)') + ';background:' + (actif ? 'var(--ac)' : 'transparent') + ';color:' + (actif ? '#fff' : 'var(--tx)') + ';font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">' + label + '</button>';
+  }
+  jours.innerHTML = html;
+
+  await choisirJourItineraire(_itinDateChoisie || debutStr);
+}
+
+async function choisirJourItineraire(dateStr) {
+  _itinDateChoisie = dateStr;
+  var jours = document.getElementById('itin-jours');
+  if (jours) {
+    Array.prototype.forEach.call(jours.children, function(btn, idx) {
+      var d = new Date(); d.setDate(d.getDate() + idx);
+      var actif = d.toISOString().slice(0, 10) === dateStr;
+      btn.style.borderColor = actif ? 'var(--ac)' : 'var(--brd)';
+      btn.style.background = actif ? 'var(--ac)' : 'transparent';
+      btn.style.color = actif ? '#fff' : 'var(--tx)';
+    });
+  }
+
+  var duJour = _itinInterventionsSemaine.filter(function(i) { return i.date_intervention === dateStr; });
+  var liste = document.getElementById('itin-liste');
+
+  if (!duJour.length) {
+    liste.innerHTML = '<p style="font-size:12.5px;color:var(--mu);">Aucune intervention ce jour-là.</p>';
+    if (_itinMap) { _itinMap.remove(); _itinMap = null; }
+    document.getElementById('itin-carte').innerHTML = '';
+    return;
+  }
+
+  liste.innerHTML = duJour.map(function(i) {
+    var nomClient = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '—';
+    return '<div style="display:flex;gap:10px;align-items:center;padding:6px 0;font-size:13px;">' +
+      '<strong style="width:48px;flex-shrink:0;">' + (i.heure_debut || '—') + '</strong>' +
+      '<span>' + escHtml(i.commune || '—') + ' <span style="color:var(--mu);">(' + escHtml(nomClient) + ')</span></span>' +
+    '</div>';
+  }).join('');
+
+  await dessinerCarteItineraire(duJour);
+}
+
+async function dessinerCarteItineraire(interventions) {
+  var conteneur = document.getElementById('itin-carte');
+  var avecCoords = interventions.filter(function(i) { return i.latitude != null && i.longitude != null; });
+
+  if (!avecCoords.length) {
+    conteneur.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:12px;color:var(--mu);padding:10px;text-align:center;">Aucune adresse géolocalisée pour ce jour — ajoutez une adresse aux interventions pour voir le trajet.</div>';
+    if (_itinMap) { _itinMap.remove(); _itinMap = null; }
+    return;
+  }
+
+  conteneur.innerHTML = '';
+  if (_itinMap) { _itinMap.remove(); _itinMap = null; }
+  _itinMap = L.map('itin-carte', { zoomControl: false, attributionControl: false });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(_itinMap);
+
+  var points = avecCoords.map(function(i) { return [i.latitude, i.longitude]; });
+  avecCoords.forEach(function(i, idx) {
+    L.marker([i.latitude, i.longitude]).addTo(_itinMap)
+      .bindTooltip((idx + 1) + '. ' + (i.heure_debut || '') + ' — ' + (i.commune || ''), { permanent: false });
+  });
+  _itinMap.fitBounds(points, { padding: [24, 24] });
+
+  // Trace le trajet réel (OSRM, même service que Smart Dispatch) entre chaque étape consécutive.
+  for (var j = 0; j < avecCoords.length - 1; j++) {
+    var a = avecCoords[j], b = avecCoords[j + 1];
+    try {
+      var url = 'https://router.project-osrm.org/route/v1/driving/' + a.longitude + ',' + a.latitude + ';' + b.longitude + ',' + b.latitude + '?overview=full&geometries=geojson';
+      var res = await fetch(url);
+      var data = await res.json();
+      if (data.routes && data.routes[0]) {
+        var coordsLatLng = data.routes[0].geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
+        var ligne = L.polyline(coordsLatLng, { color: '#B5502F', weight: 4, opacity: 0.85 }).addTo(_itinMap);
+        var minutes = Math.ceil(data.routes[0].duration / 60);
+        var km = Math.round(data.routes[0].distance / 100) / 10;
+        var milieu = coordsLatLng[Math.floor(coordsLatLng.length / 2)];
+        L.marker(milieu, {
+          icon: L.divIcon({ className: '', html: '<div style="background:#fff;border:1px solid var(--brd,#e3eaf4);border-radius:7px;padding:2px 7px;font-size:11px;font-weight:700;color:#B5502F;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.15);">' + minutes + ' min · ' + km + ' km</div>', iconSize: null }),
+        }).addTo(_itinMap);
+      }
+    } catch (e) { console.warn('Tracé itinéraire échoué :', e); }
+  }
 }
 
 async function chargerServices() {
