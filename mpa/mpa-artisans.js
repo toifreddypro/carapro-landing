@@ -949,6 +949,51 @@ function toggleDatePaiement() {
   }
 }
 
+// ── Avis produit (CaraLink Artisans / MPA Artisans) ──
+// Projet LearnLogic (coqprurgsvfxddbmwtor) — distinct du projet CaraLink Artisans.
+// Public, non authentifié : l'artisan écrit son nom lui-même, l'avis part en
+// attente de validation avant de pouvoir apparaître sur les bannières.
+var AVIS_PRODUIT_URL = 'https://coqprurgsvfxddbmwtor.supabase.co/functions/v1/lire-avis';
+var AVIS_PRODUIT_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvcXBydXJnc3ZmeGRkYm13dG9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0OTg5OTcsImV4cCI6MjA5NDA3NDk5N30.v_8LietUpGkZVgyKgqojE2HoMIE7Y0GVO7fi9AWm4IY';
+
+function ouvrirAvisProduit() {
+  document.getElementById('ap-nom').value = _artisan.nom_entreprise || '';
+  document.getElementById('ap-texte').value = '';
+  document.getElementById('ap-err').style.display = 'none';
+  document.getElementById('ap-ok').style.display = 'none';
+  ouvrirModale('modal-avis-produit');
+}
+
+async function envoyerAvisProduit() {
+  var nom = document.getElementById('ap-nom').value.trim();
+  var texte = document.getElementById('ap-texte').value.trim();
+  var err = document.getElementById('ap-err');
+  var ok = document.getElementById('ap-ok');
+  var btn = document.getElementById('btn-avis-produit');
+  err.style.display = 'none'; ok.style.display = 'none';
+
+  if (!nom) { err.textContent = 'Le nom à afficher est obligatoire.'; err.style.display = 'block'; return; }
+  if (texte.length < 10) { err.textContent = 'Écrivez un avis un peu plus complet (10 caractères minimum).'; err.style.display = 'block'; return; }
+
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    var res = await fetch(AVIS_PRODUIT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': AVIS_PRODUIT_ANON, 'Authorization': 'Bearer ' + AVIS_PRODUIT_ANON },
+      body: JSON.stringify({ action: 'soumettre', type: 'artisan', nom_affiche: nom, texte: texte }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    ok.textContent = 'Merci ! Votre avis sera visible après vérification.';
+    ok.style.display = 'block';
+    setTimeout(function() { fermerModale('modal-avis-produit'); }, 2000);
+  } catch (e) {
+    err.textContent = 'Erreur : ' + e.message;
+    err.style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Envoyer mon avis';
+}
+
 // ── Suppression de compte (RGPD) ──
 function ouvrirSuppressionCompte() {
   document.getElementById('suppr-confirm-texte').value = '';
