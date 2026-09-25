@@ -915,6 +915,30 @@ body.theme-light footer { background:#fbfcfe; }
 .legal-modal-body ul{padding-left:20px;margin:8px 0;}
 .legal-modal-body li{margin-bottom:4px;}
 
+    .testimonial-section{padding:70px 0 80px;background:var(--panel);overflow:hidden;}
+    .t-marquee-wrap{position:relative;width:100%;overflow:hidden;
+      -webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);
+      mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);}
+    .t-marquee-track{display:flex;gap:20px;width:max-content;
+      animation:t-marquee 38s linear infinite;}
+    .t-marquee-wrap:hover .t-marquee-track{animation-play-state:paused;}
+    @keyframes t-marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+    .t-card{flex:0 0 auto;width:340px;background:var(--panel);border:1px solid var(--brd);
+      border-radius:16px;padding:26px 26px 22px;text-align:left;position:relative;overflow:hidden;
+      box-shadow:0 4px 20px rgba(19,34,60,.05);
+      transition:transform .25s ease,box-shadow .25s ease;cursor:default;}
+    .t-card:hover{transform:translateY(-6px);box-shadow:0 18px 40px rgba(181,80,47,.16);}
+    .t-card-quote{font-size:14px;color:var(--tx);line-height:1.7;margin-bottom:20px;min-height:96px;}
+    .t-card-author{display:flex;align-items:center;gap:12px;}
+    .t-card-avatar{width:38px;height:38px;border-radius:50%;background:var(--ac);
+      display:flex;align-items:center;justify-content:center;font-weight:700;
+      font-size:14px;color:#fff;flex-shrink:0;}
+    .t-card-name{font-size:13px;font-weight:700;color:var(--tx);}
+    .t-card-role{font-size:11.5px;color:var(--mu2);}
+    .t-fade{position:absolute;top:0;bottom:0;width:80px;pointer-events:none;z-index:2;}
+    .t-fade-left{left:0;background:linear-gradient(90deg,var(--panel),transparent);}
+    .t-fade-right{right:0;background:linear-gradient(270deg,var(--panel),transparent);}
+    @media(max-width:640px){ .t-fade{width:36px;} }
 </style>
 <link rel="stylesheet" href="/artisans/effects.css">
 </head>
@@ -940,6 +964,16 @@ body.theme-light footer { background:#fbfcfe; }
   <main id="main-results"></main>
   <div id="overlay-profil" style="display:none;"></div>
   <div id="overlay-resa"   style="display:none;"></div>
+  <section class="testimonial-section" id="testimonials-section">
+    <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ac);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;">Les avis</div>
+    <h2 style="text-align:center;color:var(--tx);font-family:'Bricolage Grotesque',sans-serif;font-size:28px;font-weight:800;margin-bottom:48px;">Ils nous font confiance</h2>
+    <div class="t-marquee-wrap">
+      <div class="t-marquee-track" id="t-marquee-track"></div>
+      <div class="t-fade t-fade-left"></div>
+      <div class="t-fade t-fade-right"></div>
+    </div>
+  </section>
+
   <footer id="footer">
     <div class="footer-brand">CARA<span class="ac">LINK</span> <span style="font-size:14px;color:var(--mu2);margin-left:6px;font-weight:600;">Artisans</span> <span style="font-size:12px;color:var(--mu);margin-left:8px;font-weight:400;">by LearnLogic Studio</span></div>
     <div class="footer-note">// Guadeloupe · Martinique · Guyane — 2026</div>

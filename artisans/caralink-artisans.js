@@ -1229,4 +1229,53 @@ document.addEventListener('DOMContentLoaded', async function() {
   renderNav();
   renderHero();
   renderResults();
+  chargerTemoignagesArtisans();
 });
+
+// ── Témoignages — même mécanisme que sur les autres landings LearnLogic ──
+// Avis PRODUIT (utilisation de CaraLink Artisans/MPA Artisans), pas à confondre
+// avec avis_carapro (avis client sur le travail d'un artisan précis).
+(function() {
+  var SUPABASE_URL_TEMOIN = 'https://coqprurgsvfxddbmwtor.supabase.co';
+  var SUPABASE_ANON_TEMOIN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvcXBydXJnc3ZmeGRkYm13dG9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0OTg5OTcsImV4cCI6MjA5NDA3NDk5N30.v_8LietUpGkZVgyKgqojE2HoMIE7Y0GVO7fi9AWm4IY';
+  var TYPE_ROLE_TEMOIN = { artisan: 'Artisan indépendant' };
+
+  function escHtmlTemoin(s) {
+    return (s||'').toString().replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; });
+  }
+
+  function carteTemoignage(t) {
+    var initiale = (t.nom_affiche || 'U')[0].toUpperCase();
+    return '<div class="t-card">' +
+      '<div class="t-card-quote">« ' + escHtmlTemoin(t.texte) + ' »</div>' +
+      '<div class="t-card-author">' +
+        '<div class="t-card-avatar">' + initiale + '</div>' +
+        '<div><div class="t-card-name">' + escHtmlTemoin(t.nom_affiche) + '</div><div class="t-card-role">' + (TYPE_ROLE_TEMOIN[t.type] || 'Utilisateur') + '</div></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function carteVide() {
+    return '<div class="t-card">' +
+      '<div class="t-card-quote">« Soyez le premier à partager votre expérience CaraLink Artisans. »</div>' +
+    '</div>';
+  }
+
+  window.chargerTemoignagesArtisans = async function() {
+    var track = document.getElementById('t-marquee-track');
+    try {
+      var res = await fetch(SUPABASE_URL_TEMOIN + '/functions/v1/lire-avis?type=artisan', {
+        headers: { 'apikey': SUPABASE_ANON_TEMOIN, 'Authorization': 'Bearer ' + SUPABASE_ANON_TEMOIN }
+      });
+      var data = await res.json();
+      if (data.error) throw new Error(data.error);
+      var reels = data.avis || [];
+      if (!track) return;
+      if (!reels.length) { track.innerHTML = carteVide() + carteVide(); return; }
+      track.innerHTML = reels.map(carteTemoignage).join('') + reels.map(carteTemoignage).join('');
+    } catch(e) {
+      console.warn('[Témoignages Artisans]', e.message);
+      if (track) track.innerHTML = carteVide() + carteVide();
+    }
+  };
+})();
