@@ -112,7 +112,7 @@ async function verifierAlertesMpaAi() {
   var pct = (caBrut / PLAFOND_MICRO_BIC_SERVICES) * 100;
   if (pct >= 90) {
     mpaAiDire('Vous êtes à ' + pct.toFixed(0) + '% du plafond micro-entreprise (' + caBrut.toFixed(0) + '€ / 77 700€). Au-delà, changement de régime fiscal obligatoire.', 'important',
-      { label: 'Voir le tableau de bord', action: "switchTab(4)" });
+      { label: 'Voir le tableau de bord', action: "switchTab(5)" });
   } else if (pct >= 70) {
     mpaAiDire('Vous avez atteint ' + pct.toFixed(0) + '% du plafond micro-entreprise cette année — à surveiller.', 'warning');
   }
@@ -132,7 +132,7 @@ async function verifierAlertesMpaAi() {
       var f = facturesImpayees[0];
       var client = f.mpa_artisans_clients ? f.mpa_artisans_clients.nom : 'ce client';
       mpaAiDire('La facture ' + f.numero + ' (' + f.montant_total.toFixed(0) + '€, ' + escHtml(client) + ') a plus de 30 jours et n\'est pas encore marquée payée. Une petite relance ?', 'warning',
-        { label: 'Voir la facturation', action: "switchTab(3)" });
+        { label: 'Voir la facturation', action: "switchTab(4)" });
     }
   }
 
@@ -564,7 +564,7 @@ async function supprimerDemande(reponseId) {
 }
 
 function creerClientDepuisDemande(nom, commune) {
-  switchTab(1); switchBdd(0);
+  switchTab(2); switchBdd(0);
   openAjouterClient();
   document.getElementById('c-nom').value = nom || '';
   document.getElementById('c-com').value = commune || '';
@@ -612,11 +612,11 @@ async function tempsTrajetMinutes(latA, lonA, latB, lonB) {
   var cle = latA + ',' + lonA + '|' + latB + ',' + lonB;
   if (_trajetCache[cle] != null) return _trajetCache[cle];
   try {
-    var url = 'https://router.project-osrm.org/route/v1/driving/' + lonA + ',' + latA + ';' + lonB + ',' + latB + '?overview=false';
+    var url = 'https://data.geopf.fr/navigation/itineraire?resource=bdtopo-osrm&profile=car&optimization=fastest&geometryFormat=geojson&start=' + lonA + ',' + latA + '&end=' + lonB + ',' + latB;
     var res = await fetch(url);
     var data = await res.json();
-    if (data.routes && data.routes[0]) {
-      var min = Math.ceil(data.routes[0].duration / 60);
+    if (data.duration != null) {
+      var min = Math.ceil(data.duration / 60);
       _trajetCache[cle] = min;
       return min;
     }
@@ -1650,7 +1650,7 @@ async function renderRappelCloture() {
       '<div style="flex:1;font-size:12.5px;color:var(--mu2);">' +
         '<strong style="color:#b45309;">' + count + ' intervention' + (count > 1 ? 's' : '') + ' passée' + (count > 1 ? 's' : '') + '</strong> encore marquée' + (count > 1 ? 's' : '') + ' "Planifiée" — pensez à les clôturer (Terminée/Payée) pour pouvoir les facturer et demander un avis au client.' +
       '</div>' +
-      '<button onclick="switchTab(0)" style="flex-shrink:0;padding:7px 14px;border-radius:7px;border:1.5px solid #b45309;background:transparent;color:#b45309;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">Voir le planning →</button>' +
+      '<button onclick="switchTab(1)" style="flex-shrink:0;padding:7px 14px;border-radius:7px;border:1.5px solid #b45309;background:transparent;color:#b45309;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">Voir le planning →</button>' +
     '</div>';
 }
 
@@ -2471,13 +2471,25 @@ async function choisirJourItineraire(dateStr) {
     return;
   }
 
-  liste.innerHTML = duJour.map(function(i) {
+  liste.innerHTML = '<p style="font-size:12px;color:var(--mu);">Calcul des trajets…</p>';
+  var morceaux = [];
+  for (var k = 0; k < duJour.length; k++) {
+    var i = duJour[k];
     var nomClient = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '—';
-    return '<div style="display:flex;gap:10px;align-items:center;padding:6px 0;font-size:13px;">' +
+    morceaux.push('<div style="display:flex;gap:10px;align-items:center;padding:6px 0;font-size:13px;">' +
       '<strong style="width:48px;flex-shrink:0;">' + (i.heure_debut || '—') + '</strong>' +
       '<span>' + escHtml(i.commune || '—') + ' <span style="color:var(--mu);">(' + escHtml(nomClient) + ')</span></span>' +
-    '</div>';
-  }).join('');
+    '</div>');
+
+    if (k < duJour.length - 1) {
+      var suivant = duJour[k + 1];
+      var minutes = await tempsTrajetMinutes(i.latitude, i.longitude, suivant.latitude, suivant.longitude);
+      morceaux.push('<div style="padding:4px 0 4px 58px;font-size:11.5px;color:var(--mu);">' +
+        (minutes != null ? '🚗 ' + minutes + ' min de trajet' : '🚗 trajet non calculé (adresse manquante)') +
+      '</div>');
+    }
+  }
+  liste.innerHTML = morceaux.join('');
 
   await dessinerCarteItineraire(duJour);
 }
@@ -2508,14 +2520,14 @@ async function dessinerCarteItineraire(interventions) {
   for (var j = 0; j < avecCoords.length - 1; j++) {
     var a = avecCoords[j], b = avecCoords[j + 1];
     try {
-      var url = 'https://router.project-osrm.org/route/v1/driving/' + a.longitude + ',' + a.latitude + ';' + b.longitude + ',' + b.latitude + '?overview=full&geometries=geojson';
+      var url = 'https://data.geopf.fr/navigation/itineraire?resource=bdtopo-osrm&profile=car&optimization=fastest&geometryFormat=geojson&start=' + a.longitude + ',' + a.latitude + '&end=' + b.longitude + ',' + b.latitude;
       var res = await fetch(url);
       var data = await res.json();
-      if (data.routes && data.routes[0]) {
-        var coordsLatLng = data.routes[0].geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
+      if (data.geometry && data.geometry.coordinates) {
+        var coordsLatLng = data.geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
         var ligne = L.polyline(coordsLatLng, { color: '#B5502F', weight: 4, opacity: 0.85 }).addTo(_itinMap);
-        var minutes = Math.ceil(data.routes[0].duration / 60);
-        var km = Math.round(data.routes[0].distance / 100) / 10;
+        var minutes = Math.ceil(data.duration / 60);
+        var km = Math.round(data.distance / 100) / 10;
         var milieu = coordsLatLng[Math.floor(coordsLatLng.length / 2)];
         L.marker(milieu, {
           icon: L.divIcon({ className: '', html: '<div style="background:#fff;border:1px solid var(--brd,#e3eaf4);border-radius:7px;padding:2px 7px;font-size:11px;font-weight:700;color:#B5502F;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.15);">' + minutes + ' min · ' + km + ' km</div>', iconSize: null }),
