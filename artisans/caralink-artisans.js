@@ -201,11 +201,7 @@ function renderHero() {
       '<div class="hero-main">' +
         '<div class="hero-eyebrow">' + T('hero_eyebrow') + '</div>' +
         '<h1 class="hero-title">' + T('hero_title') + '</h1>' +
-        '<div class="hero-tagline">' +
-          '<span class="hero-tagline-part">' + T('hero_tag1') + '</span>' +
-          '<span class="hero-tagline-sep" aria-hidden="true"></span>' +
-          '<span class="hero-tagline-part">' + T('hero_tag2') + '</span>' +
-        '</div>' +
+        '<p class="hero-soustitre">' + T('hero_soustitre') + '</p>' +
         '<p class="hero-note">' + T('hero_note_short') + '</p>' +
         '<div class="search-bar">' +
           '<div class="search-field"><label>' + T('search_secteur_label') + '</label>' +

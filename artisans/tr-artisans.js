@@ -20,7 +20,8 @@ var AT_TR = {
     sec_climatisation: "Climatisation", sec_autre: "Autre",
 
     hero_eyebrow: "CaraLink Artisans · Antilles-Guyane",
-    hero_title: "Trouvez un <span>artisan</span> disponible pour vos travaux",
+    hero_title: "C'est le moment d'être visible et de travailler.",
+    hero_soustitre: "Trouvez l'artisan qu'il vous faut, près de chez vous.",
     hero_note: "Trouvez, réservez ! Soyez visible, travaillez !<br>Recherche gratuite, sans inscription, SIRET vérifié.",
     hero_tag1: "Trouvez, réservez !",
     hero_tag2: "Soyez visible, travaillez !",
@@ -165,7 +166,8 @@ var AT_TR = {
     sec_climatisation: "Air conditioning", sec_autre: "Other",
 
     hero_eyebrow: "CaraLink Artisans · Caribbean",
-    hero_title: "Find a <span>craftsman</span> available for your project",
+    hero_title: "Now's the time to get visible and get to work.",
+    hero_soustitre: "Find the craftsman you need, near you.",
     hero_note: "Find, book! Be visible, get work!<br>Free search, no sign-up, verified SIRET.",
     hero_tag1: "Find, book!",
     hero_tag2: "Be visible, get work!",
@@ -310,7 +312,8 @@ var AT_TR = {
     sec_climatisation: "Climatización", sec_autre: "Otro",
 
     hero_eyebrow: "CaraLink Artisans · Caribe",
-    hero_title: "Encuentra un <span>artesano</span> disponible para tu proyecto",
+    hero_title: "Es el momento de ser visible y de trabajar.",
+    hero_soustitre: "Encuentra el artesano que necesitas, cerca de ti.",
     hero_note: "¡Busca, reserva! ¡Hazte visible, trabaja!<br>Búsqueda gratuita, sin registro, SIRET verificado.",
     hero_tag1: "¡Busca, reserva!",
     hero_tag2: "¡Hazte visible, trabaja!",
