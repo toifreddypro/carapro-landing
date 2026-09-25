@@ -190,6 +190,7 @@ async function init() {
   await chargerClients();
   await chargerDemandes();
   await chargerAvis();
+  await chargerCommandes();
   await chargerHoraires();
   await chargerIndispos();
   await chargerServices();
@@ -769,6 +770,7 @@ async function remplirSelectsIntervention() {
 }
 
 async function ouvrirNouvelleIntervention(dateStr, creneau) {
+  window._commandeEnLivraison = null;
   await remplirSelectsIntervention();
   _interventionEnCours = null;
   document.getElementById('mi-titre').textContent = 'Nouvelle intervention';
@@ -1075,15 +1077,26 @@ async function sauverIntervention() {
 
   var res;
   if (_interventionEnCours) {
-    res = await sb.from('mpa_artisans_interventions').update(maj).eq('id', _interventionEnCours).eq('artisan_id', _artisan.id);
+    res = await sb.from('mpa_artisans_interventions').update(maj).eq('id', _interventionEnCours).eq('artisan_id', _artisan.id).select().single();
   } else {
-    res = await sb.from('mpa_artisans_interventions').insert(maj);
+    res = await sb.from('mpa_artisans_interventions').insert(maj).select().single();
   }
   if (res.error) { alert('Erreur : ' + res.error.message); return; }
   fermerModale('modal-intervention');
   await chargerInterventions();
   if (maj.statut !== 'annulee') {
     verifierFaisabiliteJour(maj.date_intervention);
+  }
+
+  // Si cette intervention vient d'une commande à livrer, on boucle la liaison.
+  if (window._commandeEnLivraison && !_interventionEnCours) {
+    var infoCommande = window._commandeEnLivraison;
+    window._commandeEnLivraison = null;
+    var { error: errLien } = await sb.from('commandes_catalogue')
+      .update({ intervention_id: res.data.id, statut: 'confirmee' })
+      .eq('id', infoCommande.commandeId).eq('artisan_id', _artisan.id);
+    if (errLien) console.error('Liaison commande/intervention:', errLien);
+    await chargerCommandes();
   }
 }
 
@@ -2251,6 +2264,122 @@ async function supprimerCatalogue(id) {
   var { error } = await sb.from('artisans_catalogue').delete().eq('id', id).eq('artisan_id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
   await chargerCatalogue();
+}
+
+// ════════════════════════════════════════
+//  COMMANDES — retrait ou livraison, avec bascule vers le planning
+// ════════════════════════════════════════
+
+var _commandesCache = [];
+var LABELS_STATUT_COMMANDE = { nouvelle: '🆕 Nouvelle', confirmee: '✅ Confirmée', prete: '📦 Prête', terminee: '🏁 Terminée', annulee: '⛔ Annulée' };
+var CYCLE_STATUT_COMMANDE = { nouvelle: 'confirmee', confirmee: 'prete', prete: 'terminee' };
+
+async function chargerCommandes() {
+  var zone = document.getElementById('zone-commandes');
+  if (!zone) return;
+  var { data, error } = await sb.from('commandes_catalogue').select('*').eq('artisan_id', _artisan.id).order('created_at', { ascending: false });
+  if (error) { zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>'; return; }
+  _commandesCache = data || [];
+  renderCommandes();
+
+  var nouvelles = _commandesCache.filter(function(c) { return c.statut === 'nouvelle'; }).length;
+  var badge = document.getElementById('cnt-commandes');
+  if (badge) { badge.style.display = nouvelles ? 'inline-block' : 'none'; badge.textContent = nouvelles; }
+}
+
+function renderCommandes() {
+  var zone = document.getElementById('zone-commandes');
+  if (!zone) return;
+  if (!_commandesCache.length) {
+    zone.innerHTML = '<p style="font-size:13px;color:var(--mu);">Aucune commande pour l\'instant.</p>';
+    return;
+  }
+  zone.innerHTML = _commandesCache.map(function(c) {
+    var modeTxt = c.mode === 'livraison'
+      ? '🚚 Livraison — ' + escHtml(c.adresse_livraison || '') + ' ' + escHtml(c.code_postal_livraison || '') + ' ' + escHtml(c.commune_livraison || '')
+      : '🏠 Retrait sur place';
+    var dateTxt = c.date_souhaitee ? new Date(c.date_souhaitee).toLocaleDateString('fr-FR') : '—';
+    var boutonSuivant = CYCLE_STATUT_COMMANDE[c.statut]
+      ? '<button onclick="avancerStatutCommande(\'' + c.id + '\')" style="padding:6px 14px;border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;font-weight:700;cursor:pointer;margin-right:6px;">→ ' + LABELS_STATUT_COMMANDE[CYCLE_STATUT_COMMANDE[c.statut]] + '</button>'
+      : '';
+    var boutonLivraison = (c.mode === 'livraison' && !c.intervention_id && c.statut !== 'annulee' && c.statut !== 'terminee')
+      ? '<button onclick="planifierLivraisonCommande(\'' + c.id + '\')" style="padding:6px 14px;border-radius:7px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">🚚 Planifier la livraison</button>'
+      : (c.intervention_id ? '<span style="font-size:11.5px;color:var(--mu);">✓ Dans le planning</span>' : '');
+
+    return '<div style="border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">' +
+        '<div><strong>' + escHtml(c.nom_article) + '</strong> × ' + c.quantite + '</div>' +
+        '<span style="font-size:11px;font-weight:700;color:var(--mu2);">' + (LABELS_STATUT_COMMANDE[c.statut] || c.statut) + '</span>' +
+      '</div>' +
+      '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:3px;">' + modeTxt + '</div>' +
+      '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:3px;">📅 Souhaitée le ' + dateTxt + '</div>' +
+      '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;">👤 ' + escHtml(c.client_nom) + ' — ' + escHtml(c.client_telephone) + '</div>' +
+      (c.notes ? '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;font-style:italic;">« ' + escHtml(c.notes) + ' »</div>' : '') +
+      '<div>' + boutonSuivant + boutonLivraison + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+async function avancerStatutCommande(id) {
+  if (!verifierAccesEcriture()) return;
+  var c = _commandesCache.find(function(x) { return x.id === id; });
+  if (!c || !CYCLE_STATUT_COMMANDE[c.statut]) return;
+  var { error } = await sb.from('commandes_catalogue').update({ statut: CYCLE_STATUT_COMMANDE[c.statut] }).eq('id', id).eq('artisan_id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerCommandes();
+}
+
+async function planifierLivraisonCommande(commandeId) {
+  if (!verifierAccesEcriture()) return;
+  var c = _commandesCache.find(function(x) { return x.id === commandeId; });
+  if (!c) return;
+
+  // Cherche une intervention à venir, dans la même commune, pour proposer de regrouper.
+  var dateSuggestion = c.date_souhaitee || null;
+  var creneauSuggestion = 'matin';
+  if (c.commune_livraison) {
+    var aujourdhui = new Date().toISOString().slice(0, 10);
+    var { data: proches } = await sb.from('mpa_artisans_interventions')
+      .select('date_intervention, creneau, commune')
+      .eq('artisan_id', _artisan.id)
+      .ilike('commune', c.commune_livraison.trim())
+      .neq('statut', 'annulee')
+      .gte('date_intervention', aujourdhui)
+      .order('date_intervention', { ascending: true })
+      .limit(1);
+    if (proches && proches.length) {
+      var p = proches[0];
+      var dateAff = new Date(p.date_intervention).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+      if (confirm('💡 Vous avez déjà une intervention à ' + c.commune_livraison + ' le ' + dateAff + ' (' + p.creneau + ').\n\nRegrouper cette livraison ce jour-là ?')) {
+        dateSuggestion = p.date_intervention;
+        creneauSuggestion = p.creneau;
+      }
+    }
+  }
+
+  // Crée (ou réutilise) une fiche client pour cette livraison, avec les coordonnées fournies.
+  var { data: client, error: errClient } = await sb.from('mpa_artisans_clients').insert({
+    artisan_id: _artisan.id,
+    nom: c.client_nom,
+    telephone: c.client_telephone,
+    email: c.client_email || null,
+    adresse: c.adresse_livraison,
+    code_postal: c.code_postal_livraison,
+    commune: c.commune_livraison,
+  }).select().single();
+  if (errClient) { alert('Erreur création client : ' + errClient.message); return; }
+
+  await chargerClients();
+  await ouvrirNouvelleIntervention(dateSuggestion || new Date().toISOString().slice(0, 10), creneauSuggestion);
+  document.getElementById('mi-client').value = client.id;
+  document.getElementById('mi-adr').value = c.adresse_livraison || '';
+  document.getElementById('mi-cp').value = c.code_postal_livraison || '';
+  document.getElementById('mi-com').value = c.commune_livraison || '';
+  document.getElementById('mi-notes').value = 'Livraison — ' + c.nom_article + ' × ' + c.quantite + (c.notes ? ' — ' + c.notes : '');
+  await calculerCreneaux();
+
+  // Lie la commande à cette future intervention dès l'ouverture — sera bien réelle une fois "Enregistrer" cliqué.
+  window._commandeEnLivraison = { commandeId: commandeId };
 }
 
 async function chargerServices() {
