@@ -476,6 +476,21 @@ function buildProfilHTML(data) {
       '</div>'
     : '';
 
+  var catalogueHtml = data.catalogue.length
+    ? '<div style="font-weight:700;margin:18px 0 10px;">Produits en vente</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;">' +
+        data.catalogue.map(function(c) {
+          var photo = c.url_photo
+            ? '<img src="' + escHtml(c.url_photo) + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;" alt="' + escHtml(c.nom) + '">'
+            : '<div style="width:100%;aspect-ratio:1;background:var(--line,#eee);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;">📦</div>';
+          return '<div>' + photo +
+            '<div style="font-size:12px;margin-top:5px;">' + escHtml(c.nom) + '</div>' +
+            (c.prix != null ? '<div style="font-size:12.5px;font-weight:700;color:var(--ac,#B5502F);">' + c.prix + ' €</div>' : '') +
+          '</div>';
+        }).join('') +
+      '</div>'
+    : '';
+
   var avisHtml = data.avis.length
     ? data.avis.map(function(av) {
         return '<div style="padding:10px 0;border-bottom:1px solid var(--line,#eee);font-size:13px;">' +
@@ -501,6 +516,7 @@ function buildProfilHTML(data) {
       (a.bio ? '<p style="font-size:14px;line-height:1.6;margin-bottom:18px;">' + escHtml(a.bio) + '</p>' : '') +
       '<div style="font-weight:700;margin-bottom:6px;">' + T('services_titre') + '</div>' + servicesHtml +
       photosHtml +
+      catalogueHtml +
       '<div id="dispo-zone-' + a.id + '" style="margin:16px 0;"><div style="font-size:12.5px;color:var(--mu,#999);">⏳ Vérification des disponibilités…</div></div>' +
       '<div style="font-weight:700;margin:18px 0 6px;">' + T('avis_titre') + (data.note_moyenne ? ' — ' + data.note_moyenne + '/5 (' + data.nb_avis + ')' : '') + '</div>' + avisHtml +
       '<button onclick="ouvrirModalDevis(' + jsAttr(a.id) + ',' + jsAttr(a.nom_entreprise) + ',' + jsAttr(a.secteur) + ')" style="width:100%;margin-top:18px;padding:13px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">' + T('demander_devis') + '</button>' +

@@ -194,6 +194,7 @@ async function init() {
   await chargerIndispos();
   await chargerServices();
   await chargerPhotos();
+  await chargerCatalogue();
   await initPlanning();
   await chargerCompta();
   remplirSelectClientFacture();
@@ -2152,6 +2153,104 @@ async function supprimerPhoto(id) {
   var { error } = await sb.from('artisans_photos').delete().eq('id', id).eq('artisan_id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
   await chargerPhotos();
+}
+
+// ════════════════════════════════════════
+//  CATALOGUE — produits disponibles ou sur commande
+// ════════════════════════════════════════
+
+var _catalogueCache = [];
+
+async function chargerCatalogue() {
+  var zone = document.getElementById('zone-catalogue');
+  if (!zone) return;
+  var { data, error } = await sb.from('artisans_catalogue').select('*').eq('artisan_id', _artisan.id).order('ordre', { ascending: true });
+  if (error) { zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>'; return; }
+  _catalogueCache = data || [];
+  renderCatalogueGrille();
+}
+
+function renderCatalogueGrille() {
+  var zone = document.getElementById('zone-catalogue');
+  if (!zone) return;
+  if (!_catalogueCache.length) {
+    zone.innerHTML = '<p style="grid-column:1/-1;font-size:13px;color:var(--mu);">Aucun article pour l\'instant — ajoutez vos produits ou prestations à la vente.</p>';
+    return;
+  }
+  zone.innerHTML = _catalogueCache.map(function(c) {
+    var badge = c.type === 'sur_commande'
+      ? '<span style="display:inline-block;padding:2px 8px;border-radius:6px;background:rgba(245,158,11,.1);color:#b45309;font-size:10.5px;font-weight:700;">Sur commande' + (c.delai_preparation ? ' · ' + escHtml(c.delai_preparation) : '') + '</span>'
+      : '<span style="display:inline-block;padding:2px 8px;border-radius:6px;background:rgba(15,157,120,.1);color:#0f9d78;font-size:10.5px;font-weight:700;">Disponible</span>';
+    var photo = c.url_photo
+      ? '<img src="' + escHtml(c.url_photo) + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px 8px 0 0;">'
+      : '<div style="width:100%;aspect-ratio:1;background:var(--p2);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:24px;">📦</div>';
+    return '<div style="border:1px solid var(--brd);border-radius:10px;overflow:hidden;position:relative;">' +
+      '<button onclick="supprimerCatalogue(\'' + c.id + '\')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:7px;width:24px;height:24px;cursor:pointer;font-size:12px;z-index:1;">✕</button>' +
+      photo +
+      '<div style="padding:10px;">' +
+        '<div style="font-size:13px;font-weight:700;margin-bottom:3px;">' + escHtml(c.nom) + '</div>' +
+        (c.prix != null ? '<div style="font-size:13px;color:var(--ac);font-weight:700;margin-bottom:6px;">' + c.prix + ' €</div>' : '') +
+        badge +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function openAjouterCatalogue() {
+  document.getElementById('cat-nom').value = '';
+  document.getElementById('cat-desc').value = '';
+  document.getElementById('cat-prix').value = '';
+  document.getElementById('cat-type').value = 'disponible';
+  document.getElementById('cat-delai').value = '';
+  document.getElementById('cat-delai-wrap').style.display = 'none';
+  document.getElementById('cat-photo-input').value = '';
+  ouvrirModale('modal-catalogue');
+}
+
+async function sauverCatalogue() {
+  if (!verifierAccesEcriture()) return;
+  var nom = document.getElementById('cat-nom').value.trim();
+  if (!nom) { alert('Le nom de l\'article est obligatoire.'); return; }
+  var btn = document.getElementById('btn-cat-sauver');
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+
+  try {
+    var urlPhoto = null;
+    var fichier = document.getElementById('cat-photo-input').files[0];
+    if (fichier) {
+      var chemin = _artisan.user_id + '/catalogue-' + Date.now() + '_' + fichier.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      var up = await sb.storage.from('artisans-photos').upload(chemin, fichier);
+      if (up.error) throw new Error(up.error.message);
+      var { data: pub } = sb.storage.from('artisans-photos').getPublicUrl(chemin);
+      urlPhoto = pub.publicUrl;
+    }
+
+    var nouveau = {
+      artisan_id: _artisan.id,
+      nom: nom,
+      description: document.getElementById('cat-desc').value.trim() || null,
+      prix: parseFloat(document.getElementById('cat-prix').value) || null,
+      type: document.getElementById('cat-type').value,
+      delai_preparation: document.getElementById('cat-delai').value.trim() || null,
+      url_photo: urlPhoto,
+      ordre: _catalogueCache.length,
+    };
+    var { error } = await sb.from('artisans_catalogue').insert(nouveau);
+    if (error) throw error;
+    fermerModale('modal-catalogue');
+    await chargerCatalogue();
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+  }
+  btn.disabled = false; btn.textContent = 'Ajouter';
+}
+
+async function supprimerCatalogue(id) {
+  if (!verifierAccesEcriture()) return;
+  if (!confirm('Supprimer cet article du catalogue ?')) return;
+  var { error } = await sb.from('artisans_catalogue').delete().eq('id', id).eq('artisan_id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerCatalogue();
 }
 
 async function chargerServices() {

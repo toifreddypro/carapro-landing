@@ -54,6 +54,16 @@ Deno.serve(async (req: Request) => {
       .eq("artisan_id", id)
       .order("ordre", { ascending: true });
 
+    // Catalogue — seuls les articles "disponibles tout de suite" sont mis en avant sur la
+    // fiche (4 max) ; le catalogue complet (avec le "sur commande") reste sur MPA côté artisan
+    // pour l'instant, ce lien public complet est une prochaine étape.
+    const { data: catalogue } = await sb.from("artisans_catalogue")
+      .select("nom, prix, url_photo, type")
+      .eq("artisan_id", id)
+      .eq("type", "disponible")
+      .order("ordre", { ascending: true })
+      .limit(4);
+
     const { data: avis } = await sb.from("avis_carapro")
       .select("client_nom, note, commentaire, created_at, reponse_artisan, reponse_le")
       .eq("artisan_id", id)
@@ -68,6 +78,7 @@ Deno.serve(async (req: Request) => {
       artisan,
       services: services || [],
       photos: photos || [],
+      catalogue: catalogue || [],
       avis: avis || [],
       note_moyenne: noteMoyenne,
       nb_avis: (avis || []).length,
