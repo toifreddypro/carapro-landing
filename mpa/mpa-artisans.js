@@ -2271,6 +2271,7 @@ async function supprimerCatalogue(id) {
 // ════════════════════════════════════════
 
 var _commandesCache = [];
+var _interventionsAVenirCache = [];
 var LABELS_STATUT_COMMANDE = { nouvelle: '🆕 Nouvelle', confirmee: '✅ Confirmée', prete: '📦 Prête', terminee: '🏁 Terminée', annulee: '⛔ Annulée' };
 var CYCLE_STATUT_COMMANDE = { nouvelle: 'confirmee', confirmee: 'prete', prete: 'terminee' };
 
@@ -2280,11 +2281,27 @@ async function chargerCommandes() {
   var { data, error } = await sb.from('commandes_catalogue').select('*').eq('artisan_id', _artisan.id).order('created_at', { ascending: false });
   if (error) { zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>'; return; }
   _commandesCache = data || [];
+
+  var aujourdhui = new Date().toISOString().slice(0, 10);
+  var { data: aVenir } = await sb.from('mpa_artisans_interventions')
+    .select('date_intervention, creneau, commune')
+    .eq('artisan_id', _artisan.id)
+    .neq('statut', 'annulee')
+    .gte('date_intervention', aujourdhui)
+    .order('date_intervention', { ascending: true });
+  _interventionsAVenirCache = aVenir || [];
+
   renderCommandes();
 
   var nouvelles = _commandesCache.filter(function(c) { return c.statut === 'nouvelle'; }).length;
   var badge = document.getElementById('cnt-commandes');
   if (badge) { badge.style.display = nouvelles ? 'inline-block' : 'none'; badge.textContent = nouvelles; }
+}
+
+function trouverInterventionProche(commune) {
+  if (!commune) return null;
+  var communeNorm = commune.trim().toLowerCase();
+  return _interventionsAVenirCache.find(function(i) { return (i.commune || '').trim().toLowerCase() === communeNorm; }) || null;
 }
 
 function renderCommandes() {
@@ -2306,6 +2323,15 @@ function renderCommandes() {
       ? '<button onclick="planifierLivraisonCommande(\'' + c.id + '\')" style="padding:6px 14px;border-radius:7px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">🚚 Planifier la livraison</button>'
       : (c.intervention_id ? '<span style="font-size:11.5px;color:var(--mu);">✓ Dans le planning</span>' : '');
 
+    var badgeProche = '';
+    if (c.mode === 'livraison' && !c.intervention_id && c.statut !== 'annulee' && c.statut !== 'terminee') {
+      var proche = trouverInterventionProche(c.commune_livraison);
+      if (proche) {
+        var dateProcheAff = new Date(proche.date_intervention).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+        badgeProche = '<div style="display:inline-block;padding:3px 8px;border-radius:6px;background:rgba(15,157,120,.1);color:#0f9d78;font-size:11px;font-weight:700;margin-bottom:8px;">📍 Intervention le ' + dateProcheAff + ' dans le coin — à regrouper ?</div><br>';
+      }
+    }
+
     return '<div style="border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">' +
         '<div><strong>' + escHtml(c.nom_article) + '</strong> × ' + c.quantite + '</div>' +
@@ -2315,6 +2341,7 @@ function renderCommandes() {
       '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:3px;">📅 Souhaitée le ' + dateTxt + '</div>' +
       '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;">👤 ' + escHtml(c.client_nom) + ' — ' + escHtml(c.client_telephone) + '</div>' +
       (c.notes ? '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;font-style:italic;">« ' + escHtml(c.notes) + ' »</div>' : '') +
+      badgeProche +
       '<div>' + boutonSuivant + boutonLivraison + '</div>' +
     '</div>';
   }).join('');
