@@ -1579,30 +1579,31 @@ function majInfoAbonnementMpaAi() {
 
 // ── Paiements en ligne (Stripe Connect) ──
 function renderEncartStripeConnect() {
-  var zone = document.getElementById('encart-stripe-connect');
-  if (!zone) return;
+  var cibles = ['encart-stripe-connect', 'encart-stripe-connect-fiche'];
   var statut = _artisan.stripe_connect_statut || 'non_demarre';
 
+  var html;
   if (statut === 'actif') {
-    zone.innerHTML =
-      '<div style="background:rgba(15,157,120,.06);border:1px solid rgba(15,157,120,.3);border-radius:14px;padding:12px 20px;margin-bottom:16px;font-size:12.5px;color:#0f9d78;">' +
+    html = '<div style="background:rgba(15,157,120,.06);border:1px solid rgba(15,157,120,.3);border-radius:14px;padding:12px 20px;font-size:12.5px;color:#0f9d78;">' +
         '✅ Paiements en ligne activés — vos clients peuvent payer leurs commandes directement par carte.' +
       '</div>';
-    return;
+  } else {
+    var texte = statut === 'en_cours'
+      ? 'Activation en cours — terminez la vérification de votre compte pour recevoir des paiements en ligne.'
+      : 'Activez les paiements en ligne pour que vos clients puissent régler leurs commandes directement par carte.';
+    html = '<div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.3);border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
+        '<div style="flex:1;min-width:220px;font-size:12.5px;color:var(--mu2);">💳 ' + texte + '</div>' +
+        '<button onclick="lancerStripeConnect(this)" style="flex-shrink:0;padding:9px 16px;border-radius:8px;border:none;background:#3b82f6;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;">' + (statut === 'en_cours' ? 'Terminer l\'activation →' : 'Activer les paiements →') + '</button>' +
+      '</div>';
   }
 
-  var texte = statut === 'en_cours'
-    ? 'Activation en cours — terminez la vérification de votre compte pour recevoir des paiements en ligne.'
-    : 'Activez les paiements en ligne pour que vos clients puissent régler leurs commandes directement par carte.';
-  zone.innerHTML =
-    '<div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.3);border-radius:14px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
-      '<div style="flex:1;min-width:220px;font-size:12.5px;color:var(--mu2);">💳 ' + texte + '</div>' +
-      '<button onclick="lancerStripeConnect()" id="btn-stripe-connect" style="flex-shrink:0;padding:9px 16px;border-radius:8px;border:none;background:#3b82f6;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;">' + (statut === 'en_cours' ? 'Terminer l\'activation →' : 'Activer les paiements →') + '</button>' +
-    '</div>';
+  cibles.forEach(function(id) {
+    var zone = document.getElementById(id);
+    if (zone) zone.innerHTML = html;
+  });
 }
 
-async function lancerStripeConnect() {
-  var btn = document.getElementById('btn-stripe-connect');
+async function lancerStripeConnect(btn) {
   if (btn) { btn.disabled = true; btn.textContent = 'Redirection…'; }
   try {
     var { data: { session: authSession } } = await sb.auth.getSession();
