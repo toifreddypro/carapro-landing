@@ -1555,6 +1555,7 @@ async function initDashboard() {
   _dispoMois = new Date().getMonth();
   await renderDispoCalendrier();
   renderRappelCloture();
+  renderEncartStripeConnect();
   renderEncartAbonnement();
   renderEncartAlternance();
 }
@@ -1573,6 +1574,49 @@ function majInfoAbonnementMpaAi() {
     zone.textContent = '🎁 Essai : ' + j + ' jour' + (j > 1 ? 's' : '') + ' restant' + (j > 1 ? 's' : '');
   } else {
     zone.textContent = '🎁 Essai en cours';
+  }
+}
+
+// ── Paiements en ligne (Stripe Connect) ──
+function renderEncartStripeConnect() {
+  var zone = document.getElementById('encart-stripe-connect');
+  if (!zone) return;
+  var statut = _artisan.stripe_connect_statut || 'non_demarre';
+
+  if (statut === 'actif') {
+    zone.innerHTML =
+      '<div style="background:rgba(15,157,120,.06);border:1px solid rgba(15,157,120,.3);border-radius:14px;padding:12px 20px;margin-bottom:16px;font-size:12.5px;color:#0f9d78;">' +
+        '✅ Paiements en ligne activés — vos clients peuvent payer leurs commandes directement par carte.' +
+      '</div>';
+    return;
+  }
+
+  var texte = statut === 'en_cours'
+    ? 'Activation en cours — terminez la vérification de votre compte pour recevoir des paiements en ligne.'
+    : 'Activez les paiements en ligne pour que vos clients puissent régler leurs commandes directement par carte.';
+  zone.innerHTML =
+    '<div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.3);border-radius:14px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
+      '<div style="flex:1;min-width:220px;font-size:12.5px;color:var(--mu2);">💳 ' + texte + '</div>' +
+      '<button onclick="lancerStripeConnect()" id="btn-stripe-connect" style="flex-shrink:0;padding:9px 16px;border-radius:8px;border:none;background:#3b82f6;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;">' + (statut === 'en_cours' ? 'Terminer l\'activation →' : 'Activer les paiements →') + '</button>' +
+    '</div>';
+}
+
+async function lancerStripeConnect() {
+  var btn = document.getElementById('btn-stripe-connect');
+  if (btn) { btn.disabled = true; btn.textContent = 'Redirection…'; }
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/connecter-stripe-artisan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({ origin: window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '') }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    window.location.href = data.url;
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Activer les paiements →'; }
   }
 }
 
