@@ -627,8 +627,8 @@ function ouvrirVerifDispo(artisanId) {
       (options ? '<select id="dispo-service" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' + options + '</select>' : '') +
       '<input id="dispo-adresse" type="text" placeholder="' + T('ph_adresse_interv') + '" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' +
       '<div style="display:flex;gap:8px;margin-bottom:8px;">' +
-        '<input id="dispo-cp" type="text" placeholder="' + T('ph_cp') + '" style="flex:1;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);box-sizing:border-box;">' +
-        '<input id="dispo-commune" type="text" placeholder="' + T('ph_commune') + '" style="flex:2;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);box-sizing:border-box;">' +
+        '<input id="dispo-cp" type="text" placeholder="' + T('ph_cp') + '" style="flex:1;min-width:0;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);box-sizing:border-box;">' +
+        '<input id="dispo-commune" type="text" placeholder="' + T('ph_commune') + '" style="flex:2;min-width:0;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);box-sizing:border-box;">' +
       '</div>' +
       '<button type="button" onclick="verifierDispoReelle(' + jsAttr(artisanId) + ')" style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--ac,#B5502F);color:#fff;font-weight:700;cursor:pointer;">' + T('dispo_verifier_btn') + '</button>' +
       '<div id="dispo-resultat" style="margin-top:10px;"></div>' +
@@ -817,8 +817,8 @@ function ouvrirModalSurMesure() {
         '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">' + T('surmesure_titre') + '</div>' +
         '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">' + T('surmesure_intro1') + '<br>📍 ' + escHtml(ctx.adresse) + '</div>' +
         '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
-          '<input id="sm-date" type="date" style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-size:13px;box-sizing:border-box;">' +
-          '<input id="sm-heure" type="time" style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-size:13px;box-sizing:border-box;">' +
+          '<input id="sm-date" type="date" style="flex:1;min-width:0;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-size:13px;box-sizing:border-box;">' +
+          '<input id="sm-heure" type="time" style="flex:1;min-width:0;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-size:13px;box-sizing:border-box;">' +
         '</div>' +
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
@@ -1054,13 +1054,13 @@ function ouvrirModalCommande(catalogueId, nomArticle, paiementActif) {
         '<input type="hidden" id="cmd-nom-article" value="' + escHtml(nomArticle) + '">' +
         '<input type="hidden" id="cmd-paiement-actif" value="' + (paiementActif ? '1' : '0') + '">' +
         '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
-          '<input id="cmd-nom" type="text" placeholder="Votre nom" style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;">' +
-          '<input id="cmd-tel" type="tel" placeholder="Téléphone" style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;">' +
+          '<input id="cmd-nom" type="text" placeholder="Votre nom" style="flex:1;min-width:0;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;">' +
+          '<input id="cmd-tel" type="tel" placeholder="Téléphone" style="flex:1;min-width:0;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;">' +
         '</div>' +
         '<input id="cmd-email" type="email" placeholder="Email (optionnel)" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
-          '<div style="flex:1;"><label style="font-size:11.5px;color:var(--mu2,#777);display:block;margin-bottom:4px;">Quantité</label><input id="cmd-qte" type="number" min="1" value="1" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;"></div>' +
-          '<div style="flex:1;"><label style="font-size:11.5px;color:var(--mu2,#777);display:block;margin-bottom:4px;">Date souhaitée</label><input id="cmd-date" type="date" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;"></div>' +
+          '<div style="flex:1;min-width:0;"><label style="font-size:11.5px;color:var(--mu2,#777);display:block;margin-bottom:4px;">Quantité</label><input id="cmd-qte" type="number" min="1" value="1" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;"></div>' +
+          '<div style="flex:1;min-width:0;"><label style="font-size:11.5px;color:var(--mu2,#777);display:block;margin-bottom:4px;">Date souhaitée</label><input id="cmd-date" type="date" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;"></div>' +
         '</div>' +
         '<div style="display:flex;gap:14px;margin-bottom:10px;">' +
           '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="radio" name="cmd-mode" value="retrait" checked onchange="document.getElementById(\'cmd-livraison-wrap\').style.display=\'none\';">🏠 Retrait sur place</label>' +
@@ -1069,8 +1069,8 @@ function ouvrirModalCommande(catalogueId, nomArticle, paiementActif) {
         '<div id="cmd-livraison-wrap" style="display:none;margin-bottom:10px;">' +
           '<input id="cmd-adresse" type="text" placeholder="Adresse de livraison" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:8px;">' +
           '<div style="display:flex;gap:8px;">' +
-            '<input id="cmd-cp" type="text" placeholder="Code postal" style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;">' +
-            '<input id="cmd-commune" type="text" placeholder="Commune" style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;">' +
+            '<input id="cmd-cp" type="text" placeholder="Code postal" style="flex:1;min-width:0;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;">' +
+            '<input id="cmd-commune" type="text" placeholder="Commune" style="flex:1;min-width:0;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;">' +
           '</div>' +
         '</div>' +
         '<textarea id="cmd-notes" rows="2" placeholder="Précisions (optionnel)" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
