@@ -675,10 +675,12 @@ async function verifierDispoReelle(artisanId, dateDebut) {
       '<button type="button" onclick="' + (data.peut_reculer ? "naviguerSemaineDispo(-1)" : '') + '" ' + (data.peut_reculer ? '' : 'disabled') + ' style="border:none;background:none;font-size:20px;color:' + (data.peut_reculer ? 'var(--ac,#B5502F)' : 'var(--line,#ddd)') + ';cursor:' + (data.peut_reculer ? 'pointer' : 'default') + ';padding:0 4px;">‹</button>' +
       '<div style="flex:1;display:grid;grid-template-columns:repeat(' + data.jours.length + ',1fr);gap:4px;">' +
         data.jours.map(function(j) {
-          var dateAff = new Date(j.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long' });
+          var dateAff = new Date(j.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long' });
           return '<div style="text-align:center;">' +
-            '<div style="font-size:10.5px;font-weight:700;text-transform:capitalize;color:var(--mu2,#555);">' + dateAff + '</div>' +
-            '<div style="font-size:10.5px;color:var(--mu,#999);margin-bottom:6px;">' + j.jour_num + ' ' + j.mois_label + '</div>' +
+            '<div style="min-height:34px;display:flex;flex-direction:column;justify-content:flex-end;margin-bottom:6px;">' +
+              '<div style="font-size:10.5px;font-weight:700;text-transform:capitalize;color:var(--mu2,#555);line-height:1.3;">' + dateAff + '</div>' +
+              '<div style="font-size:10.5px;color:var(--mu,#999);line-height:1.3;white-space:nowrap;">' + j.jour_num + ' ' + j.mois_label + '</div>' +
+            '</div>' +
             (j.creneaux.length
               ? j.creneaux.map(function(h) {
                   return '<button type="button" onclick="choisirCreneauPublic(' + jsAttr(j.date) + ',' + jsAttr(h) + ')" style="display:block;width:100%;padding:5px 2px;margin-bottom:4px;border-radius:6px;border:1px solid var(--ac-brd,#e8c4b8);background:#eef7f2;color:var(--ac,#B5502F);font-weight:700;font-size:11.5px;cursor:pointer;">' + h + '</button>';
@@ -704,7 +706,7 @@ async function verifierDispoReelle(artisanId, dateDebut) {
 function naviguerSemaineDispo(direction) {
   var ctx = window._dispoContexte;
   if (!ctx) return;
-  var d = new Date(ctx.dateDebutFenetre + 'T00:00:00');
+  var d = new Date(ctx.dateDebutFenetre + 'T12:00:00');
   d.setDate(d.getDate() + direction * 5);
   verifierDispoReelle(ctx.artisanId, d.toISOString().slice(0, 10));
 }
@@ -725,7 +727,7 @@ function ouvrirModalCreneau() {
   _typeInterventionChoisi = null;
   var div = document.getElementById('modal-devis');
   if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
-  var dateAff = new Date(ctx.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  var dateAff = new Date(ctx.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   div.innerHTML =
     '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:12px;" onclick="if(event.target===this)fermerModalDevis()">' +
       '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;">' +
