@@ -486,6 +486,7 @@ function buildProfilHTML(data) {
           return '<div>' + photo +
             '<div style="font-size:12px;margin-top:5px;">' + escHtml(c.nom) + '</div>' +
             (c.prix != null ? '<div style="font-size:12.5px;font-weight:700;color:var(--ac,#B5502F);">' + c.prix + ' €</div>' : '') +
+            '<button onclick="ouvrirModalCommande(' + jsAttr(c.id) + ',' + jsAttr(c.nom) + ',' + (data.artisan.stripe_connect_statut === 'actif') + ')" style="width:100%;margin-top:5px;padding:5px;border-radius:6px;border:1px solid var(--ac,#B5502F);background:transparent;color:var(--ac,#B5502F);font-size:11px;font-weight:700;cursor:pointer;">Commander</button>' +
           '</div>';
         }).join('') +
       '</div>'
@@ -1033,6 +1034,180 @@ function ouvrirModalDevis(artisanId, nomArtisan, secteurArtisan) {
     '</div>';
 }
 function fermerModalDevis() { var div = document.getElementById('modal-devis'); if (div) div.innerHTML = ''; }
+
+// ⚠️ À REMPLIR avant déploiement — Stripe Dashboard → Développeurs → Clés API → "Clé publiable" (pk_live_...).
+// Jamais la clé secrète ici, uniquement la clé publique (faite pour être visible côté client).
+var STRIPE_PUBLIC_KEY = 'pk_live_51TWxxBJPTOXXy1ykTYLysvDCbnnJUXzqbc164Wif38u1g7BijiOLdUWKD8HPlQBX7he8K76aZNMUARo14yuQhzdQ000WVXdeEF';
+var _stripeClient = null;
+var _stripeElements = null;
+
+// ── Modale de commande sur un article du catalogue ──
+function ouvrirModalCommande(catalogueId, nomArticle, paiementActif) {
+  var div = document.getElementById('modal-commande');
+  if (!div) { div = document.createElement('div'); div.id = 'modal-commande'; document.body.appendChild(div); }
+  div.innerHTML =
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)fermerModalCommande()">' +
+      '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;max-height:90vh;overflow-y:auto;">' +
+        '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">Commander</div>' +
+        '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">' + escHtml(nomArticle) + (paiementActif ? ' — paiement en ligne disponible' : '') + '</div>' +
+        '<input type="hidden" id="cmd-catalogue-id" value="' + escHtml(catalogueId) + '">' +
+        '<input type="hidden" id="cmd-nom-article" value="' + escHtml(nomArticle) + '">' +
+        '<input type="hidden" id="cmd-paiement-actif" value="' + (paiementActif ? '1' : '0') + '">' +
+        '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
+          '<input id="cmd-nom" type="text" placeholder="Votre nom" style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;">' +
+          '<input id="cmd-tel" type="tel" placeholder="Téléphone" style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;">' +
+        '</div>' +
+        '<input id="cmd-email" type="email" placeholder="Email (optionnel)" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
+          '<div style="flex:1;"><label style="font-size:11.5px;color:var(--mu2,#777);display:block;margin-bottom:4px;">Quantité</label><input id="cmd-qte" type="number" min="1" value="1" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;"></div>' +
+          '<div style="flex:1;"><label style="font-size:11.5px;color:var(--mu2,#777);display:block;margin-bottom:4px;">Date souhaitée</label><input id="cmd-date" type="date" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;"></div>' +
+        '</div>' +
+        '<div style="display:flex;gap:14px;margin-bottom:10px;">' +
+          '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="radio" name="cmd-mode" value="retrait" checked onchange="document.getElementById(\'cmd-livraison-wrap\').style.display=\'none\';">🏠 Retrait sur place</label>' +
+          '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="radio" name="cmd-mode" value="livraison" onchange="document.getElementById(\'cmd-livraison-wrap\').style.display=\'block\';">🚚 Livraison</label>' +
+        '</div>' +
+        '<div id="cmd-livraison-wrap" style="display:none;margin-bottom:10px;">' +
+          '<input id="cmd-adresse" type="text" placeholder="Adresse de livraison" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:8px;">' +
+          '<div style="display:flex;gap:8px;">' +
+            '<input id="cmd-cp" type="text" placeholder="Code postal" style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;">' +
+            '<input id="cmd-commune" type="text" placeholder="Commune" style="flex:1;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;">' +
+          '</div>' +
+        '</div>' +
+        '<textarea id="cmd-notes" rows="2" placeholder="Précisions (optionnel)" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
+        '<div id="cmd-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button id="btn-cmd-envoyer" onclick="envoyerCommande()" style="flex:1;padding:11px;border-radius:9px;border:none;background:#16a34a;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Envoyer la commande</button>' +
+          '<button onclick="fermerModalCommande()" style="flex:1;padding:11px;border-radius:9px;border:1px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);cursor:pointer;">Annuler</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+function fermerModalCommande() { var div = document.getElementById('modal-commande'); if (div) div.innerHTML = ''; }
+
+async function afficherEtapePaiement(commandeId) {
+  var conteneur = document.getElementById('modal-commande');
+  conteneur.innerHTML =
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;">' +
+      '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:420px;width:100%;">' +
+        '<div style="font-size:15px;font-weight:700;margin-bottom:4px;">✅ Commande enregistrée</div>' +
+        '<div style="font-size:12.5px;color:var(--mu2,#777);margin-bottom:16px;">Réglez maintenant par carte pour la confirmer.</div>' +
+        '<div id="paiement-element" style="margin-bottom:14px;"></div>' +
+        '<div id="paiement-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
+        '<button id="btn-payer" onclick="confirmerPaiementCommande()" style="width:100%;padding:12px;border-radius:9px;border:none;background:#16a34a;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Chargement…</button>' +
+        '<button onclick="fermerModalCommande()" style="width:100%;padding:10px;margin-top:8px;border-radius:9px;border:1px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);cursor:pointer;font-size:13px;">Payer plus tard directement avec l\'artisan</button>' +
+      '</div>' +
+    '</div>';
+
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/creer-paiement-commande', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commande_id: commandeId }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    if (!_stripeClient) _stripeClient = Stripe(STRIPE_PUBLIC_KEY);
+    _stripeElements = _stripeClient.elements({ clientSecret: data.client_secret });
+    var paymentElement = _stripeElements.create('payment');
+    paymentElement.mount('#paiement-element');
+
+    var btn = document.getElementById('btn-payer');
+    btn.textContent = 'Payer';
+    btn.disabled = false;
+  } catch (e) {
+    document.getElementById('paiement-err').textContent = 'Erreur : ' + e.message;
+    document.getElementById('paiement-err').style.display = 'block';
+    var btn2 = document.getElementById('btn-payer');
+    if (btn2) btn2.style.display = 'none';
+  }
+}
+
+async function confirmerPaiementCommande() {
+  var btn = document.getElementById('btn-payer');
+  var err = document.getElementById('paiement-err');
+  err.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Paiement en cours…';
+
+  var { error, paymentIntent } = await _stripeClient.confirmPayment({
+    elements: _stripeElements,
+    redirect: 'if_required',
+  });
+
+  if (error) {
+    err.textContent = error.message || 'Le paiement a échoué.';
+    err.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Payer';
+    return;
+  }
+
+  document.getElementById('modal-commande').innerHTML =
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;">' +
+      '<div style="background:var(--panel,#fff);border-radius:14px;padding:28px;max-width:380px;width:100%;text-align:center;">' +
+        '<div style="font-size:32px;margin-bottom:10px;">✅</div>' +
+        '<div style="font-size:15px;font-weight:700;margin-bottom:8px;">Paiement confirmé !</div>' +
+        '<div style="font-size:13px;color:var(--mu2,#777);margin-bottom:16px;">Votre commande est réglée, l\'artisan va la préparer.</div>' +
+        '<button onclick="fermerModalCommande()" style="padding:10px 20px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-weight:700;cursor:pointer;">Fermer</button>' +
+      '</div>' +
+    '</div>';
+}
+
+async function envoyerCommande() {
+  var err = document.getElementById('cmd-err');
+  err.style.display = 'none';
+  var nom = document.getElementById('cmd-nom').value.trim();
+  var tel = document.getElementById('cmd-tel').value.trim();
+  var mode = document.querySelector('input[name="cmd-mode"]:checked').value;
+  var adresse = document.getElementById('cmd-adresse').value.trim();
+
+  if (!nom || !tel) { err.textContent = 'Votre nom et votre téléphone sont obligatoires.'; err.style.display = 'block'; return; }
+  if (mode === 'livraison' && !adresse) { err.textContent = 'L\'adresse de livraison est obligatoire.'; err.style.display = 'block'; return; }
+
+  var btn = document.getElementById('btn-cmd-envoyer');
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/soumettre-commande', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        catalogue_id: document.getElementById('cmd-catalogue-id').value,
+        quantite: document.getElementById('cmd-qte').value,
+        client_nom: nom,
+        client_telephone: tel,
+        client_email: document.getElementById('cmd-email').value.trim() || null,
+        mode: mode,
+        adresse_livraison: mode === 'livraison' ? adresse : null,
+        code_postal_livraison: mode === 'livraison' ? document.getElementById('cmd-cp').value.trim() : null,
+        commune_livraison: mode === 'livraison' ? document.getElementById('cmd-commune').value.trim() : null,
+        date_souhaitee: document.getElementById('cmd-date').value || null,
+        notes: document.getElementById('cmd-notes').value.trim() || null,
+      }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    var paiementActif = document.getElementById('cmd-paiement-actif').value === '1';
+    if (paiementActif) {
+      await afficherEtapePaiement(data.commande_id);
+      return;
+    }
+
+    document.getElementById('modal-commande').innerHTML =
+      '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;">' +
+        '<div style="background:var(--panel,#fff);border-radius:14px;padding:28px;max-width:380px;width:100%;text-align:center;">' +
+          '<div style="font-size:32px;margin-bottom:10px;">✅</div>' +
+          '<div style="font-size:15px;font-weight:700;margin-bottom:8px;">Commande envoyée !</div>' +
+          '<div style="font-size:13px;color:var(--mu2,#777);margin-bottom:16px;">L\'artisan va la confirmer directement avec vous.</div>' +
+          '<button onclick="fermerModalCommande()" style="padding:10px 20px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-weight:700;cursor:pointer;">Fermer</button>' +
+        '</div>' +
+      '</div>';
+  } catch (e) {
+    err.textContent = 'Erreur : ' + e.message;
+    err.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Envoyer la commande';
+  }
+}
 
 // ── Demande générale (hors fiche) — ouverte à tous les artisans du secteur/commune ──
 function ouvrirModalDevisGeneral() {
