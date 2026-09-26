@@ -434,7 +434,7 @@ function renderArtisanCard(a) {
 async function ouvrirProfil(id) {
   var div = document.getElementById('modal-profil');
   if (!div) { div = document.createElement('div'); div.id = 'modal-profil'; document.body.appendChild(div); }
-  div.innerHTML = '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;"><div style="background:var(--panel,#fff);border-radius:14px;padding:30px;color:var(--mu);">' + T('chargement') + '</div></div>';
+  div.innerHTML = '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:12px;"><div style="background:var(--panel,#fff);border-radius:14px;padding:30px;color:var(--mu);">' + T('chargement') + '</div></div>';
 
   try {
     var res = await fetch(SUPABASE_URL + '/functions/v1/lire-artisan?id=' + id, {
@@ -448,7 +448,7 @@ async function ouvrirProfil(id) {
     chargerApercuDispo(data.artisan.id);
 
   } catch(e) {
-    div.innerHTML = '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;"><div style="background:var(--panel,#fff);border-radius:14px;padding:30px;color:var(--danger,#dc2626);">Erreur : ' + escHtml(e.message) + '</div></div>';
+    div.innerHTML = '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:12px;"><div style="background:var(--panel,#fff);border-radius:14px;padding:30px;color:var(--danger,#dc2626);">Erreur : ' + escHtml(e.message) + '</div></div>';
   }
 }
 function fermerProfil(e) { if (e && e.target !== e.currentTarget) return; var div = document.getElementById('modal-profil'); if (div) div.innerHTML = ''; }
@@ -502,7 +502,7 @@ function buildProfilHTML(data) {
       }).join('')
     : '<div style="color:var(--mu,#999);font-size:13px;">' + T('aucun_avis') + '</div>';
 
-  return '<div onclick="fermerProfil(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;">' +
+  return '<div onclick="fermerProfil(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:12px;overflow-y:auto;">' +
     '<div style="background:var(--panel,#fff);border-radius:16px;padding:28px;max-width:560px;width:100%;max-height:85vh;overflow-y:auto;">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">' +
         '<div style="display:flex;gap:14px;align-items:center;">' + photo +
@@ -727,7 +727,7 @@ function ouvrirModalCreneau() {
   if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
   var dateAff = new Date(ctx.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   div.innerHTML =
-    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)fermerModalDevis()">' +
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:12px;" onclick="if(event.target===this)fermerModalDevis()">' +
       '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;">' +
         '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">' + T('creneau_titre') + '</div>' +
         '<div style="font-size:12.5px;color:var(--mu2,#777);margin-bottom:16px;text-transform:capitalize;">' + dateAff + ' à ' + ctx.heureDebut + ' — ' + escHtml(ctx.adresse) + '</div>' +
@@ -749,7 +749,7 @@ function afficherConfirmationDemande(nomArtisan, emailDonne) {
   var div = document.getElementById('modal-devis');
   if (!div) return;
   div.innerHTML =
-    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)fermerConfirmationDemande()">' +
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:12px;" onclick="if(event.target===this)fermerConfirmationDemande()">' +
       '<div style="background:var(--panel,#fff);border-radius:14px;padding:28px;max-width:420px;width:100%;text-align:center;">' +
         '<div style="font-size:38px;margin-bottom:10px;">✅</div>' +
         '<div style="font-size:16px;font-weight:700;margin-bottom:10px;">' + T('confirmation_titre') + '</div>' +
@@ -812,7 +812,7 @@ function ouvrirModalSurMesure() {
   var div = document.getElementById('modal-devis');
   if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
   div.innerHTML =
-    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)fermerModalDevis()">' +
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:12px;" onclick="if(event.target===this)fermerModalDevis()">' +
       '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;">' +
         '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">' + T('surmesure_titre') + '</div>' +
         '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">' + T('surmesure_intro1') + '<br>📍 ' + escHtml(ctx.adresse) + '</div>' +
@@ -1014,7 +1014,7 @@ function ouvrirModalDevis(artisanId, nomArtisan, secteurArtisan) {
   var div = document.getElementById('modal-devis');
   if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
   div.innerHTML =
-    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)fermerModalDevis()">' +
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:12px;" onclick="if(event.target===this)fermerModalDevis()">' +
       '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;">' +
         '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">' + T('devis_titre') + '</div>' +
         '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">' + (nomArtisan ? T('devis_sub_a') + ' ' + escHtml(nomArtisan) + '. ' : '') + T('devis_sub_suite') + '</div>' +
@@ -1046,7 +1046,7 @@ function ouvrirModalCommande(catalogueId, nomArticle, paiementActif) {
   var div = document.getElementById('modal-commande');
   if (!div) { div = document.createElement('div'); div.id = 'modal-commande'; document.body.appendChild(div); }
   div.innerHTML =
-    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)fermerModalCommande()">' +
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:12px;" onclick="if(event.target===this)fermerModalCommande()">' +
       '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;max-height:90vh;overflow-y:auto;">' +
         '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">Commander</div>' +
         '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">' + escHtml(nomArticle) + (paiementActif ? ' — paiement en ligne disponible' : '') + '</div>' +
@@ -1088,7 +1088,7 @@ function fermerModalCommande() { var div = document.getElementById('modal-comman
 async function afficherEtapePaiement(commandeId) {
   var conteneur = document.getElementById('modal-commande');
   conteneur.innerHTML =
-    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;">' +
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:12px;">' +
       '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:420px;width:100%;">' +
         '<div style="font-size:15px;font-weight:700;margin-bottom:4px;">✅ Commande enregistrée</div>' +
         '<div style="font-size:12.5px;color:var(--mu2,#777);margin-bottom:16px;">Réglez maintenant par carte pour la confirmer.</div>' +
@@ -1143,7 +1143,7 @@ async function confirmerPaiementCommande() {
   }
 
   document.getElementById('modal-commande').innerHTML =
-    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;">' +
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:12px;">' +
       '<div style="background:var(--panel,#fff);border-radius:14px;padding:28px;max-width:380px;width:100%;text-align:center;">' +
         '<div style="font-size:32px;margin-bottom:10px;">✅</div>' +
         '<div style="font-size:15px;font-weight:700;margin-bottom:8px;">Paiement confirmé !</div>' +
@@ -1194,7 +1194,7 @@ async function envoyerCommande() {
     }
 
     document.getElementById('modal-commande').innerHTML =
-      '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;">' +
+      '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:12px;">' +
         '<div style="background:var(--panel,#fff);border-radius:14px;padding:28px;max-width:380px;width:100%;text-align:center;">' +
           '<div style="font-size:32px;margin-bottom:10px;">✅</div>' +
           '<div style="font-size:15px;font-weight:700;margin-bottom:8px;">Commande envoyée !</div>' +
@@ -1221,7 +1221,7 @@ function ouvrirModalDevisGeneral() {
     return '<option value="' + escHtml(s.code) + '">' + (s.icon||'') + ' ' + escHtml(s[champLabel] || s.label_fr) + '</option>';
   }).join('');
   div.innerHTML =
-    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)fermerModalDevis()">' +
+    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:12px;" onclick="if(event.target===this)fermerModalDevis()">' +
       '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;">' +
         '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">' + T('devisgen_titre') + '</div>' +
         '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">' + T('devisgen_intro') + '</div>' +
