@@ -2168,6 +2168,7 @@ async function sauverFiche() {
   Object.assign(_artisan, maj);
   renderFiche();
   fermerModale('modal-fiche');
+  if (_itinDateChoisie) choisirJourItineraire(_itinDateChoisie);
 }
 
 async function saveConfigFiscal() {
@@ -2600,6 +2601,14 @@ async function renderItineraireWidget() {
   await choisirJourItineraire(_itinDateChoisie || debutStr);
 }
 
+// Point de départ de la journée : l'adresse pro de l'artisan (géocodée à l'enregistrement de sa fiche).
+function baseArtisanCoords() {
+  if (_artisan && _artisan.latitude != null && _artisan.longitude != null) {
+    return { latitude: _artisan.latitude, longitude: _artisan.longitude };
+  }
+  return null;
+}
+
 async function choisirJourItineraire(dateStr) {
   _itinDateChoisie = dateStr;
   var jours = document.getElementById('itin-jours');
@@ -2625,6 +2634,18 @@ async function choisirJourItineraire(dateStr) {
 
   liste.innerHTML = '<p style="font-size:12px;color:var(--mu);">Calcul des trajets…</p>';
   var morceaux = [];
+  var base = baseArtisanCoords();
+  if (base) {
+    var premier = duJour[0];
+    var minDepart = await tempsTrajetMinutes(base.latitude, base.longitude, premier.latitude, premier.longitude);
+    morceaux.push('<div style="display:flex;gap:10px;align-items:center;padding:6px 0;font-size:13px;">' +
+      '<strong style="width:48px;flex-shrink:0;">🏠</strong>' +
+      '<span>Départ <span style="color:var(--mu);">(chez vous)</span></span>' +
+    '</div>');
+    morceaux.push('<div style="padding:4px 0 4px 58px;font-size:11.5px;color:var(--mu);">' +
+      (minDepart != null ? '🚗 ' + minDepart + ' min de trajet' : '🚗 trajet non calculé (adresse manquante)') +
+    '</div>');
+  }
   for (var k = 0; k < duJour.length; k++) {
     var i = duJour[k];
     var nomClient = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '—';
@@ -2640,6 +2661,9 @@ async function choisirJourItineraire(dateStr) {
         (minutes != null ? '🚗 ' + minutes + ' min de trajet' : '🚗 trajet non calculé (adresse manquante)') +
       '</div>');
     }
+  }
+  if (!base) {
+    morceaux.push('<p style="font-size:11.5px;color:var(--mu);margin-top:8px;">💡 Renseignez votre adresse dans Base de données → Fiche artisan pour voir aussi le trajet depuis chez vous.</p>');
   }
   liste.innerHTML = morceaux.join('');
 
@@ -2661,16 +2685,25 @@ async function dessinerCarteItineraire(interventions) {
   _itinMap = L.map('itin-carte', { zoomControl: false, attributionControl: false });
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(_itinMap);
 
-  var points = avecCoords.map(function(i) { return [i.latitude, i.longitude]; });
+  // Étapes du tracé : départ (chez l'artisan, s'il a renseigné son adresse) puis chaque intervention.
+  var base = baseArtisanCoords();
+  var etapes = base ? [base].concat(avecCoords) : avecCoords;
+
+  var points = etapes.map(function(e) { return [e.latitude, e.longitude]; });
+  if (base) {
+    L.marker([base.latitude, base.longitude], {
+      icon: L.divIcon({ className: '', html: '<div style="width:30px;height:30px;border-radius:50%;background:#fff;border:2px solid #B5502F;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,.25);">🏠</div>', iconSize: [30, 30], iconAnchor: [15, 15] }),
+    }).addTo(_itinMap).bindTooltip('Départ — chez vous', { permanent: false });
+  }
   avecCoords.forEach(function(i, idx) {
     L.marker([i.latitude, i.longitude]).addTo(_itinMap)
       .bindTooltip((idx + 1) + '. ' + (i.heure_debut || '') + ' — ' + (i.commune || ''), { permanent: false });
   });
-  _itinMap.fitBounds(points, { padding: [24, 24] });
+  _itinMap.fitBounds(points, { padding: [24, 24], maxZoom: 15 });
 
-  // Trace le trajet réel (OSRM, même service que Smart Dispatch) entre chaque étape consécutive.
-  for (var j = 0; j < avecCoords.length - 1; j++) {
-    var a = avecCoords[j], b = avecCoords[j + 1];
+  // Trace le trajet réel (service IGN, même moteur que Smart Dispatch) entre chaque étape consécutive, départ compris.
+  for (var j = 0; j < etapes.length - 1; j++) {
+    var a = etapes[j], b = etapes[j + 1];
     try {
       var url = 'https://data.geopf.fr/navigation/itineraire?resource=bdtopo-osrm&profile=car&optimization=fastest&geometryFormat=geojson&start=' + a.longitude + ',' + a.latitude + '&end=' + b.longitude + ',' + b.latitude;
       var res = await fetch(url);
