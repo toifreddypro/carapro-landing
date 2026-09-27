@@ -289,8 +289,21 @@ function renderCalendrier() {
     var interMatin = interDuJour.filter(function(i) { return i.creneau !== 'apres_midi'; });
     var interAM = interDuJour.filter(function(i) { return i.creneau === 'apres_midi'; });
 
+    var pointsUniques = [];
+    interDuJour.forEach(function(i) {
+      var s = i.statut || 'planifiee';
+      if (s !== 'annulee' && pointsUniques.indexOf(s) === -1) pointsUniques.push(s);
+    });
+    var compactHtml = c.autreMonth ? '' :
+      '<div class="cal-compact" onclick="ouvrirDetailJourMobile(\'' + dateStr + '\')">' +
+        (pointsUniques.length
+          ? '<div class="cal-compact-dots">' + pointsUniques.map(function(s) { return '<span class="cal-status-dot cal-status-' + s + '"></span>'; }).join('') + '</div>'
+          : '') +
+      '</div>';
+
     return '<div class="' + classes + '">' +
       '<div class="cal-day-num">' + c.jour + '</div>' +
+      compactHtml +
       (c.autreMonth ? '' :
         '<div class="cal-halves">' +
           renderCreneauHtml('matin', dateStr, interMatin) +
@@ -339,6 +352,50 @@ function ouvrirJourDetail(dateStr, creneau) {
   // Version simple pour l'instant : ouvre directement la création,
   // la vue "détail du jour" pourra venir plus tard si le besoin se confirme.
   ouvrirNouvelleIntervention(dateStr, creneau);
+}
+
+// ── Détail du jour — vue compacte mobile (tap sur un jour du calendrier) ──
+function ouvrirDetailJourMobile(dateStr) {
+  if (!dateStr) return;
+  var interDuJour = _interventionsCache.filter(function(i) { return i.date_intervention === dateStr; })
+    .sort(function(a, b) { return (a.heure_debut || '').localeCompare(b.heure_debut || ''); });
+
+  var dateAff = new Date(dateStr + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  var LABEL_STATUT = { planifiee: 'Planifiée', terminee: 'Terminée', payee: 'Payée', annulee: 'Annulée' };
+
+  var liste = interDuJour.length
+    ? interDuJour.map(function(i) {
+        var client = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '—';
+        var service = i.artisans_services ? i.artisans_services.nom_service : '(sans service)';
+        var heure = i.heure_debut ? i.heure_debut.slice(0,5) : '';
+        var statut = i.statut || 'planifiee';
+        return '<div onclick="fermerModale(\'modal-jour-mobile\');ouvrirIntervention(\'' + i.id + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--brd);cursor:pointer;">' +
+          '<span class="cal-status-dot cal-status-' + statut + '" style="flex-shrink:0;"></span>' +
+          '<div style="flex:1;">' +
+            '<div style="font-size:13.5px;font-weight:600;">' + (heure ? heure + ' — ' : '') + escHtml(service) + '</div>' +
+            '<div style="font-size:12px;color:var(--mu);">' + escHtml(client) + ' · ' + LABEL_STATUT[statut] + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('')
+    : '<p style="font-size:13px;color:var(--mu);padding:10px 0;">Aucune intervention ce jour-là.</p>';
+
+  var div = document.getElementById('modal-jour-mobile');
+  if (!div) {
+    div = document.createElement('div');
+    div.id = 'modal-jour-mobile';
+    div.className = 'modal-overlay';
+    document.body.appendChild(div);
+  }
+  div.innerHTML =
+    '<div class="modal-box">' +
+      '<h3 style="text-transform:capitalize;">' + dateAff + '</h3>' +
+      '<div style="margin:10px 0;">' + liste + '</div>' +
+      '<div class="modal-actions">' +
+        '<button class="btn-primary" onclick="fermerModale(\'modal-jour-mobile\');ouvrirNouvelleIntervention(\'' + dateStr + '\',\'matin\')">+ Ajouter une intervention</button>' +
+        '<button class="btn-secondary" onclick="fermerModale(\'modal-jour-mobile\')">Fermer</button>' +
+      '</div>' +
+    '</div>';
+  ouvrirModale('modal-jour-mobile');
 }
 
 // ⚠️ Ajouté le 16/09 — décidé avec Freddy : un clic direct sur la
