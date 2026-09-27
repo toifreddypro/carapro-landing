@@ -42,7 +42,8 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
-body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);display:flex;flex-direction:column;overflow:hidden;}
+html{overscroll-behavior:none;height:100%;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);display:flex;flex-direction:column;overflow:hidden;overscroll-behavior:none;height:100%;position:fixed;width:100%;}
 
 /* ── TOPBAR ── */
 #topbar{display:flex;align-items:center;gap:14px;padding:10px 20px;background:var(--panel);border-bottom:1px solid var(--brd);flex-shrink:0;}
@@ -297,6 +298,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .modal-row{flex-direction:column;gap:0 !important;}
   .dchdr-actions{width:100%;flex-wrap:wrap;}
   .sinp{width:100%;flex:1;min-width:0;}
+  .cpv2-card{padding:14px 12px;}
+  .cpv2-kpis{gap:12px;}
+  .cpv2-kpi{min-width:120px;padding:10px 14px;}
 }
 .dash-jauge-card{background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:14px;margin-bottom:12px;}
 .dj-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
@@ -692,8 +696,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
         </div>
       </div>
 
-      <div style="overflow:auto;flex:1;min-height:0;">
-        <table id="tbl-compta">
+      <div class="scroll-hint">👉 Faites glisser pour voir tous les mois</div>
+      <div class="dcbdy" style="flex:1;min-height:0;">
+        <table id="tbl-compta" class="dtbl">
           <thead><tr id="thead-compta-row"><th>Client</th></tr></thead>
           <tbody id="tbody-compta"></tbody>
         </table>

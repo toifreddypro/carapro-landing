@@ -295,13 +295,11 @@ function renderCalendrier() {
       if (s !== 'annulee' && pointsUniques.indexOf(s) === -1) pointsUniques.push(s);
     });
     var compactHtml = c.autreMonth ? '' :
-      '<div class="cal-compact" onclick="ouvrirDetailJourMobile(\'' + dateStr + '\')">' +
-        (pointsUniques.length
-          ? '<div class="cal-compact-dots">' + pointsUniques.map(function(s) { return '<span class="cal-status-dot cal-status-' + s + '"></span>'; }).join('') + '</div>'
-          : '') +
-      '</div>';
+      (pointsUniques.length
+        ? '<div class="cal-compact"><div class="cal-compact-dots">' + pointsUniques.map(function(s) { return '<span class="cal-status-dot cal-status-' + s + '"></span>'; }).join('') + '</div></div>'
+        : '<div class="cal-compact"></div>');
 
-    return '<div class="' + classes + '">' +
+    return '<div class="' + classes + '"' + (c.autreMonth ? '' : ' onclick="ouvrirDetailJourMobile(\'' + dateStr + '\')"') + '>' +
       '<div class="cal-day-num">' + c.jour + '</div>' +
       compactHtml +
       (c.autreMonth ? '' :
@@ -328,7 +326,7 @@ function renderCreneauHtml(creneau, dateStr, liste) {
     var statut = i.statut || 'planifiee';
     var statutSuivant = CYCLE_STATUT[statut] || 'planifiee';
     var titreStatut = statut === 'annulee' ? 'Intervention annulée' : 'Statut : ' + LABEL_STATUT[statut] + ' — cliquer pour passer à ' + LABEL_STATUT[statutSuivant];
-    return '<div class="cal-pill st-' + statut + '" onclick="ouvrirIntervention(\'' + i.id + '\')" title="Cliquer pour voir/modifier les détails">' +
+    return '<div class="cal-pill st-' + statut + '" onclick="event.stopPropagation();ouvrirIntervention(\'' + i.id + '\')" title="Cliquer pour voir/modifier les détails">' +
       '<span class="cal-pill-txt">' +
         (heure ? '<span class="cal-pill-heure">' + heure + '</span> ' : '') +
         escHtml(service) + (client ? ' — ' + escHtml(client) : '') +
@@ -339,12 +337,12 @@ function renderCreneauHtml(creneau, dateStr, liste) {
     '</div>';
   }).join('');
 
-  var plus = reste > 0 ? '<div class="cal-more" onclick="ouvrirJourDetail(\'' + dateStr + '\',\'' + creneau + '\')">+' + reste + ' autre' + (reste>1?'s':'') + '</div>' : '';
+  var plus = reste > 0 ? '<div class="cal-more" onclick="event.stopPropagation();ouvrirJourDetail(\'' + dateStr + '\',\'' + creneau + '\')">+' + reste + ' autre' + (reste>1?'s':'') + '</div>' : '';
 
   return '<div class="cal-half cal-half-' + (creneau==='matin'?'matin':'am') + '">' +
     '<div class="cal-half-label">' + (creneau==='matin'?'Matin':'Aprem') + '</div>' +
     pills + plus +
-    '<button class="cal-add-btn" onclick="ouvrirNouvelleIntervention(\'' + dateStr + '\',\'' + creneau + '\')">+</button>' +
+    '<button class="cal-add-btn" onclick="event.stopPropagation();ouvrirNouvelleIntervention(\'' + dateStr + '\',\'' + creneau + '\')">+</button>' +
   '</div>';
 }
 
