@@ -240,7 +240,14 @@ async function soumettreInscription() {
     if (authError) throw new Error(authError.message === 'User already registered' ? 'Un compte existe déjà avec cet email.' : authError.message);
 
     var accessToken = authData.session ? authData.session.access_token : null;
-    if (!accessToken) throw new Error('Impossible de créer la session. Réessayez.');
+    if (!accessToken) {
+      // Le compte a bien été créé, mais Supabase exige une confirmation par email
+      // avant de renvoyer une session — ce n'est pas un échec, juste une étape de plus.
+      document.getElementById('wrap-form').style.display = 'none';
+      document.getElementById('wrap-confirmation').style.display = 'block';
+      document.getElementById('confirmation-msg').textContent = 'Votre compte a été créé ! Vérifiez vos emails pour confirmer votre inscription, puis reconnectez-vous pour terminer votre profil.';
+      return;
+    }
 
     var documentPath = null;
     if (_fichierChoisi) {
