@@ -1245,6 +1245,56 @@ async function chargerCompta() {
   renderMatriceCompta();
 }
 
+var _comptaMobilePeriode = null; // index (0-11 pour les mois, 0-3 pour les trimestres) — null = période en cours
+
+function renderComptaMobile(parClient, totalParMois, cotisPct, clients, curMonth, isCurYear) {
+  var zonePeriodes = document.getElementById('compta-mobile-periodes');
+  var zoneListe = document.getElementById('compta-mobile-liste');
+  if (!zonePeriodes || !zoneListe) return;
+
+  var estTrim = (_vueMoisTrim === 'trim');
+  var labels = estTrim ? ['T1', 'T2', 'T3', 'T4'] : MOIS_COURTS;
+  var moisParPeriode = estTrim ? [[1,2,3],[4,5,6],[7,8,9],[10,11,12]] : labels.map(function(_, i) { return [i + 1]; });
+  var periodeActuelle = estTrim ? Math.floor(curMonth / 3) : curMonth;
+
+  if (_comptaMobilePeriode === null || _comptaMobilePeriode >= labels.length) {
+    _comptaMobilePeriode = isCurYear ? periodeActuelle : 0;
+  }
+  var idx = _comptaMobilePeriode;
+  var moisDeLaPeriode = moisParPeriode[idx];
+
+  zonePeriodes.innerHTML = labels.map(function(l, i) {
+    var actif = (i === idx);
+    var estAuj = (i === periodeActuelle && isCurYear);
+    return '<button class="' + (actif ? 'actif' : '') + '" onclick="choisirPeriodeComptaMobile(' + i + ')">' + l + (estAuj ? ' •' : '') + '</button>';
+  }).join('');
+
+  var totalPeriode = 0;
+  var lignesClients = clients.map(function(nom) {
+    var ligne = parClient[nom];
+    var val = 0;
+    moisDeLaPeriode.forEach(function(m) { val += ligne[m] || 0; });
+    if (!val) return null;
+    totalPeriode += val;
+    var clr = getClientColor(nom);
+    return '<div class="compta-mobile-client"><span style="color:' + clr + ';font-weight:600;">' + escHtml(nom) + '</span><span>' + val.toFixed(0) + ' €</span></div>';
+  }).filter(Boolean).join('');
+
+  var cotisPeriode = Math.round(totalPeriode * cotisPct / 100 * 100) / 100;
+  var netPeriode = totalPeriode - cotisPeriode;
+
+  zoneListe.innerHTML =
+    (lignesClients || '<p style="font-size:13px;color:var(--mu);padding:10px 0;">Aucune donnée pour ' + labels[idx] + '.</p>') +
+    '<div class="compta-mobile-total"><span>CA brut</span><span>' + totalPeriode.toFixed(0) + ' €</span></div>' +
+    '<div class="compta-mobile-total" style="color:var(--gold);"><span>Cotisations</span><span>' + cotisPeriode.toFixed(0) + ' €</span></div>' +
+    '<div class="compta-mobile-total" style="color:var(--ac);"><span>CA net</span><span>' + netPeriode.toFixed(0) + ' €</span></div>';
+}
+
+function choisirPeriodeComptaMobile(idx) {
+  _comptaMobilePeriode = idx;
+  renderMatriceCompta();
+}
+
 function renderMatriceCompta() {
   // Regroupement par client, puis par mois (1-12), selon la vue active
   var parClient = {}; // { nomClient: { 1: montant, 2: montant, ... } }
@@ -1375,6 +1425,8 @@ function renderMatriceCompta() {
     tbody.innerHTML += makeMRow(mCotis, 'Cotisations', 'cpv2-row-cotis', 'var(--gold)');
     tbody.innerHTML += makeMRow(mNet, 'CA net', 'cpv2-row-net', 'var(--ac)');
   }
+
+  renderComptaMobile(parClient, totalParMois, cotisPct, clients, curMonth, isCurYear);
 
   // KPIs (toujours sur le CA Production de l'année, référence "vraie richesse produite")
   var caBrutProduction = 0;

@@ -303,6 +303,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .cpv2-kpi{min-width:120px;padding:10px 14px;}
   #zone-catalogue{grid-template-columns:repeat(2,1fr) !important;}
   #zone-photos{grid-template-columns:repeat(3,1fr) !important;}
+  #compta-table-wrap,#compta-scroll-hint{display:none !important;}
+  .compta-mobile{display:block;}
+  .compta-mobile-periodes{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:14px;padding-bottom:2px;}
+  .compta-mobile-periodes button{flex-shrink:0;padding:8px 14px;border-radius:8px;border:1px solid var(--brd);background:var(--panel);color:var(--tx);font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .compta-mobile-periodes button.actif{background:var(--ac);border-color:var(--ac);color:#fff;}
+  .compta-mobile-client{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--brd);}
+  .compta-mobile-total{display:flex;justify-content:space-between;padding:8px 0;font-weight:700;}
 }
 .dash-jauge-card{background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:14px;margin-bottom:12px;}
 .dj-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
@@ -369,6 +376,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .cal-status-dot.cal-status-terminee{background:#3b82f6;}
 .cal-status-dot.cal-status-payee{background:#22c55e;}
 .cal-compact{display:none;}
+.compta-mobile{display:none;}
 @media(max-width:760px){
   .cal-day{min-height:46px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;cursor:pointer;}
   .cal-halves{display:none;}
@@ -698,12 +706,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
         </div>
       </div>
 
-      <div class="scroll-hint">👉 Faites glisser pour voir tous les mois</div>
-      <div class="dcbdy" style="flex:1;min-height:0;">
+      <div class="scroll-hint" id="compta-scroll-hint">👉 Faites glisser pour voir tous les mois</div>
+      <div class="dcbdy" id="compta-table-wrap" style="flex:1;min-height:0;">
         <table id="tbl-compta" class="dtbl">
           <thead><tr id="thead-compta-row"><th>Client</th></tr></thead>
           <tbody id="tbody-compta"></tbody>
         </table>
+      </div>
+      <div class="compta-mobile" id="compta-mobile">
+        <div class="compta-mobile-periodes" id="compta-mobile-periodes"></div>
+        <div id="compta-mobile-liste"></div>
       </div>
       <p class="cpv2-matrix-note" id="compta-note">💡 Vue <strong>Production</strong> : le CA est rangé dans le mois de l'intervention, dès qu'elle est marquée "Terminée" ou "Payée".</p>
     </div>
