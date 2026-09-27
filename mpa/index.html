@@ -291,6 +291,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 /* ── Tableau de bord ── */
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 @media(max-width:900px){.dash-grid{grid-template-columns:1fr;}}
+.compta-mobile{display:none;}
 @media(max-width:640px){
   #itin-jours button{padding:10px 14px;font-size:13px;}
   #itin-liste > div{padding:9px 0;}
@@ -376,7 +377,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .cal-status-dot.cal-status-terminee{background:#3b82f6;}
 .cal-status-dot.cal-status-payee{background:#22c55e;}
 .cal-compact{display:none;}
-.compta-mobile{display:none;}
 @media(max-width:760px){
   .cal-day{min-height:46px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;cursor:pointer;}
   .cal-halves{display:none;}
