@@ -104,7 +104,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .sinp{padding:7px 12px;border-radius:8px;border:1px solid var(--b2);font-size:12.5px;font-family:'Outfit',sans-serif;width:180px;}
 .addb{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;}
 .addb svg{width:14px;height:14px;}
-.dcbdy{overflow-x:auto;position:relative;}
+.dcbdy{overflow-x:auto;position:relative;min-width:0;}
 .dcbdy:has(.dtbl)::after{content:'';position:absolute;top:0;right:0;bottom:0;width:28px;background:linear-gradient(to right, transparent, var(--panel));pointer-events:none;}
 .dtbl{width:100%;border-collapse:collapse;font-size:13px;}
 .scroll-hint{display:none;}
@@ -201,7 +201,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 
 /* ── Facturation — cartes façon Formation ── */
 #p3.active{display:flex;flex-direction:column;align-items:center;height:100%;padding:24px;overflow-y:auto;}
-.cpv2-page-wrap{width:100%;max-width:1400px;display:flex;flex-direction:column;gap:20px;}
+.cpv2-page-wrap{width:100%;max-width:1400px;display:flex;flex-direction:column;gap:20px;min-width:0;}
 .cpv2-fact-field{display:flex;flex-direction:column;gap:6px;max-width:420px;}
 .cpv2-fact-field label{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--mu);text-transform:uppercase;}
 .cpv2-select{width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);background:var(--panel);}
@@ -217,7 +217,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 #tbl-factures tbody tr:nth-child(even) td{background:rgba(181,80,47,.02);}
 #tbl-factures tbody tr:not(:last-child) td{border-bottom:1px solid var(--brd);}
 #p2.active{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:24px;overflow:hidden;}
-.cpv2-card{width:100%;max-width:1400px;box-sizing:border-box;background:var(--panel);border:1px solid var(--brd);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:28px 32px;display:flex;flex-direction:column;}
+.cpv2-card{width:100%;max-width:1400px;box-sizing:border-box;background:var(--panel);border:1px solid var(--brd);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:28px 32px;display:flex;flex-direction:column;min-width:0;}
 .cpv2-matrix-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;flex-wrap:wrap;gap:14px;}
 .cpv2-matrix-headtext{display:flex;flex-direction:column;gap:4px;}
 .cpv2-matrix-title{font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:700;color:var(--tx);margin:0;display:flex;align-items:center;gap:8px;}
