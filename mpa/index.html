@@ -103,8 +103,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .sinp{padding:7px 12px;border-radius:8px;border:1px solid var(--b2);font-size:12.5px;font-family:'Outfit',sans-serif;width:180px;}
 .addb{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;}
 .addb svg{width:14px;height:14px;}
-.dcbdy{overflow-x:auto;}
+.dcbdy{overflow-x:auto;position:relative;}
+.dcbdy:has(.dtbl)::after{content:'';position:absolute;top:0;right:0;bottom:0;width:28px;background:linear-gradient(to right, transparent, var(--panel));pointer-events:none;}
 .dtbl{width:100%;border-collapse:collapse;font-size:13px;}
+.scroll-hint{display:none;}
+@media(max-width:640px){
+  .scroll-hint{display:block;text-align:center;font-size:11px;color:var(--ac);padding:6px 0 2px;font-weight:600;}
+}
 .dtbl th{text-align:left;padding:10px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--mu);border-bottom:1px solid var(--brd);white-space:nowrap;}
 .dtbl td{padding:10px 14px;border-bottom:1px solid var(--brd);color:var(--tx);}
 .dtbl tr:last-child td{border-bottom:none;}
@@ -583,6 +588,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
             <button class="addb" onclick="openAjouterClient()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter</button>
           </div>
         </div>
+        <div class="scroll-hint">👉 Faites glisser pour voir plus</div>
         <div class="dcbdy">
           <table class="dtbl">
             <thead><tr><th>Nom</th><th>Email</th><th>Adresse</th><th>CP</th><th>Commune</th><th>Délai paiement</th><th></th></tr></thead>
@@ -602,6 +608,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
             <button class="addb" onclick="openAjouterService()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter</button>
           </div>
         </div>
+        <div class="scroll-hint">👉 Faites glisser pour voir plus</div>
         <div class="dcbdy">
           <table class="dtbl">
             <thead><tr><th>Service</th><th>Description</th><th>Durée estimée</th><th>Tarif indicatif</th><th></th></tr></thead>
@@ -714,8 +721,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
             <p class="cpv2-matrix-subtitle">Historique de vos factures générées</p>
           </div>
         </div>
-        <div style="overflow-x:auto;">
-          <table id="tbl-factures">
+        <div class="scroll-hint">👉 Faites glisser pour voir plus</div>
+        <div class="dcbdy">
+          <table id="tbl-factures" class="dtbl">
             <thead><tr><th style="text-align:left;">N°</th><th style="text-align:left;">Client</th><th>Date</th><th>Montant</th><th></th></tr></thead>
             <tbody id="tbody-factures"></tbody>
           </table>
