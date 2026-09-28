@@ -92,6 +92,32 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // ── Remboursement d'une commande (depuis MPA, l'admin, ou directement dans le dashboard Stripe) ──
+    // On prend les montants de Stripe comme source de vérité : le traitement est idempotent
+    // (recevoir deux fois le même événement donne le même résultat).
+    if (event.type === "charge.refunded") {
+      const charge = event.data.object;
+      const intentId = charge.payment_intent;
+      const rembourse = Number(charge.amount_refunded || 0);
+      const total = Number(charge.amount || 0);
+      if (intentId && rembourse > 0) {
+        const integral = total > 0 && rembourse >= total;
+        const { error } = await sbAdmin.from("commandes_catalogue").update({
+          paiement_statut: integral ? "rembourse" : "partiellement_rembourse",
+          montant_rembourse: rembourse / 100,
+          rembourse_le: new Date().toISOString(),
+        }).eq("stripe_payment_intent_id", intentId);
+        if (error) console.error("[stripe-webhook-artisans] Maj remboursement échouée:", error.message);
+
+        if (integral) {
+          // Commande pas encore livrée/récupérée → annulée. Une commande déjà terminée garde son statut.
+          const { error: errAnnul } = await sbAdmin.from("commandes_catalogue").update({ statut: "annulee" })
+            .eq("stripe_payment_intent_id", intentId).in("statut", ["nouvelle", "confirmee", "prete"]);
+          if (errAnnul) console.error("[stripe-webhook-artisans] Annulation commande remboursée échouée:", errAnnul.message);
+        }
+      }
+    }
+
     // ── Onboarding Stripe Connect d'un artisan terminé (compte prêt à recevoir des paiements) ──
     if (event.type === "account.updated") {
       const account = event.data.object;

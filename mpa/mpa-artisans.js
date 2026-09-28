@@ -2477,6 +2477,24 @@ function renderCommandes() {
       ? '<button onclick="planifierLivraisonCommande(\'' + c.id + '\')" style="padding:6px 14px;border-radius:7px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">🚚 Planifier la livraison</button>'
       : (c.intervention_id ? '<span style="font-size:11.5px;color:var(--mu);">✓ Dans le planning</span>' : '');
 
+    // Règlement en ligne (uniquement si la commande a été payée par carte via CaraLink)
+    var total = Number(c.montant_total) || 0, rembourse = Number(c.montant_rembourse) || 0;
+    var ligneReglement = '';
+    if (c.paiement_statut === 'paye') {
+      ligneReglement = '<div style="font-size:12.5px;color:#0f9d78;margin-bottom:8px;font-weight:600;">💳 Payée en ligne — ' + eurosFR(total) + '</div>';
+    } else if (c.paiement_statut === 'partiellement_rembourse') {
+      ligneReglement = '<div style="font-size:12.5px;color:#b45309;margin-bottom:8px;font-weight:600;">↩️ Remboursée en partie : ' + eurosFR(rembourse) + ' sur ' + eurosFR(total) + '</div>';
+    } else if (c.paiement_statut === 'rembourse') {
+      ligneReglement = '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;font-weight:600;">↩️ Remboursée — ' + eurosFR(rembourse || total) + '</div>';
+    } else if (c.paiement_statut === 'en_attente') {
+      ligneReglement = '<div style="font-size:12.5px;color:var(--mu);margin-bottom:8px;">⏳ Paiement en ligne en attente</div>';
+    } else if (c.paiement_statut === 'echoue') {
+      ligneReglement = '<div style="font-size:12.5px;color:var(--danger);margin-bottom:8px;">⚠️ Paiement en ligne échoué</div>';
+    }
+    var boutonRembourser = ((c.paiement_statut === 'paye' || c.paiement_statut === 'partiellement_rembourse') && c.stripe_payment_intent_id)
+      ? '<button onclick="ouvrirRemboursement(\'' + c.id + '\')" style="padding:6px 14px;border-radius:7px;border:1px solid var(--danger);background:transparent;color:var(--danger);font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">↩️ Rembourser</button>'
+      : '';
+
     var badgeProche = '';
     if (c.mode === 'livraison' && !c.intervention_id && c.statut !== 'annulee' && c.statut !== 'terminee') {
       var proche = trouverInterventionProche(c.commune_livraison);
@@ -2495,8 +2513,9 @@ function renderCommandes() {
       '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:3px;">📅 Souhaitée le ' + dateTxt + '</div>' +
       '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;">👤 ' + escHtml(c.client_nom) + ' — ' + escHtml(c.client_telephone) + '</div>' +
       (c.notes ? '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;font-style:italic;">« ' + escHtml(c.notes) + ' »</div>' : '') +
+      ligneReglement +
       badgeProche +
-      '<div>' + boutonSuivant + boutonLivraison + '</div>' +
+      '<div>' + boutonSuivant + boutonLivraison + boutonRembourser + '</div>' +
     '</div>';
   }).join('');
 }
@@ -2508,6 +2527,84 @@ async function avancerStatutCommande(id) {
   var { error } = await sb.from('commandes_catalogue').update({ statut: CYCLE_STATUT_COMMANDE[c.statut] }).eq('id', id).eq('artisan_id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
   await chargerCommandes();
+}
+
+// ── Remboursement d'une commande payée en ligne ──
+// (volontairement SANS verifierAccesEcriture : rembourser un client doit toujours rester possible,
+//  même si l'essai est terminé.)
+var _remboursementEnCours = null;
+
+function eurosFR(n) {
+  return (Number(n) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+function ouvrirRemboursement(id) {
+  var c = _commandesCache.find(function(x) { return x.id === id; });
+  if (!c) return;
+  var total = Number(c.montant_total) || 0;
+  var deja = Number(c.montant_rembourse) || 0;
+  var restant = Math.round((total - deja) * 100) / 100;
+  if (restant <= 0) { alert('Cette commande est déjà remboursée en totalité.'); return; }
+
+  _remboursementEnCours = { id: id, total: total, restant: restant, commission: Number(c.commission_montant) || 0 };
+  document.getElementById('rb-resume').innerHTML =
+    '<strong>' + escHtml(c.nom_article) + '</strong> × ' + c.quantite + ' — ' + escHtml(c.client_nom) + '<br>' +
+    'Payé : ' + eurosFR(total) + (deja ? ' · déjà remboursé : ' + eurosFR(deja) : '') +
+    ' · <strong>remboursable : ' + eurosFR(restant) + '</strong>';
+  var champ = document.getElementById('rb-montant');
+  champ.value = restant.toFixed(2);
+  champ.max = restant;
+  document.getElementById('rb-motif').value = '';
+  document.getElementById('rb-err').style.display = 'none';
+  var btn = document.getElementById('btn-rb-confirmer');
+  btn.disabled = false; btn.textContent = 'Confirmer le remboursement';
+  majApercuRemboursement();
+  ouvrirModale('modal-remboursement');
+}
+
+function majApercuRemboursement() {
+  var r = _remboursementEnCours;
+  var info = document.getElementById('rb-info');
+  if (!r || !info) return;
+  var m = parseFloat(document.getElementById('rb-montant').value);
+  if (!(m > 0)) { info.textContent = ''; return; }
+  var partArtisan = r.total > 0 ? (r.total - r.commission) / r.total : 1;
+  var repris = Math.round(m * partArtisan * 100) / 100;
+  info.textContent = 'Le client sera remboursé de ' + eurosFR(m) + '. Stripe reprendra ' + eurosFR(repris) +
+    ' sur votre solde Stripe (votre part de cette vente) ; la commission CaraLink correspondante est aussi rendue.';
+}
+
+async function confirmerRemboursement() {
+  var r = _remboursementEnCours;
+  if (!r) return;
+  var err = document.getElementById('rb-err');
+  var btn = document.getElementById('btn-rb-confirmer');
+  err.style.display = 'none';
+
+  var m = parseFloat(document.getElementById('rb-montant').value);
+  if (!(m > 0)) { err.textContent = 'Indiquez un montant à rembourser.'; err.style.display = 'block'; return; }
+  if (m > r.restant + 0.001) { err.textContent = 'Le montant dépasse ce qui reste remboursable (' + eurosFR(r.restant) + ').'; err.style.display = 'block'; return; }
+  if (!confirm('Confirmer le remboursement de ' + eurosFR(m) + ' au client ?\n\nCette action est définitive.')) return;
+
+  btn.disabled = true; btn.textContent = 'Remboursement en cours…';
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/rembourser-commande', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({ commande_id: r.id, montant: m, motif: document.getElementById('rb-motif').value.trim() }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    fermerModale('modal-remboursement');
+    _remboursementEnCours = null;
+    await chargerCommandes();
+    alert('✅ Remboursement de ' + eurosFR(data.montant_rembourse) + ' effectué. Le client le verra sous quelques jours ouvrés, selon sa banque.');
+  } catch (e) {
+    err.textContent = e.message;
+    err.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Confirmer le remboursement';
+  }
 }
 
 async function planifierLivraisonCommande(commandeId) {

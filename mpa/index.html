@@ -896,6 +896,28 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   </div>
 </div>
 
+<!-- MODALE : Remboursement d'une commande payée en ligne -->
+<div class="modal-overlay" id="modal-remboursement">
+  <div class="modal-box">
+    <h3>Rembourser une commande</h3>
+    <p id="rb-resume" style="font-size:13px;color:var(--mu2);margin-bottom:14px;line-height:1.5;"></p>
+    <div class="modal-field">
+      <label>Montant à rembourser (€)</label>
+      <input type="number" id="rb-montant" step="0.01" min="0.01" oninput="majApercuRemboursement()">
+    </div>
+    <div class="modal-field">
+      <label>Motif (facultatif)</label>
+      <input type="text" id="rb-motif" maxlength="200" placeholder="Ex : commande annulée, article indisponible">
+    </div>
+    <p id="rb-info" style="font-size:12px;color:var(--mu);margin-bottom:10px;line-height:1.5;"></p>
+    <div id="rb-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>
+    <div class="modal-actions">
+      <button class="btn-primary" id="btn-rb-confirmer" onclick="confirmerRemboursement()">Confirmer le remboursement</button>
+      <button class="btn-secondary" onclick="fermerModale('modal-remboursement')">Annuler</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODALE : Suppression de compte (RGPD) -->
 <div class="modal-overlay" id="modal-suppr-compte">
   <div class="modal-box">
