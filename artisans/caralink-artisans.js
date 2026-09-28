@@ -403,15 +403,15 @@ function renderArtisanCard(a) {
     ? '<img src="' + escHtml(a.photo_profil_url) + '" style="width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;" alt="">'
     : '<div class="avatar" style="width:52px;height:52px;font-size:16px;background:var(--line);display:flex;align-items:center;justify-content:center;border-radius:50%;font-family:Fraunces,serif;font-weight:700;color:var(--mu);">' + ini + '</div>';
   var badgeVerifie = a.verifie
-    ? '<span class="badge-trust" title="SIRET et assurance vérifiés">✅ ' + T('badge_verifie') + '</span>'
+    ? '<span class="badge-trust bt-green" title="SIRET et assurance vérifiés">✅ ' + T('badge_verifie') + '</span>'
     : '';
   var noteAff = a.note_moyenne != null ? a.note_moyenne : 0;
-  var badgeNote = '<span class="badge-trust" style="background:rgba(180,83,9,.1);color:#b45309;" title="' + (a.nb_avis ? a.nb_avis + ' avis' : 'Aucun avis pour l\'instant') + '">⭐ ' + noteAff.toFixed(1) + (a.nb_avis ? ' (' + a.nb_avis + ')' : '') + '</span>';
+  var badgeNote = '<span class="badge-trust bt-amber" title="' + (a.nb_avis ? a.nb_avis + ' avis' : 'Aucun avis pour l\'instant') + '">⭐ ' + noteAff.toFixed(1) + (a.nb_avis ? ' (' + a.nb_avis + ')' : '') + '</span>';
   var badgeTarif = a.tarif_min != null
-    ? '<span class="badge-trust" style="background:rgba(45,93,74,.1);color:#2D5D4A;">' + T('des_prefix') + ' ' + a.tarif_min + '€</span>'
+    ? '<span class="badge-trust bt-blue">' + T('des_prefix') + ' ' + a.tarif_min + '€</span>'
     : '';
   var badgeAlternance = a.alternance_niveau >= 2
-    ? '<span class="badge-trust" title="Cette entreprise s\'engage activement pour la formation locale" style="background:rgba(245,158,11,.12);color:#b45309;">🟠 Tremplin des jeunes</span>'
+    ? '<span class="badge-trust bt-purple" title="Cette entreprise s\'engage activement pour la formation locale">🟠 Tremplin des jeunes</span>'
     : '';
   var badgesTxt = badgeVerifie + badgeNote + badgeTarif + badgeAlternance;
   return '<div class="formateur-card" onclick="ouvrirProfil(' + jsAttr(a.id) + ')">' +
@@ -508,7 +508,7 @@ function buildProfilHTML(data) {
         '<div style="display:flex;gap:14px;align-items:center;">' + photo +
           '<div><div style="font-family:Fraunces,serif;font-size:19px;font-weight:700;">' + escHtml(a.nom_entreprise) + '</div>' +
           '<div style="font-size:13px;color:var(--mu2,#777);">' + secteurLabel(a.secteur) + ' · 📍 ' + escHtml(a.commune) + '</div>' +
-          (a.verifie ? '<span class="badge-trust" style="margin-top:4px;display:inline-block;">✅ ' + T('badge_verifie') + '</span>' : '') +
+          (a.verifie ? '<span class="badge-trust bt-green" style="margin-top:4px;display:inline-block;">✅ ' + T('badge_verifie') + '</span>' : '') +
           (a.alternance_niveau >= 2 ? '<span title="Cette entreprise s\'engage activement pour la formation locale" style="margin-top:4px;margin-left:6px;display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,158,11,.12);color:#b45309;">🟠 Tremplin des jeunes</span>' : '') +
           '</div>' +
         '</div>' +
