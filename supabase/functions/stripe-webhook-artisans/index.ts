@@ -118,6 +118,29 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // ── Carte enregistrée pour la commission prestations (SetupIntent confirmé) ──
+    if (event.type === "setup_intent.succeeded") {
+      const setupIntent = event.data.object;
+      const artisanId = setupIntent.metadata?.artisan_id;
+      const customerId = setupIntent.customer;
+      const paymentMethodId = setupIntent.payment_method;
+      if (artisanId && customerId && paymentMethodId) {
+        // La carte devient le moyen de paiement par défaut du client Stripe — le prélèvement
+        // mensuel n'a ensuite qu'à débiter "le moyen de paiement par défaut du client".
+        try {
+          await fetch(`https://api.stripe.com/v1/customers/${customerId}`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${Deno.env.get("STRIPE_SECRET_KEY")}`, "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({ "invoice_settings[default_payment_method]": paymentMethodId }),
+          });
+        } catch (e) {
+          console.error("[stripe-webhook-artisans] Définition du moyen de paiement par défaut échouée:", e);
+        }
+        const { error } = await sbAdmin.from("artisans").update({ carte_prestations_enregistree: true }).eq("id", artisanId);
+        if (error) console.error("[stripe-webhook-artisans] Maj carte_prestations_enregistree échouée:", error.message);
+      }
+    }
+
     // ── Onboarding Stripe Connect d'un artisan terminé (compte prêt à recevoir des paiements) ──
     if (event.type === "account.updated") {
       const account = event.data.object;

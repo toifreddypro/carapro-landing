@@ -1635,6 +1635,7 @@ async function imprimerFacture(factureId) {
 //  libéraux) — vraie différence de régime fiscal entre un formateur
 //  indépendant et un artisan, pas une erreur de recopie.
 // ════════════════════════════════════════
+const STRIPE_PUBLIC_KEY_MPA = 'pk_live_51TWxxBJPTOXXy1ykTYLysvDCbnnJUXzqbc164Wif38u1g7BijiOLdUWKD8HPlQBX7he8K76aZNMUARo14yuQhzdQ000WVXdeEF';
 const PLAFOND_MICRO_BIC_SERVICES = 77700;
 
 // ── Modèle "gratuit sous un seuil" (28/09) — clients trouvés via CaraLink uniquement ──
@@ -1710,6 +1711,7 @@ function calculerIR(revenuImposable, nbParts) {
 
 async function initDashboard() {
   document.getElementById('dash-parts').value = _artisan.parts_fiscales || 1;
+  renderEncartCartePrestations();
   await calculerDashboardFiscal();
   _dispoAnnee = new Date().getFullYear();
   _dispoMois = new Date().getMonth();
@@ -2635,6 +2637,79 @@ async function confirmerRemboursement() {
     err.textContent = e.message;
     err.style.display = 'block';
     btn.disabled = false; btn.textContent = 'Confirmer le remboursement';
+  }
+}
+
+// ── Carte enregistrée pour la commission prestations (SetupIntent Stripe) ──
+var _stripeClientMpa = null;
+var _stripeElementsCarte = null;
+
+function renderEncartCartePrestations() {
+  var zone = document.getElementById('encart-carte-prestations');
+  if (!zone) return;
+  if (_artisan.carte_prestations_enregistree) {
+    zone.innerHTML =
+      '<div style="background:rgba(15,157,120,.06);border:1px solid rgba(15,157,120,.3);border-radius:14px;padding:12px 20px;font-size:12.5px;color:#0f9d78;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">' +
+        '<span>✅ Carte enregistrée pour la commission prestations.</span>' +
+        '<button onclick="ouvrirCartePrestations()" style="padding:6px 12px;border-radius:7px;border:1px solid rgba(15,157,120,.4);background:transparent;color:#0f9d78;font-size:12px;font-weight:700;cursor:pointer;">Remplacer</button>' +
+      '</div>';
+  } else {
+    zone.innerHTML =
+      '<div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.3);border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
+        '<div style="flex:1;min-width:220px;font-size:12.5px;color:var(--mu2);">💳 Aucune carte enregistrée — nécessaire uniquement si vous dépassez le seuil gratuit de 300 €/mois sur vos clients CaraLink.</div>' +
+        '<button onclick="ouvrirCartePrestations()" style="flex-shrink:0;padding:9px 16px;border-radius:8px;border:none;background:#3b82f6;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;">Enregistrer une carte →</button>' +
+      '</div>';
+  }
+}
+
+async function ouvrirCartePrestations() {
+  document.getElementById('cp-err').style.display = 'none';
+  document.getElementById('cp-element').innerHTML = 'Chargement…';
+  ouvrirModale('modal-carte-prestations');
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/enregistrer-carte-prestations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    if (!_stripeClientMpa) _stripeClientMpa = Stripe(STRIPE_PUBLIC_KEY_MPA);
+    _stripeElementsCarte = _stripeClientMpa.elements({ clientSecret: data.client_secret });
+    document.getElementById('cp-element').innerHTML = '';
+    var paymentElement = _stripeElementsCarte.create('payment');
+    paymentElement.mount('#cp-element');
+  } catch (e) {
+    document.getElementById('cp-element').innerHTML = '';
+    document.getElementById('cp-err').textContent = e.message;
+    document.getElementById('cp-err').style.display = 'block';
+  }
+}
+
+async function confirmerCartePrestations() {
+  var btn = document.getElementById('btn-cp-confirmer');
+  var err = document.getElementById('cp-err');
+  err.style.display = 'none';
+  if (!_stripeClientMpa || !_stripeElementsCarte) return;
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  try {
+    var { error, setupIntent } = await _stripeClientMpa.confirmSetup({
+      elements: _stripeElementsCarte,
+      redirect: 'if_required',
+    });
+    if (error) throw new Error(error.message);
+    // Le webhook (setup_intent.succeeded) confirme côté serveur ; on ne fait ici qu'un
+    // rafraîchissement optimiste de l'écran, la vraie source de vérité reste le serveur.
+    _artisan.carte_prestations_enregistree = true;
+    fermerModale('modal-carte-prestations');
+    renderEncartCartePrestations();
+    alert('✅ Carte enregistrée. Elle ne sera débitée que si vos prestations trouvées via CaraLink dépassent 300 € dans un mois.');
+  } catch (e) {
+    err.textContent = e.message;
+    err.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Enregistrer cette carte';
   }
 }
 

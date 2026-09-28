@@ -398,6 +398,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .cal-half:hover .cal-add-btn{opacity:1;}
 .cal-more{font-size:9px;color:var(--ac);font-weight:700;padding:1px 3px;cursor:pointer;}
 </style>
+<script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
 
@@ -811,6 +812,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
           </div>
         </div>
 
+        <div id="encart-carte-prestations" style="margin-bottom:16px;"></div>
+
         <div class="dash-jauge-card">
 
           <div class="dj-header">
@@ -911,6 +914,23 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
     <div class="modal-actions">
       <button class="btn-primary" onclick="envoyerAvisProduit()" id="btn-avis-produit">Envoyer mon avis</button>
       <button class="btn-secondary" onclick="fermerModale('modal-avis-produit')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALE : Enregistrer une carte pour la commission prestations -->
+<div class="modal-overlay" id="modal-carte-prestations">
+  <div class="modal-box">
+    <h3>Enregistrer une carte</h3>
+    <p style="font-size:13px;color:var(--mu);margin-bottom:14px;line-height:1.5;">
+      Cette carte ne sera jamais débitée maintenant. Elle sert uniquement au prélèvement automatique, une fois par mois,
+      de la commission sur vos prestations trouvées via CaraLink au-dessus de 300 € dans le mois — rien en dessous.
+    </p>
+    <div id="cp-element" style="margin-bottom:14px;"></div>
+    <div id="cp-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>
+    <div class="modal-actions">
+      <button class="btn-primary" id="btn-cp-confirmer" onclick="confirmerCartePrestations()">Enregistrer cette carte</button>
+      <button class="btn-secondary" onclick="fermerModale('modal-carte-prestations')">Annuler</button>
     </div>
   </div>
 </div>
