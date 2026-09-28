@@ -1094,10 +1094,9 @@ async function confirmerSuppressionCompte() {
 // (interventions, clients, factures, services, horaires, demandes). Ne bloque jamais la
 // consultation, ni l'édition de la fiche profil ou du calcul fiscal.
 function verifierAccesEcriture() {
-  if (_artisan.abonnement_statut === 'lecture_seule') {
-    alert('Votre essai gratuit est terminé. Abonnez-vous (19,99€/mois) pour continuer à créer et modifier vos données — allez sur le Tableau de bord pour vous abonner.');
-    return false;
-  }
+  // Abonnement masqué temporairement (28/09) — le temps de construire le modèle "gratuit sous
+  // un seuil de CA, commission au-delà". Personne n'est bloqué en attendant. Pour revenir en
+  // arrière : remettre le bloc if ci-dessous (voir l'historique du fichier).
   return true;
 }
 
@@ -1668,20 +1667,10 @@ async function initDashboard() {
 }
 
 // ── Info abonnement affichée dans l'en-tête du panneau MPA-AI ──
+// Masqué temporairement (28/09) le temps de construire le modèle "gratuit sous un seuil de CA".
 function majInfoAbonnementMpaAi() {
   var zone = document.getElementById('mpa-ai-abonnement-info');
-  if (!zone) return;
-  var statut = _artisan.abonnement_statut || 'essai';
-  if (statut === 'actif') { zone.textContent = '✅ Abonnement actif'; return; }
-  if (statut === 'lecture_seule') { zone.textContent = '🔒 Essai terminé — abonnez-vous'; return; }
-  if (statut === 'annule') { zone.textContent = '⛔ Abonnement annulé'; return; }
-  // essai
-  if (_artisan.essai_fin) {
-    var j = Math.max(0, Math.ceil((new Date(_artisan.essai_fin).getTime() - Date.now()) / 86400000));
-    zone.textContent = '🎁 Essai : ' + j + ' jour' + (j > 1 ? 's' : '') + ' restant' + (j > 1 ? 's' : '');
-  } else {
-    zone.textContent = '🎁 Essai en cours';
-  }
+  if (zone) zone.textContent = '';
 }
 
 // ── Paiements en ligne (Stripe Connect) ──
@@ -1729,38 +1718,12 @@ async function lancerStripeConnect(btn) {
 }
 
 // ── Abonnement Stripe — essai 14 jours, 19,99€/mois ──
+// Masqué temporairement (28/09) : plus aucun encart, plus de compte à rebours, plus de bouton
+// "S'abonner". Le temps de construire le modèle "gratuit sous un seuil de CA, commission au-delà".
+// Pour revenir en arrière : remettre l'ancien corps de fonction (voir l'historique du fichier).
 function renderEncartAbonnement() {
   var zone = document.getElementById('encart-abonnement');
-  if (!zone) return;
-  var statut = _artisan.abonnement_statut || 'essai';
-
-  if (statut === 'actif') { zone.innerHTML = ''; return; } // abonné, rien à afficher
-
-  if (statut === 'lecture_seule') {
-    zone.innerHTML =
-      '<div style="background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.3);border-radius:14px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
-        '<div style="flex:1;min-width:240px;">' +
-          '<div style="font-size:13px;font-weight:700;color:var(--danger,#dc2626);margin-bottom:4px;">🔒 Accès en lecture seule</div>' +
-          '<div style="font-size:12.5px;color:var(--mu2);">Votre essai gratuit est terminé. Abonnez-vous pour continuer à créer et modifier vos interventions, clients et factures.</div>' +
-        '</div>' +
-        '<button onclick="lancerAbonnement()" id="btn-abonnement" style="flex-shrink:0;padding:10px 18px;border-radius:8px;border:none;background:var(--danger,#dc2626);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;">S\'abonner — 19,99€/mois →</button>' +
-      '</div>';
-    return;
-  }
-
-  // statut === 'essai'
-  var joursRestants = null;
-  if (_artisan.essai_fin) {
-    var ms = new Date(_artisan.essai_fin).getTime() - Date.now();
-    joursRestants = Math.max(0, Math.ceil(ms / 86400000));
-  }
-  zone.innerHTML =
-    '<div style="background:rgba(181,80,47,.05);border:1px solid var(--ac-brd,#e8c4b8);border-radius:14px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
-      '<div style="flex:1;min-width:220px;font-size:12.5px;color:var(--mu2);">' +
-        '🎁 Essai gratuit' + (joursRestants !== null ? ' — <strong style="color:var(--tx);">' + joursRestants + ' jour' + (joursRestants > 1 ? 's' : '') + ' restant' + (joursRestants > 1 ? 's' : '') + '</strong>' : '') +
-      '</div>' +
-      '<button onclick="lancerAbonnement()" id="btn-abonnement" style="flex-shrink:0;padding:8px 16px;border-radius:8px;border:1.5px solid var(--ac,#B5502F);background:transparent;color:var(--ac,#B5502F);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">S\'abonner maintenant →</button>' +
-    '</div>';
+  if (zone) zone.innerHTML = '';
 }
 
 async function lancerAbonnement() {
