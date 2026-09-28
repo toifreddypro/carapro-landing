@@ -384,7 +384,7 @@ async function chargerArtisans() {
       ? artisans.map(renderArtisanCard).join('')
       : '<div class="etat-vide"><div class="etat-vide-titre">' + T('aucun_artisan_titre') + '</div>' + T('aucun_artisan_texte') + '</div>';
 
-    artisans.forEach(function(a) { chargerApercuDispoCarte(a.id); chargerHorairesCarte(a.id); });
+    artisans.forEach(function(a) { chargerApercuCarte(a.id); });
 
     mettreAJourCarte(artisans);
 
@@ -395,37 +395,118 @@ async function chargerArtisans() {
 }
 
 // ════════════════════════════════════════
-//  CARTE ARTISAN
+//  CARTE ARTISAN — même vignette que les formateurs de CaraLink Formation,
+//  adaptée à l'artisan : couleur terracotta, ni favoris ni tarif jour/heure,
+//  et à la place des créneaux Matin / Après-midi : les vraies plages horaires.
 // ════════════════════════════════════════
+var _artisansCartes = {};
+var LOCALES_CARTE = { fr: 'fr-FR', en: 'en-GB', es: 'es-ES' };
+var CLASSES_PASTILLES_CARTE = ['bt-accent', 'bt-green', 'bt-purple', 'bt-amber'];
+
+function localeCarte() { return LOCALES_CARTE[(typeof AT_LANG !== 'undefined' && AT_LANG) || 'fr'] || 'fr-FR'; }
+
+// Date du visiteur au format AAAA-MM-JJ (jamais toISOString : en Guadeloupe, après 20h, il serait déjà "demain" en UTC).
+function dateLocaleISO(d) {
+  d = d || new Date();
+  var m = d.getMonth() + 1, j = d.getDate();
+  return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (j < 10 ? '0' : '') + j;
+}
+function dateCourteCarte(iso) {
+  return new Date(iso + 'T12:00:00').toLocaleDateString(localeCarte(), { weekday: 'short', day: 'numeric' });
+}
+function libelleProchaineDispo(iso) {
+  var demain = new Date(); demain.setDate(demain.getDate() + 1);
+  if (iso === dateLocaleISO()) return T('dispo_aujourdhui_court');
+  if (iso === dateLocaleISO(demain)) return T('dispo_demain_court');
+  return T('dispo_le_court') + ' ' + dateCourteCarte(iso);
+}
+
+function etoilesCarte(note) {
+  var rond = Math.round(Number(note) || 0), h = '';
+  for (var i = 1; i <= 5; i++) h += '<span class="' + (i <= rond ? 'star-on' : 'star-off') + '">★</span>';
+  return h;
+}
+
+// Services de l'artisan en pastilles colorées (4 max + "+N"), comme les compétences d'un formateur.
+function pastillesServicesCarte(services) {
+  if (!services || !services.length) return '';
+  var html = services.slice(0, 4).map(function(nom, i) {
+    return '<span class="badge-trust ' + CLASSES_PASTILLES_CARTE[i % CLASSES_PASTILLES_CARTE.length] + '">' + escHtml(nom) + '</span>';
+  }).join('');
+  if (services.length > 4) html += '<span class="badge-trust bt-more">+' + (services.length - 4) + '</span>';
+  return html;
+}
+function pastillesSpecialesCarte(a) {
+  var h = '';
+  if (a.verifie) h += '<span class="badge-trust bt-green" title="SIRET et assurance vérifiés">✅ ' + T('badge_verifie') + '</span>';
+  if (a.alternance_niveau >= 2) h += '<span class="badge-trust bt-purple" title="Cette entreprise s\'engage activement pour la formation locale">🟠 Tremplin des jeunes</span>';
+  if (a.tarif_min != null) h += '<span class="badge-trust bt-accent">' + T('des_prefix') + ' ' + a.tarif_min + '€</span>';
+  return h;
+}
+
+// Une colonne de la grille : jour + plages horaires (début–fin). Une plage "complète" est grisée ; un jour fermé affiche —.
+function colonneJourCarte(j) {
+  var slots = (j.ferme || !j.plages.length)
+    ? '<div class="dispo-slot unavailable">—</div>'
+    : j.plages.map(function(p) {
+        return '<div class="dispo-slot ' + (p.libre ? 'available' : 'unavailable') + '"' + (p.libre ? '' : ' title="' + escHtml(T('dispo_complet')) + '"') + '>' +
+          '<span class="h-deb">' + p.debut + '</span><span class="h-sep">–</span><span class="h-fin">' + p.fin + '</span></div>';
+      }).join('');
+  return '<div class="dispo-day"><div class="dispo-day-label">' + escHtml(dateCourteCarte(j.date)) + '</div>' + slots + '</div>';
+}
+
 function renderArtisanCard(a) {
+  _artisansCartes[a.id] = a;
   var ini = initiales(a.nom_entreprise);
   var photo = a.photo_profil_url
-    ? '<img src="' + escHtml(a.photo_profil_url) + '" style="width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;" alt="">'
-    : '<div class="avatar" style="width:52px;height:52px;font-size:16px;background:var(--line);display:flex;align-items:center;justify-content:center;border-radius:50%;font-family:Fraunces,serif;font-weight:700;color:var(--mu);">' + ini + '</div>';
-  var badgeVerifie = a.verifie
-    ? '<span class="badge-trust bt-green" title="SIRET et assurance vérifiés">✅ ' + T('badge_verifie') + '</span>'
-    : '';
-  var noteAff = a.note_moyenne != null ? a.note_moyenne : 0;
-  var badgeNote = '<span class="badge-trust bt-amber" title="' + (a.nb_avis ? a.nb_avis + ' avis' : 'Aucun avis pour l\'instant') + '">⭐ ' + noteAff.toFixed(1) + (a.nb_avis ? ' (' + a.nb_avis + ')' : '') + '</span>';
-  var badgeTarif = a.tarif_min != null
-    ? '<span class="badge-trust bt-blue">' + T('des_prefix') + ' ' + a.tarif_min + '€</span>'
-    : '';
-  var badgeAlternance = a.alternance_niveau >= 2
-    ? '<span class="badge-trust bt-purple" title="Cette entreprise s\'engage activement pour la formation locale">🟠 Tremplin des jeunes</span>'
-    : '';
-  var badgesTxt = badgeVerifie + badgeNote + badgeTarif + badgeAlternance;
+    ? '<img src="' + escHtml(a.photo_profil_url) + '" class="card-avatar" alt="">'
+    : '<div class="avatar card-avatar">' + ini + '</div>';
+  var noteAff = a.note_moyenne != null ? Number(a.note_moyenne) : 0;
+  var nb = a.nb_avis || 0;
   return '<div class="formateur-card" onclick="ouvrirProfil(' + jsAttr(a.id) + ')">' +
     '<div class="card-top-row">' + photo +
       '<div class="card-info">' +
         '<div class="card-name">' + escHtml(a.nom_entreprise) + '</div>' +
         '<div class="card-title">' + secteurLabel(a.secteur) + ' · 📍 ' + escHtml(a.commune) + '</div>' +
-        '<div id="horaires-carte-' + a.id + '" style="margin-top:3px;"></div>' +
+        '<div class="card-tags" id="tags-carte-' + a.id + '">' + pastillesSpecialesCarte(a) + '</div>' +
       '</div>' +
     '</div>' +
-    (badgesTxt ? '<div class="card-meta"><div class="card-badges">' + badgesTxt + '</div></div>' : '') +
-    (a.bio ? '<div style="font-size:13px;color:var(--mu2);">' + escHtml(a.bio) + '</div>' : '') +
-    '<div id="apercu-carte-' + a.id + '" style="margin-top:8px;"></div>' +
+    (a.bio ? '<div class="card-bio">' + escHtml(a.bio) + '</div>' : '') +
+    '<div class="card-meta">' +
+      '<div class="card-stars">' + etoilesCarte(noteAff) + '<span>' + noteAff.toFixed(1) + ' (' + nb + ' ' + (nb === 1 ? T('avis_un') : T('avis_plusieurs')) + ')</span></div>' +
+      '<div class="card-badges" id="dispo-carte-' + a.id + '"></div>' +
+    '</div>' +
+    '<div class="dispo-grid" id="grille-carte-' + a.id + '" style="display:none;"></div>' +
   '</div>';
+}
+
+// Complète la vignette avec les données du serveur : services (pastilles), semaine en cours et prochaine dispo.
+async function chargerApercuCarte(id) {
+  var a = _artisansCartes[id];
+  var zoneTags = document.getElementById('tags-carte-' + id);
+  var zoneDispo = document.getElementById('dispo-carte-' + id);
+  var grille = document.getElementById('grille-carte-' + id);
+  if (!a || !zoneTags) return;
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/verifier-disponibilite-artisan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
+      body: JSON.stringify({ mode: 'apercu', artisan_id: id, aujourdhui: dateLocaleISO() }),
+    });
+    var data = await res.json();
+    if (data.error) return;
+
+    zoneTags.innerHTML = pastillesServicesCarte(data.services) + pastillesSpecialesCarte(a);
+
+    if (data.semaine && data.semaine.length && zoneDispo && grille) {
+      var dispo = data.prochaine_date
+        ? '<span class="card-dispo now"><span class="dispo-dot now"></span>' + escHtml(libelleProchaineDispo(data.prochaine_date)) + '</span>'
+        : '<span class="card-dispo none"><span class="dispo-dot none"></span>' + escHtml(T('dispo_aucune_carte')) + '</span>';
+      zoneDispo.innerHTML = '<span class="badge-realtime"><span class="dot"></span>' + escHtml(T('dispo_temps_reel')) + '</span>' + dispo;
+      grille.innerHTML = data.semaine.map(colonneJourCarte).join('');
+      grille.style.display = 'grid';
+    }
+  } catch (e) { /* la vignette reste complète et utilisable sans l'aperçu */ }
 }
 
 // ════════════════════════════════════════
@@ -538,60 +619,6 @@ function minVersHeurePublic(min) { min = Math.max(0, Math.round(min)); var h = M
 var JOURS_COURT_CARTE = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 var ORDRE_AFFICHAGE_JOURS_CARTE = [1, 2, 3, 4, 5, 6, 0]; // lundi en premier, dimanche en dernier
 
-async function chargerHorairesCarte(artisanId) {
-  var zone = document.getElementById('horaires-carte-' + artisanId);
-  if (!zone) return;
-  try {
-    var res = await fetch(SUPABASE_URL + '/rest/v1/artisans_horaires?artisan_id=eq.' + encodeURIComponent(artisanId) + '&select=jour_semaine,heure_debut,heure_fin&order=jour_semaine.asc,heure_debut.asc', {
-      headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON },
-    });
-    var data = await res.json();
-    if (!res.ok || !Array.isArray(data) || !data.length) { zone.style.display = 'none'; return; }
-
-    var parJour = {};
-    data.forEach(function(h) {
-      var txt = h.heure_debut.slice(0, 5) + '-' + h.heure_fin.slice(0, 5);
-      parJour[h.jour_semaine] = (parJour[h.jour_semaine] ? parJour[h.jour_semaine] + ', ' : '') + txt;
-    });
-
-    // Regroupe les jours consécutifs partageant exactement les mêmes horaires (ex : "Lun-Ven 08:00-17:00")
-    var groupes = [];
-    var courant = null;
-    ORDRE_AFFICHAGE_JOURS_CARTE.forEach(function(j) {
-      var val = parJour[j] || null;
-      if (courant && courant.val === val) {
-        courant.fin = j;
-      } else {
-        if (courant) groupes.push(courant);
-        courant = { debut: j, fin: j, val: val };
-      }
-    });
-    if (courant) groupes.push(courant);
-
-    var texte = groupes.filter(function(g) { return g.val; }).map(function(g) {
-      var label = g.debut === g.fin ? JOURS_COURT_CARTE[g.debut] : JOURS_COURT_CARTE[g.debut] + '-' + JOURS_COURT_CARTE[g.fin];
-      return label + ' ' + g.val;
-    }).join(' · ');
-
-    zone.innerHTML = texte ? '<div style="font-size:12px;color:var(--mu2,#666);">🕐 ' + escHtml(texte) + '</div>' : '';
-  } catch (e) { zone.innerHTML = ''; }
-}
-
-async function chargerApercuDispoCarte(artisanId) {
-  var zone = document.getElementById('apercu-carte-' + artisanId);
-  if (!zone) return;
-  try {
-    var res = await fetch(SUPABASE_URL + '/functions/v1/verifier-disponibilite-artisan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
-      body: JSON.stringify({ mode: 'apercu', artisan_id: artisanId }),
-    });
-    var data = await res.json();
-    if (data.error || !data.prochaine_date) { zone.style.display = 'none'; return; }
-    zone.innerHTML = '<span style="display:inline-block;padding:3px 10px;border-radius:20px;background:rgba(22,163,74,.08);color:#16a34a;font-size:11.5px;font-weight:700;">' + T('dispo_apercu_prefix') + ' ' + data.label + '</span> <span style="font-size:11px;color:var(--mu,#999);">— ' + T('dispo_cliquez_rdv') + '</span>';
-  } catch (e) { zone.innerHTML = ''; }
-}
-
 async function chargerApercuDispo(artisanId) {
   var zone = document.getElementById('dispo-zone-' + artisanId);
   if (!zone) return;
@@ -599,7 +626,7 @@ async function chargerApercuDispo(artisanId) {
     var res = await fetch(SUPABASE_URL + '/functions/v1/verifier-disponibilite-artisan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
-      body: JSON.stringify({ mode: 'apercu', artisan_id: artisanId }),
+      body: JSON.stringify({ mode: 'apercu', artisan_id: artisanId, aujourdhui: dateLocaleISO() }),
     });
     var data = await res.json();
     if (data.error || !data.prochaine_date) {

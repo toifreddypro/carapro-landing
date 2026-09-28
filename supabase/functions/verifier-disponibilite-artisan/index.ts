@@ -4,11 +4,15 @@
 //
 // Deux modes, selon le corps de la requête :
 //
-//  1) { mode: "apercu", artisan_id }
+//  1) { mode: "apercu", artisan_id, aujourdhui? }
 //     → Aperçu grossier type Doctolib ("Prochaine disponibilité le...")
 //       basé uniquement sur les horaires habituels de l'artisan et son
 //       planning déjà rempli. AUCUN calcul de trajet (on ne connaît pas
 //       encore l'adresse du client à ce stade).
+//       Sert aussi à dessiner la vignette d'artisan : renvoie en plus
+//       `semaine` (7 jours : plages horaires + libre/complet) et `services`
+//       (noms des prestations). `aujourdhui` (AAAA-MM-JJ) = la date du
+//       visiteur, pour éviter le décalage de fuseau (Guadeloupe = UTC-4).
 //
 //  2) { mode: "creneaux", artisan_id, adresse, code_postal, commune, duree_min }
 //     → Vrai calcul Smart Dispatch : géocode l'adresse, et pour chaque
@@ -37,6 +41,7 @@ function json(payload: unknown, status = 200): Response {
 
 const MARGE_SECURITE_MIN = 10;
 const HORIZON_JOURS = 14; // pour le mode aperçu
+const SEMAINE_JOURS = 7;  // jours affichés sur la vignette d'artisan
 const FENETRE_JOURS = 5;  // nombre de colonnes affichées d'un coup en mode créneaux
 const HORIZON_PAGINATION_JOURS = 84; // 12 semaines — limite de navigation "semaine suivante"
 const JOURS_NOMS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
@@ -56,6 +61,15 @@ function arrondirQuart(min: number): number {
 }
 function dateISO(d: Date): string {
   return d.toISOString().slice(0, 10);
+}
+// "Aujourd'hui" : la date du visiteur si elle est fournie et plausible (±2 jours), sinon celle du serveur.
+// Midi UTC pour éviter tout décalage de jour.
+function baseJour(aujourdhuiClient: unknown): Date {
+  if (typeof aujourdhuiClient === "string" && /^\d{4}-\d{2}-\d{2}$/.test(aujourdhuiClient)) {
+    const d = new Date(aujourdhuiClient + "T12:00:00Z");
+    if (!isNaN(d.getTime()) && Math.abs(d.getTime() - Date.now()) / 86400000 <= 2) return d;
+  }
+  return new Date();
 }
 
 async function geocoderAdresse(adresse: string, cp: string, commune: string) {
@@ -83,14 +97,44 @@ async function geocoderAdresse(adresse: string, cp: string, commune: string) {
   return null;
 }
 
-async function tempsTrajetMinutes(latA: number, lonA: number, latB: number, lonB: number): Promise<number | null> {
-  try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${lonA},${latA};${lonB},${latB}?overview=false`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.routes && data.routes[0]) return Math.ceil(data.routes[0].duration / 60);
-  } catch (e) { console.warn("Calcul de trajet échoué :", e); }
+// Calcul de trajet — service de l'IGN (Géoplateforme) en premier ; l'ancien serveur public OSRM
+// n'est plus qu'un secours. Réponse IGN vérifiée : `duration` en secondes (timeUnit=second).
+// getSteps=false + geometryFormat=polyline = réponse minuscule (on n'a besoin que de la durée).
+const TRAJET_CACHE = new Map<string, number>();
+
+async function tempsTrajetIGN(latA: number, lonA: number, latB: number, lonB: number): Promise<number | null> {
+  const url = "https://data.geopf.fr/navigation/itineraire?resource=bdtopo-osrm&profile=car&optimization=fastest" +
+    "&getSteps=false&geometryFormat=polyline&distanceUnit=meter&timeUnit=second" +
+    `&start=${lonA},${latA}&end=${lonB},${latB}`;
+  const res = await fetch(url);
+  if (!res.ok) return null; // ex. 429 : limite de 5 requêtes/seconde dépassée
+  const data = await res.json();
+  return typeof data.duration === "number" ? Math.ceil(data.duration / 60) : null;
+}
+
+async function tempsTrajetOSRM(latA: number, lonA: number, latB: number, lonB: number): Promise<number | null> {
+  const url = `https://router.project-osrm.org/route/v1/driving/${lonA},${latA};${lonB},${latB}?overview=false`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.routes && data.routes[0]) return Math.ceil(data.routes[0].duration / 60);
   return null;
+}
+
+async function tempsTrajetMinutes(latA: number, lonA: number, latB: number, lonB: number): Promise<number | null> {
+  const cle = [latA, lonA, latB, lonB].map((n) => Number(n).toFixed(5)).join(",");
+  const enMemoire = TRAJET_CACHE.get(cle);
+  if (enMemoire !== undefined) return enMemoire;
+
+  let minutes: number | null = null;
+  try { minutes = await tempsTrajetIGN(latA, lonA, latB, lonB); } catch (e) { console.warn("Trajet IGN échoué :", e); }
+  if (minutes === null) {
+    try { minutes = await tempsTrajetOSRM(latA, lonA, latB, lonB); } catch (e) { console.warn("Trajet OSRM (secours) échoué :", e); }
+  }
+  if (minutes !== null) {
+    if (TRAJET_CACHE.size > 500) TRAJET_CACHE.clear();
+    TRAJET_CACHE.set(cle, minutes);
+  }
+  return minutes;
 }
 
 Deno.serve(async (req: Request) => {
@@ -107,14 +151,25 @@ Deno.serve(async (req: Request) => {
     if (!body || !body.artisan_id) return json({ error: "artisan_id manquant." }, 400);
     const { mode, artisan_id } = body;
 
+    // Aperçu de vignette : noms des services (pastilles), même si l'artisan n'a pas encore d'horaires.
+    let services: string[] = [];
+    if (mode === "apercu") {
+      const { data: svc } = await sb.from("artisans_services")
+        .select("nom_service").eq("artisan_id", artisan_id).order("ordre", { ascending: true }).limit(20);
+      services = (svc || []).map((s: any) => s.nom_service).filter(Boolean);
+    }
+
     const { data: horaires, error: errH } = await sb.from("artisans_horaires")
       .select("*").eq("artisan_id", artisan_id).order("heure_debut", { ascending: true });
     if (errH) throw errH;
     if (!horaires || !horaires.length) {
-      return json({ jours: [], message: "Cet artisan n'a pas encore renseigné ses horaires habituels." });
+      const message = "Cet artisan n'a pas encore renseigné ses horaires habituels.";
+      return mode === "apercu"
+        ? json({ prochaine_date: null, label: null, semaine: [], services, message })
+        : json({ jours: [], message });
     }
 
-    const aujourdhui = new Date();
+    const aujourdhui = baseJour(body.aujourdhui);
     const dateDebut = dateISO(aujourdhui);
     const dateFinHorizon = new Date(aujourdhui);
     dateFinHorizon.setDate(dateFinHorizon.getDate() + HORIZON_PAGINATION_JOURS);
@@ -139,6 +194,38 @@ Deno.serve(async (req: Request) => {
 
     // ═══ MODE APERÇU — pas de trajet, juste "y a-t-il un trou dans le planning" ═══
     if (mode === "apercu") {
+      // Un bloc horaire est "libre" s'il reste au moins 30 min disponibles dans ce bloc.
+      const blocLibre = (bloc: any, interDuJour: any[]): boolean => {
+        const debutBloc = heureVersMin(bloc.heure_debut);
+        const finBloc = heureVersMin(bloc.heure_fin);
+        const occupePendantBloc = interDuJour
+          .filter((x: any) => heureVersMin(x.heure_debut) < finBloc && heureVersMin(x.heure_fin) > debutBloc)
+          .reduce((total: number, x: any) => total + (heureVersMin(x.heure_fin) - heureVersMin(x.heure_debut)), 0);
+        return (finBloc - debutBloc) - occupePendantBloc >= 30;
+      };
+      const interduJourStr = (jourStr: string) => (interventions || []).filter((x: any) => x.date_intervention === jourStr);
+
+      // Semaine affichée sur la vignette : horaires + libre/complet. Jamais le détail du planning.
+      const semaine: Array<{ date: string; ferme: boolean; plages: Array<{ debut: string; fin: string; libre: boolean }> }> = [];
+      for (let i = 0; i < SEMAINE_JOURS; i++) {
+        const jour = new Date(aujourdhui);
+        jour.setDate(jour.getDate() + i);
+        const jourStr = dateISO(jour);
+        const blocsJour = horaires.filter((h: any) => h.jour_semaine === jour.getDay());
+        if (estJourBloque(jourStr) || !blocsJour.length) { semaine.push({ date: jourStr, ferme: true, plages: [] }); continue; }
+        const interDuJour = interduJourStr(jourStr);
+        semaine.push({
+          date: jourStr,
+          ferme: false,
+          plages: blocsJour.map((b: any) => ({
+            debut: minVersHeure(heureVersMin(b.heure_debut)),
+            fin: minVersHeure(heureVersMin(b.heure_fin)),
+            libre: blocLibre(b, interDuJour),
+          })),
+        });
+      }
+
+      // Prochaine disponibilité (comportement inchangé)
       for (let i = 0; i < HORIZON_JOURS; i++) {
         const jour = new Date(aujourdhui);
         jour.setDate(jour.getDate() + i);
@@ -147,25 +234,17 @@ Deno.serve(async (req: Request) => {
         if (estJourBloque(jourStr)) continue; // journée bloquée par l'artisan (congés, absence...)
         const blocsJour = horaires.filter((h: any) => h.jour_semaine === joursemaine);
         if (!blocsJour.length) continue; // l'artisan ne travaille pas ce jour-là
-
-        const interDuJour = (interventions || []).filter((x: any) => x.date_intervention === jourStr);
-        // Un jour est "disponible" s'il reste au moins 30 min libres dans un bloc horaire
-        for (const bloc of blocsJour) {
-          const debutBloc = heureVersMin(bloc.heure_debut);
-          const finBloc = heureVersMin(bloc.heure_fin);
-          const occupePendantBloc = interDuJour
-            .filter((x: any) => heureVersMin(x.heure_debut) < finBloc && heureVersMin(x.heure_fin) > debutBloc)
-            .reduce((total: number, x: any) => total + (heureVersMin(x.heure_fin) - heureVersMin(x.heure_debut)), 0);
-          const dureeLibre = (finBloc - debutBloc) - occupePendantBloc;
-          if (dureeLibre >= 30) {
-            return json({
-              prochaine_date: jourStr,
-              label: i === 0 ? "aujourd'hui" : i === 1 ? "demain" : JOURS_NOMS[joursemaine] + " " + jour.getDate() + "/" + (jour.getMonth() + 1),
-            });
-          }
+        const interDuJour = interduJourStr(jourStr);
+        if (blocsJour.some((bloc: any) => blocLibre(bloc, interDuJour))) {
+          return json({
+            prochaine_date: jourStr,
+            label: i === 0 ? "aujourd'hui" : i === 1 ? "demain" : JOURS_NOMS[joursemaine] + " " + jour.getDate() + "/" + (jour.getMonth() + 1),
+            semaine,
+            services,
+          });
         }
       }
-      return json({ prochaine_date: null, label: null, message: "Aucune disponibilité dans les " + HORIZON_JOURS + " prochains jours." });
+      return json({ prochaine_date: null, label: null, semaine, services, message: "Aucune disponibilité dans les " + HORIZON_JOURS + " prochains jours." });
     }
 
     // ═══ MODE CRÉNEAUX — vrai calcul avec trajet, une fois l'adresse connue ═══

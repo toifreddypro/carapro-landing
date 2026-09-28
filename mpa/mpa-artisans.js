@@ -667,7 +667,7 @@ async function tempsTrajetMinutes(latA, lonA, latB, lonB) {
   var cle = latA + ',' + lonA + '|' + latB + ',' + lonB;
   if (_trajetCache[cle] != null) return _trajetCache[cle];
   try {
-    var url = 'https://data.geopf.fr/navigation/itineraire?resource=bdtopo-osrm&profile=car&optimization=fastest&geometryFormat=geojson&start=' + lonA + ',' + latA + '&end=' + lonB + ',' + latB;
+    var url = 'https://data.geopf.fr/navigation/itineraire?resource=bdtopo-osrm&profile=car&optimization=fastest&getSteps=false&geometryFormat=polyline&distanceUnit=meter&timeUnit=second&start=' + lonA + ',' + latA + '&end=' + lonB + ',' + latB;
     var res = await fetch(url);
     var data = await res.json();
     if (data.duration != null) {
@@ -2802,7 +2802,7 @@ async function dessinerCarteItineraire(interventions) {
   for (var j = 0; j < etapes.length - 1; j++) {
     var a = etapes[j], b = etapes[j + 1];
     try {
-      var url = 'https://data.geopf.fr/navigation/itineraire?resource=bdtopo-osrm&profile=car&optimization=fastest&geometryFormat=geojson&start=' + a.longitude + ',' + a.latitude + '&end=' + b.longitude + ',' + b.latitude;
+      var url = 'https://data.geopf.fr/navigation/itineraire?resource=bdtopo-osrm&profile=car&optimization=fastest&geometryFormat=geojson&distanceUnit=meter&timeUnit=second&start=' + a.longitude + ',' + a.latitude + '&end=' + b.longitude + ',' + b.latitude;
       var res = await fetch(url);
       var data = await res.json();
       if (data.geometry && data.geometry.coordinates) {

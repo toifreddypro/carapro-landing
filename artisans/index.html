@@ -219,24 +219,47 @@
     .card-top-row{display:flex;gap:14px;align-items:flex-start;}
     .card-info{flex:1;min-width:0;}
     .card-name{font-family:'Bricolage Grotesque','Outfit',sans-serif;font-size:16px;font-weight:700;color:var(--tx);margin-bottom:2px;transition:color .15s;}
-    .card-title{font-size:12px;color:var(--mu2);margin-bottom:8px;}
+    .card-title{font-size:13px;color:var(--mu2);margin-bottom:8px;}
     .card-tags{display:flex;gap:6px;flex-wrap:wrap;}
     .card-rate{font-size:13px;color:var(--mu2);text-align:right;white-space:nowrap;}
     .card-rate strong{font-size:16px;color:var(--tx);font-weight:700;}
     .card-meta{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
-    .card-stars{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--mu2);}
+    .card-stars{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--mu2);}
     .star-on{color:var(--gold);}.star-off{color:var(--mu);opacity:.4;}
     .card-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-    .card-dispo{display:flex;align-items:center;gap:6px;font-size:12px;}
+    .card-dispo{display:flex;align-items:center;gap:6px;font-size:13px;}
     .card-dispo.now{color:var(--ac2);}.card-dispo.soon{color:var(--gold);}.card-dispo.none{color:var(--mu);}
     /* GRILLE 7J */
     .dispo-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;border-top:1px solid var(--brd);padding-top:12px;}
     .dispo-day{display:flex;flex-direction:column;gap:3px;align-items:center;}
-    .dispo-day-label{font-size:10px;color:var(--mu);text-align:center;font-family:'JetBrains Mono',monospace;}
+    .dispo-day-label{font-size:10.5px;color:var(--mu);text-align:center;font-family:'JetBrains Mono',monospace;}
     .dispo-slot{width:100%;padding:4px 2px;border-radius:6px;border:1px solid var(--brd);background:transparent;font-size:10px;font-family:'Outfit',sans-serif;text-align:center;cursor:default;color:var(--mu);transition:all .15s;}
     .dispo-slot.available{background:rgba(0,212,170,.1);border-color:rgba(0,212,170,.3);color:var(--ac2);cursor:pointer;}
     .dispo-slot.available:hover{background:rgba(0,212,170,.25);border-color:var(--ac2);}
     .dispo-slot.unavailable{background:rgba(255,255,255,.02);color:var(--mu);opacity:.5;}
+    /* ── Vignette artisan = même vignette que les formateurs (CaraLink Formation), en terracotta ── */
+    .formateur-card{container-type:inline-size;}
+    .card-avatar{width:56px;height:56px;border-radius:50%;flex-shrink:0;object-fit:cover;font-family:'Bricolage Grotesque','Outfit',sans-serif;font-size:17px;background:rgba(181,80,47,.12);color:#B5502F;}
+    .card-bio{font-size:13px;color:var(--mu2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+    .card-tags .badge-trust{max-width:100%;white-space:normal;}
+    .badge-trust.bt-accent{background:rgba(194,65,12,.15);color:#fb923c;}
+    .badge-trust.bt-more{background:rgba(148,163,184,.15);color:var(--mu2);}
+    body.theme-light .badge-trust.bt-accent{background:rgba(181,80,47,.1);color:#B5502F;}
+    body.theme-light .badge-trust.bt-more{background:rgba(107,124,150,.12);color:#4a5c78;}
+    .badge-realtime{display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11.5px;padding:3px 9px;border-radius:8px;background:rgba(16,185,129,.1);color:#10b981;border:1px solid rgba(16,185,129,.25);}
+    body.theme-light .badge-realtime{background:rgba(0,168,125,.1);color:#065f46;border-color:rgba(0,168,125,.25);}
+    .badge-realtime .dot{width:8px;height:8px;border-radius:50%;background:#10b981;flex-shrink:0;}
+    /* Créneaux = plages horaires (début–fin) : empilées par défaut, en ligne dès que la vignette est assez large. */
+    .dispo-slot{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.25;font-size:11px;}
+    .dispo-slot .h-sep{display:none;}
+    @container (max-width:400px){
+      .dispo-day-label{font-size:9.5px;letter-spacing:-.02em;}
+    }
+    @container (min-width:520px){
+      .dispo-slot{flex-direction:row;gap:1px;white-space:nowrap;font-size:11.5px;}
+      .dispo-slot .h-sep{display:inline;}
+      .dispo-day-label{font-size:12px;}
+    }
     /* MAP */
     .map-panel{position:sticky;top:80px;background:var(--panel);border:1px solid var(--brd);border-radius:14px;padding:16px;margin-left:0;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 3px rgba(19,34,60,.05);}
     .partner-panel{position:sticky;top:80px;background:var(--panel);border:1px solid var(--brd);border-radius:14px;padding:16px;box-shadow:0 1px 3px rgba(19,34,60,.05);}
