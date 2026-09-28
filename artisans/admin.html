@@ -193,8 +193,8 @@ async function lancerPrelevementPrestations() {
     var data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    var LABELS = { reussi: '✅ Prélevé', sous_le_seuil: '— Sous le seuil (rien dû)', echoue: '❌ Échec', deja_traite: '⏭️ Déjà traité', erreur: '⚠️ Erreur' };
-    var COULEURS = { reussi: '#0f9d78', sous_le_seuil: 'var(--mu)', echoue: '#dc2626', deja_traite: 'var(--mu)', erreur: '#dc2626' };
+    var LABELS = { reussi: '✅ Prélevé', sous_le_seuil: '— Sous le seuil (rien dû)', sous_minimum_stripe: 'ℹ️ Trop petit pour Stripe (< 0,50€)', echoue: '❌ Échec', deja_traite: '⏭️ Déjà traité', erreur: '⚠️ Erreur' };
+    var COULEURS = { reussi: '#0f9d78', sous_le_seuil: 'var(--mu)', sous_minimum_stripe: 'var(--mu)', echoue: '#dc2626', deja_traite: 'var(--mu)', erreur: '#dc2626' };
 
     zoneRes.innerHTML =
       '<p style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;">' + data.traites + ' artisan(s) examiné(s) pour ' + moisChoisi + '.</p>' +
@@ -204,6 +204,7 @@ async function lancerPrelevementPrestations() {
           data.resultats.map(function(r) {
             var detail = r.statut === 'reussi' ? (r.commission || 0) + ' € prélevés'
               : r.statut === 'sous_le_seuil' ? (r.ca || 0) + ' € de CA ce mois-ci'
+              : r.statut === 'sous_minimum_stripe' ? (r.commission || 0) + ' € dus, non prélevés (trop petit)'
               : r.erreur || '';
             return '<tr style="border-top:1px solid var(--brd);">' +
               '<td style="padding:4px 8px;">' + escHtml(r.artisan_id) + '</td>' +

@@ -30,6 +30,7 @@ const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const ADMIN_EMAIL = "toifreddypro@gmail.com";
 const TAUX_COMMISSION = 0.07;
 const SEUIL_GRATUIT_EUROS = 300; // même seuil que côté Ventes — à garder aligné si on le change un jour
+const MINIMUM_STRIPE_CENTIMES = 50; // Stripe refuse tout prélèvement en dessous de 0,50€
 
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -91,6 +92,13 @@ async function traiterUnArtisan(sb: any, artisan: any, debut: string, finExclusi
   if (commissionCentimes <= 0) {
     await sb.from("prelevements_prestations").insert({ ...ligneBase, statut: "sous_le_seuil" });
     return { artisan_id: artisan.id, statut: "sous_le_seuil", ca: caTotalCentimes / 100 };
+  }
+
+  // Sous 0,50€, Stripe refuse le prélèvement — on ne tente pas, on note et on garde le CA en
+  // mémoire pour l'admin, mais on n'essaie plus une carte qui échouerait de toute façon.
+  if (commissionCentimes < MINIMUM_STRIPE_CENTIMES) {
+    await sb.from("prelevements_prestations").insert({ ...ligneBase, statut: "sous_minimum_stripe" });
+    return { artisan_id: artisan.id, statut: "sous_minimum_stripe", commission: commissionCentimes / 100 };
   }
 
   if (!artisan.stripe_customer_id) {
