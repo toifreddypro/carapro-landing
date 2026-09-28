@@ -140,10 +140,137 @@ async function init() {
   _session = data.session;
   document.getElementById('wrap').innerHTML =
     '<div id="zone-secteurs"></div>' +
+    '<div id="zone-avis-produit"></div>' +
+    '<div id="zone-prelevement-prestations"></div>' +
     '<div id="zone-artisans"></div>';
   await chargerSecteurs();
+  await chargerAvisProduit();
+  renderZonePrelevementPrestations();
   await chargerArtisans();
 }
+
+// ── Prélèvement mensuel de la commission prestations (à lancer soi-même pour l'instant) ──
+function moisDernierISO() {
+  var d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+function renderZonePrelevementPrestations() {
+  var zone = document.getElementById('zone-prelevement-prestations');
+  zone.innerHTML =
+    '<div class="dcard">' +
+      '<div class="dchdr"><span>Prélèvement mensuel — commission prestations</span></div>' +
+      '<div class="dcbdy" style="padding:16px;">' +
+        '<p style="font-size:12.5px;color:var(--mu);margin-bottom:12px;">Calcule et débite, pour chaque artisan ayant une carte enregistrée, 7 % de la part au-dessus de 300 € de prestations "annuaire" sur le mois choisi. Un mois déjà traité n\'est jamais retraité.</p>' +
+        '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">' +
+          '<label style="font-size:12.5px;color:var(--mu2);">Mois à traiter :</label>' +
+          '<input type="month" id="pp-mois" value="' + moisDernierISO().slice(0, 7) + '" style="padding:6px 10px;border-radius:7px;border:1px solid var(--brd);">' +
+          '<button class="btn-primary" id="btn-pp-lancer" onclick="lancerPrelevementPrestations()" style="padding:8px 16px;font-size:12.5px;">Lancer le prélèvement</button>' +
+        '</div>' +
+        '<div id="pp-resultat"></div>' +
+      '</div>' +
+    '</div>';
+}
+
+async function lancerPrelevementPrestations() {
+  var btn = document.getElementById('btn-pp-lancer');
+  var zoneRes = document.getElementById('pp-resultat');
+  var moisChoisi = document.getElementById('pp-mois').value; // "AAAA-MM"
+  if (!moisChoisi) { alert('Choisis un mois.'); return; }
+  var moisISO = moisChoisi + '-01';
+
+  if (!confirm('Lancer le prélèvement pour ' + moisChoisi + ' ?\n\nÇa va débiter réellement les cartes enregistrées des artisans concernés. Cette action ne peut pas être annulée (mais ne prélève jamais deux fois le même mois).')) return;
+
+  btn.disabled = true; btn.textContent = 'Traitement en cours…';
+  zoneRes.innerHTML = '';
+  try {
+    var { data: { session } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/prelever-commission-prestations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+      body: JSON.stringify({ mois_iso: moisISO }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    var LABELS = { reussi: '✅ Prélevé', sous_le_seuil: '— Sous le seuil (rien dû)', echoue: '❌ Échec', deja_traite: '⏭️ Déjà traité', erreur: '⚠️ Erreur' };
+    var COULEURS = { reussi: '#0f9d78', sous_le_seuil: 'var(--mu)', echoue: '#dc2626', deja_traite: 'var(--mu)', erreur: '#dc2626' };
+
+    zoneRes.innerHTML =
+      '<p style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;">' + data.traites + ' artisan(s) examiné(s) pour ' + moisChoisi + '.</p>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:12.5px;">' +
+        '<thead><tr style="text-align:left;color:var(--mu);"><th style="padding:4px 8px;">Artisan</th><th style="padding:4px 8px;">Résultat</th><th style="padding:4px 8px;">Détail</th></tr></thead>' +
+        '<tbody>' +
+          data.resultats.map(function(r) {
+            var detail = r.statut === 'reussi' ? (r.commission || 0) + ' € prélevés'
+              : r.statut === 'sous_le_seuil' ? (r.ca || 0) + ' € de CA ce mois-ci'
+              : r.erreur || '';
+            return '<tr style="border-top:1px solid var(--brd);">' +
+              '<td style="padding:4px 8px;">' + escHtml(r.artisan_id) + '</td>' +
+              '<td style="padding:4px 8px;color:' + (COULEURS[r.statut] || 'inherit') + ';font-weight:600;">' + (LABELS[r.statut] || r.statut) + '</td>' +
+              '<td style="padding:4px 8px;color:var(--mu2);">' + escHtml(String(detail)) + '</td>' +
+            '</tr>';
+          }).join('') +
+        '</tbody>' +
+      '</table>';
+  } catch (e) {
+    zoneRes.innerHTML = '<p style="color:var(--danger);font-size:12.5px;">Erreur : ' + escHtml(e.message) + '</p>';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Lancer le prélèvement';
+  }
+
+// ── Avis produit CaraLink (projet LearnLogic — distinct du projet Artisans) ──
+var LL_SUPABASE_URL = 'https://coqprurgsvfxddbmwtor.supabase.co';
+
+async function chargerAvisProduit() {
+  var zone = document.getElementById('zone-avis-produit');
+  try {
+    var { data: { session } } = await sb.auth.getSession();
+    var res = await fetch(LL_SUPABASE_URL + '/functions/v1/lire-avis?admin=1', {
+      headers: { 'Authorization': 'Bearer ' + session.access_token },
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    var avisEnAttente = data.avis || [];
+
+    if (!avisEnAttente.length) {
+      zone.innerHTML = '<div class="dcard"><div class="dchdr"><span>Avis produit en attente (0)</span></div><div class="dcbdy" style="padding:16px;"><p style="font-size:13px;color:var(--mu);">Aucun avis en attente de validation.</p></div></div>';
+      return;
+    }
+
+    zone.innerHTML =
+      '<div class="dcard">' +
+        '<div class="dchdr"><span>Avis produit en attente (' + avisEnAttente.length + ')</span></div>' +
+        '<div class="dcbdy" style="padding:16px;">' +
+          avisEnAttente.map(function(a) {
+            return '<div style="border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;">' +
+              '<div style="font-size:12px;color:var(--mu);margin-bottom:6px;">' + escHtml(a.type) + ' — ' + escHtml(a.nom_affiche) + '</div>' +
+              '<div style="font-size:13.5px;margin-bottom:12px;">« ' + escHtml(a.texte) + ' »</div>' +
+              '<button class="btn-primary" style="padding:6px 14px;font-size:12px;" onclick="modererAvisProduit(\'' + a.id + '\',\'valider\')">✓ Valider</button> ' +
+              '<button class="btn-secondary" style="padding:6px 14px;font-size:12px;" onclick="modererAvisProduit(\'' + a.id + '\',\'refuser\')">✕ Refuser</button>' +
+            '</div>';
+          }).join('') +
+        '</div>' +
+      '</div>';
+  } catch (e) {
+    zone.innerHTML = '<div class="dcard"><div class="dcbdy" style="padding:16px;"><p style="color:var(--danger);">Erreur avis produit : ' + escHtml(e.message) + '</p></div></div>';
+  }
+}
+
+async function modererAvisProduit(id, action) {
+  try {
+    var { data: { session } } = await sb.auth.getSession();
+    var res = await fetch(LL_SUPABASE_URL + '/functions/v1/lire-avis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+      body: JSON.stringify({ id: id, action: action }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    await chargerAvisProduit();
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+  }
 
 async function chargerArtisans() {
   var { data: artisans, error } = await sb.from('artisans').select('*').order('created_at', { ascending: false });
