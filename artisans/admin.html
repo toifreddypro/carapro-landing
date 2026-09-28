@@ -218,6 +218,7 @@ async function lancerPrelevementPrestations() {
   } finally {
     btn.disabled = false; btn.textContent = 'Lancer le prélèvement';
   }
+}
 
 // ── Avis produit CaraLink (projet LearnLogic — distinct du projet Artisans) ──
 var LL_SUPABASE_URL = 'https://coqprurgsvfxddbmwtor.supabase.co';
@@ -271,6 +272,7 @@ async function modererAvisProduit(id, action) {
   } catch (e) {
     alert('Erreur : ' + e.message);
   }
+}
 
 async function chargerArtisans() {
   var { data: artisans, error } = await sb.from('artisans').select('*').order('created_at', { ascending: false });
