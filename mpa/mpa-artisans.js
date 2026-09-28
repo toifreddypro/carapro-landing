@@ -826,6 +826,12 @@ async function remplirSelectsIntervention() {
 }
 
 async function ouvrirNouvelleIntervention(dateStr, creneau) {
+  var enRetard = await trouverPrestationAnnuaireEnRetard();
+  if (enRetard) {
+    var dateAff = new Date(enRetard.date_intervention + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+    alert('Impossible de planifier une nouvelle intervention tant qu\'une prestation passée (' + dateAff + ') n\'est pas soldée.\n\nOuvrez-la et marquez-la Terminée (ou Annulée si elle ne s\'est pas faite).');
+    return;
+  }
   window._commandeEnLivraison = null;
   await remplirSelectsIntervention();
   _interventionEnCours = null;
@@ -1630,6 +1636,54 @@ async function imprimerFacture(factureId) {
 //  indépendant et un artisan, pas une erreur de recopie.
 // ════════════════════════════════════════
 const PLAFOND_MICRO_BIC_SERVICES = 77700;
+
+// ── Modèle "gratuit sous un seuil" (28/09) — clients trouvés via CaraLink uniquement ──
+// Un client "annuaire" (origine trackée sur mpa_artisans_clients) vient d'une demande de devis
+// publique ; un client "manuel" a été ajouté par l'artisan lui-même et ne compte jamais ici.
+// Même logique marginale que côté Ventes (creer-paiement-commande.ts), pour ne jamais créer
+// d'effet de seuil brutal : seule la part au-dessus du seuil est concernée.
+const SEUIL_GRATUIT_PRESTATIONS_EUROS = 300;
+const DELAI_GRACE_PRESTATION_JOURS = 7; // au-delà, une intervention "Planifiée" non soldée bloque la suite
+
+function calculerPartAuDessusDuSeuil(montantCentimes, dejaCentimes, seuilCentimes) {
+  var placeRestante = Math.max(0, seuilCentimes - dejaCentimes);
+  var sousLeSeuil = Math.min(montantCentimes, placeRestante);
+  return montantCentimes - sousLeSeuil;
+}
+
+// CA net (Terminée/Payée, même règle que la Comptabilité) des seuls clients "annuaire", depuis
+// le 1er du mois en cours.
+async function calculerCAPrestationsAnnuaireDuMois() {
+  var debutMois = new Date(); debutMois.setDate(1);
+  var debutStr = debutMois.toISOString().slice(0, 10);
+  var { data, error } = await sb.from('mpa_artisans_interventions')
+    .select('prix, mpa_artisans_clients!inner(origine)')
+    .eq('artisan_id', _artisan.id)
+    .eq('mpa_artisans_clients.origine', 'annuaire')
+    .in('statut', ['terminee', 'payee'])
+    .gte('date_intervention', debutStr);
+  if (error) { console.error(error); return 0; }
+  return (data || []).reduce(function(s, i) { return s + (i.prix || 0); }, 0);
+}
+
+// Une intervention "Planifiée", pour un client "annuaire", dont la date est passée depuis plus
+// de DELAI_GRACE_PRESTATION_JOURS jours : tant qu'elle n'est pas soldée, on bloque toute nouvelle
+// planification. Ça vise précisément la faille "encaissé en main propre, jamais déclaré terminé" —
+// pas les interventions en cours légitimement (rénovation multi-jours, pièce en attente).
+async function trouverPrestationAnnuaireEnRetard() {
+  var limite = new Date(); limite.setDate(limite.getDate() - DELAI_GRACE_PRESTATION_JOURS);
+  var limiteStr = limite.toISOString().slice(0, 10);
+  var { data, error } = await sb.from('mpa_artisans_interventions')
+    .select('id, date_intervention, mpa_artisans_clients!inner(origine)')
+    .eq('artisan_id', _artisan.id)
+    .eq('statut', 'planifiee')
+    .eq('mpa_artisans_clients.origine', 'annuaire')
+    .lt('date_intervention', limiteStr)
+    .limit(1);
+  if (error) { console.error(error); return null; }
+  return (data && data.length) ? data[0] : null;
+}
+
 const ABATTEMENT_BIC_SERVICES = 0.50;
 // Barème progressif IR 2024 (revenus 2024, déclarés en 2025)
 const BAREME_IR = [
@@ -1869,6 +1923,20 @@ async function calculerDashboardFiscal() {
   bar.className = 'dj-bar' + (pct >= 90 ? ' danger' : pct >= 70 ? ' warn' : '');
   document.getElementById('dash-me-msg').textContent =
     pct >= 90 ? '⚠️ Seuil bientôt atteint' : pct >= 70 ? 'À surveiller' : 'Marge confortable';
+
+  // Jauge seuil gratuit — CA prestations du mois, clients "annuaire" uniquement
+  var caAnnuaireMois = await calculerCAPrestationsAnnuaireDuMois();
+  var seuilCentimes = SEUIL_GRATUIT_PRESTATIONS_EUROS * 100;
+  var partCommissionnableCentimes = calculerPartAuDessusDuSeuil(Math.round(caAnnuaireMois * 100), 0, seuilCentimes);
+  var pctA = Math.min(100, (caAnnuaireMois / SEUIL_GRATUIT_PRESTATIONS_EUROS) * 100);
+  document.getElementById('dash-annuaire-pct').textContent = pctA.toFixed(0) + '%';
+  document.getElementById('dash-annuaire-amt').textContent = caAnnuaireMois.toFixed(0) + ' € / ' + SEUIL_GRATUIT_PRESTATIONS_EUROS + ' €';
+  var barA = document.getElementById('dash-jauge-annuaire');
+  barA.style.width = pctA + '%';
+  barA.className = 'dj-bar' + (pctA >= 100 ? ' danger' : pctA >= 70 ? ' warn' : '');
+  document.getElementById('dash-annuaire-msg').textContent = partCommissionnableCentimes > 0
+    ? '⚠️ ' + (partCommissionnableCentimes / 100).toFixed(0) + ' € au-dessus du seuil ce mois-ci'
+    : 'Encore gratuit ce mois-ci';
 
   // Estimation IR
   var revenuImposable = caBrut * (1 - ABATTEMENT_BIC_SERVICES);

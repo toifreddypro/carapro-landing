@@ -184,6 +184,7 @@ Deno.serve(async (req: Request) => {
       code_postal: demande.code_postal,
       commune: demande.commune,
       delai_paiement: 30,
+      origine: "annuaire", // ce client vient de la demande de devis publique — sert au calcul du seuil de CA prestations
     }).select().single();
     if (errClient) throw errClient;
 
