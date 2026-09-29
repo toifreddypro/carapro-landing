@@ -84,53 +84,54 @@
   .panier-vider{font-size:12px;color:var(--mu);text-decoration:underline;cursor:pointer;background:none;border:none;padding:0;margin-top:8px;}
 </style>
 <script src="https://js.stripe.com/v3/"></script>
+<script src="tr-artisans.js"></script>
 </head>
 <body>
 
 <div id="racine">
-  <div class="etat-page"><h1>Chargement…</h1></div>
+  <div class="etat-page"><h1 data-i18n="cat_chargement">Chargement…</h1></div>
 </div>
 
 <button class="panier-flottant" id="btn-panier-flottant" onclick="ouvrirPanier()">
-  🛒 Mon panier <span class="panier-badge" id="panier-badge">0</span>
+  🛒 <span data-i18n="cat_mon_panier">Mon panier</span> <span class="panier-badge" id="panier-badge">0</span>
 </button>
 
 <div class="modal-overlay" id="modal-panier">
   <div class="modal-box">
-    <h3>Mon panier</h3>
+    <h3 data-i18n="cat_mon_panier">Mon panier</h3>
     <div id="panier-lignes"></div>
-    <div class="panier-total"><span>Total</span><span id="panier-total-montant">0 €</span></div>
-    <button class="panier-vider" onclick="viderPanier()">Vider le panier</button>
+    <div class="panier-total"><span data-i18n="cat_total">Total</span><span id="panier-total-montant">0 €</span></div>
+    <button class="panier-vider" onclick="viderPanier()" data-i18n="cat_vider_panier">Vider le panier</button>
     <div class="modal-actions">
-      <button class="btn-primary" onclick="ouvrirModaleCommande()">Passer commande →</button>
-      <button class="btn-secondary" onclick="fermerModalePanier()">Continuer mes achats</button>
+      <button class="btn-primary" onclick="ouvrirModaleCommande()" data-i18n="cat_passer_commande">Passer commande →</button>
+      <button class="btn-secondary" onclick="fermerModalePanier()" data-i18n="cat_continuer_achats">Continuer mes achats</button>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="modal-commande">
   <div class="modal-box">
-    <h3 id="mc-titre">Vos coordonnées</h3>
-    <div class="modal-field"><label>Votre nom</label><input type="text" id="mc-nom"></div>
-    <div class="modal-field"><label>Téléphone</label><input type="tel" id="mc-tel"></div>
-    <div class="modal-field"><label>Email (facultatif)</label><input type="email" id="mc-email"></div>
+    <h3 id="mc-titre" data-i18n="cat_vos_coordonnees">Vos coordonnées</h3>
+    <div class="modal-field"><label data-i18n="cat_votre_nom">Votre nom</label><input type="text" id="mc-nom"></div>
+    <div class="modal-field"><label data-i18n="cat_telephone">Téléphone</label><input type="tel" id="mc-tel"></div>
+    <div class="modal-field"><label data-i18n="cat_email_facultatif">Email (facultatif)</label><input type="email" id="mc-email"></div>
     <div class="modal-field">
-      <label>Mode</label>
+      <label data-i18n="cat_mode">Mode</label>
       <select id="mc-mode" onchange="document.getElementById('mc-adresse-bloc').style.display=this.value==='livraison'?'block':'none';">
-        <option value="retrait">Je viens chercher</option>
-        <option value="livraison">Livraison</option>
+        <option value="retrait" data-i18n="cat_je_viens_chercher">Je viens chercher</option>
+        <option value="livraison" data-i18n="cat_livraison">Livraison</option>
       </select>
     </div>
     <div id="mc-adresse-bloc" style="display:none;">
-      <div class="modal-field"><label>Adresse</label><input type="text" id="mc-adresse"></div>
-      <div class="modal-field"><label>Code postal</label><input type="text" id="mc-cp"></div>
-      <div class="modal-field"><label>Commune</label><input type="text" id="mc-commune"></div>
+      <div class="modal-field"><label data-i18n="cat_adresse">Adresse</label><input type="text" id="mc-adresse"></div>
+      <div class="modal-field"><label data-i18n="cat_code_postal">Code postal</label><input type="text" id="mc-cp"></div>
+      <div class="modal-field"><label data-i18n="cat_commune">Commune</label><input type="text" id="mc-commune"></div>
     </div>
-    <div class="modal-field"><label>Notes (facultatif)</label><textarea id="mc-notes" rows="2"></textarea></div>
+    <div class="modal-field"><label data-i18n="cat_notes_facultatif">Notes (facultatif)</label><textarea id="mc-notes" rows="2"></textarea></div>
     <div id="mc-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:8px;"></div>
     <div class="modal-actions">
-      <button class="btn-primary" id="mc-btn-confirmer" onclick="confirmerCommande()">Confirmer la commande</button>
-      <button class="btn-secondary" onclick="fermerModaleCommande()">Retour au panier</button>
+      <button class="btn-primary" id="mc-btn-confirmer" onclick="confirmerCommande()" data-i18n="cat_confirmer_commande">Confirmer la commande</button>
+      <button class="btn-secondary" onclick="fermerModaleCommande()" data-i18n="cat_retour_panier">Retour au panier</button>
     </div>
   </div>
 </div>
@@ -166,7 +167,7 @@ function ajouterAuPanier(produitId) {
   sauverPanier();
   majBadgePanier();
   var btn = document.getElementById('btn-add-' + produitId);
-  if (btn) { var txt = btn.textContent; btn.textContent = '✓ Ajouté'; setTimeout(function() { btn.textContent = txt; }, 900); }
+  if (btn) { var txt = btn.textContent; btn.textContent = T('cat_ajoute'); setTimeout(function() { btn.textContent = txt; }, 900); }
 }
 
 function modifierQuantitePanier(produitId, delta) {
@@ -181,7 +182,7 @@ function modifierQuantitePanier(produitId, delta) {
 
 function viderPanier() {
   if (!PANIER.length) return;
-  if (!confirm('Vider le panier ?')) return;
+  if (!confirm(T('cat_vider_confirm'))) return;
   PANIER = [];
   sauverPanier();
   renderPanier();
@@ -203,12 +204,12 @@ function renderPanier() {
   var zone = document.getElementById('panier-lignes');
   if (!zone) return;
   if (!PANIER.length) {
-    zone.innerHTML = '<p style="color:var(--mu);font-size:13px;padding:16px 0;text-align:center;">Votre panier est vide.</p>';
+    zone.innerHTML = '<p style="color:var(--mu);font-size:13px;padding:16px 0;text-align:center;">' + T('cat_panier_vide') + '</p>';
   } else {
     zone.innerHTML = PANIER.map(function(l) {
       var photo = l.url_photo ? '<img src="' + escHtml(l.url_photo) + '" class="ligne-panier-photo">' : '<div class="ligne-panier-photo" style="display:flex;align-items:center;justify-content:center;">📦</div>';
       return '<div class="ligne-panier">' + photo +
-        '<div class="ligne-panier-info"><div class="ligne-panier-nom">' + escHtml(l.nom) + '</div><div class="ligne-panier-prix">' + l.prix + ' € l\'unité</div></div>' +
+        '<div class="ligne-panier-info"><div class="ligne-panier-nom">' + escHtml(l.nom) + '</div><div class="ligne-panier-prix">' + l.prix + ' € ' + T('cat_unite') + '</div></div>' +
         '<div class="qte-controle">' +
           '<button onclick="modifierQuantitePanier(' + jsAttr(l.catalogue_id) + ',-1)">−</button>' +
           '<span>' + l.quantite + '</span>' +
@@ -239,11 +240,11 @@ async function confirmerCommande() {
   var err = document.getElementById('mc-err');
   var nom = document.getElementById('mc-nom').value.trim();
   var tel = document.getElementById('mc-tel').value.trim();
-  if (!nom || !tel) { err.textContent = 'Nom et téléphone sont nécessaires.'; err.style.display = 'block'; return; }
+  if (!nom || !tel) { err.textContent = T('cat_nom_tel_requis'); err.style.display = 'block'; return; }
 
   var mode = document.getElementById('mc-mode').value;
   var btn = document.getElementById('mc-btn-confirmer');
-  btn.disabled = true; btn.textContent = 'Envoi…';
+  btn.disabled = true; btn.textContent = T('cat_envoi');
   try {
     var res = await fetch(SUPABASE_URL + '/functions/v1/soumettre-commande-panier', {
       method: 'POST',
@@ -271,13 +272,13 @@ async function confirmerCommande() {
       await afficherEtapePaiement(data.commande_id);
     } else {
       document.getElementById('modal-commande').classList.remove('show');
-      alert('✅ Commande envoyée ! ' + escHtml(DATA.artisan.nom_entreprise) + ' va vous recontacter.');
+      alert(T('cat_commande_envoyee') + escHtml(DATA.artisan.nom_entreprise) + T('cat_va_vous_recontacter'));
     }
   } catch (e) {
     err.textContent = e.message;
     err.style.display = 'block';
   } finally {
-    btn.disabled = false; btn.textContent = 'Confirmer la commande';
+    btn.disabled = false; btn.textContent = T('cat_confirmer_commande');
   }
 }
 
@@ -285,13 +286,13 @@ async function confirmerCommande() {
 async function afficherEtapePaiement(commandeId) {
   var boite = document.querySelector('#modal-commande .modal-box');
   boite.innerHTML =
-    '<h3>✅ Commande enregistrée</h3>' +
-    '<p style="font-size:12.5px;color:var(--mu);margin-bottom:14px;">Réglez maintenant par carte pour la confirmer, ou payez plus tard directement avec l\'artisan.</p>' +
+    '<h3>' + T('cat_commande_enregistree') + '</h3>' +
+    '<p style="font-size:12.5px;color:var(--mu);margin-bottom:14px;">' + T('cat_reglez_maintenant') + '</p>' +
     '<div id="paiement-element" style="margin-bottom:14px;"></div>' +
     '<div id="paiement-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>' +
     '<div class="modal-actions">' +
-      '<button class="btn-primary" id="btn-payer" disabled>Chargement…</button>' +
-      '<button class="btn-secondary" onclick="document.getElementById(\'modal-commande\').classList.remove(\'show\');alert(\'✅ Commande enregistrée. Vous réglerez directement avec l\\\'artisan.\');">Payer plus tard</button>' +
+      '<button class="btn-primary" id="btn-payer" disabled>' + T('cat_chargement') + '</button>' +
+      '<button class="btn-secondary" onclick="document.getElementById(\'modal-commande\').classList.remove(\'show\');alert(' + jsAttr(T('cat_commande_enregistree_alert')) + ');">' + T('cat_payer_plus_tard') + '</button>' +
     '</div>';
 
   try {
@@ -308,10 +309,10 @@ async function afficherEtapePaiement(commandeId) {
     _stripeElements.create('payment').mount('#paiement-element');
 
     var btn = document.getElementById('btn-payer');
-    btn.textContent = 'Payer'; btn.disabled = false;
+    btn.textContent = T('cat_payer'); btn.disabled = false;
     btn.onclick = confirmerPaiementCommande;
   } catch (e) {
-    document.getElementById('paiement-err').textContent = 'Erreur : ' + e.message;
+    document.getElementById('paiement-err').textContent = T('cat_erreur_prefix') + e.message;
     document.getElementById('paiement-err').style.display = 'block';
     document.getElementById('btn-payer').style.display = 'none';
   }
@@ -321,24 +322,24 @@ async function confirmerPaiementCommande() {
   var btn = document.getElementById('btn-payer');
   var err = document.getElementById('paiement-err');
   err.style.display = 'none';
-  btn.disabled = true; btn.textContent = 'Paiement en cours…';
+  btn.disabled = true; btn.textContent = T('cat_paiement_en_cours');
 
   var { error } = await _stripeClient.confirmPayment({ elements: _stripeElements, redirect: 'if_required' });
   if (error) {
-    err.textContent = error.message || 'Le paiement a échoué.';
+    err.textContent = error.message || T('cat_paiement_echoue');
     err.style.display = 'block';
-    btn.disabled = false; btn.textContent = 'Payer';
+    btn.disabled = false; btn.textContent = T('cat_payer');
     return;
   }
   document.getElementById('modal-commande').classList.remove('show');
-  alert('✅ Paiement confirmé ! ' + escHtml(DATA.artisan.nom_entreprise) + ' va préparer votre commande.');
+  alert(T('cat_paiement_confirme') + escHtml(DATA.artisan.nom_entreprise) + T('cat_va_preparer_commande'));
 }
 
 function carteProduit(p) {
   var promo = p.prix != null && p.promo_pct ? Math.round(p.prix * (1 - p.promo_pct / 100) * 100) / 100 : null;
   var badgeCoin = p.est_nouveaute
-    ? '<span class="badge-nouveaute">✨ Nouveau</span>'
-    : (p.est_phare ? '<span class="badge-phare">⭐ Best-seller</span>' : '');
+    ? '<span class="badge-nouveaute">✨ ' + T('cat_nouveau') + '</span>'
+    : (p.est_phare ? '<span class="badge-phare">⭐ ' + T('cat_bestseller') + '</span>' : '');
   var photo = p.url_photo
     ? '<img src="' + escHtml(p.url_photo) + '" alt="' + escHtml(p.nom) + '" loading="lazy">'
     : '<div class="photo-vide">📦</div>';
@@ -356,8 +357,8 @@ function carteProduit(p) {
       '<div class="produit-nom">' + escHtml(p.nom) + '</div>' +
       (p.description ? '<div class="produit-desc">' + escHtml(p.description) + '</div>' : '') +
       prixHtml +
-      (p.type === 'sur_commande' && p.delai_preparation ? '<div class="delai-sur-commande">⏱️ Sur commande — ' + escHtml(p.delai_preparation) + '</div>' : '') +
-      '<button class="btn-commander" onclick="ajouterAuPanier(' + jsAttr(p.id) + ')" id="btn-add-' + p.id + '">Ajouter au panier</button>' +
+      (p.type === 'sur_commande' && p.delai_preparation ? '<div class="delai-sur-commande">⏱️ ' + T('cat_sur_commande') + ' — ' + escHtml(p.delai_preparation) + '</div>' : '') +
+      '<button class="btn-commander" onclick="ajouterAuPanier(' + jsAttr(p.id) + ')" id="btn-add-' + p.id + '">' + T('cat_ajouter_panier') + '</button>' +
     '</div>' +
   '</div>';
 }
@@ -368,20 +369,29 @@ function render() {
     ? '<img class="avatar" src="' + escHtml(a.photo_profil_url) + '" alt="">'
     : '<div class="avatar">' + initiales(a.nom_entreprise) + '</div>';
 
+  var selecteurLangue =
+    '<div style="display:flex;gap:6px;">' +
+      ['fr', 'en', 'es'].map(function(code) {
+        var actif = AT_LANG === code;
+        return '<button onclick="changerLangueCatalogue(' + jsAttr(code) + ')" style="padding:4px 9px;border-radius:6px;border:1px solid ' + (actif ? 'var(--ac)' : 'var(--brd)') + ';background:' + (actif ? 'var(--ac)' : 'transparent') + ';color:' + (actif ? '#fff' : 'var(--mu)') + ';font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;">' + code + '</button>';
+      }).join('') +
+    '</div>';
+
   var html =
     '<header><div class="wrap header-inner">' + photo +
-      '<div>' +
-        '<div class="boutique-nom">' + escHtml(a.nom_entreprise) + (a.verifie ? '<span class="badge-verifie">✅ Vérifié</span>' : '') + '</div>' +
+      '<div style="flex:1;">' +
+        '<div class="boutique-nom">' + escHtml(a.nom_entreprise) + (a.verifie ? '<span class="badge-verifie">✅ ' + T('cat_verifie') + '</span>' : '') + '</div>' +
         '<div class="boutique-meta">📍 ' + escHtml(a.commune) + '</div>' +
       '</div>' +
+      selecteurLangue +
     '</div>' +
-    (a.code_promo ? '<div class="wrap"><div class="promo-bandeau">🎁 Code promo : <span class="promo-code">' + escHtml(a.code_promo) + '</span></div></div>' : '') +
+    (a.code_promo ? '<div class="wrap"><div class="promo-bandeau">🎁 ' + T('cat_code_promo') + ' <span class="promo-code">' + escHtml(a.code_promo) + '</span></div></div>' : '') +
     '</header>' +
     '<div class="wrap">';
 
   var nouveautes = DATA.produits.filter(function(p) { return p.est_nouveaute; });
   if (nouveautes.length) {
-    html += '<h2 class="section-titre">✨ Nouveautés</h2><div class="grille">' + nouveautes.map(carteProduit).join('') + '</div>';
+    html += '<h2 class="section-titre">✨ ' + T('cat_nouveautes') + '</h2><div class="grille">' + nouveautes.map(carteProduit).join('') + '</div>';
   }
 
   if (DATA.produits.length) {
@@ -390,13 +400,22 @@ function render() {
     var phares = DATA.produits.filter(function(p) { return p.est_phare; });
     var idsPhares = {}; phares.forEach(function(p) { idsPhares[p.id] = true; });
     var reste = DATA.produits.filter(function(p) { return !idsPhares[p.id]; });
-    html += '<h2 class="section-titre">Tous les produits</h2><div class="grille">' + phares.concat(reste).map(carteProduit).join('') + '</div>';
+    html += '<h2 class="section-titre">' + T('cat_tous_produits') + '</h2><div class="grille">' + phares.concat(reste).map(carteProduit).join('') + '</div>';
   } else {
-    html += '<p style="color:var(--mu);padding:40px 0;text-align:center;">Aucun produit pour l\'instant.</p>';
+    html += '<p style="color:var(--mu);padding:40px 0;text-align:center;">' + T('cat_aucun_produit') + '</p>';
   }
 
   html += '</div>';
   document.getElementById('racine').innerHTML = html;
+}
+
+function changerLangueCatalogue(code) {
+  AT_LANG = code;
+  localStorage.setItem('at_lang', code);
+  if (DATA) render();
+  if (typeof appliquerTraductionsStatiques === 'function') appliquerTraductionsStatiques();
+  renderPanier();
+  majBadgePanier();
 }
 
 (async function init() {
@@ -404,7 +423,7 @@ function render() {
   majBadgePanier();
   var slug = new URLSearchParams(location.search).get('s');
   if (!slug) {
-    document.getElementById('racine').innerHTML = '<div class="etat-page"><h1>Lien invalide</h1><p>Ce lien de boutique est incomplet.</p></div>';
+    document.getElementById('racine').innerHTML = '<div class="etat-page"><h1>' + T('cat_lien_invalide') + '</h1><p>' + T('cat_lien_incomplet') + '</p></div>';
     return;
   }
   try {
@@ -416,7 +435,7 @@ function render() {
     DATA = data;
     render();
   } catch (e) {
-    document.getElementById('racine').innerHTML = '<div class="etat-page"><h1>Boutique introuvable</h1><p>' + escHtml(e.message) + '</p></div>';
+    document.getElementById('racine').innerHTML = '<div class="etat-page"><h1>' + T('cat_boutique_introuvable') + '</h1><p>' + escHtml(e.message) + '</p></div>';
   }
 })();
 </script>
