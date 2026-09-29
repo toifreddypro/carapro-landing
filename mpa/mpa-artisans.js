@@ -1643,7 +1643,7 @@ const PLAFOND_MICRO_BIC_SERVICES = 77700;
 // publique ; un client "manuel" a été ajouté par l'artisan lui-même et ne compte jamais ici.
 // Même logique marginale que côté Ventes (creer-paiement-commande.ts), pour ne jamais créer
 // d'effet de seuil brutal : seule la part au-dessus du seuil est concernée.
-const SEUIL_GRATUIT_PRESTATIONS_EUROS = 300;
+const SEUIL_GRATUIT_PRESTATIONS_EUROS = 200;
 const DELAI_GRACE_PRESTATION_JOURS = 7; // au-delà, une intervention "Planifiée" non soldée bloque la suite
 
 function calculerPartAuDessusDuSeuil(montantCentimes, dejaCentimes, seuilCentimes) {
@@ -2656,7 +2656,7 @@ function renderEncartCartePrestations() {
   } else {
     zone.innerHTML =
       '<div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.3);border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
-        '<div style="flex:1;min-width:220px;font-size:12.5px;color:var(--mu2);">💳 Aucune carte enregistrée — nécessaire uniquement si vous dépassez le seuil gratuit de 300 €/mois sur vos clients CaraLink.</div>' +
+        '<div style="flex:1;min-width:220px;font-size:12.5px;color:var(--mu2);">💳 Aucune carte enregistrée — nécessaire uniquement si vous dépassez le seuil gratuit de 200 €/mois sur vos clients CaraLink.</div>' +
         '<button onclick="ouvrirCartePrestations()" style="flex-shrink:0;padding:9px 16px;border-radius:8px;border:none;background:#3b82f6;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;">Enregistrer une carte →</button>' +
       '</div>';
   }
@@ -2704,7 +2704,7 @@ async function confirmerCartePrestations() {
     _artisan.carte_prestations_enregistree = true;
     fermerModale('modal-carte-prestations');
     renderEncartCartePrestations();
-    alert('✅ Carte enregistrée. Elle ne sera débitée que si vos prestations trouvées via CaraLink dépassent 300 € dans un mois.');
+    alert('✅ Carte enregistrée. Elle ne sera débitée que si vos prestations trouvées via CaraLink dépassent 200 € dans un mois.');
   } catch (e) {
     err.textContent = e.message;
     err.style.display = 'block';

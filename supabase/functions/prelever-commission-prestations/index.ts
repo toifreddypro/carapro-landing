@@ -29,7 +29,7 @@ const corsHeaders = {
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const ADMIN_EMAIL = "toifreddypro@gmail.com";
 const TAUX_COMMISSION = 0.07;
-const SEUIL_GRATUIT_EUROS = 300; // même seuil que côté Ventes — à garder aligné si on le change un jour
+const SEUIL_GRATUIT_EUROS = 200; // même seuil que côté Ventes — à garder aligné si on le change un jour
 const MINIMUM_STRIPE_CENTIMES = 50; // Stripe refuse tout prélèvement en dessous de 0,50€
 
 function json(payload: unknown, status = 200): Response {
