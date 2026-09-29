@@ -10,6 +10,12 @@
 //
 // Taux de commission à ajuster ici — décidé à 7% le 25/09, à revoir
 // une fois qu'il y a du vrai volume pour voir comment ça se comporte.
+//
+// Modèle "gratuit sous un seuil" (28/09) : chaque mois, les premiers SEUIL_GRATUIT_EUROS
+// facturés en ligne via CaraLink par un artisan ne sont PAS commissionnés — seule la part
+// qui dépasse ce seuil l'est, à TAUX_COMMISSION. Calcul marginal (pas d'effet de seuil brutal) :
+// une commande qui chevauche le seuil n'est commissionnée QUE sur sa portion au-dessus.
+// Objectif : un petit mois (quelques dizaines d'euros) ne coûte plus rien à l'artisan.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -21,6 +27,42 @@ const corsHeaders = {
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const TAUX_COMMISSION = 0.07; // 7%
+const SEUIL_GRATUIT_EUROS = 200; // seuil mensuel — aligné sur celui des Prestations (28/09)
+
+// Calcul pur, testé isolément (voir la suite de tests fournie à part).
+// Tout en centimes pour éviter les erreurs d'arrondi. `dejaFactureCentimes` = ce que
+// l'artisan a déjà facturé en ligne CE MOIS-CI (net des remboursements), avant cette commande.
+function calculerCommissionAvecSeuil(
+  montantCommandeCentimes: number,
+  dejaFactureCentimes: number,
+  seuilCentimes: number,
+  taux: number,
+): { commissionCentimes: number; montantSousLeSeuilCentimes: number; montantCommissionneCentimes: number } {
+  const placeRestanteSousLeSeuil = Math.max(0, seuilCentimes - dejaFactureCentimes);
+  const montantSousLeSeuilCentimes = Math.min(montantCommandeCentimes, placeRestanteSousLeSeuil);
+  const montantCommissionneCentimes = montantCommandeCentimes - montantSousLeSeuilCentimes;
+  const commissionCentimes = Math.round(montantCommissionneCentimes * taux);
+  return { commissionCentimes, montantSousLeSeuilCentimes, montantCommissionneCentimes };
+}
+
+// CA net déjà facturé en ligne par l'artisan depuis le 1er du mois (UTC), remboursements déduits.
+// Une commande totalement remboursée compte donc pour 0€ ; une commande partiellement remboursée
+// ne compte que pour ce qu'il en reste.
+async function dejaFactureCeMoisCentimes(sb: any, artisanId: string): Promise<number> {
+  const maintenant = new Date();
+  const debutMoisISO = new Date(Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth(), 1)).toISOString();
+  const { data, error } = await sb.from("commandes_catalogue")
+    .select("montant_total, montant_rembourse")
+    .eq("artisan_id", artisanId)
+    .in("paiement_statut", ["paye", "partiellement_rembourse", "rembourse"])
+    .gte("created_at", debutMoisISO);
+  if (error) throw error;
+  const totalCentimes = (data || []).reduce((somme: number, c: any) => {
+    const net = Number(c.montant_total || 0) - Number(c.montant_rembourse || 0);
+    return somme + Math.round(Math.max(0, net) * 100);
+  }, 0);
+  return totalCentimes;
+}
 
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -68,7 +110,10 @@ Deno.serve(async (req: Request) => {
     }
 
     const montantTotal = Math.round(articleInfos.prix * commande.quantite * 100); // centimes
-    const commission = Math.round(montantTotal * TAUX_COMMISSION);
+    const dejaFacture = await dejaFactureCeMoisCentimes(sb, commande.artisan_id);
+    const { commissionCentimes: commission } = calculerCommissionAvecSeuil(
+      montantTotal, dejaFacture, SEUIL_GRATUIT_EUROS * 100, TAUX_COMMISSION,
+    );
 
     const intent = await stripeCall("payment_intents", {
       amount: String(montantTotal),
