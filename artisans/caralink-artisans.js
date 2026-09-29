@@ -581,7 +581,7 @@ function buildProfilHTML(data) {
 
   var pharesHtml = data.produits_phares.length
     ? '<div style="font-weight:700;margin:18px 0 10px;">⭐ Les produits phares</div>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">' +
+      '<div class="phares-grille" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">' +
         data.produits_phares.map(function(p) {
           var prixRemise = p.prix != null && p.promo_pct ? Math.round(p.prix * (1 - p.promo_pct / 100) * 100) / 100 : null;
           var photo = p.url_photo
