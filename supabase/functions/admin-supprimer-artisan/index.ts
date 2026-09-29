@@ -45,7 +45,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => null);
     if (!body?.user_id) return json({ error: "user_id manquant." }, 400);
 
-    const { data, error } = await sbAdmin.rpc("supprimer_compte_artisan", { p_user_id: body.user_id });
+    const { data, error } = await sbAdmin.rpc("supprimer_compte_artisan", { p_user_id: body.user_id, p_admin_user_id: userData.user.id });
     if (error) throw error;
 
     return json(data);
