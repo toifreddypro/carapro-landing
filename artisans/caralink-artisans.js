@@ -516,7 +516,7 @@ async function chargerApercuCarte(id) {
           : '<div class="phare-mini phare-mini-vide" title="' + escHtml(p.nom) + '">📦</div>';
       }).join('');
       var lienBoutique = data.slug_catalogue
-        ? '<a href="catalogue.html?s=' + encodeURIComponent(data.slug_catalogue) + '" class="phares-lien" onclick="event.stopPropagation();">' + escHtml(T('phares_voir_boutique')) + ' →</a>'
+        ? '<a href="catalogue.html?s=' + encodeURIComponent(data.slug_catalogue) + '" class="phares-lien" target="_blank" rel="noopener" onclick="event.stopPropagation();">' + escHtml(T('phares_voir_boutique')) + ' →</a>'
         : '';
       var promo = data.code_promo
         ? '<span class="phares-code-promo">🎁 ' + escHtml(data.code_promo) + '</span>'
@@ -598,7 +598,7 @@ function buildProfilHTML(data) {
           '</div>';
         }).join('') +
       '</div>' +
-      (data.artisan.slug_catalogue ? '<a href="catalogue.html?s=' + encodeURIComponent(data.artisan.slug_catalogue) + '" style="display:block;text-align:center;margin-top:12px;font-size:12.5px;font-weight:700;color:var(--ac,#B5502F);text-decoration:none;">Voir toute la boutique →</a>' : '') +
+      (data.artisan.slug_catalogue ? '<a href="catalogue.html?s=' + encodeURIComponent(data.artisan.slug_catalogue) + '" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:12px;font-size:12.5px;font-weight:700;color:var(--ac,#B5502F);text-decoration:none;">Voir toute la boutique →</a>' : '') +
       (data.artisan.code_promo ? '<div style="text-align:center;margin-top:8px;font-family:monospace;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:7px;background:rgba(181,80,47,.08);color:var(--ac,#B5502F);border:1px dashed var(--ac,#B5502F);display:inline-block;">🎁 ' + escHtml(data.artisan.code_promo) + '</div>' : '')
     : '';
 

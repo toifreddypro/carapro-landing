@@ -84,7 +84,10 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
       </div>
       <div class="field">
         <label for="f-password">Mot de passe</label>
-        <input type="password" id="f-password" required minlength="8" placeholder="8 caractères minimum">
+        <div style="position:relative;">
+          <input type="password" id="f-password" required minlength="8" placeholder="8 caractères minimum" style="width:100%;padding-right:40px;">
+          <button type="button" onclick="basculerMotDePasse('f-password', this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:4px;color:var(--mu,#888);" title="Afficher le mot de passe">👁️</button>
+        </div>
       </div>
     </div>
 
@@ -191,6 +194,14 @@ function rendreWidgetResumeSiPret() {
 }
 
 var _fichierChoisi = null;
+
+function basculerMotDePasse(id, btn) {
+  var champ = document.getElementById(id);
+  var masque = champ.type === 'password';
+  champ.type = masque ? 'text' : 'password';
+  btn.textContent = masque ? '🙈' : '👁️';
+  btn.title = masque ? 'Masquer le mot de passe' : 'Afficher le mot de passe';
+}
 
 async function chargerSecteurs() {
   var sel = document.getElementById('f-secteur');

@@ -41,10 +41,27 @@ main{flex:1;display:flex;align-items:center;justify-content:center;padding:20px;
     <div id="err" class="err"></div>
     <form onsubmit="event.preventDefault();seConnecter();">
       <div class="field"><label for="f-email">Email</label><input type="email" id="f-email" required></div>
-      <div class="field"><label for="f-password">Mot de passe</label><input type="password" id="f-password" required></div>
+      <div class="field"><label for="f-password">Mot de passe</label>
+        <div style="position:relative;">
+          <input type="password" id="f-password" required style="width:100%;padding-right:40px;">
+          <button type="button" onclick="basculerMotDePasse('f-password', this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:4px;color:var(--mute,#888);" title="Afficher le mot de passe">👁️</button>
+        </div>
+      </div>
       <button type="submit" class="btn" id="btn">Se connecter</button>
     </form>
+    <div class="foot"><a href="#" onclick="ouvrirMotDePasseOublie();return false;" style="color:var(--mute);">Mot de passe oublié ?</a></div>
     <div class="foot">Pas encore de profil ? <a href="/artisans/inscription.html">Inscrivez-vous</a></div>
+  </div>
+
+  <div class="card" id="carte-oubli" style="display:none;margin-top:16px;">
+    <h1 style="font-size:17px;">Réinitialiser le mot de passe</h1>
+    <p>Indiquez votre email — vous recevrez un lien pour choisir un nouveau mot de passe.</p>
+    <div id="err-oubli" class="err"></div>
+    <div id="ok-oubli" class="err" style="background:rgba(15,157,120,.08);border-color:rgba(15,157,120,.3);color:#0f9d78;"></div>
+    <form onsubmit="event.preventDefault();envoyerReinitialisation();">
+      <div class="field"><label for="f-email-oubli">Email</label><input type="email" id="f-email-oubli" required></div>
+      <button type="submit" class="btn" id="btn-oubli">Envoyer le lien</button>
+    </form>
   </div>
 </main>
 <script>
@@ -59,6 +76,42 @@ function destinationApresConnexion() {
   var params = new URLSearchParams(window.location.search);
   var next = params.get('next');
   return next || 'https://caralink.app/mpa/';
+}
+
+function ouvrirMotDePasseOublie() {
+  document.getElementById('carte-oubli').style.display = 'block';
+  document.getElementById('err-oubli').classList.remove('show');
+  document.getElementById('ok-oubli').classList.remove('show');
+}
+
+function basculerMotDePasse(id, btn) {
+  var champ = document.getElementById(id);
+  var masque = champ.type === 'password';
+  champ.type = masque ? 'text' : 'password';
+  btn.textContent = masque ? '🙈' : '👁️';
+  btn.title = masque ? 'Masquer le mot de passe' : 'Afficher le mot de passe';
+}
+
+async function envoyerReinitialisation() {
+  var email = document.getElementById('f-email-oubli').value.trim();
+  var err = document.getElementById('err-oubli');
+  var ok = document.getElementById('ok-oubli');
+  var btn = document.getElementById('btn-oubli');
+  err.classList.remove('show'); ok.classList.remove('show');
+  btn.disabled = true; btn.textContent = 'Envoi…';
+
+  try {
+    var res = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://caralink.app/artisans/reinitialiser-mot-de-passe.html',
+    });
+    if (res.error) throw new Error(res.error.message);
+    ok.textContent = 'Email envoyé — vérifiez votre boîte de réception (et vos spams).';
+    ok.classList.add('show');
+  } catch(e) {
+    err.textContent = 'Erreur : ' + e.message;
+    err.classList.add('show');
+  }
+  btn.disabled = false; btn.textContent = 'Envoyer le lien';
 }
 
 async function seConnecter() {
