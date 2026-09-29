@@ -94,7 +94,7 @@ Deno.serve(async (req: Request) => {
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { data: commande, error: errC } = await sb.from("commandes_catalogue")
-      .select("id, artisan_id, nom_article, quantite, paiement_statut, artisans(stripe_connect_account_id, stripe_connect_statut, nom_entreprise), artisans_catalogue(prix)")
+      .select("id, artisan_id, catalogue_id, nom_article, quantite, paiement_statut, artisans(stripe_connect_account_id, stripe_connect_statut, nom_entreprise), artisans_catalogue(prix)")
       .eq("id", commande_id).maybeSingle();
     if (errC) throw errC;
     if (!commande) return json({ error: "Commande introuvable." }, 404);
@@ -105,11 +105,28 @@ Deno.serve(async (req: Request) => {
     if (!artisanInfos?.stripe_connect_account_id || artisanInfos.stripe_connect_statut !== "actif") {
       return json({ error: "Cet artisan n'a pas encore activé les paiements en ligne — le paiement se fait directement avec lui pour l'instant." }, 400);
     }
-    if (articleInfos?.prix == null) {
-      return json({ error: "Cet article n'a plus de prix défini." }, 400);
-    }
 
-    const montantTotal = Math.round(articleInfos.prix * commande.quantite * 100); // centimes
+    // Commande panier (plusieurs lignes, catalogue_id de la commande = null) : le prix de
+    // chaque article a déjà été figé à la commande (soumettre-commande-panier.ts) — on
+    // additionne ces lignes, on ne retourne JAMAIS consulter le prix catalogue actuel de
+    // l'article (il a pu changer depuis). Sinon (commande "un produit", flux existant) :
+    // comportement inchangé, prix repris du catalogue au moment du paiement.
+    let montantTotal: number;
+    let descriptionStripe: string;
+    if (commande.catalogue_id != null) {
+      if (articleInfos?.prix == null) {
+        return json({ error: "Cet article n'a plus de prix défini." }, 400);
+      }
+      montantTotal = Math.round(articleInfos.prix * commande.quantite * 100); // centimes
+      descriptionStripe = `${commande.nom_article} × ${commande.quantite} — ${artisanInfos.nom_entreprise}`;
+    } else {
+      const { data: lignes, error: errL } = await sb.from("commandes_catalogue_lignes")
+        .select("prix_unitaire, quantite").eq("commande_id", commande_id);
+      if (errL) throw errL;
+      if (!lignes || !lignes.length) return json({ error: "Cette commande n'a aucun article." }, 400);
+      montantTotal = Math.round(lignes.reduce((s: number, l: any) => s + l.prix_unitaire * l.quantite, 0) * 100);
+      descriptionStripe = `${commande.nom_article} — ${artisanInfos.nom_entreprise}`;
+    }
     const dejaFacture = await dejaFactureCeMoisCentimes(sb, commande.artisan_id);
     const { commissionCentimes: commission } = calculerCommissionAvecSeuil(
       montantTotal, dejaFacture, SEUIL_GRATUIT_EUROS * 100, TAUX_COMMISSION,
@@ -122,7 +139,7 @@ Deno.serve(async (req: Request) => {
       "application_fee_amount": String(commission),
       "transfer_data[destination]": artisanInfos.stripe_connect_account_id,
       "metadata[commande_id]": commande_id,
-      "description": `${commande.nom_article} × ${commande.quantite} — ${artisanInfos.nom_entreprise}`,
+      "description": descriptionStripe,
     });
 
     await sb.from("commandes_catalogue").update({

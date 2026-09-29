@@ -579,20 +579,27 @@ function buildProfilHTML(data) {
       '</div>'
     : '';
 
-  var catalogueHtml = data.catalogue.length
-    ? '<div style="font-weight:700;margin:18px 0 10px;">Produits en vente</div>' +
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;">' +
-        data.catalogue.map(function(c) {
-          var photo = c.url_photo
-            ? '<img src="' + escHtml(c.url_photo) + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;" alt="' + escHtml(c.nom) + '">'
+  var pharesHtml = data.produits_phares.length
+    ? '<div style="font-weight:700;margin:18px 0 10px;">⭐ Les produits phares</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">' +
+        data.produits_phares.map(function(p) {
+          var prixRemise = p.prix != null && p.promo_pct ? Math.round(p.prix * (1 - p.promo_pct / 100) * 100) / 100 : null;
+          var photo = p.url_photo
+            ? '<div style="position:relative;"><img src="' + escHtml(p.url_photo) + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;" alt="' + escHtml(p.nom) + '">' + (p.promo_pct ? '<span style="position:absolute;top:6px;right:6px;background:#1a1a1a;color:#fff;font-size:10.5px;font-weight:700;padding:3px 7px;border-radius:20px;">-' + p.promo_pct + '%</span>' : '') + '</div>'
             : '<div style="width:100%;aspect-ratio:1;background:var(--line,#eee);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;">📦</div>';
           return '<div>' + photo +
-            '<div style="font-size:12px;margin-top:5px;">' + escHtml(c.nom) + '</div>' +
-            (c.prix != null ? '<div style="font-size:12.5px;font-weight:700;color:var(--ac,#B5502F);">' + c.prix + ' €</div>' : '') +
-            '<button onclick="ouvrirModalCommande(' + jsAttr(c.id) + ',' + jsAttr(c.nom) + ',' + (data.artisan.stripe_connect_statut === 'actif') + ')" style="width:100%;margin-top:5px;padding:5px;border-radius:6px;border:1px solid var(--ac,#B5502F);background:transparent;color:var(--ac,#B5502F);font-size:11px;font-weight:700;cursor:pointer;">Commander</button>' +
+            '<div style="font-size:12.5px;font-weight:600;margin-top:6px;">' + escHtml(p.nom) + '</div>' +
+            (p.description ? '<div style="font-size:11.5px;color:var(--mu2,#777);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">' + escHtml(p.description) + '</div>' : '') +
+            (p.prix != null ? '<div style="margin-top:4px;">' +
+              '<span style="font-size:13.5px;font-weight:700;color:var(--ac,#B5502F);">' + (prixRemise != null ? prixRemise : p.prix) + ' €</span>' +
+              (prixRemise != null ? ' <span style="font-size:11px;color:var(--mu,#999);text-decoration:line-through;">' + p.prix + ' €</span>' : '') +
+            '</div>' : '') +
+            '<button onclick="ouvrirModalCommande(' + jsAttr(p.id) + ',' + jsAttr(p.nom) + ',' + (data.artisan.stripe_connect_statut === 'actif') + ')" style="width:100%;margin-top:6px;padding:6px;border-radius:6px;border:1px solid var(--ac,#B5502F);background:transparent;color:var(--ac,#B5502F);font-size:11px;font-weight:700;cursor:pointer;">Commander</button>' +
           '</div>';
         }).join('') +
-      '</div>'
+      '</div>' +
+      (data.artisan.slug_catalogue ? '<a href="catalogue.html?s=' + encodeURIComponent(data.artisan.slug_catalogue) + '" style="display:block;text-align:center;margin-top:12px;font-size:12.5px;font-weight:700;color:var(--ac,#B5502F);text-decoration:none;">Voir toute la boutique →</a>' : '') +
+      (data.artisan.code_promo ? '<div style="text-align:center;margin-top:8px;font-family:monospace;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:7px;background:rgba(181,80,47,.08);color:var(--ac,#B5502F);border:1px dashed var(--ac,#B5502F);display:inline-block;">🎁 ' + escHtml(data.artisan.code_promo) + '</div>' : '')
     : '';
 
   var avisHtml = data.avis.length
@@ -620,7 +627,7 @@ function buildProfilHTML(data) {
       (a.bio ? '<p style="font-size:14px;line-height:1.6;margin-bottom:18px;">' + escHtml(a.bio) + '</p>' : '') +
       '<div style="font-weight:700;margin-bottom:6px;">' + T('services_titre') + '</div>' + servicesHtml +
       photosHtml +
-      catalogueHtml +
+      pharesHtml +
       '<div id="dispo-zone-' + a.id + '" style="margin:16px 0;"><div style="font-size:12.5px;color:var(--mu,#999);">⏳ Vérification des disponibilités…</div></div>' +
       '<div style="font-weight:700;margin:18px 0 6px;">' + T('avis_titre') + (data.note_moyenne ? ' — ' + data.note_moyenne + '/5 (' + data.nb_avis + ')' : '') + '</div>' + avisHtml +
       '<button onclick="ouvrirModalDevis(' + jsAttr(a.id) + ',' + jsAttr(a.nom_entreprise) + ',' + jsAttr(a.secteur) + ')" style="width:100%;margin-top:18px;padding:13px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">' + T('demander_devis') + '</button>' +

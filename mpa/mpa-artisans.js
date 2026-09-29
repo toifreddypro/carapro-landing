@@ -2559,6 +2559,7 @@ async function supprimerCatalogue(id) {
 // ════════════════════════════════════════
 
 var _commandesCache = [];
+var _lignesCommandesCache = {};
 var _interventionsAVenirCache = [];
 var LABELS_STATUT_COMMANDE = { nouvelle: '🆕 Nouvelle', confirmee: '✅ Confirmée', prete: '📦 Prête', terminee: '🏁 Terminée', annulee: '⛔ Annulée' };
 var CYCLE_STATUT_COMMANDE = { nouvelle: 'confirmee', confirmee: 'prete', prete: 'terminee' };
@@ -2569,6 +2570,17 @@ async function chargerCommandes() {
   var { data, error } = await sb.from('commandes_catalogue').select('*').eq('artisan_id', _artisan.id).order('created_at', { ascending: false });
   if (error) { zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>'; return; }
   _commandesCache = data || [];
+
+  // Détail des commandes panier (plusieurs articles) — chargé en une seule requête groupée.
+  _lignesCommandesCache = {};
+  var idsPanier = _commandesCache.filter(function(c) { return c.catalogue_id == null; }).map(function(c) { return c.id; });
+  if (idsPanier.length) {
+    var { data: lignes } = await sb.from('commandes_catalogue_lignes').select('commande_id, nom_article, prix_unitaire, quantite').in('commande_id', idsPanier);
+    (lignes || []).forEach(function(l) {
+      if (!_lignesCommandesCache[l.commande_id]) _lignesCommandesCache[l.commande_id] = [];
+      _lignesCommandesCache[l.commande_id].push(l);
+    });
+  }
 
   var aujourdhui = new Date().toISOString().slice(0, 10);
   var { data: aVenir } = await sb.from('mpa_artisans_interventions')
@@ -2638,10 +2650,19 @@ function renderCommandes() {
       }
     }
 
+    var lignesPanier = _lignesCommandesCache[c.id];
+    var enTeteCommande = (c.catalogue_id == null && lignesPanier && lignesPanier.length)
+      ? '<div><strong>Commande — ' + lignesPanier.length + ' article' + (lignesPanier.length > 1 ? 's' : '') + '</strong>' +
+          '<ul style="margin:4px 0 0;padding-left:18px;font-size:12.5px;color:var(--mu2);">' +
+            lignesPanier.map(function(l) { return '<li>' + l.quantite + ' × ' + escHtml(l.nom_article) + ' — ' + eurosFR(l.prix_unitaire * l.quantite) + '</li>'; }).join('') +
+          '</ul>' +
+        '</div>'
+      : '<div><strong>' + escHtml(c.nom_article) + '</strong> × ' + c.quantite + '</div>';
+
     return '<div style="border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">' +
-        '<div><strong>' + escHtml(c.nom_article) + '</strong> × ' + c.quantite + '</div>' +
-        '<span style="font-size:11px;font-weight:700;color:var(--mu2);">' + (LABELS_STATUT_COMMANDE[c.statut] || c.statut) + '</span>' +
+        enTeteCommande +
+        '<span style="font-size:11px;font-weight:700;color:var(--mu2);flex-shrink:0;margin-left:10px;">' + (LABELS_STATUT_COMMANDE[c.statut] || c.statut) + '</span>' +
       '</div>' +
       '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:3px;">' + modeTxt + '</div>' +
       '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:3px;">📅 Souhaitée le ' + dateTxt + '</div>' +

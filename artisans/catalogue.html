@@ -66,7 +66,24 @@
   .modal-actions button{flex:1;padding:11px;border-radius:9px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;}
   .btn-primary{border:none;background:var(--ac);color:#fff;}
   .btn-secondary{border:1px solid var(--brd);background:transparent;color:var(--tx);}
+
+  /* Panier */
+  .panier-flottant{position:fixed;bottom:20px;right:20px;z-index:900;background:var(--ac);color:#fff;border:none;border-radius:50px;padding:13px 20px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(181,80,47,.35);display:none;align-items:center;gap:8px;}
+  .panier-flottant.visible{display:inline-flex;}
+  .panier-badge{background:#fff;color:var(--ac);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;}
+  .ligne-panier{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--brd);}
+  .ligne-panier-photo{width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--inp);}
+  .ligne-panier-info{flex:1;min-width:0;}
+  .ligne-panier-nom{font-size:13.5px;font-weight:600;}
+  .ligne-panier-prix{font-size:12px;color:var(--mu);}
+  .qte-controle{display:flex;align-items:center;gap:6px;}
+  .qte-controle button{width:26px;height:26px;border-radius:6px;border:1px solid var(--brd);background:var(--inp);color:var(--tx);font-size:14px;font-weight:700;cursor:pointer;}
+  .qte-controle span{min-width:18px;text-align:center;font-size:13px;font-weight:600;}
+  .panier-total{display:flex;justify-content:space-between;align-items:baseline;padding:14px 0 4px;font-size:15px;font-weight:700;}
+  .panier-total span:last-child{color:var(--ac);font-family:'Bricolage Grotesque',sans-serif;font-size:19px;}
+  .panier-vider{font-size:12px;color:var(--mu);text-decoration:underline;cursor:pointer;background:none;border:none;padding:0;margin-top:8px;}
 </style>
+<script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
 
@@ -74,13 +91,29 @@
   <div class="etat-page"><h1>Chargement…</h1></div>
 </div>
 
+<button class="panier-flottant" id="btn-panier-flottant" onclick="ouvrirPanier()">
+  🛒 Mon panier <span class="panier-badge" id="panier-badge">0</span>
+</button>
+
+<div class="modal-overlay" id="modal-panier">
+  <div class="modal-box">
+    <h3>Mon panier</h3>
+    <div id="panier-lignes"></div>
+    <div class="panier-total"><span>Total</span><span id="panier-total-montant">0 €</span></div>
+    <button class="panier-vider" onclick="viderPanier()">Vider le panier</button>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="ouvrirModaleCommande()">Passer commande →</button>
+      <button class="btn-secondary" onclick="fermerModalePanier()">Continuer mes achats</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-commande">
   <div class="modal-box">
-    <h3 id="mc-titre">Commander</h3>
+    <h3 id="mc-titre">Vos coordonnées</h3>
     <div class="modal-field"><label>Votre nom</label><input type="text" id="mc-nom"></div>
     <div class="modal-field"><label>Téléphone</label><input type="tel" id="mc-tel"></div>
     <div class="modal-field"><label>Email (facultatif)</label><input type="email" id="mc-email"></div>
-    <div class="modal-field"><label>Quantité</label><input type="number" id="mc-qte" value="1" min="1"></div>
     <div class="modal-field">
       <label>Mode</label>
       <select id="mc-mode" onchange="document.getElementById('mc-adresse-bloc').style.display=this.value==='livraison'?'block':'none';">
@@ -96,8 +129,8 @@
     <div class="modal-field"><label>Notes (facultatif)</label><textarea id="mc-notes" rows="2"></textarea></div>
     <div id="mc-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:8px;"></div>
     <div class="modal-actions">
-      <button class="btn-primary" id="mc-btn-confirmer" onclick="confirmerCommande()">Confirmer</button>
-      <button class="btn-secondary" onclick="fermerModaleCommande()">Annuler</button>
+      <button class="btn-primary" id="mc-btn-confirmer" onclick="confirmerCommande()">Confirmer la commande</button>
+      <button class="btn-secondary" onclick="fermerModaleCommande()">Retour au panier</button>
     </div>
   </div>
 </div>
@@ -105,13 +138,200 @@
 <script>
 const SUPABASE_URL = 'https://uzgboxfxpxazhysusewv.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
+const STRIPE_PUBLIC_KEY = 'pk_live_51TWxxBJPTOXXy1ykTYLysvDCbnnJUXzqbc164Wif38u1g7BijiOLdUWKD8HPlQBX7he8K76aZNMUARo14yuQhzdQ000WVXdeEF';
 let DATA = null;
-let PRODUIT_EN_COURS = null;
+let PANIER = []; // [{ catalogue_id, nom, prix, quantite }] — prix déjà remisé si applicable
+let _stripeClient = null;
+let _stripeElements = null;
+let _dernierCommandeId = null;
 
 function escHtml(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function(m) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; }); }
+function jsAttr(v) { return "'" + String(v).replace(/'/g, "\\'") + "'"; }
 
 function initiales(nom) {
   return (nom || '').split(' ').filter(Boolean).slice(0, 2).map(function(w) { return w[0].toUpperCase(); }).join('');
+}
+
+// ── Panier : conservé en mémoire de session, pour survivre à un rechargement accidentel ──
+function sauverPanier() { try { sessionStorage.setItem('caralink-panier', JSON.stringify(PANIER)); } catch (e) {} }
+function chargerPanierSession() { try { var p = sessionStorage.getItem('caralink-panier'); if (p) PANIER = JSON.parse(p); } catch (e) {} }
+
+function prixEffectifProduit(p) { return p.promo_pct ? Math.round(p.prix * (1 - p.promo_pct / 100) * 100) / 100 : p.prix; }
+
+function ajouterAuPanier(produitId) {
+  var p = DATA.produits.find(function(x) { return x.id === produitId; });
+  if (!p) return;
+  var ligne = PANIER.find(function(l) { return l.catalogue_id === produitId; });
+  if (ligne) { ligne.quantite += 1; } else { PANIER.push({ catalogue_id: p.id, nom: p.nom, url_photo: p.url_photo, prix: prixEffectifProduit(p), quantite: 1 }); }
+  sauverPanier();
+  majBadgePanier();
+  var btn = document.getElementById('btn-add-' + produitId);
+  if (btn) { var txt = btn.textContent; btn.textContent = '✓ Ajouté'; setTimeout(function() { btn.textContent = txt; }, 900); }
+}
+
+function modifierQuantitePanier(produitId, delta) {
+  var ligne = PANIER.find(function(l) { return l.catalogue_id === produitId; });
+  if (!ligne) return;
+  ligne.quantite += delta;
+  if (ligne.quantite <= 0) PANIER = PANIER.filter(function(l) { return l.catalogue_id !== produitId; });
+  sauverPanier();
+  renderPanier();
+  majBadgePanier();
+}
+
+function viderPanier() {
+  if (!PANIER.length) return;
+  if (!confirm('Vider le panier ?')) return;
+  PANIER = [];
+  sauverPanier();
+  renderPanier();
+  majBadgePanier();
+}
+
+function totalPanier() { return PANIER.reduce(function(s, l) { return s + l.prix * l.quantite; }, 0); }
+function nbArticlesPanier() { return PANIER.reduce(function(s, l) { return s + l.quantite; }, 0); }
+
+function majBadgePanier() {
+  var btn = document.getElementById('btn-panier-flottant');
+  var badge = document.getElementById('panier-badge');
+  var n = nbArticlesPanier();
+  if (badge) badge.textContent = n;
+  if (btn) btn.classList.toggle('visible', n > 0);
+}
+
+function renderPanier() {
+  var zone = document.getElementById('panier-lignes');
+  if (!zone) return;
+  if (!PANIER.length) {
+    zone.innerHTML = '<p style="color:var(--mu);font-size:13px;padding:16px 0;text-align:center;">Votre panier est vide.</p>';
+  } else {
+    zone.innerHTML = PANIER.map(function(l) {
+      var photo = l.url_photo ? '<img src="' + escHtml(l.url_photo) + '" class="ligne-panier-photo">' : '<div class="ligne-panier-photo" style="display:flex;align-items:center;justify-content:center;">📦</div>';
+      return '<div class="ligne-panier">' + photo +
+        '<div class="ligne-panier-info"><div class="ligne-panier-nom">' + escHtml(l.nom) + '</div><div class="ligne-panier-prix">' + l.prix + ' € l\'unité</div></div>' +
+        '<div class="qte-controle">' +
+          '<button onclick="modifierQuantitePanier(' + jsAttr(l.catalogue_id) + ',-1)">−</button>' +
+          '<span>' + l.quantite + '</span>' +
+          '<button onclick="modifierQuantitePanier(' + jsAttr(l.catalogue_id) + ',1)">+</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+  document.getElementById('panier-total-montant').textContent = totalPanier().toFixed(2) + ' €';
+}
+
+function ouvrirPanier() { renderPanier(); document.getElementById('modal-panier').classList.add('show'); }
+function fermerModalePanier() { document.getElementById('modal-panier').classList.remove('show'); }
+
+function ouvrirModaleCommande() {
+  if (!PANIER.length) return;
+  fermerModalePanier();
+  document.getElementById('mc-nom').value = '';
+  document.getElementById('mc-tel').value = '';
+  document.getElementById('mc-email').value = '';
+  document.getElementById('mc-notes').value = '';
+  document.getElementById('mc-err').style.display = 'none';
+  document.getElementById('modal-commande').classList.add('show');
+}
+function fermerModaleCommande() { document.getElementById('modal-commande').classList.remove('show'); ouvrirPanier(); }
+
+async function confirmerCommande() {
+  var err = document.getElementById('mc-err');
+  var nom = document.getElementById('mc-nom').value.trim();
+  var tel = document.getElementById('mc-tel').value.trim();
+  if (!nom || !tel) { err.textContent = 'Nom et téléphone sont nécessaires.'; err.style.display = 'block'; return; }
+
+  var mode = document.getElementById('mc-mode').value;
+  var btn = document.getElementById('mc-btn-confirmer');
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/soumettre-commande-panier', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
+      body: JSON.stringify({
+        artisan_id: DATA.artisan.id,
+        lignes: PANIER.map(function(l) { return { catalogue_id: l.catalogue_id, quantite: l.quantite }; }),
+        client_nom: nom, client_telephone: tel, client_email: document.getElementById('mc-email').value.trim() || null,
+        mode: mode,
+        adresse_livraison: mode === 'livraison' ? document.getElementById('mc-adresse').value.trim() : null,
+        code_postal_livraison: mode === 'livraison' ? document.getElementById('mc-cp').value.trim() : null,
+        commune_livraison: mode === 'livraison' ? document.getElementById('mc-commune').value.trim() : null,
+        notes: document.getElementById('mc-notes').value.trim() || null,
+      }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    _dernierCommandeId = data.commande_id;
+    PANIER = [];
+    sauverPanier();
+    majBadgePanier();
+
+    if (DATA.artisan.paiement_actif) {
+      await afficherEtapePaiement(data.commande_id);
+    } else {
+      document.getElementById('modal-commande').classList.remove('show');
+      alert('✅ Commande envoyée ! ' + escHtml(DATA.artisan.nom_entreprise) + ' va vous recontacter.');
+    }
+  } catch (e) {
+    err.textContent = e.message;
+    err.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Confirmer la commande';
+  }
+}
+
+// ── Paiement en ligne (facultatif — le client peut toujours payer plus tard avec l'artisan) ──
+async function afficherEtapePaiement(commandeId) {
+  var boite = document.querySelector('#modal-commande .modal-box');
+  boite.innerHTML =
+    '<h3>✅ Commande enregistrée</h3>' +
+    '<p style="font-size:12.5px;color:var(--mu);margin-bottom:14px;">Réglez maintenant par carte pour la confirmer, ou payez plus tard directement avec l\'artisan.</p>' +
+    '<div id="paiement-element" style="margin-bottom:14px;"></div>' +
+    '<div id="paiement-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>' +
+    '<div class="modal-actions">' +
+      '<button class="btn-primary" id="btn-payer" disabled>Chargement…</button>' +
+      '<button class="btn-secondary" onclick="document.getElementById(\'modal-commande\').classList.remove(\'show\');alert(\'✅ Commande enregistrée. Vous réglerez directement avec l\\\'artisan.\');">Payer plus tard</button>' +
+    '</div>';
+
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/creer-paiement-commande', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commande_id: commandeId }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    if (!_stripeClient) _stripeClient = Stripe(STRIPE_PUBLIC_KEY);
+    _stripeElements = _stripeClient.elements({ clientSecret: data.client_secret });
+    _stripeElements.create('payment').mount('#paiement-element');
+
+    var btn = document.getElementById('btn-payer');
+    btn.textContent = 'Payer'; btn.disabled = false;
+    btn.onclick = confirmerPaiementCommande;
+  } catch (e) {
+    document.getElementById('paiement-err').textContent = 'Erreur : ' + e.message;
+    document.getElementById('paiement-err').style.display = 'block';
+    document.getElementById('btn-payer').style.display = 'none';
+  }
+}
+
+async function confirmerPaiementCommande() {
+  var btn = document.getElementById('btn-payer');
+  var err = document.getElementById('paiement-err');
+  err.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Paiement en cours…';
+
+  var { error } = await _stripeClient.confirmPayment({ elements: _stripeElements, redirect: 'if_required' });
+  if (error) {
+    err.textContent = error.message || 'Le paiement a échoué.';
+    err.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Payer';
+    return;
+  }
+  document.getElementById('modal-commande').classList.remove('show');
+  alert('✅ Paiement confirmé ! ' + escHtml(DATA.artisan.nom_entreprise) + ' va préparer votre commande.');
 }
 
 function carteProduit(p) {
@@ -137,12 +357,10 @@ function carteProduit(p) {
       (p.description ? '<div class="produit-desc">' + escHtml(p.description) + '</div>' : '') +
       prixHtml +
       (p.type === 'sur_commande' && p.delai_preparation ? '<div class="delai-sur-commande">⏱️ Sur commande — ' + escHtml(p.delai_preparation) + '</div>' : '') +
-      '<button class="btn-commander" onclick="ouvrirModaleCommande(' + jsAttr(p.id) + ')">Commander</button>' +
+      '<button class="btn-commander" onclick="ajouterAuPanier(' + jsAttr(p.id) + ')" id="btn-add-' + p.id + '">Ajouter au panier</button>' +
     '</div>' +
   '</div>';
 }
-
-function jsAttr(v) { return "'" + String(v).replace(/'/g, "\\'") + "'"; }
 
 function render() {
   var a = DATA.artisan;
@@ -181,59 +399,9 @@ function render() {
   document.getElementById('racine').innerHTML = html;
 }
 
-function ouvrirModaleCommande(produitId) {
-  PRODUIT_EN_COURS = DATA.produits.find(function(p) { return p.id === produitId; });
-  if (!PRODUIT_EN_COURS) return;
-  document.getElementById('mc-titre').textContent = 'Commander — ' + PRODUIT_EN_COURS.nom;
-  document.getElementById('mc-nom').value = '';
-  document.getElementById('mc-tel').value = '';
-  document.getElementById('mc-email').value = '';
-  document.getElementById('mc-qte').value = 1;
-  document.getElementById('mc-notes').value = '';
-  document.getElementById('mc-err').style.display = 'none';
-  document.getElementById('modal-commande').classList.add('show');
-}
-function fermerModaleCommande() { document.getElementById('modal-commande').classList.remove('show'); }
-
-async function confirmerCommande() {
-  var err = document.getElementById('mc-err');
-  var nom = document.getElementById('mc-nom').value.trim();
-  var tel = document.getElementById('mc-tel').value.trim();
-  if (!nom || !tel) { err.textContent = 'Nom et téléphone sont nécessaires.'; err.style.display = 'block'; return; }
-
-  var mode = document.getElementById('mc-mode').value;
-  var btn = document.getElementById('mc-btn-confirmer');
-  btn.disabled = true; btn.textContent = 'Envoi…';
-  try {
-    var res = await fetch(SUPABASE_URL + '/functions/v1/soumettre-commande', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
-      body: JSON.stringify({
-        artisan_id: DATA.artisan.id,
-        catalogue_id: PRODUIT_EN_COURS.id,
-        nom_article: PRODUIT_EN_COURS.nom,
-        quantite: parseInt(document.getElementById('mc-qte').value, 10) || 1,
-        client_nom: nom, client_telephone: tel, client_email: document.getElementById('mc-email').value.trim() || null,
-        mode: mode,
-        adresse_livraison: mode === 'livraison' ? document.getElementById('mc-adresse').value.trim() : null,
-        code_postal_livraison: mode === 'livraison' ? document.getElementById('mc-cp').value.trim() : null,
-        commune_livraison: mode === 'livraison' ? document.getElementById('mc-commune').value.trim() : null,
-        notes: document.getElementById('mc-notes').value.trim() || null,
-      }),
-    });
-    var data = await res.json();
-    if (data.error) throw new Error(data.error);
-    fermerModaleCommande();
-    alert('✅ Commande envoyée ! ' + escHtml(DATA.artisan.nom_entreprise) + ' va vous recontacter.');
-  } catch (e) {
-    err.textContent = e.message;
-    err.style.display = 'block';
-  } finally {
-    btn.disabled = false; btn.textContent = 'Confirmer';
-  }
-}
-
 (async function init() {
+  chargerPanierSession();
+  majBadgePanier();
   var slug = new URLSearchParams(location.search).get('s');
   if (!slug) {
     document.getElementById('racine').innerHTML = '<div class="etat-page"><h1>Lien invalide</h1><p>Ce lien de boutique est incomplet.</p></div>';
