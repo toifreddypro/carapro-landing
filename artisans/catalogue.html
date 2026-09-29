@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boutique — CaraLink Artisans</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:wght@600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f7f8fb;--panel:#ffffff;--brd:#e3eaf4;--b2:#c9d8ef;
+    --ac:#B5502F;--ac2:#B5502F;--tx:#13223c;--mu:#6b7c96;--mu2:#4a5c78;
+    --inp:#f6f9fe;--ok:#059669;--gold:#b45309;--danger:#dc2626;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);line-height:1.5;padding-bottom:60px;}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 20px;}
+
+  /* En-tête boutique */
+  header{background:var(--panel);border-bottom:1px solid var(--brd);padding:28px 0;margin-bottom:24px;}
+  .header-inner{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;flex-shrink:0;background:rgba(181,80,47,.1);color:var(--ac);display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:700;}
+  .boutique-nom{font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .boutique-meta{font-size:13.5px;color:var(--mu);margin-top:3px;}
+  .badge-verifie{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(5,150,105,.1);color:var(--ok);}
+
+  .promo-bandeau{background:rgba(181,80,47,.08);border:1px dashed var(--ac);border-radius:12px;padding:12px 18px;margin-top:18px;display:flex;align-items:center;gap:10px;font-size:14px;}
+  .promo-code{font-family:'JetBrains Mono',monospace;font-weight:700;background:var(--panel);border:1px solid var(--ac);border-radius:7px;padding:3px 10px;color:var(--ac);letter-spacing:.03em;}
+
+  h2.section-titre{font-family:'Bricolage Grotesque',sans-serif;font-size:19px;font-weight:700;margin:32px 0 16px;}
+
+  .grille{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+  @media(max-width:760px){.grille{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:480px){.grille{grid-template-columns:1fr;}}
+
+  .carte-produit{background:var(--panel);border:1px solid var(--brd);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;}
+  .photo-wrap{position:relative;aspect-ratio:1;background:var(--inp);}
+  .photo-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
+  .photo-vide{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;}
+  .badge-remise{position:absolute;top:10px;right:10px;background:#1a1a1a;color:#fff;font-size:12px;font-weight:700;padding:5px 10px;border-radius:20px;}
+  .badge-phare{position:absolute;top:10px;left:10px;background:var(--gold);color:#fff;font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:20px;}
+  .badge-nouveaute{position:absolute;top:10px;left:10px;background:var(--ok);color:#fff;font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:20px;}
+
+  .carte-corps{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1;}
+  .produit-nom{font-weight:700;font-size:15px;}
+  .produit-desc{font-size:12.5px;color:var(--mu);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;flex:1;}
+  .prix-ligne{display:flex;align-items:baseline;gap:8px;margin-top:4px;}
+  .prix-actuel{font-family:'Bricolage Grotesque',sans-serif;font-size:18px;font-weight:800;color:var(--ac);}
+  .prix-barre{font-size:13px;color:var(--mu);text-decoration:line-through;}
+  .btn-commander{margin-top:8px;width:100%;padding:10px;border-radius:9px;border:none;background:var(--ac);color:#fff;font-size:13.5px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;}
+  .btn-commander:hover{opacity:.92;}
+  .delai-sur-commande{font-size:11px;color:var(--mu);}
+
+  .etat-page{max-width:520px;margin:80px auto;text-align:center;padding:0 20px;color:var(--mu);}
+  .etat-page h1{font-family:'Bricolage Grotesque',sans-serif;font-size:20px;color:var(--tx);margin-bottom:10px;}
+
+  /* Modale commande (réutilise le principe existant : un produit à la fois pour l'instant) */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center;padding:16px;}
+  .modal-overlay.show{display:flex;}
+  .modal-box{background:var(--panel);border-radius:16px;padding:26px;max-width:420px;width:100%;max-height:88vh;overflow-y:auto;}
+  .modal-box h3{font-family:'Bricolage Grotesque',sans-serif;margin-bottom:14px;}
+  .modal-field{margin-bottom:12px;}
+  .modal-field label{display:block;font-size:12.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;}
+  .modal-field input,.modal-field select,.modal-field textarea{width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--inp);font-family:'Outfit',sans-serif;font-size:13.5px;color:var(--tx);}
+  .modal-actions{display:flex;gap:10px;margin-top:16px;}
+  .modal-actions button{flex:1;padding:11px;border-radius:9px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;}
+  .btn-primary{border:none;background:var(--ac);color:#fff;}
+  .btn-secondary{border:1px solid var(--brd);background:transparent;color:var(--tx);}
+</style>
+</head>
+<body>
+
+<div id="racine">
+  <div class="etat-page"><h1>Chargement…</h1></div>
+</div>
+
+<div class="modal-overlay" id="modal-commande">
+  <div class="modal-box">
+    <h3 id="mc-titre">Commander</h3>
+    <div class="modal-field"><label>Votre nom</label><input type="text" id="mc-nom"></div>
+    <div class="modal-field"><label>Téléphone</label><input type="tel" id="mc-tel"></div>
+    <div class="modal-field"><label>Email (facultatif)</label><input type="email" id="mc-email"></div>
+    <div class="modal-field"><label>Quantité</label><input type="number" id="mc-qte" value="1" min="1"></div>
+    <div class="modal-field">
+      <label>Mode</label>
+      <select id="mc-mode" onchange="document.getElementById('mc-adresse-bloc').style.display=this.value==='livraison'?'block':'none';">
+        <option value="retrait">Je viens chercher</option>
+        <option value="livraison">Livraison</option>
+      </select>
+    </div>
+    <div id="mc-adresse-bloc" style="display:none;">
+      <div class="modal-field"><label>Adresse</label><input type="text" id="mc-adresse"></div>
+      <div class="modal-field"><label>Code postal</label><input type="text" id="mc-cp"></div>
+      <div class="modal-field"><label>Commune</label><input type="text" id="mc-commune"></div>
+    </div>
+    <div class="modal-field"><label>Notes (facultatif)</label><textarea id="mc-notes" rows="2"></textarea></div>
+    <div id="mc-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:8px;"></div>
+    <div class="modal-actions">
+      <button class="btn-primary" id="mc-btn-confirmer" onclick="confirmerCommande()">Confirmer</button>
+      <button class="btn-secondary" onclick="fermerModaleCommande()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://uzgboxfxpxazhysusewv.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
+let DATA = null;
+let PRODUIT_EN_COURS = null;
+
+function escHtml(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function(m) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; }); }
+
+function initiales(nom) {
+  return (nom || '').split(' ').filter(Boolean).slice(0, 2).map(function(w) { return w[0].toUpperCase(); }).join('');
+}
+
+function carteProduit(p) {
+  var promo = p.prix != null && p.promo_pct ? Math.round(p.prix * (1 - p.promo_pct / 100) * 100) / 100 : null;
+  var badgeCoin = p.est_nouveaute
+    ? '<span class="badge-nouveaute">✨ Nouveau</span>'
+    : (p.est_phare ? '<span class="badge-phare">⭐ Best-seller</span>' : '');
+  var photo = p.url_photo
+    ? '<img src="' + escHtml(p.url_photo) + '" alt="' + escHtml(p.nom) + '" loading="lazy">'
+    : '<div class="photo-vide">📦</div>';
+  var prixHtml = p.prix == null ? '' :
+    '<div class="prix-ligne">' +
+      '<span class="prix-actuel">' + (promo != null ? promo : p.prix) + ' €</span>' +
+      (promo != null ? '<span class="prix-barre">' + p.prix + ' €</span>' : '') +
+    '</div>';
+  return '<div class="carte-produit">' +
+    '<div class="photo-wrap">' + photo +
+      (p.promo_pct ? '<span class="badge-remise">-' + p.promo_pct + '%</span>' : '') +
+      badgeCoin +
+    '</div>' +
+    '<div class="carte-corps">' +
+      '<div class="produit-nom">' + escHtml(p.nom) + '</div>' +
+      (p.description ? '<div class="produit-desc">' + escHtml(p.description) + '</div>' : '') +
+      prixHtml +
+      (p.type === 'sur_commande' && p.delai_preparation ? '<div class="delai-sur-commande">⏱️ Sur commande — ' + escHtml(p.delai_preparation) + '</div>' : '') +
+      '<button class="btn-commander" onclick="ouvrirModaleCommande(' + jsAttr(p.id) + ')">Commander</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function jsAttr(v) { return "'" + String(v).replace(/'/g, "\\'") + "'"; }
+
+function render() {
+  var a = DATA.artisan;
+  var photo = a.photo_profil_url
+    ? '<img class="avatar" src="' + escHtml(a.photo_profil_url) + '" alt="">'
+    : '<div class="avatar">' + initiales(a.nom_entreprise) + '</div>';
+
+  var html =
+    '<header><div class="wrap header-inner">' + photo +
+      '<div>' +
+        '<div class="boutique-nom">' + escHtml(a.nom_entreprise) + (a.verifie ? '<span class="badge-verifie">✅ Vérifié</span>' : '') + '</div>' +
+        '<div class="boutique-meta">📍 ' + escHtml(a.commune) + '</div>' +
+      '</div>' +
+    '</div>' +
+    (a.code_promo ? '<div class="wrap"><div class="promo-bandeau">🎁 Code promo : <span class="promo-code">' + escHtml(a.code_promo) + '</span></div></div>' : '') +
+    '</header>' +
+    '<div class="wrap">';
+
+  var nouveautes = DATA.produits.filter(function(p) { return p.est_nouveaute; });
+  if (nouveautes.length) {
+    html += '<h2 class="section-titre">✨ Nouveautés</h2><div class="grille">' + nouveautes.map(carteProduit).join('') + '</div>';
+  }
+
+  if (DATA.produits.length) {
+    // Produits phares en tête, le reste ensuite — dans une seule grille (pas une section à part),
+    // conformément à la capture de référence.
+    var phares = DATA.produits.filter(function(p) { return p.est_phare; });
+    var idsPhares = {}; phares.forEach(function(p) { idsPhares[p.id] = true; });
+    var reste = DATA.produits.filter(function(p) { return !idsPhares[p.id]; });
+    html += '<h2 class="section-titre">Tous les produits</h2><div class="grille">' + phares.concat(reste).map(carteProduit).join('') + '</div>';
+  } else {
+    html += '<p style="color:var(--mu);padding:40px 0;text-align:center;">Aucun produit pour l\'instant.</p>';
+  }
+
+  html += '</div>';
+  document.getElementById('racine').innerHTML = html;
+}
+
+function ouvrirModaleCommande(produitId) {
+  PRODUIT_EN_COURS = DATA.produits.find(function(p) { return p.id === produitId; });
+  if (!PRODUIT_EN_COURS) return;
+  document.getElementById('mc-titre').textContent = 'Commander — ' + PRODUIT_EN_COURS.nom;
+  document.getElementById('mc-nom').value = '';
+  document.getElementById('mc-tel').value = '';
+  document.getElementById('mc-email').value = '';
+  document.getElementById('mc-qte').value = 1;
+  document.getElementById('mc-notes').value = '';
+  document.getElementById('mc-err').style.display = 'none';
+  document.getElementById('modal-commande').classList.add('show');
+}
+function fermerModaleCommande() { document.getElementById('modal-commande').classList.remove('show'); }
+
+async function confirmerCommande() {
+  var err = document.getElementById('mc-err');
+  var nom = document.getElementById('mc-nom').value.trim();
+  var tel = document.getElementById('mc-tel').value.trim();
+  if (!nom || !tel) { err.textContent = 'Nom et téléphone sont nécessaires.'; err.style.display = 'block'; return; }
+
+  var mode = document.getElementById('mc-mode').value;
+  var btn = document.getElementById('mc-btn-confirmer');
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/soumettre-commande', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
+      body: JSON.stringify({
+        artisan_id: DATA.artisan.id,
+        catalogue_id: PRODUIT_EN_COURS.id,
+        nom_article: PRODUIT_EN_COURS.nom,
+        quantite: parseInt(document.getElementById('mc-qte').value, 10) || 1,
+        client_nom: nom, client_telephone: tel, client_email: document.getElementById('mc-email').value.trim() || null,
+        mode: mode,
+        adresse_livraison: mode === 'livraison' ? document.getElementById('mc-adresse').value.trim() : null,
+        code_postal_livraison: mode === 'livraison' ? document.getElementById('mc-cp').value.trim() : null,
+        commune_livraison: mode === 'livraison' ? document.getElementById('mc-commune').value.trim() : null,
+        notes: document.getElementById('mc-notes').value.trim() || null,
+      }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    fermerModaleCommande();
+    alert('✅ Commande envoyée ! ' + escHtml(DATA.artisan.nom_entreprise) + ' va vous recontacter.');
+  } catch (e) {
+    err.textContent = e.message;
+    err.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Confirmer';
+  }
+}
+
+(async function init() {
+  var slug = new URLSearchParams(location.search).get('s');
+  if (!slug) {
+    document.getElementById('racine').innerHTML = '<div class="etat-page"><h1>Lien invalide</h1><p>Ce lien de boutique est incomplet.</p></div>';
+    return;
+  }
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/lire-catalogue?s=' + encodeURIComponent(slug), {
+      headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON },
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    DATA = data;
+    render();
+  } catch (e) {
+    document.getElementById('racine').innerHTML = '<div class="etat-page"><h1>Boutique introuvable</h1><p>' + escHtml(e.message) + '</p></div>';
+  }
+})();
+</script>
+</body>
+</html>

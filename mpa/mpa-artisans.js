@@ -2360,14 +2360,87 @@ async function supprimerPhoto(id) {
 // ════════════════════════════════════════
 
 var _catalogueCache = [];
+var _ventesCatalogueCache = {};
+
+// Génère un lien de boutique lisible à partir du nom d'entreprise + un suffixe aléatoire
+// court (évite les collisions sans avoir besoin de vérifier l'unicité côté client).
+function genererSlugCatalogue(nomEntreprise) {
+  var base = (nomEntreprise || 'boutique').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // enlève les accents
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || 'boutique';
+  var suffixe = Math.random().toString(36).slice(2, 6);
+  return base + '-' + suffixe;
+}
 
 async function chargerCatalogue() {
   var zone = document.getElementById('zone-catalogue');
   if (!zone) return;
+
+  // Lien de boutique : généré une fois pour toutes si l'artisan n'en a pas encore.
+  if (!_artisan.slug_catalogue) {
+    var slug = genererSlugCatalogue(_artisan.nom_entreprise);
+    var { error: errSlug } = await sb.from('artisans').update({ slug_catalogue: slug }).eq('id', _artisan.id);
+    if (!errSlug) _artisan.slug_catalogue = slug;
+  }
+  var champLien = document.getElementById('boutique-lien');
+  if (champLien) champLien.value = _artisan.slug_catalogue ? 'https://caralink.app/artisans/catalogue.html?s=' + _artisan.slug_catalogue : '—';
+  var champPromo = document.getElementById('boutique-code-promo');
+  if (champPromo) champPromo.value = _artisan.code_promo || '';
+
   var { data, error } = await sb.from('artisans_catalogue').select('*').eq('artisan_id', _artisan.id).order('ordre', { ascending: true });
   if (error) { zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>'; return; }
   _catalogueCache = data || [];
+
+  // Ventes par produit — jamais un compteur stocké, toujours recalculé sur les commandes réglées.
+  _ventesCatalogueCache = {};
+  var ids = _catalogueCache.map(function(c) { return c.id; });
+  if (ids.length) {
+    var { data: commandes } = await sb.from('commandes_catalogue').select('catalogue_id, quantite')
+      .in('catalogue_id', ids).in('paiement_statut', ['paye', 'partiellement_rembourse', 'rembourse']);
+    (commandes || []).forEach(function(c) {
+      if (!c.catalogue_id) return;
+      _ventesCatalogueCache[c.catalogue_id] = (_ventesCatalogueCache[c.catalogue_id] || 0) + (c.quantite || 0);
+    });
+  }
+
   renderCatalogueGrille();
+  renderVentesProduits();
+}
+
+function copierLienBoutique() {
+  var champ = document.getElementById('boutique-lien');
+  champ.select();
+  if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(champ.value); } else { document.execCommand('copy'); }
+  alert('Lien copié !');
+}
+
+async function sauverCodePromo() {
+  var btn = document.getElementById('btn-code-promo');
+  var valeur = document.getElementById('boutique-code-promo').value.trim() || null;
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  var { error } = await sb.from('artisans').update({ code_promo: valeur }).eq('id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); } else { _artisan.code_promo = valeur; }
+  btn.disabled = false; btn.textContent = 'Enregistrer';
+}
+
+function renderVentesProduits() {
+  var zone = document.getElementById('zone-ventes-produits');
+  if (!zone) return;
+  if (!_catalogueCache.length) { zone.innerHTML = 'Ajoutez des produits pour voir vos ventes ici.'; return; }
+
+  var avecVentes = _catalogueCache.map(function(c) { return { nom: c.nom, ventes: _ventesCatalogueCache[c.id] || 0 }; })
+    .sort(function(a, b) { return b.ventes - a.ventes; });
+  var meilleures = avecVentes.slice(0, 3);
+  var moins = avecVentes.slice(-3).reverse();
+
+  function liste(items) {
+    return items.map(function(i) { return '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>' + escHtml(i.nom) + '</span><strong>' + i.ventes + ' vendu' + (i.ventes > 1 ? 's' : '') + '</strong></div>'; }).join('');
+  }
+  zone.innerHTML =
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">' +
+      '<div><div style="font-weight:700;color:#0f9d78;margin-bottom:6px;">🏆 Meilleures ventes</div>' + liste(meilleures) + '</div>' +
+      '<div><div style="font-weight:700;color:var(--mu);margin-bottom:6px;">📉 Moins vendus</div>' + liste(moins) + '</div>' +
+    '</div>';
 }
 
 function renderCatalogueGrille() {
@@ -2384,16 +2457,44 @@ function renderCatalogueGrille() {
     var photo = c.url_photo
       ? '<img src="' + escHtml(c.url_photo) + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px 8px 0 0;">'
       : '<div style="width:100%;aspect-ratio:1;background:var(--p2);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:24px;">📦</div>';
+    var ventes = _ventesCatalogueCache[c.id] || 0;
     return '<div style="border:1px solid var(--brd);border-radius:10px;overflow:hidden;position:relative;">' +
       '<button onclick="supprimerCatalogue(\'' + c.id + '\')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:7px;width:24px;height:24px;cursor:pointer;font-size:12px;z-index:1;">✕</button>' +
+      '<button onclick="togglePhareCatalogue(\'' + c.id + '\')" title="' + (c.est_phare ? 'Retirer des produits phares' : 'Marquer comme produit phare') + '" style="position:absolute;top:6px;left:6px;background:' + (c.est_phare ? 'var(--gold,#b45309)' : 'rgba(0,0,0,.45)') + ';color:#fff;border:none;border-radius:7px;width:24px;height:24px;cursor:pointer;font-size:13px;z-index:1;">⭐</button>' +
       photo +
       '<div style="padding:10px;">' +
         '<div style="font-size:13px;font-weight:700;margin-bottom:3px;">' + escHtml(c.nom) + '</div>' +
         (c.prix != null ? '<div style="font-size:13px;color:var(--ac);font-weight:700;margin-bottom:6px;">' + c.prix + ' €</div>' : '') +
         badge +
+        '<div style="font-size:11px;color:var(--mu);margin-top:6px;">' + ventes + ' vendu' + (ventes > 1 ? 's' : '') + '</div>' +
+        '<div style="display:flex;align-items:center;gap:6px;margin-top:8px;">' +
+          '<input type="number" min="0" max="99" placeholder="Remise %" value="' + (c.promo_pct || '') + '" id="promo-' + c.id + '" style="width:70px;padding:5px 7px;border-radius:6px;border:1px solid var(--brd);font-size:11.5px;">' +
+          '<button onclick="sauverPromoCatalogue(\'' + c.id + '\')" style="padding:5px 9px;border-radius:6px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:11px;font-weight:700;cursor:pointer;">OK</button>' +
+        '</div>' +
       '</div>' +
     '</div>';
   }).join('');
+}
+
+async function togglePhareCatalogue(id) {
+  if (!verifierAccesEcriture()) return;
+  var item = _catalogueCache.find(function(c) { return c.id === id; });
+  if (!item) return;
+  var nouveauEtat = !item.est_phare;
+  var { error } = await sb.from('artisans_catalogue').update({ est_phare: nouveauEtat }).eq('id', id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  item.est_phare = nouveauEtat;
+  renderCatalogueGrille();
+}
+
+async function sauverPromoCatalogue(id) {
+  var champ = document.getElementById('promo-' + id);
+  var valeur = champ.value === '' ? null : parseInt(champ.value, 10);
+  if (valeur != null && (isNaN(valeur) || valeur <= 0 || valeur >= 100)) { alert('La remise doit être un pourcentage entre 1 et 99.'); return; }
+  var { error } = await sb.from('artisans_catalogue').update({ promo_pct: valeur }).eq('id', id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  var item = _catalogueCache.find(function(c) { return c.id === id; });
+  if (item) item.promo_pct = valeur;
 }
 
 function openAjouterCatalogue() {

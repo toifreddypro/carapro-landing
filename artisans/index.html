@@ -249,6 +249,17 @@
     .badge-realtime{display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11.5px;padding:3px 9px;border-radius:8px;background:rgba(16,185,129,.1);color:#10b981;border:1px solid rgba(16,185,129,.25);}
     body.theme-light .badge-realtime{background:rgba(0,168,125,.1);color:#065f46;border-color:rgba(0,168,125,.25);}
     .badge-realtime .dot{width:8px;height:8px;border-radius:50%;background:#10b981;flex-shrink:0;}
+
+    /* Produits phares — vignette ── 3 mini-photos, lien boutique, code promo */
+    .phares-bloc{margin-top:12px;padding-top:12px;border-top:1px solid var(--brd);}
+    .phares-titre{font-size:11.5px;font-weight:700;color:var(--mu2);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;}
+    .phares-photos{display:flex;gap:8px;}
+    .phare-mini{width:52px;height:52px;border-radius:9px;object-fit:cover;flex-shrink:0;border:1px solid var(--brd);}
+    .phare-mini-vide{display:flex;align-items:center;justify-content:center;background:var(--inp);font-size:18px;}
+    .phares-bas{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;flex-wrap:wrap;}
+    .phares-lien{font-size:12.5px;font-weight:700;color:var(--ac);text-decoration:none;}
+    .phares-lien:hover{text-decoration:underline;}
+    .phares-code-promo{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:3px 9px;border-radius:7px;background:rgba(181,80,47,.08);color:var(--ac);border:1px dashed var(--ac);}
     /* Créneaux = plages horaires (début–fin) : empilées par défaut, en ligne dès que la vignette est assez large. */
     .dispo-slot{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.25;font-size:11px;}
     .dispo-slot .h-sep{display:none;}

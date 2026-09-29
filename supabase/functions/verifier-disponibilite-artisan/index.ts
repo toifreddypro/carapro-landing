@@ -153,10 +153,38 @@ Deno.serve(async (req: Request) => {
 
     // Aperçu de vignette : noms des services (pastilles), même si l'artisan n'a pas encore d'horaires.
     let services: string[] = [];
+    let produitsPhares: Array<{ nom: string; url_photo: string | null }> = [];
+    let slugCatalogue: string | null = null;
+    let codePromo: string | null = null;
     if (mode === "apercu") {
       const { data: svc } = await sb.from("artisans_services")
         .select("nom_service").eq("artisan_id", artisan_id).order("ordre", { ascending: true }).limit(20);
       services = (svc || []).map((s: any) => s.nom_service).filter(Boolean);
+
+      const { data: infosBoutique } = await sb.from("artisans")
+        .select("slug_catalogue, code_promo").eq("id", artisan_id).maybeSingle();
+      slugCatalogue = infosBoutique?.slug_catalogue ?? null;
+      codePromo = infosBoutique?.code_promo ?? null;
+
+      // Produits phares : choisis à la main par l'artisan, sinon repli sur les 3 meilleures
+      // ventes (jamais un compteur stocké — toujours recalculé sur les commandes réglées).
+      const { data: produits } = await sb.from("artisans_catalogue")
+        .select("id, nom, url_photo, est_phare").eq("artisan_id", artisan_id);
+      const listeProduits = produits || [];
+      if (listeProduits.length) {
+        const idsProduits = listeProduits.map((p: any) => p.id);
+        const { data: commandes } = await sb.from("commandes_catalogue")
+          .select("catalogue_id, quantite").in("catalogue_id", idsProduits)
+          .in("paiement_statut", ["paye", "partiellement_rembourse", "rembourse"]);
+        const ventes = new Map<string, number>();
+        (commandes || []).forEach((c: any) => { if (c.catalogue_id) ventes.set(c.catalogue_id, (ventes.get(c.catalogue_id) || 0) + (c.quantite || 0)); });
+
+        const phares = listeProduits.filter((p: any) => p.est_phare);
+        const source = phares.length
+          ? phares
+          : [...listeProduits].sort((a: any, b: any) => (ventes.get(b.id) || 0) - (ventes.get(a.id) || 0));
+        produitsPhares = source.slice(0, 3).map((p: any) => ({ nom: p.nom, url_photo: p.url_photo }));
+      }
     }
 
     const { data: horaires, error: errH } = await sb.from("artisans_horaires")
@@ -165,7 +193,7 @@ Deno.serve(async (req: Request) => {
     if (!horaires || !horaires.length) {
       const message = "Cet artisan n'a pas encore renseigné ses horaires habituels.";
       return mode === "apercu"
-        ? json({ prochaine_date: null, label: null, semaine: [], services, message })
+        ? json({ prochaine_date: null, label: null, semaine: [], services, produits_phares: produitsPhares, slug_catalogue: slugCatalogue, code_promo: codePromo, message })
         : json({ jours: [], message });
     }
 
@@ -241,10 +269,13 @@ Deno.serve(async (req: Request) => {
             label: i === 0 ? "aujourd'hui" : i === 1 ? "demain" : JOURS_NOMS[joursemaine] + " " + jour.getDate() + "/" + (jour.getMonth() + 1),
             semaine,
             services,
+            produits_phares: produitsPhares,
+            slug_catalogue: slugCatalogue,
+            code_promo: codePromo,
           });
         }
       }
-      return json({ prochaine_date: null, label: null, semaine, services, message: "Aucune disponibilité dans les " + HORIZON_JOURS + " prochains jours." });
+      return json({ prochaine_date: null, label: null, semaine, services, produits_phares: produitsPhares, slug_catalogue: slugCatalogue, code_promo: codePromo, message: "Aucune disponibilité dans les " + HORIZON_JOURS + " prochains jours." });
     }
 
     // ═══ MODE CRÉNEAUX — vrai calcul avec trajet, une fois l'adresse connue ═══

@@ -477,6 +477,7 @@ function renderArtisanCard(a) {
       '<div class="card-badges" id="dispo-carte-' + a.id + '"></div>' +
     '</div>' +
     '<div class="dispo-grid" id="grille-carte-' + a.id + '" style="display:none;"></div>' +
+    '<div id="phares-carte-' + a.id + '"></div>' +
   '</div>';
 }
 
@@ -486,6 +487,7 @@ async function chargerApercuCarte(id) {
   var zoneTags = document.getElementById('tags-carte-' + id);
   var zoneDispo = document.getElementById('dispo-carte-' + id);
   var grille = document.getElementById('grille-carte-' + id);
+  var zonePhares = document.getElementById('phares-carte-' + id);
   if (!a || !zoneTags) return;
   try {
     var res = await fetch(SUPABASE_URL + '/functions/v1/verifier-disponibilite-artisan', {
@@ -505,6 +507,26 @@ async function chargerApercuCarte(id) {
       zoneDispo.innerHTML = '<span class="badge-realtime"><span class="dot"></span>' + escHtml(T('dispo_temps_reel')) + '</span>' + dispo;
       grille.innerHTML = data.semaine.map(colonneJourCarte).join('');
       grille.style.display = 'grid';
+    }
+
+    if (zonePhares && data.produits_phares && data.produits_phares.length) {
+      var miniatures = data.produits_phares.map(function(p) {
+        return p.url_photo
+          ? '<img src="' + escHtml(p.url_photo) + '" class="phare-mini" alt="' + escHtml(p.nom) + '" title="' + escHtml(p.nom) + '">'
+          : '<div class="phare-mini phare-mini-vide" title="' + escHtml(p.nom) + '">📦</div>';
+      }).join('');
+      var lienBoutique = data.slug_catalogue
+        ? '<a href="catalogue.html?s=' + encodeURIComponent(data.slug_catalogue) + '" class="phares-lien" onclick="event.stopPropagation();">' + escHtml(T('phares_voir_boutique')) + ' →</a>'
+        : '';
+      var promo = data.code_promo
+        ? '<span class="phares-code-promo">🎁 ' + escHtml(data.code_promo) + '</span>'
+        : '';
+      zonePhares.innerHTML =
+        '<div class="phares-bloc">' +
+          '<div class="phares-titre">' + escHtml(T('phares_titre')) + '</div>' +
+          '<div class="phares-photos">' + miniatures + '</div>' +
+          '<div class="phares-bas">' + lienBoutique + promo + '</div>' +
+        '</div>';
     }
   } catch (e) { /* la vignette reste complète et utilisable sans l'aperçu */ }
 }
