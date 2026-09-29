@@ -45,10 +45,12 @@ async function verifierSiret(siret: string): Promise<{ valide: boolean; nomOffic
   }
 }
 
-// ⚠️ Ajouté le 14/09 — décidé avec Freddy : le token était collecté côté
-// client mais jamais vérifié côté serveur, rendant le captcha purement
-// décoratif. La clé secrète ne quitte jamais cette fonction, jamais
-// exposée dans le HTML/JS.
+// ⚠️ Ajouté le 14/09, DÉSACTIVÉ le 29/09 — le widget Turnstile lui-même
+// plante côté client ("Error." au clic), probablement un souci de domaine
+// autorisé dans le dashboard Cloudflare. Ça bloquait de vraies inscriptions
+// (plusieurs comptes créés côté Supabase Auth, jamais finalisés en profil
+// artisan). Fonction gardée intacte pour la réactiver facilement une fois
+// Cloudflare vérifié — seul l'appel est désactivé plus bas.
 async function verifierTurnstile(token: string, ip: string | null): Promise<boolean> {
   try {
     const secret = Deno.env.get("TURNSTILE_SECRET_KEY") ?? "";
@@ -88,10 +90,12 @@ Deno.serve(async (req: Request) => {
 
     const { nom_entreprise, secteur, commune, telephone, bio, rayon_intervention_km, siret, document_path, turnstile_token } = body;
 
-    if (!turnstile_token) return json({ error: "Vérification anti-robot manquante." }, 400);
-    const ip = req.headers.get("x-forwarded-for");
-    const captchaOk = await verifierTurnstile(turnstile_token, ip);
-    if (!captchaOk) return json({ error: "Vérification anti-robot échouée. Réessayez." }, 400);
+    // Turnstile désactivé temporairement (voir commentaire au-dessus de verifierTurnstile) —
+    // le jeton n'est plus exigé ni vérifié pour l'instant.
+    // if (!turnstile_token) return json({ error: "Vérification anti-robot manquante." }, 400);
+    // const ip = req.headers.get("x-forwarded-for");
+    // const captchaOk = await verifierTurnstile(turnstile_token, ip);
+    // if (!captchaOk) return json({ error: "Vérification anti-robot échouée. Réessayez." }, 400);
 
     if (!nom_entreprise || !secteur || !commune || !telephone) {
       return json({ error: "Champs obligatoires manquants." }, 400);

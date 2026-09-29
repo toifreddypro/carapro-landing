@@ -7,7 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileReady" async defer></script>
+<!-- Turnstile désactivé temporairement (29/09) — widget cassé côté Cloudflare, bloquait de vraies inscriptions. <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileReady" async defer></script> -->
+
 <style>
 :root{
   --bg:#ffffff; --paper:#ffffff; --ink:#13223c; --mute:#6b7c96;
@@ -138,7 +139,7 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
       </div>
     </div>
 
-    <div id="turnstile-form" style="margin-bottom:16px;"></div>
+    <!-- Turnstile désactivé temporairement (29/09) -->
 
     <button type="submit" class="btn-submit" id="btn-submit">Créer mon profil</button>
   </form>
@@ -150,7 +151,7 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
     <h1>Email confirmé !</h1>
     <p>Plus qu'une étape pour mettre votre profil en ligne :</p>
     <div id="resume-recap" style="text-align:left;background:var(--panel2,#f6f9fe);border-radius:10px;padding:16px 20px;margin:16px 0;font-size:14px;line-height:1.7;"></div>
-    <div id="turnstile-resume" style="margin:16px auto;display:flex;justify-content:center;"></div>
+    <!-- Turnstile désactivé temporairement (29/09) -->
     <div id="resume-err" class="msg-err"></div>
     <button type="button" class="btn-submit" id="btn-resume" onclick="terminerInscription()">Terminer mon inscription</button>
     <p style="margin-top:14px;font-size:12.5px;color:var(--mu,#888);">Le document d'assurance n'a pas pu être conservé pendant l'attente de confirmation — vous pourrez l'ajouter depuis votre profil une fois inscrit.</p>
@@ -171,30 +172,24 @@ const SUPABASE_URL  = 'https://uzgboxfxpxazhysusewv.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-// ── Turnstile : deux formulaires = deux widgets. Rendu explicite avec identifiants propres à
-// chacun (jamais l'auto-rendu ni le turnstile.getResponse() sans argument) : avec deux widgets
-// sur la même page, l'appel sans préciser lequel devient ambigu et peut lire la réponse du
-// mauvais widget — exactement le bug qui bloquait la validation malgré un widget résolu.
+// ── Turnstile désactivé temporairement (29/09) — voir la note dans finaliser-inscription-
+// artisan.ts. Le mécanisme à deux widgets (identifiants distincts, jamais getResponse() sans
+// argument avec deux widgets sur une page) reste ci-dessous en commentaire pour réactivation
+// rapide une fois le domaine autorisé vérifié côté Cloudflare.
 var _idWidgetForm = null;
 var _idWidgetResume = null;
 var _turnstilePret = false;
 var _repriseNecessaire = false;
-function onTurnstileReady() {
-  _idWidgetForm = turnstile.render('#turnstile-form', { sitekey: '0x4AAAAAAE0Iymsul7mZRXTA' });
-  _turnstilePret = true;
-  rendreWidgetResumeSiPret();
-  // Le widget de l'écran de reprise est rendu plus tard, seulement quand cet écran devient
-  // visible (voir verifierRepriseInscription) — un widget rendu dans un bloc encore caché
-  // (display:none) peut mal calculer sa taille.
-}
-// Turnstile charge en tâche de fond (async) : ce widget n'est rendu que quand les deux
-// conditions sont réunies (Turnstile prêt ET l'écran de reprise doit s'afficher), peu importe
-// l'ordre dans lequel elles arrivent.
-function rendreWidgetResumeSiPret() {
-  if (_turnstilePret && _repriseNecessaire && _idWidgetResume === null) {
-    _idWidgetResume = turnstile.render('#turnstile-resume', { sitekey: '0x4AAAAAAE0Iymsul7mZRXTA' });
-  }
-}
+// function onTurnstileReady() {
+//   _idWidgetForm = turnstile.render('#turnstile-form', { sitekey: '0x4AAAAAAE0Iymsul7mZRXTA' });
+//   _turnstilePret = true;
+//   rendreWidgetResumeSiPret();
+// }
+// function rendreWidgetResumeSiPret() {
+//   if (_turnstilePret && _repriseNecessaire && _idWidgetResume === null) {
+//     _idWidgetResume = turnstile.render('#turnstile-resume', { sitekey: '0x4AAAAAAE0Iymsul7mZRXTA' });
+//   }
+// }
 
 var _fichierChoisi = null;
 
@@ -262,11 +257,7 @@ async function soumettreInscription() {
     return;
   }
 
-  var turnstileToken = (typeof turnstile !== 'undefined' && _idWidgetForm != null) ? turnstile.getResponse(_idWidgetForm) : null;
-  if (!turnstileToken) {
-    afficherErreur('Merci de valider la vérification anti-robot.');
-    return;
-  }
+  var turnstileToken = 'desactive'; // Turnstile désactivé temporairement (29/09)
 
   var btn = document.getElementById('btn-submit');
   btn.disabled = true; btn.textContent = 'Création en cours…';
@@ -326,7 +317,7 @@ async function soumettreInscription() {
   } catch(e) {
     afficherErreur(e.message);
     btn.disabled = false; btn.textContent = 'Créer mon profil';
-    if (typeof turnstile !== 'undefined' && _idWidgetForm != null) turnstile.reset(_idWidgetForm);
+    if (typeof turnstile !== 'undefined' && _idWidgetForm != null) turnstile.reset(_idWidgetForm); // inactif tant que Turnstile est désactivé
   }
 }
 </script>
@@ -351,7 +342,7 @@ async function verifierRepriseInscription() {
     document.getElementById('wrap-confirmation').style.display = 'none';
     document.getElementById('wrap-resume').style.display = 'block';
     _repriseNecessaire = true;
-    rendreWidgetResumeSiPret();
+    // rendreWidgetResumeSiPret(); // Turnstile désactivé temporairement (29/09)
   } catch (e) { /* si ça échoue, l'utilisateur reste sur le formulaire normal — pas bloquant */ }
 }
 
@@ -359,12 +350,7 @@ async function terminerInscription() {
   var err = document.getElementById('resume-err');
   err.classList.remove('show');
 
-  var turnstileToken = (typeof turnstile !== 'undefined' && _idWidgetResume != null) ? turnstile.getResponse(_idWidgetResume) : null;
-  if (!turnstileToken) {
-    err.textContent = 'Merci de valider la vérification anti-robot.';
-    err.classList.add('show');
-    return;
-  }
+  var turnstileToken = 'desactive'; // Turnstile désactivé temporairement (29/09)
 
   var btn = document.getElementById('btn-resume');
   btn.disabled = true; btn.textContent = 'Finalisation…';
@@ -390,7 +376,7 @@ async function terminerInscription() {
     err.textContent = e.message;
     err.classList.add('show');
     btn.disabled = false; btn.textContent = 'Terminer mon inscription';
-    if (typeof turnstile !== 'undefined' && _idWidgetResume != null) turnstile.reset(_idWidgetResume);
+    if (typeof turnstile !== 'undefined' && _idWidgetResume != null) turnstile.reset(_idWidgetResume); // inactif tant que Turnstile est désactivé
   }
 }
 
