@@ -144,6 +144,19 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
   </form>
 </div>
 
+<div class="wrap" id="wrap-resume" style="display:none;">
+  <div class="confirmation">
+    <div class="icon">✅</div>
+    <h1>Email confirmé !</h1>
+    <p>Plus qu'une étape pour mettre votre profil en ligne :</p>
+    <div id="resume-recap" style="text-align:left;background:var(--panel2,#f6f9fe);border-radius:10px;padding:16px 20px;margin:16px 0;font-size:14px;line-height:1.7;"></div>
+    <div class="cf-turnstile" data-sitekey="0x4AAAAAAE0Iymsul7mZRXTA" style="margin:16px auto;display:flex;justify-content:center;"></div>
+    <div id="resume-err" class="msg-err"></div>
+    <button type="button" class="btn-submit" id="btn-resume" onclick="terminerInscription()">Terminer mon inscription</button>
+    <p style="margin-top:14px;font-size:12.5px;color:var(--mu,#888);">Le document d'assurance n'a pas pu être conservé pendant l'attente de confirmation — vous pourrez l'ajouter depuis votre profil une fois inscrit.</p>
+  </div>
+</div>
+
 <div class="wrap" id="wrap-confirmation" style="display:none;">
   <div class="confirmation">
     <div class="icon">🎉</div>
@@ -234,15 +247,27 @@ async function soumettreInscription() {
   btn.disabled = true; btn.textContent = 'Création en cours…';
 
   try {
-    var authResult = await sb.auth.signUp({ email: email, password: password });
+    var authResult = await sb.auth.signUp({
+      email: email, password: password,
+      options: { emailRedirectTo: 'https://caralink.app/artisans/inscription.html' },
+    });
     var authData = authResult.data;
     var authError = authResult.error;
     if (authError) throw new Error(authError.message === 'User already registered' ? 'Un compte existe déjà avec cet email.' : authError.message);
 
     var accessToken = authData.session ? authData.session.access_token : null;
     if (!accessToken) {
-      // Le compte a bien été créé, mais Supabase exige une confirmation par email
-      // avant de renvoyer une session — ce n'est pas un échec, juste une étape de plus.
+      // Le compte a bien été créé, mais Supabase exige une confirmation par email avant de
+      // renvoyer une session — ce n'est pas un échec, juste une étape de plus. On sauvegarde
+      // les informations du profil (jamais le mot de passe, jamais le fichier — juste le texte)
+      // pour pouvoir finaliser l'inscription automatiquement au retour, sans tout refaire saisir.
+      try {
+        localStorage.setItem('caralink_inscription_attente', JSON.stringify({
+          nom_entreprise: nom, secteur: secteur, commune: commune, telephone: telephone,
+          bio: bio || null, rayon_intervention_km: rayon, siret: siret || null,
+        }));
+      } catch (e) { /* stockage indisponible : au pire, l'utilisateur retapera ses infos */ }
+
       document.getElementById('wrap-form').style.display = 'none';
       document.getElementById('wrap-confirmation').style.display = 'block';
       document.getElementById('confirmation-msg').textContent = 'Votre compte a été créé ! Vérifiez vos emails pour confirmer votre inscription, puis reconnectez-vous pour terminer votre profil.';
@@ -279,6 +304,70 @@ async function soumettreInscription() {
     if (typeof turnstile !== 'undefined') turnstile.reset();
   }
 }
+</script>
+
+<script>
+// ── Retour après confirmation d'email : reprend l'inscription là où elle s'était arrêtée ──
+// Supabase place la session dans l'adresse au retour du lien de confirmation (comportement
+// standard, rien à faire côté code pour ça) — on vérifie juste si une inscription était en
+// attente, et si oui on propose de la terminer plutôt que de faire tout resaisir.
+async function verifierRepriseInscription() {
+  try {
+    var brut = localStorage.getItem('caralink_inscription_attente');
+    if (!brut) return;
+    var { data: { session } } = await sb.auth.getSession();
+    if (!session) return; // pas encore confirmé, ou lien pas encore cliqué : rien à faire ici
+
+    var infos = JSON.parse(brut);
+    document.getElementById('resume-recap').innerHTML =
+      '<strong>' + infos.nom_entreprise.replace(/[<>&]/g, '') + '</strong><br>' +
+      infos.commune.replace(/[<>&]/g, '') + ' · ' + infos.telephone.replace(/[<>&]/g, '');
+    document.getElementById('wrap-form').style.display = 'none';
+    document.getElementById('wrap-confirmation').style.display = 'none';
+    document.getElementById('wrap-resume').style.display = 'block';
+  } catch (e) { /* si ça échoue, l'utilisateur reste sur le formulaire normal — pas bloquant */ }
+}
+
+async function terminerInscription() {
+  var err = document.getElementById('resume-err');
+  err.classList.remove('show');
+
+  var turnstileToken = (typeof turnstile !== 'undefined') ? turnstile.getResponse() : null;
+  if (!turnstileToken) {
+    err.textContent = 'Merci de valider la vérification anti-robot.';
+    err.classList.add('show');
+    return;
+  }
+
+  var btn = document.getElementById('btn-resume');
+  btn.disabled = true; btn.textContent = 'Finalisation…';
+
+  try {
+    var infos = JSON.parse(localStorage.getItem('caralink_inscription_attente'));
+    var { data: { session } } = await sb.auth.getSession();
+    if (!infos || !session) throw new Error('Votre session a expiré — merci de vous reconnecter.');
+
+    var res = await fetch(SUPABASE_URL + '/functions/v1/finaliser-inscription-artisan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+      body: JSON.stringify(Object.assign({}, infos, { document_path: null, turnstile_token: turnstileToken })),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    localStorage.removeItem('caralink_inscription_attente');
+    document.getElementById('wrap-resume').style.display = 'none';
+    document.getElementById('wrap-confirmation').style.display = 'block';
+    document.getElementById('confirmation-msg').textContent = data.message;
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.add('show');
+    btn.disabled = false; btn.textContent = 'Terminer mon inscription';
+    if (typeof turnstile !== 'undefined') turnstile.reset();
+  }
+}
+
+verifierRepriseInscription();
 </script>
 </body>
 </html>

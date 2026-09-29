@@ -28,12 +28,30 @@ const corsHeaders = {
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const ADMIN_EMAIL = "toifreddypro@gmail.com";
+const CRON_SECRET = Deno.env.get("PRELEVEMENT_CRON_SECRET"); // déclenchement automatique mensuel (Supabase Cron)
 const TAUX_COMMISSION = 0.07;
 const SEUIL_GRATUIT_EUROS = 200; // même seuil que côté Ventes — à garder aligné si on le change un jour
 const MINIMUM_STRIPE_CENTIMES = 50; // Stripe refuse tout prélèvement en dessous de 0,50€
 
+async function envoyerEmail(to: string, subject: string, html: string) {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) { console.warn("[prelever-commission-prestations] RESEND_API_KEY absente — email non envoyé."); return; }
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: "CaraLink Artisans <notifications@learnlogicstudio.com>", to: [to], subject, html }),
+    });
+    if (!res.ok) console.error("[prelever-commission-prestations] Échec envoi Resend :", await res.text());
+  } catch (e) { console.error("[prelever-commission-prestations] Erreur envoi email :", e); }
+}
+
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
+function euros(centimes: number): string {
+  return (centimes / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
 
 // Même calcul marginal que creer-paiement-commande.ts (sans effet de seuil brutal), en centimes.
@@ -103,6 +121,16 @@ async function traiterUnArtisan(sb: any, artisan: any, debut: string, finExclusi
 
   if (!artisan.stripe_customer_id) {
     await sb.from("prelevements_prestations").insert({ ...ligneBase, statut: "echoue", erreur: "Aucune carte enregistrée." });
+    if (artisan.email) {
+      await envoyerEmail(artisan.email, "⚠️ Une carte est nécessaire pour votre commission CaraLink",
+        `<div style="font-family:sans-serif;max-width:480px;">
+          <h2 style="color:#B5502F;">Commission due, aucune carte enregistrée</h2>
+          <p>Bonjour,</p>
+          <p>Vos prestations trouvées via CaraLink ont dépassé le seuil gratuit ce mois-ci (${moisISO.slice(0, 7)}) : ${euros(commissionCentimes)} de commission sont dus, mais aucune carte n'est enregistrée pour le prélèvement.</p>
+          <p>Merci d'enregistrer une carte dans MPA Artisans (Tableau de bord → Carte prestations) pour régulariser.</p>
+          <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Ouvrir MPA Artisans →</a></p>
+        </div>`);
+    }
     return { artisan_id: artisan.id, statut: "echoue", erreur: "Aucune carte enregistrée." };
   }
 
@@ -119,6 +147,16 @@ async function traiterUnArtisan(sb: any, artisan: any, debut: string, finExclusi
 
   if (!ok) {
     await sb.from("prelevements_prestations").insert({ ...ligneBase, statut: "echoue", erreur: intent?.error?.message || "Erreur Stripe." });
+    if (artisan.email) {
+      await envoyerEmail(artisan.email, "⚠️ Le prélèvement de votre commission CaraLink a échoué",
+        `<div style="font-family:sans-serif;max-width:480px;">
+          <h2 style="color:#B5502F;">Prélèvement de commission — échec</h2>
+          <p>Bonjour,</p>
+          <p>Le prélèvement automatique de ${euros(commissionCentimes)} (commission sur vos prestations de ${moisISO.slice(0, 7)}) n'a pas pu être effectué${intent?.error?.message ? " : <em>" + intent.error.message + "</em>" : "."}</p>
+          <p>Merci de mettre à jour votre carte enregistrée dans MPA Artisans (Tableau de bord → Carte prestations) pour régulariser.</p>
+          <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Ouvrir MPA Artisans →</a></p>
+        </div>`);
+    }
     return { artisan_id: artisan.id, statut: "echoue", erreur: intent?.error?.message };
   }
 
@@ -131,13 +169,21 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return json({ error: "Non authentifié." }, 401);
-    const sbCaller = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user } } = await sbCaller.auth.getUser();
-    if (!user || user.email !== ADMIN_EMAIL) return json({ error: "Réservé à l'administrateur." }, 403);
+    // Deux façons légitimes d'appeler cette fonction : une vraie session admin (bouton dans
+    // l'admin), ou le secret partagé du déclenchement automatique mensuel (Supabase Cron) —
+    // un job planifié n'a pas de session utilisateur, donc pas de jeton d'accès à présenter.
+    const secretCron = req.headers.get("X-Cron-Secret");
+    const estCron = !!CRON_SECRET && secretCron === CRON_SECRET;
+
+    if (!estCron) {
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) return json({ error: "Non authentifié." }, 401);
+      const sbCaller = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user } } = await sbCaller.auth.getUser();
+      if (!user || user.email !== ADMIN_EMAIL) return json({ error: "Réservé à l'administrateur." }, 403);
+    }
 
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const body = await req.json().catch(() => ({}));
@@ -146,7 +192,7 @@ Deno.serve(async (req: Request) => {
       ? { debut: body.mois_iso, finExclusive: (() => { const d = new Date(body.mois_iso + "T00:00:00Z"); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 10); })(), moisISO: body.mois_iso }
       : bornesMoisPrecedent();
 
-    const { data: artisans, error } = await sb.from("artisans").select("id, nom_entreprise, stripe_customer_id");
+    const { data: artisans, error } = await sb.from("artisans").select("id, nom_entreprise, email, stripe_customer_id");
     if (error) throw error;
 
     const resultats = [];
