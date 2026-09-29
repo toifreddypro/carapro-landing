@@ -179,8 +179,13 @@ async function init() {
     return;
   }
   if (!artisan) {
-    alert('Aucun profil artisan trouvé pour ce compte. Créez d\'abord votre profil sur CaraLink Artisans.');
-    window.location.href = 'https://caralink.app/artisans/inscription.html';
+    // Une session valide sans profil ne veut pas forcément dire "jamais inscrit" — ça peut aussi
+    // être une session restée active d'un compte différent, ou d'une inscription jamais terminée.
+    // On déconnecte et on renvoie vers la CONNEXION (pas l'inscription à l'aveugle) : l'utilisateur
+    // peut alors se reconnecter avec le bon compte, ou s'inscrire lui-même s'il le faut vraiment.
+    await sb.auth.signOut();
+    alert('Aucun profil artisan n\'est associé à ce compte. Connectez-vous avec le bon compte, ou inscrivez-vous si vous n\'avez pas encore de profil.');
+    window.location.href = 'https://caralink.app/artisans/connexion.html';
     return;
   }
   _artisan = artisan;
