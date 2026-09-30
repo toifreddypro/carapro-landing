@@ -346,7 +346,7 @@ function renderCreneauHtml(creneau, dateStr, liste) {
   var visibles = liste.slice(0, maxVisible);
   var reste = liste.length - maxVisible;
 
-  var LABEL_STATUT = { planifiee: 'Planifiée', terminee: 'Terminée', payee: 'Payée' };
+  var LABEL_STATUT = { planifiee: 'Planifiée', en_cours: 'En cours', terminee: 'Terminée', payee: 'Payée' };
 
   var pills = visibles.map(function(i) {
     var client = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '';
@@ -388,7 +388,7 @@ function ouvrirDetailJourMobile(dateStr) {
     .sort(function(a, b) { return (a.heure_debut || '').localeCompare(b.heure_debut || ''); });
 
   var dateAff = new Date(dateStr + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-  var LABEL_STATUT = { planifiee: 'Planifiée', terminee: 'Terminée', payee: 'Payée', annulee: 'Annulée' };
+  var LABEL_STATUT = { planifiee: 'Planifiée', en_cours: 'En cours', terminee: 'Terminée', payee: 'Payée', annulee: 'Annulée' };
 
   var liste = interDuJour.length
     ? interDuJour.map(function(i) {
@@ -429,7 +429,7 @@ function ouvrirDetailJourMobile(dateStr) {
 // vignette fait avancer le statut (Planifiée → Terminée → Payée →
 // Planifiée), sans passer par la modale. Le crayon séparé reste pour
 // modifier les détails (date de paiement précise, prix, etc).
-var CYCLE_STATUT = { planifiee: 'terminee', terminee: 'payee', payee: 'planifiee' };
+var CYCLE_STATUT = { planifiee: 'en_cours', en_cours: 'terminee', terminee: 'payee', payee: 'planifiee' };
 
 async function avancerStatut(id, ev) {
   if (ev) ev.stopPropagation();
@@ -858,7 +858,7 @@ async function ouvrirNouvelleIntervention(dateStr, creneau) {
   var enRetard = await trouverPrestationAnnuaireEnRetard();
   if (enRetard) {
     var dateAff = new Date(enRetard.date_intervention + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
-    alert('Impossible de planifier une nouvelle intervention tant qu\'une prestation passée (' + dateAff + ') n\'est pas soldée.\n\nOuvrez-la et marquez-la Terminée (ou Annulée si elle ne s\'est pas faite).');
+    alert('Impossible de planifier une nouvelle intervention tant qu\'une prestation passée (' + dateAff + ') n\'est pas soldée.\n\nOuvrez-la et marquez-la au moins "En cours" (si vous vous en occupez encore), ou "Terminée"/"Annulée" si c\'est fini.');
     return;
   }
   window._commandeEnLivraison = null;
@@ -1696,22 +1696,39 @@ async function calculerCAPrestationsAnnuaireDuMois() {
   return (data || []).reduce(function(s, i) { return s + (i.prix || 0); }, 0);
 }
 
-// Une intervention "Planifiée", pour un client "annuaire", dont la date est passée depuis plus
-// de DELAI_GRACE_PRESTATION_JOURS jours : tant qu'elle n'est pas soldée, on bloque toute nouvelle
-// planification. Ça vise précisément la faille "encaissé en main propre, jamais déclaré terminé" —
-// pas les interventions en cours légitimement (rénovation multi-jours, pièce en attente).
+// Deux cas bloquent la planification d'une nouvelle intervention "annuaire" :
+// - "Planifiée" dont la date est passée depuis plus de DELAI_GRACE_PRESTATION_JOURS (7j) —
+//   l'artisan n'a même pas commencé, rien ne justifie que ça traîne.
+// - "En cours" depuis plus de DELAI_GRACE_EN_COURS_JOURS (90j) — un dossier légitimement long
+//   (pièce à commander, gros chantier) ne doit jamais être bloqué à court terme ; seul un abandon
+//   manifeste après 3 mois déclenche le blocage.
+// Ça vise précisément la faille "encaissé en main propre, jamais déclaré terminé" — pas les
+// interventions en cours légitimement.
+const DELAI_GRACE_EN_COURS_JOURS = 90;
+
 async function trouverPrestationAnnuaireEnRetard() {
-  var limite = new Date(); limite.setDate(limite.getDate() - DELAI_GRACE_PRESTATION_JOURS);
-  var limiteStr = limite.toISOString().slice(0, 10);
-  var { data, error } = await sb.from('mpa_artisans_interventions')
+  var limitePlanifiee = new Date(); limitePlanifiee.setDate(limitePlanifiee.getDate() - DELAI_GRACE_PRESTATION_JOURS);
+  var limiteEnCours = new Date(); limiteEnCours.setDate(limiteEnCours.getDate() - DELAI_GRACE_EN_COURS_JOURS);
+
+  var { data: planifieesEnRetard, error: err1 } = await sb.from('mpa_artisans_interventions')
     .select('id, date_intervention, mpa_artisans_clients!inner(origine)')
     .eq('artisan_id', _artisan.id)
     .eq('statut', 'planifiee')
     .eq('mpa_artisans_clients.origine', 'annuaire')
-    .lt('date_intervention', limiteStr)
+    .lt('date_intervention', limitePlanifiee.toISOString().slice(0, 10))
     .limit(1);
-  if (error) { console.error(error); return null; }
-  return (data && data.length) ? data[0] : null;
+  if (err1) { console.error(err1); return null; }
+  if (planifieesEnRetard && planifieesEnRetard.length) return planifieesEnRetard[0];
+
+  var { data: enCoursEnRetard, error: err2 } = await sb.from('mpa_artisans_interventions')
+    .select('id, date_intervention, mpa_artisans_clients!inner(origine)')
+    .eq('artisan_id', _artisan.id)
+    .eq('statut', 'en_cours')
+    .eq('mpa_artisans_clients.origine', 'annuaire')
+    .lt('date_intervention', limiteEnCours.toISOString().slice(0, 10))
+    .limit(1);
+  if (err2) { console.error(err2); return null; }
+  return (enCoursEnRetard && enCoursEnRetard.length) ? enCoursEnRetard[0] : null;
 }
 
 const ABATTEMENT_BIC_SERVICES = 0.50;
@@ -1833,8 +1850,8 @@ async function lancerAbonnement() {
 // ── Rappel : interventions passées encore marquées "Planifiée" ──
 // Les empêche de rester coincées — sans statut Terminée/Payée, impossible de les facturer
 // ni de demander un avis au client.
-async function renderRappelCloture() {
-  var zone = document.getElementById('encart-rappel-cloture');
+async function renderRappelCloture(idZone) {
+  var zone = document.getElementById(idZone || 'encart-rappel-cloture');
   if (!zone) return;
   var aujourdhui = new Date().toISOString().slice(0, 10);
   var { count, error } = await sb.from('mpa_artisans_interventions')
@@ -2982,6 +2999,7 @@ async function renderItineraireWidget() {
   jours.innerHTML = html;
 
   await choisirJourItineraire(_itinDateChoisie || debutStr);
+  renderRappelCloture('encart-rappel-cloture-journee');
 }
 
 // Point de départ de la journée : l'adresse pro de l'artisan (géocodée à l'enregistrement de sa fiche).
