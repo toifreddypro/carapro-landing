@@ -1763,7 +1763,6 @@ async function initDashboard() {
   _dispoMois = new Date().getMonth();
   await renderDispoCalendrier();
   renderRappelCloture();
-  renderEncartStripeConnect();
   renderEncartAbonnement();
   renderEncartAlternance();
 }
@@ -1777,7 +1776,7 @@ function majInfoAbonnementMpaAi() {
 
 // ── Paiements en ligne (Stripe Connect) ──
 function renderEncartStripeConnect() {
-  var cibles = ['encart-stripe-connect', 'encart-stripe-connect-fiche'];
+  var cibles = ['encart-stripe-connect-catalogue'];
   var statut = _artisan.stripe_connect_statut || 'non_demarre';
 
   var html;
@@ -2450,6 +2449,8 @@ function genererSlugCatalogue(nomEntreprise) {
 async function chargerCatalogue() {
   var zone = document.getElementById('zone-catalogue');
   if (!zone) return;
+
+  renderEncartStripeConnect();
 
   // Lien de boutique : généré une fois pour toutes si l'artisan n'en a pas encore.
   if (!_artisan.slug_catalogue) {
