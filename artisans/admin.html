@@ -95,17 +95,30 @@ async function chargerSecteurs() {
         '<input id="nouveau-secteur" type="text" placeholder="Ex : Esthétique, Comptabilité…" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--b2);font-family:\'Outfit\',sans-serif;font-size:13px;" onkeydown="if(event.key===\'Enter\')ajouterSecteur()">' +
         '<button onclick="ajouterSecteur()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">+ Ajouter</button>' +
       '</div>' +
-      '<div class="note">💡 L\'icône et les traductions anglais/espagnol se règlent à "✨" et vide par défaut — modifiables plus tard directement en base si besoin.</div>' +
+      '<div class="note">💡 Cliquez sur l\'icône d\'un secteur pour la modifier, puis "OK" pour l\'enregistrer.</div>' +
     '</div>';
 }
 
 function renderLigneSecteur(s) {
   return '<tr>' +
-    '<td>' + (s.icon || '✨') + '</td>' +
+    '<td>' +
+      '<input type="text" value="' + escHtml(s.icon || '✨') + '" maxlength="4" id="icone-' + s.id + '" ' +
+        'style="width:44px;text-align:center;padding:5px 4px;border-radius:6px;border:1px solid var(--b2);font-size:16px;" ' +
+        'onkeydown="if(event.key===\'Enter\')sauverIconeSecteur(\'' + s.id + '\')">' +
+      '<button onclick="sauverIconeSecteur(\'' + s.id + '\')" title="Enregistrer l\'icône" style="margin-left:4px;padding:5px 8px;border-radius:6px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:11px;font-weight:700;cursor:pointer;">OK</button>' +
+    '</td>' +
     '<td><strong>' + escHtml(s.label_fr) + '</strong></td>' +
     '<td style="color:var(--mu);font-family:\'JetBrains Mono\',monospace;font-size:11.5px;">' + escHtml(s.code) + '</td>' +
     '<td><button class="btn-del" onclick="supprimerSecteur(\'' + s.id + '\',\'' + escHtml(s.label_fr).replace(/'/g,"\\'") + '\')">Supprimer</button></td>' +
   '</tr>';
+}
+
+async function sauverIconeSecteur(id) {
+  var champ = document.getElementById('icone-' + id);
+  var icone = champ.value.trim() || '✨';
+  var { error } = await sb.from('secteurs').update({ icon: icone }).eq('id', id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  champ.value = icone;
 }
 
 async function ajouterSecteur() {
