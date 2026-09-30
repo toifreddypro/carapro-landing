@@ -208,6 +208,30 @@ async function init() {
   await initDashboard();
   renderMpaAiFeed();
   await verifierAlertesMpaAi();
+  await verifierNouveautes();
+}
+
+// ── Quoi de neuf — annonces publiées depuis l'admin, montrées une fois par artisan ──
+async function verifierNouveautes() {
+  var depuis = _artisan.derniere_nouveaute_vue || '1970-01-01T00:00:00Z';
+  var { data: items, error } = await sb.from('nouveautes').select('*')
+    .eq('actif', true).gt('created_at', depuis).order('created_at', { ascending: true });
+  if (error || !items || !items.length) return;
+
+  document.getElementById('nouveautes-liste').innerHTML = items.map(function(n) {
+    return '<div style="padding:12px 0;border-bottom:1px solid var(--brd);">' +
+      '<div style="font-weight:700;font-size:14px;margin-bottom:4px;">✨ ' + escHtml(n.titre) + '</div>' +
+      '<div style="font-size:13px;color:var(--mu2);">' + escHtml(n.description) + '</div>' +
+    '</div>';
+  }).join('');
+  document.getElementById('modal-nouveautes').classList.add('show');
+}
+
+async function fermerNouveautes() {
+  document.getElementById('modal-nouveautes').classList.remove('show');
+  var maintenant = new Date().toISOString();
+  _artisan.derniere_nouveaute_vue = maintenant;
+  await sb.from('artisans').update({ derniere_nouveaute_vue: maintenant }).eq('id', _artisan.id);
 }
 
 // ════════════════════════════════════════

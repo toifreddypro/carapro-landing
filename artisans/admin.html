@@ -78,6 +78,59 @@ function slugify(s) {
     .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
+// ── Quoi de neuf — annonces affichées une fois à chaque artisan, à sa connexion sur MPA ──
+async function chargerNouveautes() {
+  var { data: items, error } = await sb.from('nouveautes').select('*').order('created_at', { ascending: false });
+  if (error) {
+    document.getElementById('zone-nouveautes').innerHTML = '<p style="color:var(--danger);">Erreur nouveautés : ' + escHtml(error.message) + '</p>';
+    return;
+  }
+  document.getElementById('zone-nouveautes').innerHTML =
+    '<div class="dcard">' +
+      '<div class="dchdr"><span>📣 Quoi de neuf (' + items.length + ')</span></div>' +
+      '<div class="dcbdy"><table class="dtbl">' +
+        '<thead><tr><th>Titre</th><th>Description</th><th>Visible</th><th></th></tr></thead>' +
+        '<tbody>' + items.map(renderLigneNouveaute).join('') + '</tbody>' +
+      '</table></div>' +
+      '<div style="padding:14px 18px;border-top:1px solid var(--brd);display:flex;flex-direction:column;gap:8px;">' +
+        '<input id="nouveaute-titre" type="text" placeholder="Titre (ex : Nouveau : le panier d\'achat !)" style="padding:8px 12px;border-radius:8px;border:1px solid var(--b2);font-family:\'Outfit\',sans-serif;font-size:13px;">' +
+        '<textarea id="nouveaute-desc" rows="2" placeholder="Description courte, visible dans la bulle de l\'artisan…" style="padding:8px 12px;border-radius:8px;border:1px solid var(--b2);font-family:\'Outfit\',sans-serif;font-size:13px;resize:vertical;"></textarea>' +
+        '<button onclick="ajouterNouveaute()" style="align-self:flex-start;padding:8px 16px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">+ Publier</button>' +
+      '</div>' +
+      '<div class="note">💡 Chaque artisan voit les annonces publiées depuis sa dernière connexion, une seule fois, dans une bulle à l\'ouverture de MPA.</div>' +
+    '</div>';
+}
+
+function renderLigneNouveaute(n) {
+  return '<tr>' +
+    '<td><strong>' + escHtml(n.titre) + '</strong></td>' +
+    '<td style="color:var(--mu);font-size:12px;max-width:280px;">' + escHtml(n.description) + '</td>' +
+    '<td><input type="checkbox" ' + (n.actif ? 'checked' : '') + ' onchange="basculerNouveaute(\'' + n.id + '\', this.checked)"></td>' +
+    '<td><button class="btn-del" onclick="supprimerNouveaute(\'' + n.id + '\',\'' + escHtml(n.titre).replace(/'/g,"\\'") + '\')">Supprimer</button></td>' +
+  '</tr>';
+}
+
+async function ajouterNouveaute() {
+  var titre = document.getElementById('nouveaute-titre').value.trim();
+  var description = document.getElementById('nouveaute-desc').value.trim();
+  if (!titre || !description) { alert('Titre et description sont nécessaires.'); return; }
+  var { error } = await sb.from('nouveautes').insert({ titre: titre, description: description, actif: true });
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerNouveautes();
+}
+
+async function basculerNouveaute(id, actif) {
+  var { error } = await sb.from('nouveautes').update({ actif: actif }).eq('id', id);
+  if (error) { alert('Erreur : ' + error.message); await chargerNouveautes(); }
+}
+
+async function supprimerNouveaute(id, titre) {
+  if (!confirm('Supprimer définitivement "' + titre + '" ?')) return;
+  var { error } = await sb.from('nouveautes').delete().eq('id', id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerNouveautes();
+}
+
 async function chargerSecteurs() {
   var { data: secteurs, error } = await sb.from('secteurs').select('*').order('ordre', { ascending: true });
   if (error) {
@@ -154,10 +207,12 @@ async function init() {
   _session = data.session;
   document.getElementById('wrap').innerHTML =
     '<div id="zone-secteurs"></div>' +
+    '<div id="zone-nouveautes"></div>' +
     '<div id="zone-avis-produit"></div>' +
     '<div id="zone-prelevement-prestations"></div>' +
     '<div id="zone-artisans"></div>';
   await chargerSecteurs();
+  await chargerNouveautes();
   await chargerAvisProduit();
   renderZonePrelevementPrestations();
   await chargerArtisans();
