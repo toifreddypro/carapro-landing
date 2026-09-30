@@ -2538,7 +2538,10 @@ function renderCatalogueGrille() {
       '<button onclick="togglePhareCatalogue(\'' + c.id + '\')" title="' + (c.est_phare ? 'Retirer des produits phares' : 'Marquer comme produit phare') + '" style="position:absolute;top:6px;left:6px;background:' + (c.est_phare ? 'var(--gold,#b45309)' : 'rgba(0,0,0,.45)') + ';color:#fff;border:none;border-radius:7px;width:24px;height:24px;cursor:pointer;font-size:13px;z-index:1;">⭐</button>' +
       photo +
       '<div style="padding:10px;">' +
-        '<div style="font-size:13px;font-weight:700;margin-bottom:3px;">' + escHtml(c.nom) + '</div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:3px;">' +
+          '<div style="font-size:13px;font-weight:700;">' + escHtml(c.nom) + '</div>' +
+          '<button onclick="ouvrirModifierCatalogue(\'' + c.id + '\')" title="Modifier cet article" style="flex-shrink:0;background:none;border:1px solid var(--brd);border-radius:6px;width:22px;height:22px;cursor:pointer;font-size:11px;color:var(--mu2);">✎</button>' +
+        '</div>' +
         (c.prix != null ? '<div style="font-size:13px;color:var(--ac);font-weight:700;margin-bottom:6px;">' + c.prix + ' €</div>' : '') +
         badge +
         '<div style="font-size:11px;color:var(--mu);margin-top:6px;">' + ventes + ' vendu' + (ventes > 1 ? 's' : '') + '</div>' +
@@ -2572,13 +2575,34 @@ async function sauverPromoCatalogue(id) {
   if (item) item.promo_pct = valeur;
 }
 
+var _catalogueEnEdition = null;
+
 function openAjouterCatalogue() {
+  _catalogueEnEdition = null;
+  document.getElementById('modal-catalogue-titre').textContent = 'Ajouter un article';
+  document.getElementById('btn-cat-sauver').textContent = 'Enregistrer';
   document.getElementById('cat-nom').value = '';
   document.getElementById('cat-desc').value = '';
   document.getElementById('cat-prix').value = '';
   document.getElementById('cat-type').value = 'disponible';
   document.getElementById('cat-delai').value = '';
   document.getElementById('cat-delai-wrap').style.display = 'none';
+  document.getElementById('cat-photo-input').value = '';
+  ouvrirModale('modal-catalogue');
+}
+
+function ouvrirModifierCatalogue(id) {
+  var c = _catalogueCache.find(function(x) { return x.id === id; });
+  if (!c) return;
+  _catalogueEnEdition = id;
+  document.getElementById('modal-catalogue-titre').textContent = 'Modifier l\'article';
+  document.getElementById('btn-cat-sauver').textContent = 'Enregistrer les modifications';
+  document.getElementById('cat-nom').value = c.nom || '';
+  document.getElementById('cat-desc').value = c.description || '';
+  document.getElementById('cat-prix').value = c.prix != null ? c.prix : '';
+  document.getElementById('cat-type').value = c.type || 'disponible';
+  document.getElementById('cat-delai').value = c.delai_preparation || '';
+  document.getElementById('cat-delai-wrap').style.display = c.type === 'sur_commande' ? 'block' : 'none';
   document.getElementById('cat-photo-input').value = '';
   ouvrirModale('modal-catalogue');
 }
@@ -2601,24 +2625,29 @@ async function sauverCatalogue() {
       urlPhoto = pub.publicUrl;
     }
 
-    var nouveau = {
-      artisan_id: _artisan.id,
+    var champs = {
       nom: nom,
       description: document.getElementById('cat-desc').value.trim() || null,
       prix: parseFloat(document.getElementById('cat-prix').value) || null,
       type: document.getElementById('cat-type').value,
       delai_preparation: document.getElementById('cat-delai').value.trim() || null,
-      url_photo: urlPhoto,
-      ordre: _catalogueCache.length,
     };
-    var { error } = await sb.from('artisans_catalogue').insert(nouveau);
-    if (error) throw error;
+    if (urlPhoto) champs.url_photo = urlPhoto; // garde la photo existante si aucune nouvelle n'est choisie
+
+    if (_catalogueEnEdition) {
+      var { error } = await sb.from('artisans_catalogue').update(champs).eq('id', _catalogueEnEdition).eq('artisan_id', _artisan.id);
+      if (error) throw error;
+    } else {
+      var nouveau = Object.assign({ artisan_id: _artisan.id, ordre: _catalogueCache.length }, champs);
+      var { error } = await sb.from('artisans_catalogue').insert(nouveau);
+      if (error) throw error;
+    }
     fermerModale('modal-catalogue');
     await chargerCatalogue();
   } catch (e) {
     alert('Erreur : ' + e.message);
   }
-  btn.disabled = false; btn.textContent = 'Ajouter';
+  btn.disabled = false; btn.textContent = _catalogueEnEdition ? 'Enregistrer les modifications' : 'Ajouter';
 }
 
 async function supprimerCatalogue(id) {
@@ -3138,7 +3167,7 @@ function renderServices(liste) {
     return;
   }
   tbody.innerHTML = liste.map(function(s) {
-    var prix = s.prix_indicatif ? (s.prix_indicatif + '€' + (s.unite ? '/' + s.unite : '')) : 'Sur devis';
+    var prix = s.prix_indicatif ? (s.prix_indicatif + '€' + (s.unite ? '/' + s.unite : '')) : '<span style="font-style:italic;color:var(--mu);">Sur devis</span>';
     var duree = s.duree_estimee_min ? formatDuree(s.duree_estimee_min) : '—';
     return '<tr>' +
       '<td><strong>' + escHtml(s.nom_service) + '</strong></td>' +
