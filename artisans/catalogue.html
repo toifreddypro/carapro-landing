@@ -398,18 +398,81 @@ function render() {
   }
 
   if (DATA.produits.length) {
-    // Produits phares en tête, le reste ensuite — dans une seule grille (pas une section à part),
-    // conformément à la capture de référence.
-    var phares = DATA.produits.filter(function(p) { return p.est_phare; });
-    var idsPhares = {}; phares.forEach(function(p) { idsPhares[p.id] = true; });
-    var reste = DATA.produits.filter(function(p) { return !idsPhares[p.id]; });
-    html += '<h2 class="section-titre">' + T('cat_tous_produits') + '</h2><div class="grille">' + phares.concat(reste).map(carteProduit).join('') + '</div>';
+    html += '<h2 class="section-titre">' + T('cat_tous_produits') + '</h2>';
+    html += '<div id="barre-filtres" style="margin-bottom:16px;"></div>';
+    html += '<div class="grille" id="grille-principale"></div>';
   } else {
     html += '<p style="color:var(--mu);padding:40px 0;text-align:center;">' + T('cat_aucun_produit') + '</p>';
   }
 
   html += '</div>';
   document.getElementById('racine').innerHTML = html;
+  if (DATA.produits.length) { renderBarreFiltres(); rerenderGrillePrincipale(); }
+}
+
+// ── Filtre par catégorie + tri par prix — tout se passe côté client, sans recharger ──
+var _filtreCategorie = null; // null = toutes les catégories
+var _triActif = 'pertinence'; // 'pertinence' | 'prix_asc' | 'prix_desc'
+
+function categoriesDisponibles() {
+  var vues = {};
+  DATA.produits.forEach(function(p) { if (p.categorie) vues[p.categorie] = true; });
+  return Object.keys(vues).sort(function(a, b) { return a.localeCompare(b, 'fr'); });
+}
+
+function renderBarreFiltres() {
+  var cats = categoriesDisponibles();
+  var zone = document.getElementById('barre-filtres');
+  var pastilleTous = '<button onclick="filtrerParCategorie(null)" style="padding:6px 14px;border-radius:20px;border:1px solid ' + (!_filtreCategorie ? 'var(--ac)' : 'var(--brd)') + ';background:' + (!_filtreCategorie ? 'var(--ac)' : 'transparent') + ';color:' + (!_filtreCategorie ? '#fff' : 'var(--tx)') + ';font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;">' + T('cat_toutes_categories') + '</button>';
+  var pastillesCat = cats.map(function(cat) {
+    var actif = _filtreCategorie === cat;
+    return '<button onclick="filtrerParCategorie(' + jsAttr(cat) + ')" style="padding:6px 14px;border-radius:20px;border:1px solid ' + (actif ? 'var(--ac)' : 'var(--brd)') + ';background:' + (actif ? 'var(--ac)' : 'transparent') + ';color:' + (actif ? '#fff' : 'var(--tx)') + ';font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;">' + escHtml(cat) + '</button>';
+  }).join('');
+  var selectTri =
+    '<select onchange="changerTri(this.value)" style="padding:7px 12px;border-radius:8px;border:1px solid var(--brd);background:var(--panel);font-family:\'Outfit\',sans-serif;font-size:12.5px;color:var(--tx);">' +
+      '<option value="pertinence"' + (_triActif === 'pertinence' ? ' selected' : '') + '>' + T('cat_tri_pertinence') + '</option>' +
+      '<option value="prix_asc"' + (_triActif === 'prix_asc' ? ' selected' : '') + '>' + T('cat_tri_prix_asc') + '</option>' +
+      '<option value="prix_desc"' + (_triActif === 'prix_desc' ? ' selected' : '') + '>' + T('cat_tri_prix_desc') + '</option>' +
+    '</select>';
+  zone.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + (cats.length ? pastilleTous + pastillesCat : '') + '</div>' +
+      selectTri +
+    '</div>';
+}
+
+function filtrerParCategorie(cat) {
+  _filtreCategorie = cat;
+  renderBarreFiltres();
+  rerenderGrillePrincipale();
+}
+
+function changerTri(valeur) {
+  _triActif = valeur;
+  rerenderGrillePrincipale();
+}
+
+function rerenderGrillePrincipale() {
+  var liste = _filtreCategorie
+    ? DATA.produits.filter(function(p) { return p.categorie === _filtreCategorie; })
+    : DATA.produits.slice();
+
+  if (_triActif === 'prix_asc') {
+    liste.sort(function(a, b) { return (prixEffectifProduit(a) ?? Infinity) - (prixEffectifProduit(b) ?? Infinity); });
+  } else if (_triActif === 'prix_desc') {
+    liste.sort(function(a, b) { return (prixEffectifProduit(b) ?? -Infinity) - (prixEffectifProduit(a) ?? -Infinity); });
+  } else {
+    // Pertinence : produits phares en tête, comme le tri par défaut d'origine.
+    var phares = liste.filter(function(p) { return p.est_phare; });
+    var idsPhares = {}; phares.forEach(function(p) { idsPhares[p.id] = true; });
+    var reste = liste.filter(function(p) { return !idsPhares[p.id]; });
+    liste = phares.concat(reste);
+  }
+
+  var grille = document.getElementById('grille-principale');
+  grille.innerHTML = liste.length
+    ? liste.map(carteProduit).join('')
+    : '<p style="grid-column:1/-1;color:var(--mu);padding:30px 0;text-align:center;">' + T('cat_aucun_produit_categorie') + '</p>';
 }
 
 function changerLangueCatalogue(code) {

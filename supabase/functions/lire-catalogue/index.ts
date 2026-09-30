@@ -48,7 +48,7 @@ Deno.serve(async (req: Request) => {
     if (!artisan) return json({ error: "Boutique introuvable." }, 404);
 
     const { data: produits, error: errP } = await sb.from("artisans_catalogue")
-      .select("id, nom, description, prix, url_photo, type, delai_preparation, est_phare, promo_pct, created_at")
+      .select("id, nom, description, prix, url_photo, type, delai_preparation, est_phare, promo_pct, categorie, created_at")
       .eq("artisan_id", artisan.id)
       .order("ordre", { ascending: true });
     if (errP) throw errP;
@@ -84,7 +84,7 @@ Deno.serve(async (req: Request) => {
     const seuilNouveaute = Date.now() - JOURS_NOUVEAUTE * 86400000;
     const produitsAff = liste.map((p: any) => ({
       id: p.id, nom: p.nom, description: p.description, prix: p.prix, url_photo: p.url_photo,
-      type: p.type, delai_preparation: p.delai_preparation, promo_pct: p.promo_pct,
+      type: p.type, delai_preparation: p.delai_preparation, promo_pct: p.promo_pct, categorie: p.categorie,
       est_phare: idsPhares.has(p.id),
       est_nouveaute: new Date(p.created_at).getTime() >= seuilNouveaute,
     }));

@@ -2543,6 +2543,7 @@ function renderCatalogueGrille() {
           '<button onclick="ouvrirModifierCatalogue(\'' + c.id + '\')" title="Modifier cet article" style="flex-shrink:0;background:none;border:1px solid var(--brd);border-radius:6px;width:22px;height:22px;cursor:pointer;font-size:11px;color:var(--mu2);">✎</button>' +
         '</div>' +
         (c.prix != null ? '<div style="font-size:13px;color:var(--ac);font-weight:700;margin-bottom:6px;">' + c.prix + ' €</div>' : '') +
+        (c.categorie ? '<div style="font-size:10.5px;color:var(--mu);margin-bottom:4px;">🏷️ ' + escHtml(c.categorie) + '</div>' : '') +
         badge +
         '<div style="font-size:11px;color:var(--mu);margin-top:6px;">' + ventes + ' vendu' + (ventes > 1 ? 's' : '') + '</div>' +
         '<div style="display:flex;align-items:center;gap:6px;margin-top:8px;">' +
@@ -2582,6 +2583,7 @@ function openAjouterCatalogue() {
   document.getElementById('modal-catalogue-titre').textContent = 'Ajouter un article';
   document.getElementById('btn-cat-sauver').textContent = 'Enregistrer';
   document.getElementById('cat-nom').value = '';
+  document.getElementById('cat-categorie').value = '';
   document.getElementById('cat-desc').value = '';
   document.getElementById('cat-prix').value = '';
   document.getElementById('cat-type').value = 'disponible';
@@ -2598,6 +2600,7 @@ function ouvrirModifierCatalogue(id) {
   document.getElementById('modal-catalogue-titre').textContent = 'Modifier l\'article';
   document.getElementById('btn-cat-sauver').textContent = 'Enregistrer les modifications';
   document.getElementById('cat-nom').value = c.nom || '';
+  document.getElementById('cat-categorie').value = c.categorie || '';
   document.getElementById('cat-desc').value = c.description || '';
   document.getElementById('cat-prix').value = c.prix != null ? c.prix : '';
   document.getElementById('cat-type').value = c.type || 'disponible';
@@ -2627,6 +2630,7 @@ async function sauverCatalogue() {
 
     var champs = {
       nom: nom,
+      categorie: document.getElementById('cat-categorie').value.trim() || null,
       description: document.getElementById('cat-desc').value.trim() || null,
       prix: parseFloat(document.getElementById('cat-prix').value) || null,
       type: document.getElementById('cat-type').value,
