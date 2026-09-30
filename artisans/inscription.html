@@ -163,10 +163,10 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
 
 <div class="wrap" id="wrap-confirmation" style="display:none;">
   <div class="confirmation">
-    <div class="icon">🎉</div>
-    <h1>Bienvenue sur CaraLink Artisans !</h1>
+    <div class="icon" id="confirmation-icon">🎉</div>
+    <h1 id="confirmation-titre">Bienvenue sur CaraLink Artisans !</h1>
     <p id="confirmation-msg">Votre profil est en ligne.</p>
-    <p style="margin-top:20px;"><a href="/artisans/">← Voir l'annuaire</a></p>
+    <div id="confirmation-action" style="margin-top:20px;"></div>
   </div>
 </div>
 
@@ -202,6 +202,8 @@ function basculerMotDePasse(id, btn) {
   btn.textContent = masque ? '🙈' : '👁️';
   btn.title = masque ? 'Masquer le mot de passe' : 'Afficher le mot de passe';
 }
+
+function escHtmlLocal(s) { return String(s || '').replace(/[&<>"']/g, function(m) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; }); }
 
 async function chargerSecteurs() {
   var sel = document.getElementById('f-secteur');
@@ -300,7 +302,10 @@ async function soumettreInscription() {
 
       document.getElementById('wrap-form').style.display = 'none';
       document.getElementById('wrap-confirmation').style.display = 'block';
-      document.getElementById('confirmation-msg').textContent = 'Votre compte a été créé ! Vérifiez vos emails pour confirmer votre inscription, puis reconnectez-vous pour terminer votre profil.';
+      document.getElementById('confirmation-icon').textContent = '📧';
+      document.getElementById('confirmation-titre').textContent = 'Vérifiez votre boîte mail';
+      document.getElementById('confirmation-msg').innerHTML = 'Un email de confirmation vient de vous être envoyé à <strong>' + escHtmlLocal(email) + '</strong>.<br><br>Cliquez sur le lien qu\'il contient pour continuer — vous terminerez ensuite votre profil directement dans <strong>Mon espace</strong>. Pensez à vérifier vos spams si vous ne le voyez pas d\'ici quelques minutes.';
+      document.getElementById('confirmation-action').innerHTML = '';
       return;
     }
 
@@ -326,7 +331,10 @@ async function soumettreInscription() {
 
     document.getElementById('wrap-form').style.display = 'none';
     document.getElementById('wrap-confirmation').style.display = 'block';
+    document.getElementById('confirmation-icon').textContent = '🎉';
+    document.getElementById('confirmation-titre').textContent = 'Bienvenue sur CaraLink Artisans !';
     document.getElementById('confirmation-msg').textContent = data.message;
+    document.getElementById('confirmation-action').innerHTML = '<a href="https://caralink.app/mpa/" class="btn-submit" style="display:inline-block;text-decoration:none;">Aller sur Mon espace →</a>';
 
   } catch(e) {
     afficherErreur(e.message);
@@ -390,7 +398,10 @@ async function terminerInscription() {
     localStorage.removeItem('caralink_inscription_attente');
     document.getElementById('wrap-resume').style.display = 'none';
     document.getElementById('wrap-confirmation').style.display = 'block';
+    document.getElementById('confirmation-icon').textContent = '🎉';
+    document.getElementById('confirmation-titre').textContent = 'Bienvenue sur CaraLink Artisans !';
     document.getElementById('confirmation-msg').textContent = data.message;
+    document.getElementById('confirmation-action').innerHTML = '<a href="https://caralink.app/mpa/" class="btn-submit" style="display:inline-block;text-decoration:none;">Aller sur Mon espace →</a>';
   } catch (e) {
     err.textContent = e.message;
     err.classList.add('show');
