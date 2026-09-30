@@ -2023,6 +2023,10 @@ var _secteursCache = null;
 
 async function openModifierFiche() {
   var a = _artisan;
+  var apercu = document.getElementById('apercu-logo');
+  apercu.innerHTML = a.photo_profil_url
+    ? '<img src="' + a.photo_profil_url + '" style="width:100%;height:100%;object-fit:cover;">'
+    : (a.nom_entreprise || '—').split(' ').filter(Boolean).slice(0, 2).map(function(w) { return w[0].toUpperCase(); }).join('');
   document.getElementById('m-nom').value = a.nom_entreprise || '';
   document.getElementById('m-statut').value = a.statut || 'Artisan Indépendant';
   document.getElementById('m-siret').value = a.siret || '';
@@ -2177,6 +2181,31 @@ async function supprimerIndispo(id) {
   var { error } = await sb.from('artisans_indisponibilites').delete().eq('id', id).eq('artisan_id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
   await chargerIndispos();
+}
+
+async function uploaderLogo() {
+  if (!verifierAccesEcriture()) return;
+  var input = document.getElementById('logo-input');
+  var fichier = input.files[0];
+  if (!fichier) return;
+  var btn = document.getElementById('btn-logo');
+  var texteOriginal = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    var chemin = _artisan.user_id + '/logo_' + Date.now() + '_' + fichier.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    var up = await sb.storage.from('artisans-photos').upload(chemin, fichier);
+    if (up.error) throw new Error(up.error.message);
+    var { data: pub } = sb.storage.from('artisans-photos').getPublicUrl(chemin);
+    var { error } = await sb.from('artisans').update({ photo_profil_url: pub.publicUrl }).eq('id', _artisan.id);
+    if (error) throw error;
+    _artisan.photo_profil_url = pub.publicUrl;
+    document.getElementById('apercu-logo').innerHTML = '<img src="' + pub.publicUrl + '" style="width:100%;height:100%;object-fit:cover;">';
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = texteOriginal;
+    input.value = '';
+  }
 }
 
 async function sauverFiche() {

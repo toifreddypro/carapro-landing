@@ -1004,6 +1004,17 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-overlay" id="modal-fiche">
   <div class="modal-box">
     <h3>Modifier mes informations</h3>
+    <div class="modal-field">
+      <label>Logo / Photo de profil</label>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div id="apercu-logo" style="width:64px;height:64px;border-radius:50%;background:var(--p2,#f6f9fe);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:22px;color:var(--mu);">—</div>
+        <div>
+          <input type="file" id="logo-input" accept="image/*" style="display:none;" onchange="uploaderLogo()">
+          <button type="button" onclick="document.getElementById('logo-input').click()" id="btn-logo" style="padding:8px 14px;border-radius:8px;border:1px solid var(--b2);background:transparent;color:var(--tx);font-size:12.5px;font-weight:600;cursor:pointer;">Choisir une image</button>
+          <div style="font-size:11px;color:var(--mu);margin-top:4px;">Remplace les initiales dans votre bulle, sur l'annuaire et votre boutique.</div>
+        </div>
+      </div>
+    </div>
     <div class="modal-field"><label>Nom / Raison sociale</label><input type="text" id="m-nom"></div>
     <div class="modal-field"><label>Statut</label><input type="text" id="m-statut" placeholder="Artisan Indépendant"></div>
     <div class="modal-field"><label>SIRET</label><input type="text" id="m-siret"></div>
