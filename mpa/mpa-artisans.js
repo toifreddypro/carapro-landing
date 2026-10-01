@@ -3001,22 +3001,42 @@ async function planifierLivraisonCommande(commandeId) {
   if (!c) return;
 
   // Cherche une intervention à venir, dans la même commune, pour proposer de regrouper.
+  // - Livraison flexible : recherche bornée à la fenêtre choisie par le client (ex : 7 jours à
+  //   partir de la date souhaitée) — l'intérêt même de la flexibilité, trouver le MEILLEUR jour
+  //   dans cette fenêtre plutôt que la première intervention qui traîne, parfois bien plus tard.
+  // - Date précise avec date renseignée : recherche UNIQUEMENT ce jour-là, jamais plus tard —
+  //   proposer de regrouper avec une intervention trois semaines après n'aurait aucun sens pour
+  //   un client qui a demandé une date précise.
+  // - Aucune date renseignée (ancien comportement, avant l'ajout du champ date) : recherche
+  //   ouverte à partir d'aujourd'hui, en repli.
   var dateSuggestion = c.date_souhaitee || null;
   var creneauSuggestion = 'matin';
   if (c.commune_livraison) {
     var aujourdhui = new Date().toISOString().slice(0, 10);
-    var { data: proches } = await sb.from('mpa_artisans_interventions')
+    var requete = sb.from('mpa_artisans_interventions')
       .select('date_intervention, creneau, commune')
       .eq('artisan_id', _artisan.id)
       .ilike('commune', c.commune_livraison.trim())
-      .neq('statut', 'annulee')
-      .gte('date_intervention', aujourdhui)
-      .order('date_intervention', { ascending: true })
-      .limit(1);
+      .neq('statut', 'annulee');
+
+    if (c.livraison_flexible && c.livraison_fenetre_jours) {
+      var finFenetre = new Date((c.date_souhaitee || aujourdhui) + 'T12:00:00');
+      finFenetre.setDate(finFenetre.getDate() + c.livraison_fenetre_jours - 1);
+      requete = requete.gte('date_intervention', c.date_souhaitee || aujourdhui).lte('date_intervention', finFenetre.toISOString().slice(0, 10));
+    } else if (c.date_souhaitee) {
+      requete = requete.eq('date_intervention', c.date_souhaitee);
+    } else {
+      requete = requete.gte('date_intervention', aujourdhui);
+    }
+
+    var { data: proches } = await requete.order('date_intervention', { ascending: true }).limit(1);
     if (proches && proches.length) {
       var p = proches[0];
       var dateAff = new Date(p.date_intervention).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-      if (confirm('💡 Vous avez déjà une intervention à ' + c.commune_livraison + ' le ' + dateAff + ' (' + p.creneau + ').\n\nRegrouper cette livraison ce jour-là ?')) {
+      var texteConfirm = c.livraison_flexible
+        ? '💡 Dans la fenêtre choisie par le client, vous avez déjà une intervention à ' + c.commune_livraison + ' le ' + dateAff + ' (' + p.creneau + ').\n\nRegrouper cette livraison ce jour-là ?'
+        : '💡 Vous avez déjà une intervention à ' + c.commune_livraison + ' le ' + dateAff + ' (' + p.creneau + ').\n\nRegrouper cette livraison ce jour-là ?';
+      if (confirm(texteConfirm)) {
         dateSuggestion = p.date_intervention;
         creneauSuggestion = p.creneau;
       }

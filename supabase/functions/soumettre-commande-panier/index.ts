@@ -23,6 +23,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const FENETRE_LIVRAISON_FLEXIBLE_JOURS = 7;
+
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
@@ -78,7 +80,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => null);
     if (!body) return json({ error: "Requête invalide." }, 400);
 
-    const { artisan_id, lignes, client_nom, client_telephone, client_email, mode, adresse_livraison, code_postal_livraison, commune_livraison, date_souhaitee, notes } = body;
+    const { artisan_id, lignes, client_nom, client_telephone, client_email, mode, adresse_livraison, code_postal_livraison, commune_livraison, date_souhaitee, livraison_flexible, notes } = body;
 
     if (!artisan_id) return json({ error: "Boutique manquante." }, 400);
     if (!Array.isArray(lignes) || !lignes.length) return json({ error: "Le panier est vide." }, 400);
@@ -166,6 +168,8 @@ Deno.serve(async (req: Request) => {
       code_postal_livraison: mode === "livraison" ? code_postal_livraison?.trim() : null,
       commune_livraison: mode === "livraison" ? commune_livraison?.trim() : null,
       date_souhaitee: date_souhaitee || null,
+      livraison_flexible: mode === "livraison" ? !!livraison_flexible : false,
+      livraison_fenetre_jours: (mode === "livraison" && livraison_flexible) ? FENETRE_LIVRAISON_FLEXIBLE_JOURS : null,
       notes: notes?.trim() || null,
     }).select().single();
     if (errIns) throw errIns;
@@ -182,7 +186,7 @@ Deno.serve(async (req: Request) => {
         <p><strong>${client_nom}</strong> (${client_telephone}) commande :</p>
         <ul>${detailLignes}</ul>
         <p>Mode : ${mode === "livraison" ? "🚚 Livraison — " + adresse_livraison + (fraisLivraison > 0 ? ` (frais de livraison : ${fraisLivraison.toFixed(2)} €)` : "") : "🏠 Retrait sur place"}</p>
-        ${date_souhaitee ? `<p>Date souhaitée : ${date_souhaitee}</p>` : ""}
+        ${date_souhaitee ? `<p>Date ${livraison_flexible ? "souhaitée au plus tôt" : "souhaitée"} : ${date_souhaitee}${livraison_flexible ? ` (flexible, ${FENETRE_LIVRAISON_FLEXIBLE_JOURS} jours — à vous de choisir le meilleur jour)` : ""}</p>` : ""}
         ${notes ? `<p>Précisions : ${notes}</p>` : ""}
         <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Voir dans MPA Artisans →</a></p>
       </div>`;

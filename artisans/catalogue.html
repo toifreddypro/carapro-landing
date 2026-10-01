@@ -126,6 +126,20 @@
       <div class="modal-field"><label data-i18n="cat_adresse">Adresse</label><input type="text" id="mc-adresse"></div>
       <div class="modal-field"><label data-i18n="cat_code_postal">Code postal</label><input type="text" id="mc-cp"></div>
       <div class="modal-field"><label data-i18n="cat_commune">Commune</label><input type="text" id="mc-commune"></div>
+      <div class="modal-field">
+        <label data-i18n="cat_quand_livrer">Quand souhaitez-vous être livré ?</label>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <label style="display:flex;align-items:center;gap:8px;font-weight:400;font-size:13px;cursor:pointer;">
+            <input type="radio" name="mc-date-type" value="precise" checked onchange="basculerTypeDateLivraison()">
+            <span data-i18n="cat_date_precise">Date précise</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-weight:400;font-size:13px;cursor:pointer;">
+            <input type="radio" name="mc-date-type" value="flexible" onchange="basculerTypeDateLivraison()">
+            <span data-i18n="cat_date_flexible">Je suis flexible (dans les 7 jours) — ça aide l'artisan à optimiser sa tournée</span>
+          </label>
+        </div>
+        <input type="date" id="mc-date" style="margin-top:8px;">
+      </div>
     </div>
     <div class="modal-field"><label data-i18n="cat_notes_facultatif">Notes (facultatif)</label><textarea id="mc-notes" rows="2"></textarea></div>
     <div id="mc-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:8px;"></div>
@@ -236,6 +250,14 @@ function ouvrirModaleCommande() {
 }
 function fermerModaleCommande() { document.getElementById('modal-commande').classList.remove('show'); ouvrirPanier(); }
 
+function basculerTypeDateLivraison() {
+  var flexible = document.querySelector('input[name="mc-date-type"]:checked').value === 'flexible';
+  var champ = document.getElementById('mc-date');
+  var aujourdhui = new Date().toISOString().slice(0, 10);
+  champ.min = aujourdhui;
+  champ.title = flexible ? T('cat_pas_avant_le') : T('cat_date_souhaitee');
+}
+
 async function confirmerCommande() {
   var err = document.getElementById('mc-err');
   var nom = document.getElementById('mc-nom').value.trim();
@@ -257,6 +279,8 @@ async function confirmerCommande() {
         adresse_livraison: mode === 'livraison' ? document.getElementById('mc-adresse').value.trim() : null,
         code_postal_livraison: mode === 'livraison' ? document.getElementById('mc-cp').value.trim() : null,
         commune_livraison: mode === 'livraison' ? document.getElementById('mc-commune').value.trim() : null,
+        date_souhaitee: mode === 'livraison' ? (document.getElementById('mc-date').value || null) : null,
+        livraison_flexible: mode === 'livraison' && document.querySelector('input[name="mc-date-type"]:checked').value === 'flexible',
         notes: document.getElementById('mc-notes').value.trim() || null,
       }),
     });
