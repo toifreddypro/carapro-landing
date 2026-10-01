@@ -1965,7 +1965,24 @@ async function calculerDashboardFiscal() {
     .gte('date_intervention', debut)
     .lte('date_intervention', fin);
 
-  var caBrut = (data || []).reduce(function(s, i) { return s + (i.prix || 0); }, 0);
+  var caPrestations = (data || []).reduce(function(s, i) { return s + (i.prix || 0); }, 0);
+
+  // Ventes catalogue (produits payés en ligne) — jamais comptées ici auparavant, manque réel
+  // repéré le 01/10. La part livraison n'est PAS reprise : elle est déjà comptée via le prix
+  // de l'intervention de livraison créée (mpa_artisans_interventions), la compter ici aussi
+  // la compterait deux fois.
+  var { data: ventes } = await sb.from('commandes_catalogue')
+    .select('montant_total, montant_rembourse, frais_livraison')
+    .eq('artisan_id', _artisan.id)
+    .in('paiement_statut', ['paye', 'partiellement_rembourse', 'rembourse'])
+    .gte('created_at', debut + 'T00:00:00')
+    .lt('created_at', (anneeAuj + 1) + '-01-01T00:00:00');
+  var caVentes = (ventes || []).reduce(function(s, v) {
+    var net = Number(v.montant_total || 0) - Number(v.montant_rembourse || 0) - Number(v.frais_livraison || 0);
+    return s + Math.max(0, net);
+  }, 0);
+
+  var caBrut = caPrestations + caVentes;
 
   // Jauge plafond micro-entreprise
   var pct = Math.min(100, (caBrut / PLAFOND_MICRO_BIC_SERVICES) * 100);
@@ -1976,6 +1993,8 @@ async function calculerDashboardFiscal() {
   bar.className = 'dj-bar' + (pct >= 90 ? ' danger' : pct >= 70 ? ' warn' : '');
   document.getElementById('dash-me-msg').textContent =
     pct >= 90 ? '⚠️ Seuil bientôt atteint' : pct >= 70 ? 'À surveiller' : 'Marge confortable';
+  document.getElementById('dash-me-detail').textContent =
+    'dont ' + caPrestations.toFixed(0) + ' € de prestations et ' + caVentes.toFixed(0) + ' € de ventes catalogue';
 
   // Jauge seuil gratuit — CA prestations du mois, clients "annuaire" uniquement
   var caAnnuaireMois = await calculerCAPrestationsAnnuaireDuMois();
