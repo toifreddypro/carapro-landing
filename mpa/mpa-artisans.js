@@ -145,7 +145,13 @@ async function verifierAlertesMpaAi() {
 // ── Onglets principaux ──
 function switchTab(i) {
   document.querySelectorAll('#nav .ntab').forEach(function(b, idx) { b.classList.toggle('active', idx === i); });
-  document.querySelectorAll('#content > .pnl').forEach(function(p, idx) { p.classList.toggle('active', idx === i); });
+  var panneaux = document.querySelectorAll('#content > .pnl');
+  panneaux.forEach(function(p, idx) { p.classList.toggle('active', idx === i); });
+  // La compta peut devenir périmée par une action faite depuis un autre onglet (ex : marquer une
+  // intervention "Payée" depuis Ma journée) — on la rafraîchit systématiquement en y entrant,
+  // plutôt que de compter sur chaque endroit qui pourrait la rendre périmée pour y penser.
+  var panneauActif = panneaux[i];
+  if (panneauActif && panneauActif.id === 'p2' && typeof chargerCompta === 'function') chargerCompta();
 }
 
 // ── Sous-onglets Base de données ──
