@@ -233,6 +233,7 @@ async function init() {
   await chargerAvisProduit();
   renderZonePrelevementPrestations();
   await chargerArtisans();
+  await chargerLitiges();
 }
 
 function switchAdminTab(i) {
@@ -363,6 +364,86 @@ async function modererAvisProduit(id, action) {
     await chargerAvisProduit();
   } catch (e) {
     alert('Erreur : ' + e.message);
+  }
+}
+
+// ── Litiges Stripe — jamais une récupération automatique, toujours un geste volontaire ──
+async function chargerLitiges() {
+  var zone = document.getElementById('zone-litiges');
+  if (!zone) return;
+
+  var { data: litiges, error } = await sb.from('litiges_stripe')
+    .select('*, artisans(nom_entreprise)')
+    .order('created_at', { ascending: false });
+  if (error) {
+    zone.innerHTML = '<p style="color:var(--danger);padding:16px;">Erreur litiges : ' + escHtml(error.message) + '</p>';
+    return;
+  }
+
+  var ouverts = (litiges || []).filter(function(l) { return l.statut !== 'won' && l.statut !== 'lost' && l.statut !== 'warning_closed'; });
+  var clos = (litiges || []).filter(function(l) { return !ouverts.includes(l); });
+
+  zone.innerHTML =
+    '<div class="dcard">' +
+      '<div class="dchdr"><span>⚠️ Litiges Stripe' + (ouverts.length ? ' — ' + ouverts.length + ' en cours' : '') + '</span></div>' +
+      '<div class="dcbdy" style="padding:16px;">' +
+        '<p style="font-size:12.5px;color:var(--mu);margin-bottom:14px;">Avec des paiements en destination charge, un litige débite toujours notre solde Stripe, jamais directement celui de l\'artisan — même si l\'argent lui a déjà été transféré. "Récupérer" tente de reprendre ce montant sur son solde ; ça échoue proprement s\'il n\'a plus assez disponible.</p>' +
+        (litiges && litiges.length
+          ? '<table class="dtbl"><thead><tr><th>Date</th><th>Artisan</th><th>Montant</th><th>Motif</th><th>Statut</th><th>Réponse avant</th><th></th></tr></thead><tbody>' +
+              litiges.map(renderLigneLitige).join('') +
+            '</tbody></table>'
+          : '<div class="etat-vide-tbl">Aucun litige pour l\'instant.</div>') +
+      '</div>' +
+    '</div>';
+}
+
+function renderLigneLitige(l) {
+  var nomArtisan = (l.artisans && l.artisans.nom_entreprise) || '—';
+  var dateCree = new Date(l.created_at).toLocaleDateString('fr-FR');
+  var dateLimite = l.date_echeance_reponse ? new Date(l.date_echeance_reponse).toLocaleDateString('fr-FR') : '—';
+
+  var LABELS_STATUT = {
+    needs_response: '🔴 Réponse nécessaire', warning_needs_response: '🟠 Alerte précoce',
+    under_review: '🔵 En cours d\'examen', won: '✅ Gagné', lost: '❌ Perdu', warning_closed: '⚪ Alerte close',
+  };
+  var statutAff = LABELS_STATUT[l.statut] || l.statut;
+
+  var colonneAction;
+  if (l.transfer_reverse_statut === 'reussi') {
+    colonneAction = '<span style="color:#16a34a;font-size:11.5px;font-weight:700;">✓ Récupéré (' + Number(l.transfer_reverse_montant).toFixed(2) + ' €)</span>';
+  } else if (l.transfer_reverse_statut === 'echec') {
+    colonneAction = '<span style="color:var(--danger);font-size:11px;">Échec — </span><button class="addb" onclick="recupererLitige(\'' + l.id + '\')">Réessayer</button>';
+  } else {
+    colonneAction = '<button class="addb" onclick="recupererLitige(\'' + l.id + '\')">Récupérer auprès de l\'artisan</button>';
+  }
+
+  return '<tr>' +
+    '<td style="white-space:nowrap;">' + dateCree + '</td>' +
+    '<td>' + escHtml(nomArtisan) + '</td>' +
+    '<td style="font-weight:700;">' + Number(l.montant).toFixed(2) + ' €</td>' +
+    '<td style="font-size:11.5px;color:var(--mu);">' + escHtml(l.motif || '—') + '</td>' +
+    '<td>' + statutAff + '</td>' +
+    '<td style="white-space:nowrap;">' + dateLimite + '</td>' +
+    '<td id="litige-action-' + l.id + '">' + colonneAction + '</td>' +
+  '</tr>';
+}
+
+async function recupererLitige(litigeId) {
+  if (!confirm('Confirmer la récupération de ce montant auprès de l\'artisan ?\n\nÇa ne fonctionnera que s\'il a encore ce montant disponible sur son solde Stripe.')) return;
+  var cellule = document.getElementById('litige-action-' + litigeId);
+  cellule.innerHTML = '<span style="font-size:11.5px;color:var(--mu);">Tentative en cours…</span>';
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/admin-recuperer-litige', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _session.access_token },
+      body: JSON.stringify({ litige_id: litigeId }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    await chargerLitiges();
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+    await chargerLitiges();
   }
 }
 
