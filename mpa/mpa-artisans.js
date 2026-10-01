@@ -2446,11 +2446,56 @@ function genererSlugCatalogue(nomEntreprise) {
   return base + '-' + suffixe;
 }
 
+// Même calcul que celui utilisé côté serveur à la commande (soumettre-commande-panier) — tenu
+// ici uniquement pour montrer un exemple à l'artisan pendant qu'il règle son tarif, jamais pour
+// calculer un vrai montant facturé (ça, c'est toujours recalculé côté serveur).
+function calculerFraisLivraison(base, kmInclus, prixKm, distanceKm) {
+  base = Number(base) || 0; kmInclus = Number(kmInclus) || 0; prixKm = Number(prixKm) || 0;
+  if (distanceKm <= kmInclus) return base;
+  return Math.round((base + (distanceKm - kmInclus) * prixKm) * 100) / 100;
+}
+
+function afficherExempleLivraison() {
+  var base = document.getElementById('livraison-base').value;
+  var kmInclus = document.getElementById('livraison-km-inclus').value;
+  var prixKm = document.getElementById('livraison-prix-km').value;
+  var zone = document.getElementById('livraison-exemple');
+  if (base === '' || kmInclus === '') { zone.textContent = ''; return; }
+  var exemple15 = calculerFraisLivraison(base, kmInclus, prixKm, 15);
+  var exempleInclus = calculerFraisLivraison(base, kmInclus, prixKm, Number(kmInclus));
+  zone.textContent = '💡 Exemple : à ' + kmInclus + ' km ou moins → ' + exempleInclus + ' € · à 15 km → ' + exemple15 + ' €';
+}
+
+async function sauverTarifLivraison() {
+  if (!verifierAccesEcriture()) return;
+  var base = document.getElementById('livraison-base').value;
+  var kmInclus = document.getElementById('livraison-km-inclus').value;
+  var prixKm = document.getElementById('livraison-prix-km').value;
+  var btn = document.getElementById('btn-livraison-sauver');
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  var { error } = await sb.from('artisans').update({
+    livraison_forfait_base: base === '' ? null : parseFloat(base),
+    livraison_km_inclus: kmInclus === '' ? null : parseFloat(kmInclus),
+    livraison_prix_km_supp: prixKm === '' ? null : parseFloat(prixKm),
+  }).eq('id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); } else {
+    _artisan.livraison_forfait_base = base === '' ? null : parseFloat(base);
+    _artisan.livraison_km_inclus = kmInclus === '' ? null : parseFloat(kmInclus);
+    _artisan.livraison_prix_km_supp = prixKm === '' ? null : parseFloat(prixKm);
+  }
+  btn.disabled = false; btn.textContent = 'Enregistrer';
+}
+
 async function chargerCatalogue() {
   var zone = document.getElementById('zone-catalogue');
   if (!zone) return;
 
   renderEncartStripeConnect();
+
+  document.getElementById('livraison-base').value = _artisan.livraison_forfait_base ?? '';
+  document.getElementById('livraison-km-inclus').value = _artisan.livraison_km_inclus ?? '';
+  document.getElementById('livraison-prix-km').value = _artisan.livraison_prix_km_supp ?? '';
+  afficherExempleLivraison();
 
   // Lien de boutique : généré une fois pour toutes si l'artisan n'en a pas encore.
   if (!_artisan.slug_catalogue) {
