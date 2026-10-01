@@ -24,6 +24,7 @@ const corsHeaders = {
 
 const JOURS_NOUVEAUTE = 30;
 const NB_PHARES = 3;
+const NB_COMPLEMENTAIRES = 3;
 
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -54,7 +55,7 @@ Deno.serve(async (req: Request) => {
     if (errP) throw errP;
 
     const liste = produits || [];
-    const idsPresents = liste.map((p) => p.id);
+    const idsPresents = liste.map((p: any) => p.id);
 
     // Ventes par produit (quantité cumulée sur les commandes réglées), pour le repli
     // "meilleures ventes" — jamais de compteur stocké, toujours recalculé à la demande.
@@ -81,18 +82,57 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Souvent achetés ensemble — jamais une heuristique, toujours les vraies commandes panier
+    // réglées (table commandes_catalogue_lignes, la seule source possible : une commande d'un
+    // seul article ne peut par définition rien dire sur un co-achat). Pour chaque produit, les
+    // autres articles les plus fréquemment présents dans le MÊME panier, classés par fréquence.
+    const complementaires = new Map<string, string[]>();
+    if (idsPresents.length) {
+      const { data: lignesPanier } = await sb.from("commandes_catalogue_lignes")
+        .select("commande_id, catalogue_id, commandes_catalogue!inner(paiement_statut)")
+        .in("catalogue_id", idsPresents)
+        .in("commandes_catalogue.paiement_statut", ["paye", "partiellement_rembourse", "rembourse"]);
+
+      const parCommande = new Map<string, Set<string>>();
+      (lignesPanier || []).forEach((l: any) => {
+        if (!l.catalogue_id) return;
+        if (!parCommande.has(l.commande_id)) parCommande.set(l.commande_id, new Set());
+        parCommande.get(l.commande_id)!.add(l.catalogue_id);
+      });
+
+      const compteurs = new Map<string, Map<string, number>>();
+      parCommande.forEach((idsDuPanier) => {
+        const uniques = [...idsDuPanier];
+        if (uniques.length < 2) return; // un panier d'un seul article n'apprend rien sur un co-achat
+        uniques.forEach((a) => {
+          uniques.forEach((b) => {
+            if (a === b) return;
+            if (!compteurs.has(a)) compteurs.set(a, new Map());
+            const m = compteurs.get(a)!;
+            m.set(b, (m.get(b) || 0) + 1);
+          });
+        });
+      });
+
+      compteurs.forEach((autres, produitId) => {
+        const tries = [...autres.entries()].sort((x, y) => y[1] - x[1]).slice(0, NB_COMPLEMENTAIRES).map((e) => e[0]);
+        complementaires.set(produitId, tries);
+      });
+    }
+
     const seuilNouveaute = Date.now() - JOURS_NOUVEAUTE * 86400000;
     const produitsAff = liste.map((p: any) => ({
       id: p.id, nom: p.nom, description: p.description, prix: p.prix, url_photo: p.url_photo,
       type: p.type, delai_preparation: p.delai_preparation, promo_pct: p.promo_pct, categorie: p.categorie,
       est_phare: idsPhares.has(p.id),
       est_nouveaute: new Date(p.created_at).getTime() >= seuilNouveaute,
+      complementaires: complementaires.get(p.id) || [],
     }));
 
     return json({
       artisan: { id: artisan.id, nom_entreprise: artisan.nom_entreprise, secteur: artisan.secteur, commune: artisan.commune, photo_profil_url: artisan.photo_profil_url, verifie: artisan.verifie, code_promo: artisan.code_promo, paiement_actif: artisan.stripe_connect_statut === "actif" },
       produits: produitsAff,
-      produits_phares: produitsAff.filter((p) => p.est_phare),
+      produits_phares: produitsAff.filter((p: any) => p.est_phare),
     });
 
   } catch (e) {

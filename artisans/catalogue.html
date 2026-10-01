@@ -100,6 +100,7 @@
   <div class="modal-box">
     <h3 data-i18n="cat_mon_panier">Mon panier</h3>
     <div id="panier-lignes"></div>
+    <div id="panier-suggestions"></div>
     <div class="panier-total"><span data-i18n="cat_total">Total</span><span id="panier-total-montant">0 €</span></div>
     <button class="panier-vider" onclick="viderPanier()" data-i18n="cat_vider_panier">Vider le panier</button>
     <div class="modal-actions">
@@ -180,6 +181,7 @@ function ajouterAuPanier(produitId) {
   if (ligne) { ligne.quantite += 1; } else { PANIER.push({ catalogue_id: p.id, nom: p.nom, url_photo: p.url_photo, prix: prixEffectifProduit(p), quantite: 1 }); }
   sauverPanier();
   majBadgePanier();
+  if (document.getElementById('modal-panier').classList.contains('show')) renderPanier();
   var btn = document.getElementById('btn-add-' + produitId);
   if (btn) { var txt = btn.textContent; btn.textContent = T('cat_ajoute'); setTimeout(function() { btn.textContent = txt; }, 900); }
 }
@@ -233,6 +235,47 @@ function renderPanier() {
     }).join('');
   }
   document.getElementById('panier-total-montant').textContent = totalPanier().toFixed(2) + ' €';
+  renderSuggestionsPanier();
+}
+
+// ── Souvent achetés avec votre panier — basé sur les vraies commandes passées, jamais une
+// règle inventée. Les identifiants viennent de lire-catalogue.ts (calculés sur les commandes
+// panier réglées) ; ici on se contente de les résoudre en vrais produits et d'exclure ceux déjà
+// dans le panier ou indisponibles.
+function renderSuggestionsPanier() {
+  var zone = document.getElementById('panier-suggestions');
+  if (!zone || !DATA) return;
+
+  var idsDansPanier = {};
+  PANIER.forEach(function(l) { idsDansPanier[l.catalogue_id] = true; });
+
+  if (!PANIER.length) { zone.innerHTML = ''; return; }
+
+  var scores = {};
+  PANIER.forEach(function(l) {
+    var p = DATA.produits.find(function(x) { return x.id === l.catalogue_id; });
+    if (!p || !p.complementaires) return;
+    p.complementaires.forEach(function(idSuggere, rang) {
+      if (idsDansPanier[idSuggere]) return;
+      scores[idSuggere] = (scores[idSuggere] || 0) + (p.complementaires.length - rang);
+    });
+  });
+
+  var idsTries = Object.keys(scores).sort(function(a, b) { return scores[b] - scores[a]; }).slice(0, 3);
+  var suggestions = idsTries.map(function(id) { return DATA.produits.find(function(x) { return x.id === id; }); }).filter(Boolean);
+
+  if (!suggestions.length) { zone.innerHTML = ''; return; }
+
+  zone.innerHTML = '<div style="font-size:11.5px;font-weight:700;color:var(--mu2);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 8px;">' + T('cat_souvent_achete_avec') + '</div>' +
+    '<div style="display:flex;flex-direction:column;gap:8px;">' +
+    suggestions.map(function(p) {
+      var photo = p.url_photo ? '<img src="' + escHtml(p.url_photo) + '" class="ligne-panier-photo">' : '<div class="ligne-panier-photo" style="display:flex;align-items:center;justify-content:center;">📦</div>';
+      return '<div class="ligne-panier" style="align-items:center;">' + photo +
+        '<div class="ligne-panier-info"><div class="ligne-panier-nom">' + escHtml(p.nom) + '</div><div class="ligne-panier-prix">' + prixEffectifProduit(p) + ' €</div></div>' +
+        '<button onclick="ajouterAuPanier(' + jsAttr(p.id) + ')" style="padding:7px 12px;border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">+ ' + T('cat_ajouter') + '</button>' +
+      '</div>';
+    }).join('') +
+    '</div>';
 }
 
 function ouvrirPanier() { renderPanier(); document.getElementById('modal-panier').classList.add('show'); }
