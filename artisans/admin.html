@@ -31,6 +31,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);min-he
 .tbtitle{font-family:'Bricolage Grotesque',sans-serif;font-size:17px;font-weight:800;}
 .tbtitle span{color:var(--ac);}
 .badge-admin{font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(181,80,47,.1);color:var(--ac);padding:3px 9px;border-radius:20px;font-weight:700;}
+#admin-nav{display:flex;gap:4px;padding:0 24px;border-bottom:1px solid var(--brd);background:var(--panel);overflow-x:auto;}
+.atab{padding:12px 16px;border:none;background:none;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;color:var(--mu);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s;}
+.atab:hover{color:var(--tx);}
+.atab.active{color:var(--ac);border-bottom-color:var(--ac);}
+.apnl{display:none;}
+.apnl.active{display:block;}
 #wrap{max-width:1100px;margin:0 auto;padding:24px;}
 .dcard{background:var(--panel);border:1px solid var(--brd);border-radius:14px;overflow:hidden;margin-bottom:20px;}
 .dchdr{padding:14px 18px;border-bottom:1px solid var(--brd);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:space-between;}
@@ -56,6 +62,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);min-he
   <div class="tbtitle">MPA <span>Artisans</span></div>
   <span class="badge-admin">🔒 Administration</span>
   <a href="https://caralink.app/mpa/" title="Retour à MPA Artisans" style="margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:var(--inp,#f6f9fe);color:var(--ac,#B5502F);text-decoration:none;font-size:15px;">←</a>
+</div>
+
+<div id="admin-nav" style="display:none;">
+  <button class="atab active" onclick="switchAdminTab(0)">Artisans</button>
+  <button class="atab" onclick="switchAdminTab(1)">Secteurs</button>
+  <button class="atab" onclick="switchAdminTab(2)">Quoi de neuf</button>
+  <button class="atab" onclick="switchAdminTab(3)">Avis produit</button>
+  <button class="atab" onclick="switchAdminTab(4)">Prélèvements</button>
+  <button class="atab" onclick="switchAdminTab(5)">Litiges</button>
 </div>
 
 <div id="wrap">
@@ -205,17 +220,24 @@ async function init() {
     return;
   }
   _session = data.session;
+  document.getElementById('admin-nav').style.display = 'flex';
   document.getElementById('wrap').innerHTML =
-    '<div id="zone-secteurs"></div>' +
-    '<div id="zone-nouveautes"></div>' +
-    '<div id="zone-avis-produit"></div>' +
-    '<div id="zone-prelevement-prestations"></div>' +
-    '<div id="zone-artisans"></div>';
+    '<div class="apnl active" id="zone-artisans"></div>' +
+    '<div class="apnl" id="zone-secteurs"></div>' +
+    '<div class="apnl" id="zone-nouveautes"></div>' +
+    '<div class="apnl" id="zone-avis-produit"></div>' +
+    '<div class="apnl" id="zone-prelevement-prestations"></div>' +
+    '<div class="apnl" id="zone-litiges"></div>';
   await chargerSecteurs();
   await chargerNouveautes();
   await chargerAvisProduit();
   renderZonePrelevementPrestations();
   await chargerArtisans();
+}
+
+function switchAdminTab(i) {
+  document.querySelectorAll('#admin-nav .atab').forEach(function(b, idx) { b.classList.toggle('active', idx === i); });
+  document.querySelectorAll('#wrap .apnl').forEach(function(p, idx) { p.classList.toggle('active', idx === i); });
 }
 
 // ── Prélèvement mensuel de la commission prestations (à lancer soi-même pour l'instant) ──
