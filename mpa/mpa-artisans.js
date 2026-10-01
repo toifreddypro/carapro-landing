@@ -3035,7 +3035,13 @@ async function planifierLivraisonCommande(commandeId) {
   document.getElementById('mi-adr').value = c.adresse_livraison || '';
   document.getElementById('mi-cp').value = c.code_postal_livraison || '';
   document.getElementById('mi-com').value = c.commune_livraison || '';
-  document.getElementById('mi-notes').value = 'Livraison — ' + c.nom_article + ' × ' + c.quantite + (c.notes ? ' — ' + c.notes : '');
+  // Prix de l'intervention = frais de livraison calculés à la commande (jamais le prix du
+  // produit, déjà réglé à part) — c'est ce montant-là qui entrera en comptabilité une fois
+  // l'intervention Terminée, pas la valeur de l'article livré.
+  document.getElementById('mi-prix').value = c.frais_livraison || '';
+  document.getElementById('mi-notes').value = 'Livraison — ' + c.nom_article + ' × ' + c.quantite +
+    (c.frais_livraison ? ' (frais de livraison : ' + c.frais_livraison.toFixed(2) + ' €)' : '') +
+    (c.notes ? ' — ' + c.notes : '');
   await calculerCreneaux();
 
   // Lie la commande à cette future intervention dès l'ouverture — sera bien réelle une fois "Enregistrer" cliqué.

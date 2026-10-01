@@ -40,6 +40,36 @@ async function envoyerEmail(to: string, subject: string, html: string) {
   } catch (e) { console.error("[soumettre-commande-panier] Erreur envoi email :", e); }
 }
 
+// ── Frais de livraison — calcul réel à la commande, jamais pris du navigateur. Mêmes sources
+// que MPA (Base Adresse Nationale pour géocoder, IGN Géoplateforme pour la distance réelle par
+// la route — jamais une distance à vol d'oiseau).
+async function geocoderAdresse(adresse: string, cp: string | null, commune: string | null): Promise<{ lat: number; lon: number } | null> {
+  const q = [adresse, cp, commune].filter(Boolean).join(", ");
+  if (!q) return null;
+  try {
+    const res = await fetch("https://api-adresse.data.gouv.fr/search/?limit=1&q=" + encodeURIComponent(q));
+    const data = await res.json();
+    const feature = data?.features?.[0];
+    if (feature?.geometry?.coordinates) return { lat: feature.geometry.coordinates[1], lon: feature.geometry.coordinates[0] };
+  } catch (e) { console.warn("[soumettre-commande-panier] Géocodage échoué :", e); }
+  return null;
+}
+
+async function distanceTrajetKm(latA: number, lonA: number, latB: number, lonB: number): Promise<number | null> {
+  try {
+    const url = `https://data.geopf.fr/navigation/itineraire?resource=bdtopo-osrm&profile=car&optimization=fastest&getSteps=false&geometryFormat=polyline&distanceUnit=meter&timeUnit=second&start=${lonA},${latA}&end=${lonB},${latB}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.distance != null) return data.distance / 1000;
+  } catch (e) { console.warn("[soumettre-commande-panier] Calcul de trajet échoué :", e); }
+  return null;
+}
+
+function calculerFraisLivraison(base: number, kmInclus: number, prixKm: number, distanceKm: number): number {
+  if (distanceKm <= kmInclus) return base;
+  return Math.round((base + (distanceKm - kmInclus) * prixKm) * 100) / 100;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
@@ -77,18 +107,45 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Un ou plusieurs articles de votre panier n'existent plus. Actualisez la page." }, 404);
     }
 
-    const { data: artisan, error: errA } = await sb.from("artisans").select("nom_entreprise, email").eq("id", artisan_id).maybeSingle();
+    const { data: artisan, error: errA } = await sb.from("artisans")
+      .select("nom_entreprise, email, latitude, longitude, livraison_forfait_base, livraison_km_inclus, livraison_prix_km_supp")
+      .eq("id", artisan_id).maybeSingle();
     if (errA) throw errA;
     if (!artisan) return json({ error: "Boutique introuvable." }, 404);
 
     // Prix effectif = prix catalogue, remise en cours appliquée — figé ici, jamais recalculé
     // plus tard (même si l'artisan change son prix ou sa remise avant le paiement).
-    const lignesAEnregistrer = articles.map((a: any) => {
+    const lignesAEnregistrer: Array<{ catalogue_id: string; nom_article: string; prix_unitaire: number; quantite: number }> = articles.map((a: any) => {
       const quantite = quantitesDemandees.get(a.id)!;
       const prixEffectif = a.promo_pct ? Math.round(a.prix * (1 - a.promo_pct / 100) * 100) / 100 : a.prix;
       return { catalogue_id: a.id, nom_article: a.nom, prix_unitaire: prixEffectif, quantite };
     });
-    const montantTotal = Math.round(lignesAEnregistrer.reduce((s, l) => s + l.prix_unitaire * l.quantite, 0) * 100) / 100;
+    const montantProduits = Math.round(lignesAEnregistrer.reduce((s: number, l) => s + l.prix_unitaire * l.quantite, 0) * 100) / 100;
+
+    // Frais de livraison : calculés sur la vraie distance par la route, uniquement si l'artisan
+    // a réglé un tarif. Sans coordonnées côté artisan ou tarif non réglé : jamais de frais (0€),
+    // c'est un manque de configuration de son côté, pas une raison de bloquer le client. En
+    // revanche, une adresse de livraison qui ne se géocode pas est bloquante : impossible de
+    // livrer un endroit qu'on ne sait pas localiser.
+    let fraisLivraison = 0;
+    if (mode === "livraison" && artisan.latitude != null && artisan.longitude != null && artisan.livraison_forfait_base != null) {
+      const pointClient = await geocoderAdresse(adresse_livraison, code_postal_livraison, commune_livraison);
+      if (!pointClient) {
+        return json({ error: "Nous n'avons pas pu localiser cette adresse. Merci de vérifier qu'elle est correcte." }, 422);
+      }
+      const distance = await distanceTrajetKm(artisan.latitude, artisan.longitude, pointClient.lat, pointClient.lon);
+      if (distance == null) {
+        return json({ error: "Impossible de calculer les frais de livraison pour cette adresse pour le moment. Réessayez dans un instant." }, 422);
+      }
+      fraisLivraison = calculerFraisLivraison(
+        Number(artisan.livraison_forfait_base) || 0,
+        Number(artisan.livraison_km_inclus) || 0,
+        Number(artisan.livraison_prix_km_supp) || 0,
+        distance,
+      );
+    }
+
+    const montantTotal = Math.round((montantProduits + fraisLivraison) * 100) / 100;
     const nbArticlesDistincts = lignesAEnregistrer.length;
     const resumeNom = nbArticlesDistincts === 1
       ? lignesAEnregistrer[0].nom_article
@@ -98,8 +155,9 @@ Deno.serve(async (req: Request) => {
       artisan_id,
       catalogue_id: null, // commande multi-articles : le détail vit dans commandes_catalogue_lignes
       nom_article: resumeNom,
-      quantite: lignesAEnregistrer.reduce((s, l) => s + l.quantite, 0),
+      quantite: lignesAEnregistrer.reduce((s: number, l) => s + l.quantite, 0),
       montant_total: montantTotal,
+      frais_livraison: fraisLivraison > 0 ? fraisLivraison : null,
       client_nom: client_nom.trim(),
       client_telephone: client_telephone.trim(),
       client_email: client_email?.trim() || null,
@@ -123,7 +181,7 @@ Deno.serve(async (req: Request) => {
         <h2 style="color:#B5502F;">Nouvelle commande — ${montantTotal.toFixed(2)} €</h2>
         <p><strong>${client_nom}</strong> (${client_telephone}) commande :</p>
         <ul>${detailLignes}</ul>
-        <p>Mode : ${mode === "livraison" ? "🚚 Livraison — " + adresse_livraison : "🏠 Retrait sur place"}</p>
+        <p>Mode : ${mode === "livraison" ? "🚚 Livraison — " + adresse_livraison + (fraisLivraison > 0 ? ` (frais de livraison : ${fraisLivraison.toFixed(2)} €)` : "") : "🏠 Retrait sur place"}</p>
         ${date_souhaitee ? `<p>Date souhaitée : ${date_souhaitee}</p>` : ""}
         ${notes ? `<p>Précisions : ${notes}</p>` : ""}
         <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Voir dans MPA Artisans →</a></p>
@@ -131,7 +189,7 @@ Deno.serve(async (req: Request) => {
       await envoyerEmail(artisan.email, `Nouvelle commande : ${resumeNom}`, html);
     }
 
-    return json({ ok: true, commande_id: commande.id, montant_total: montantTotal });
+    return json({ ok: true, commande_id: commande.id, montant_total: montantTotal, frais_livraison: fraisLivraison });
 
   } catch (e) {
     console.error("[soumettre-commande-panier]", e);
