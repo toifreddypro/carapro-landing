@@ -112,7 +112,7 @@ async function verifierAlertesMpaAi() {
   var pct = (caBrut / PLAFOND_MICRO_BIC_SERVICES) * 100;
   if (pct >= 90) {
     mpaAiDire('Vous êtes à ' + pct.toFixed(0) + '% du plafond micro-entreprise (' + caBrut.toFixed(0) + '€ / 77 700€). Au-delà, changement de régime fiscal obligatoire.', 'important',
-      { label: 'Voir le tableau de bord', action: "switchTab(5)" });
+      { label: 'Voir ma comptabilité', action: "switchTab(6)" });
   } else if (pct >= 70) {
     mpaAiDire('Vous avez atteint ' + pct.toFixed(0) + '% du plafond micro-entreprise cette année — à surveiller.', 'warning');
   }
@@ -132,13 +132,13 @@ async function verifierAlertesMpaAi() {
       var f = facturesImpayees[0];
       var client = f.mpa_artisans_clients ? f.mpa_artisans_clients.nom : 'ce client';
       mpaAiDire('La facture ' + f.numero + ' (' + f.montant_total.toFixed(0) + '€, ' + escHtml(client) + ') a plus de 30 jours et n\'est pas encore marquée payée. Une petite relance ?', 'warning',
-        { label: 'Voir la facturation', action: "switchTab(4)" });
+        { label: 'Voir ma comptabilité', action: "switchTab(6)" });
     }
   }
 
   // 3) Nouvel utilisateur — aucun client ni service configuré.
   if (!_clientsCache.length && !_servicesCache.length) {
-    mpaAiDire('Bienvenue sur MPA Artisans ! Commencez par ajouter un client habituel dans "Base de données", ou ajoutez vos services directement depuis votre espace CaraLink Artisans.', 'info');
+    mpaAiDire('Bienvenue sur MPA Artisans ! Commencez par ajouter un client habituel dans "Mon profil", ou ajoutez vos services dans "Mes interventions".', 'info');
   }
 }
 
@@ -151,13 +151,16 @@ function switchTab(i) {
   // intervention "Payée" depuis Ma journée) — on la rafraîchit systématiquement en y entrant,
   // plutôt que de compter sur chaque endroit qui pourrait la rendre périmée pour y penser.
   var panneauActif = panneaux[i];
-  if (panneauActif && panneauActif.id === 'p2' && typeof chargerCompta === 'function') chargerCompta();
+  if (panneauActif && panneauActif.id === 'p-compta' && typeof chargerCompta === 'function') chargerCompta();
+  if (panneauActif && panneauActif.id === 'p-livraisons' && typeof chargerLivraisons === 'function') chargerLivraisons();
 }
 
-// ── Sous-onglets Base de données ──
-function switchBdd(i) {
-  document.querySelectorAll('#bsnav .btab').forEach(function(b, idx) { b.classList.toggle('active', idx === i); });
-  document.querySelectorAll('#p1 > .bpnl').forEach(function(p, idx) { p.classList.toggle('active', idx === i); });
+// ── Sous-onglets génériques — un seul mécanisme pour les trois groupes (Mon profil,
+// Mes interventions, Mes ventes), au lieu d'une fonction dédiée par groupe comme avant
+// (switchBdd). Même logique exacte, juste paramétrée par les bons identifiants.
+function switchSousOnglet(idNav, idConteneur, i) {
+  document.querySelectorAll('#' + idNav + ' .btab').forEach(function(b, idx) { b.classList.toggle('active', idx === i); });
+  document.querySelectorAll('#' + idConteneur + ' > .bpnl').forEach(function(p, idx) { p.classList.toggle('active', idx === i); });
 }
 
 // ════════════════════════════════════════
@@ -202,6 +205,7 @@ async function init() {
   await chargerDemandes();
   await chargerAvis();
   await chargerCommandes();
+  await chargerLivraisons();
   await chargerHoraires();
   await chargerIndispos();
   await chargerServices();
@@ -453,7 +457,7 @@ async function avancerStatut(id, ev) {
   if (error) { alert('Erreur : ' + error.message); return; }
 
   await chargerInterventions();
-  if (document.getElementById('p2').classList.contains('active')) await chargerCompta();
+  if (document.getElementById('p-compta').classList.contains('active')) await chargerCompta();
 }
 
 // ════════════════════════════════════════
@@ -654,7 +658,7 @@ async function supprimerDemande(reponseId) {
 }
 
 function creerClientDepuisDemande(nom, commune) {
-  switchTab(2); switchBdd(0);
+  switchTab(1); switchSousOnglet('nav-profil', 'conteneur-profil', 1);
   openAjouterClient();
   document.getElementById('c-nom').value = nom || '';
   document.getElementById('c-com').value = commune || '';
@@ -1193,6 +1197,7 @@ async function sauverIntervention() {
       .eq('id', infoCommande.commandeId).eq('artisan_id', _artisan.id);
     if (errLien) console.error('Liaison commande/intervention:', errLien);
     await chargerCommandes();
+    await chargerLivraisons();
   }
 }
 
@@ -1872,7 +1877,7 @@ async function renderRappelCloture(idZone) {
       '<div style="flex:1;font-size:12.5px;color:var(--mu2);">' +
         '<strong style="color:#b45309;">' + count + ' intervention' + (count > 1 ? 's' : '') + ' passée' + (count > 1 ? 's' : '') + '</strong> encore marquée' + (count > 1 ? 's' : '') + ' "Planifiée" — pensez à les clôturer (Terminée/Payée) pour pouvoir les facturer et demander un avis au client.' +
       '</div>' +
-      '<button onclick="switchTab(1)" style="flex-shrink:0;padding:7px 14px;border-radius:7px;border:1.5px solid #b45309;background:transparent;color:#b45309;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">Voir le planning →</button>' +
+      '<button onclick="switchTab(2)" style="flex-shrink:0;padding:7px 14px;border-radius:7px;border:1.5px solid #b45309;background:transparent;color:#b45309;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">Voir le planning →</button>' +
     '</div>';
 }
 
@@ -2745,6 +2750,67 @@ var _interventionsAVenirCache = [];
 var LABELS_STATUT_COMMANDE = { nouvelle: '🆕 Nouvelle', confirmee: '✅ Confirmée', prete: '📦 Prête', terminee: '🏁 Terminée', annulee: '⛔ Annulée' };
 var CYCLE_STATUT_COMMANDE = { nouvelle: 'confirmee', confirmee: 'prete', prete: 'terminee' };
 
+// ── Mes livraisons — la liste du jour, pour ne pas avoir à chercher dans le planning.
+// Montre aussi si la livraison a été regroupée avec une autre intervention du même secteur
+// le même jour — pas un indicateur stocké à part, toujours recalculé en comparant les
+// interventions du jour entre elles (jamais désynchronisé).
+async function chargerLivraisons() {
+  var zone = document.getElementById('zone-livraisons');
+  if (!zone) return;
+
+  var aujourdhui = new Date().toISOString().slice(0, 10);
+  var { data: livraisons, error } = await sb.from('commandes_catalogue')
+    .select('id, client_nom, client_telephone, adresse_livraison, commune_livraison, nom_article, quantite, mpa_artisans_interventions(id, date_intervention, creneau, heure_debut, commune, statut)')
+    .eq('artisan_id', _artisan.id)
+    .eq('mode', 'livraison')
+    .not('intervention_id', 'is', null);
+  if (error) {
+    zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>';
+    return;
+  }
+
+  var duJour = (livraisons || []).filter(function(l) {
+    var i = l.mpa_artisans_interventions;
+    return i && i.date_intervention === aujourdhui && i.statut !== 'annulee';
+  });
+
+  if (!duJour.length) {
+    zone.innerHTML = '<div class="etat-vide-tbl">Aucune livraison prévue aujourd\'hui.</div>';
+    return;
+  }
+
+  // Une livraison est "regroupée" si une AUTRE intervention (prestation ou livraison) a lieu
+  // le même jour, dans la même commune — recalculé à chaque affichage, jamais stocké.
+  var { data: interventionsDuJour } = await sb.from('mpa_artisans_interventions')
+    .select('id, commune').eq('artisan_id', _artisan.id).eq('date_intervention', aujourdhui).neq('statut', 'annulee');
+
+  duJour.sort(function(a, b) {
+    var ha = a.mpa_artisans_interventions.heure_debut || '99:99';
+    var hb = b.mpa_artisans_interventions.heure_debut || '99:99';
+    return ha.localeCompare(hb);
+  });
+
+  zone.innerHTML = duJour.map(function(l) {
+    var i = l.mpa_artisans_interventions;
+    var heure = i.heure_debut || (i.creneau === 'matin' ? 'Matin' : i.creneau === 'apres-midi' ? 'Après-midi' : '—');
+    var autresMemeCommune = (interventionsDuJour || []).filter(function(x) {
+      return x.id !== i.id && (x.commune || '').toLowerCase().trim() === (i.commune || '').toLowerCase().trim();
+    }).length;
+    var noteRegroupement = autresMemeCommune > 0
+      ? '<div style="font-size:11.5px;color:#16a34a;margin-top:4px;">🧩 Regroupée — ' + autresMemeCommune + ' autre' + (autresMemeCommune > 1 ? 's' : '') + ' intervention' + (autresMemeCommune > 1 ? 's' : '') + ' dans ' + escHtml(i.commune || 'le même secteur') + ' aujourd\'hui.</div>'
+      : '<div style="font-size:11.5px;color:var(--mu);margin-top:4px;">Livraison isolée ce jour.</div>';
+    return '<div style="padding:12px 0;border-bottom:1px solid var(--brd);">' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">' +
+        '<strong>' + heure + '</strong>' +
+        '<span style="font-size:12px;color:var(--mu);">' + escHtml(l.nom_article) + ' × ' + l.quantite + '</span>' +
+      '</div>' +
+      '<div style="font-size:13px;margin-top:2px;">' + escHtml(l.client_nom) + ' — ' + escHtml(l.adresse_livraison || '') + (l.commune_livraison ? ', ' + escHtml(l.commune_livraison) : '') + '</div>' +
+      '<div style="font-size:12px;color:var(--mu);">📞 ' + escHtml(l.client_telephone || '—') + '</div>' +
+      noteRegroupement +
+    '</div>';
+  }).join('');
+}
+
 async function chargerCommandes() {
   var zone = document.getElementById('zone-commandes');
   if (!zone) return;
@@ -3196,7 +3262,7 @@ async function choisirJourItineraire(dateStr) {
     }
   }
   if (!base) {
-    morceaux.push('<p style="font-size:11.5px;color:var(--mu);margin-top:8px;">💡 Renseignez votre adresse dans Base de données → Fiche artisan pour voir aussi le trajet depuis chez vous.</p>');
+    morceaux.push('<p style="font-size:11.5px;color:var(--mu);margin-top:8px;">💡 Renseignez votre adresse dans Mon profil → Ma fiche artisan pour voir aussi le trajet depuis chez vous.</p>');
   }
   liste.innerHTML = morceaux.join('');
 

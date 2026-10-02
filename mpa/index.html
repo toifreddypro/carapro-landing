@@ -20,20 +20,21 @@
 ================================================================
 -->
 <!DOCTYPE html>
+
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>MPA Artisans — Espace de gestion</title>
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="icon" href="/favicon.ico">
+<link href="/apple-touch-icon.png" rel="apple-touch-icon" sizes="180x180"/>
+<link href="/favicon-32x32.png" rel="icon" sizes="32x32" type="image/png"/>
+<link href="/favicon-16x16.png" rel="icon" sizes="16x16" type="image/png"/>
+<link href="/favicon.ico" rel="icon"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&amp;family=JetBrains+Mono:wght@400;500;700&amp;family=Outfit:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <style>
 :root{
   --bg:#f7f9fc; --panel:#ffffff; --p2:#f6f9fe; --brd:#e3eaf4; --b2:#c9d8ef;
@@ -89,7 +90,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .dbg.pu{background:rgba(109,40,217,.1);color:var(--purple);}
 
 /* ── Base de données (tables) ── */
-#bsnav{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.sous-nav{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .btab{display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:9px;border:1px solid var(--brd);background:var(--panel);color:var(--mu);font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;}
 .btab svg{width:15px;height:15px;}
 .btab.active{background:var(--ac-dim,rgba(181,80,47,.08));border-color:var(--ac);color:var(--ac);}
@@ -402,847 +403,754 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
-
 <!-- TOPBAR -->
 <div id="topbar">
-  <div class="brand"><a href="#"><span class="tbtitle">MPA <span>Artisans</span></span></a></div>
-  <div class="tsep"></div>
-  <span class="tbusr">// <span id="uname">—</span></span>
-  <div class="spacer"></div>
-  <a href="https://caralink.app/artisans/" class="tbbtn" title="Retour à CaraLink Artisans" style="border-color:rgba(181,80,47,.4);color:var(--ac);background:rgba(181,80,47,.08);text-decoration:none;">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-    <span class="tbbtn-label">Retour à CaraLink Artisans</span>
-  </a>
-  <a href="https://caralink.app/artisans/admin.html" id="btn-admin-topbar" class="tbbtn" title="Admin" style="display:none;border-color:rgba(75,85,99,.4);color:var(--mu2);background:rgba(75,85,99,.08);text-decoration:none;">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-    <span class="tbbtn-label">Admin</span>
-  </a>
-  <button class="tbbtn" onclick="doLogout()" title="Déconnexion" style="border-color:rgba(239,68,68,.4);color:#ef4444;background:rgba(239,68,68,.08);">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-    <span class="tbbtn-label">Déconnexion</span>
-  </button>
+<div class="brand"><a href="#"><span class="tbtitle">MPA <span>Artisans</span></span></a></div>
+<div class="tsep"></div>
+<span class="tbusr">// <span id="uname">—</span></span>
+<div class="spacer"></div>
+<a class="tbbtn" href="https://caralink.app/artisans/" style="border-color:rgba(181,80,47,.4);color:var(--ac);background:rgba(181,80,47,.08);text-decoration:none;" title="Retour à CaraLink Artisans">
+<svg fill="none" height="13" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="13"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+<span class="tbbtn-label">Retour à CaraLink Artisans</span>
+</a>
+<a class="tbbtn" href="https://caralink.app/artisans/admin.html" id="btn-admin-topbar" style="display:none;border-color:rgba(75,85,99,.4);color:var(--mu2);background:rgba(75,85,99,.08);text-decoration:none;" title="Admin">
+<svg fill="none" height="13" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="13"><rect height="11" rx="2" ry="2" width="18" x="3" y="11"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+<span class="tbbtn-label">Admin</span>
+</a>
+<button class="tbbtn" onclick="doLogout()" style="border-color:rgba(239,68,68,.4);color:#ef4444;background:rgba(239,68,68,.08);" title="Déconnexion">
+<svg fill="none" height="13" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="13"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>
+<span class="tbbtn-label">Déconnexion</span>
+</button>
 </div>
-
 <!-- NAV -->
 <div id="nav">
-  <button class="ntab active" onclick="switchTab(0)" id="nt-journee">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+<button class="ntab active" id="nt-journee" onclick="switchTab(0)">
+<svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
     Ma journée
   </button>
-  <button class="ntab" onclick="switchTab(1)" id="nt0">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-    Planning
+<button class="ntab" id="nt-profil" onclick="switchTab(1)">
+<svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"></path></svg>
+    Mon profil
   </button>
-  <button class="ntab" onclick="switchTab(2)" id="nt1">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-    Base de données
+<button class="ntab" id="nt-planning" onclick="switchTab(2)">
+<svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><rect height="18" rx="2" width="18" x="3" y="4"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>
+    Mon planning
   </button>
-  <button class="ntab" onclick="switchTab(3)" id="nt2">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-    Comptabilité
+<button class="ntab" id="nt-interventions" onclick="switchTab(3)">
+<svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+    Mes interventions
   </button>
-  <button class="ntab" onclick="switchTab(4)" id="nt3">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-    Facturation
+<button class="ntab" id="nt-ventes" onclick="switchTab(4)">
+<svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+    Mes ventes
   </button>
-  <button class="ntab" onclick="switchTab(5)" id="nt4">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-    Tableau de bord
+<button class="ntab" id="nt-livraisons" onclick="switchTab(5)">
+<svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 3h13v13H3z"></path><path d="M16 8h4l3 3v5h-7V8z"></path><circle cx="7.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+    Mes livraisons
   </button>
-  <button class="ntab" onclick="switchTab(6)" id="nt5">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
-    Demandes
-    <span class="bcnt" id="cnt-demandes" style="display:none;background:var(--danger);color:#fff;">0</span>
+<button class="ntab" id="nt-compta" onclick="switchTab(6)">
+<svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><line x1="12" x2="12" y1="1" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+    Ma comptabilité
   </button>
-  <button class="ntab" onclick="switchTab(7)" id="nt6">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-    Avis
-  </button>
-  <button class="ntab" onclick="switchTab(8)" id="nt7">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-    Commandes
-    <span class="bcnt" id="cnt-commandes" style="display:none;background:var(--danger);color:#fff;">0</span>
+<button class="ntab" id="nt-avis" onclick="switchTab(7)">
+<svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+    Mes avis
   </button>
 </div>
-
 <div id="content">
-
-  <!-- PLANNING -->
-  <!-- Ma journée — premier onglet, pensé pour un coup d'œil rapide depuis un téléphone -->
-  <div class="pnl active" id="p-journee">
-    <div class="dcard" id="itineraire-widget">
-      <div class="dchdr">
-        <div class="dctit"><svg viewBox="0 0 24 24" fill="none" stroke="#B5502F" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Ma journée</div>
-      </div>
-      <div style="padding:14px 16px;">
-        <div id="itin-jours" style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;"></div>
-        <div id="itin-liste" style="margin-bottom:12px;"></div>
-        <div id="itin-carte" style="height:220px;border-radius:10px;overflow:hidden;background:var(--p2);"></div>
-        <div id="encart-rappel-cloture-journee" style="margin-top:14px;"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="pnl" id="p0">
-    <div class="cal-header">
-      <div class="cal-nav">
-        <button onclick="moisPrecedent()">‹</button>
-        <div class="cal-month-title" id="cal-titre">—</div>
-        <button onclick="moisSuivant()">›</button>
-      </div>
-      <button class="cal-today-btn" onclick="allerAujourdhui()">Aujourd'hui</button>
-      <div class="cal-legend">
-        <span><span class="dot" style="background:#f59e0b;"></span>Planifiée</span>
-        <span><span class="dot" style="background:#6d28d9;"></span>En cours</span>
-        <span><span class="dot" style="background:#3b82f6;"></span>Terminée</span>
-        <span><span class="dot" style="background:#22c55e;"></span>Payée</span>
-      </div>
-    </div>
-    <div style="font-size:11px;color:var(--mu);margin-bottom:10px;">💡 Cliquez sur une intervention pour faire avancer son statut — le crayon ✎ ouvre les détails (prix, date de paiement, notes…).</div>
-    <div class="cal-grid" id="cal-dows"></div>
-    <div class="cal-grid" id="cal-grid" style="margin-top:6px;"></div>
-  </div>
-
-  <!-- BASE DE DONNÉES — phase 1 (ici) -->
-  <div class="pnl" id="p1">
-    <div id="bsnav">
-      <button class="btab active" onclick="switchBdd(0)" id="bt0">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-        Fiche artisan
-      </button>
-      <button class="btab" onclick="switchBdd(1)" id="bt1">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-        Clients habituels <span class="bcnt" id="cnt-c">0</span>
-      </button>
-      <button class="btab" onclick="switchBdd(2)" id="bt2">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-        Mes services <span class="bcnt" id="cnt-s">0</span>
-      </button>
-      <button class="btab" onclick="switchBdd(3)" id="bt3">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-        Photos
-      </button>
-      <button class="btab" onclick="switchBdd(4)" id="bt4">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        Catalogue
-      </button>
-    </div>
-
-    <!-- Fiche -->
-    <div class="bpnl active" id="bp0">
-      <div class="flay">
-        <div class="fcol">
-        <div class="fcard">
-          <div class="fchdr">
-            <div class="fctit">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#B5502F" stroke-width="2" width="16" height="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+<!-- PLANNING -->
+<!-- Ma journée — premier onglet, pensé pour un coup d'œil rapide depuis un téléphone -->
+<!-- BASE DE DONNÉES — phase 1 (ici) -->
+<!-- COMPTABILITÉ -->
+<!-- FACTURATION — phase 5 -->
+<!-- TABLEAU DE BORD -->
+<!-- Demandes reçues -->
+<!-- Avis reçus -->
+<!-- Commandes reçues -->
+<footer style="max-width:1200px;margin:30px auto 10px;padding:20px;text-align:center;border-top:1px solid var(--brd);">
+<div style="font-size:11.5px;color:var(--mu);">
+      MPA Artisans — <a href="#" onclick="ouvrirAvisProduit();return false;" style="color:var(--ac);text-decoration:underline;">Donner votre avis sur CaraLink Artisans</a> — <a href="#" onclick="ouvrirSuppressionCompte();return false;" style="color:var(--mu);text-decoration:underline;">Supprimer mon compte</a>
+</div>
+</footer>
+<div class="pnl active" id="p-journee">
+<div class="dcard" id="itineraire-widget">
+<div class="dchdr">
+<div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>Ma journée</div>
+</div>
+<div style="padding:14px 16px;">
+<div id="itin-jours" style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;"></div>
+<div id="itin-liste" style="margin-bottom:12px;"></div>
+<div id="itin-carte" style="height:220px;border-radius:10px;overflow:hidden;background:var(--p2);"></div>
+<div id="encart-rappel-cloture-journee" style="margin-top:14px;"></div>
+</div>
+</div>
+<div id="encart-alternance" style="margin-top:16px;"></div>
+</div><div class="pnl" id="p-profil"><div class="sous-nav" id="nav-profil"><button class="btab active" id="bt-profil-0" onclick="switchSousOnglet('nav-profil','conteneur-profil',0)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"></path></svg>Ma fiche artisan</button><button class="btab" id="bt-profil-1" onclick="switchSousOnglet('nav-profil','conteneur-profil',1)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>Mes clients habituels<span class="bcnt" id="cnt-c" style="display:none;background:var(--danger);color:#fff;">0</span></button></div><div id="conteneur-profil"><div class="bpnl active" id="bp0">
+<div class="flay">
+<div class="fcol">
+<div class="fcard">
+<div class="fchdr">
+<div class="fctit">
+<svg fill="none" height="16" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
               Informations entreprise
             </div>
-            <button class="sbtn sm" onclick="openModifierFiche()">✎ Modifier</button>
-          </div>
-          <div class="fbdy">
-            <div class="fr"><span class="fl">Nom / Raison sociale</span><span class="fv" id="fv-nom">—</span></div>
-            <div class="fr"><span class="fl">Statut</span><span class="fv" id="fv-statut">—</span></div>
-            <div class="fr"><span class="fl">Activité (secteur)</span><span class="fv" id="fv-act">—</span></div>
-            <div class="fr"><span class="fl">SIRET</span><span class="fv" id="fv-siret">—</span></div>
-            <div class="fr"><span class="fl">APE</span><span class="fv" id="fv-ape">—</span></div>
-            <div class="fr"><span class="fl">N° TVA intra</span><span class="fv" id="fv-tva-intra">—</span></div>
-            <div class="fr"><span class="fl">Adresse</span><span class="fv" id="fv-adr">—</span></div>
-            <div class="fr"><span class="fl">CP</span><span class="fv" id="fv-cp">—</span></div>
-            <div class="fr"><span class="fl">Commune</span><span class="fv" id="fv-com">—</span></div>
-            <div class="fr"><span class="fl">Téléphone</span><span class="fv" id="fv-tel">—</span></div>
-            <div class="fr"><span class="fl">E-mail</span><span class="fv" id="fv-email">—</span></div>
-            <div class="fr"><span class="fl">Site web</span><span class="fv" id="fv-web">—</span></div>
-          </div>
-        </div>
-        </div>
-
-        <div class="fcol">
-        <div class="fcard">
-          <div class="fchdr">
-            <div class="fctit"><svg viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" width="16" height="16"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Paramètres fiscaux</div>
-            <span class="dbg pu">⚙ Configurable</span>
-          </div>
-          <div class="fcbdy">
-            <div class="ccrow">
-              <div style="flex:1;">
-                <span class="cclbl">Cotisations sociales</span>
-                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu);margin-top:2px;">Micro-entrepreneur : 22% par défaut</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:4px;">
-                <input type="number" class="ccinp" id="cfg-cotis" value="22" step="0.1" min="0" max="100" style="width:60px;" onchange="saveConfigFiscal()">
-                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mu);">%</span>
-              </div>
-            </div>
-            <div class="ccrow" style="border-bottom:none;">
-              <div style="flex:1;">
-                <span class="cclbl">TVA</span>
-                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu);margin-top:2px;">Ex : Non assujetti, 20%, 8,5%</div>
-              </div>
-              <input type="text" class="ccinp" id="cfg-tva" value="Non assujetti" style="width:130px;" onchange="saveConfigFiscal()">
-            </div>
-          </div>
-        </div>
-
-        <div class="fcard">
-          <div class="fchdr">
-            <div class="fctit"><svg viewBox="0 0 24 24" fill="none" stroke="#B5502F" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Horaires habituels</div>
-          </div>
-          <div class="fcbdy" id="zone-horaires" style="padding:16px;">Chargement…</div>
-          <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Ces horaires servent à calculer vos disponibilités affichées publiquement sur CaraLink Artisans — plusieurs plages possibles le même jour (ex : 8h-12h puis 14h-16h).</div>
-        </div>
-
-        <div class="fcard">
-          <div class="fchdr">
-            <div class="fctit"><svg viewBox="0 0 24 24" fill="none" stroke="#B5502F" stroke-width="2" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Journées bloquées</div>
-          </div>
-          <div class="fcbdy" id="zone-indispo" style="padding:16px;">Chargement…</div>
-          <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Congés, jour férié, absence ponctuelle... ces dates n'apparaîtront jamais comme disponibles, même si elles tombent sur un jour habituellement travaillé.</div>
-        </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Clients habituels -->
-    <div class="bpnl" id="bp1">
-      <div class="dcard">
-        <div class="dchdr">
-          <div class="dctit"><svg viewBox="0 0 24 24" fill="none" stroke="#B5502F" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Liste des clients habituels</div>
-          <div class="dchdr-actions" style="display:flex;gap:8px;align-items:center;">
-            <input type="text" class="sinp" id="sinp-clients" placeholder="Rechercher…" oninput="filtrerClients()">
-            <button class="addb" onclick="openAjouterClient()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter</button>
-          </div>
-        </div>
-        <div class="scroll-hint">👉 Faites glisser pour voir plus</div>
-        <div class="dcbdy">
-          <table class="dtbl">
-            <thead><tr><th>Nom</th><th>Email</th><th>Adresse</th><th>CP</th><th>Commune</th><th>Délai paiement</th><th></th></tr></thead>
-            <tbody id="tbody-clients"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Mes services -->
-    <div class="bpnl" id="bp2">
-      <div class="dcard">
-        <div class="dchdr">
-          <div class="dctit"><svg viewBox="0 0 24 24" fill="none" stroke="#B5502F" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Mes services</div>
-          <div class="dchdr-actions" style="display:flex;gap:8px;align-items:center;">
-            <input type="text" class="sinp" id="sinp-services" placeholder="Rechercher…" oninput="filtrerServices()">
-            <button class="addb" onclick="openAjouterService()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter</button>
-          </div>
-        </div>
-        <div class="scroll-hint">👉 Faites glisser pour voir plus</div>
-        <div class="dcbdy">
-          <table class="dtbl">
-            <thead><tr><th>Service</th><th>Description</th><th>Durée estimée</th><th>Tarif indicatif</th><th></th></tr></thead>
-            <tbody id="tbody-services"></tbody>
-          </table>
-        </div>
-        <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Cette liste alimente aussi bien votre vitrine CaraLink Artisans que la durée par défaut utilisée pour vos interventions.</div>
-      </div>
-    </div>
-
-    <!-- Photos -->
-    <div class="bpnl" id="bp3">
-      <div class="dcard">
-        <div class="dchdr">
-          <div class="dctit"><svg viewBox="0 0 24 24" fill="none" stroke="#B5502F" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Photos de mes réalisations</div>
-          <input type="file" id="photo-input" accept="image/*" style="display:none;" onchange="uploaderPhoto()">
-          <button class="addb" id="btn-ajouter-photo" onclick="document.getElementById('photo-input').click()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter</button>
-        </div>
-        <div class="dcbdy" id="zone-photos" style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;">Chargement…</div>
-        <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Ces photos apparaissent sur votre fiche publique CaraLink Artisans, pour donner confiance aux clients.</div>
-      </div>
-    </div>
-
-    <!-- Catalogue -->
-    <div class="bpnl" id="bp4">
-      <div class="dcard">
-        <div class="dchdr">
-          <div class="dctit">🔗 Ma boutique en ligne</div>
-        </div>
-        <div style="padding:16px;">
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
-            <input type="text" id="boutique-lien" readonly style="flex:1;min-width:220px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--inp);font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mu2);">
-            <button class="addb" onclick="copierLienBoutique()" style="flex-shrink:0;">📋 Copier</button>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <input type="text" id="boutique-code-promo" placeholder="Code promo à afficher (ex : BIENVENUE10)" maxlength="30" style="flex:1;min-width:200px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--inp);font-family:'Outfit',sans-serif;font-size:13px;">
-            <button class="addb" id="btn-code-promo" onclick="sauverCodePromo()" style="flex-shrink:0;">Enregistrer</button>
-          </div>
-        </div>
-      </div>
-
-      <div id="encart-stripe-connect-catalogue" style="margin-top:16px;"></div>
-
-      <div class="dcard" style="margin-top:16px;">
-        <div class="dchdr">
-          <div class="dctit">🚚 Frais de livraison</div>
-        </div>
-        <div style="padding:16px;">
-          <p style="font-size:12.5px;color:var(--mu);margin-bottom:14px;">Calculés automatiquement selon la vraie distance entre vous et le client, au moment de la commande. Laissez à 0 pour ne rien facturer.</p>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
-            <div>
-              <label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;">Forfait de base (€)</label>
-              <input type="number" id="livraison-base" min="0" step="0.5" oninput="afficherExempleLivraison()" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--b2);font-size:13px;">
-            </div>
-            <div>
-              <label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;">Distance incluse (km)</label>
-              <input type="number" id="livraison-km-inclus" min="0" step="1" oninput="afficherExempleLivraison()" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--b2);font-size:13px;">
-            </div>
-            <div>
-              <label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;">€/km au-delà</label>
-              <input type="number" id="livraison-prix-km" min="0" step="0.1" oninput="afficherExempleLivraison()" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--b2);font-size:13px;">
-            </div>
-          </div>
-          <button onclick="sauverTarifLivraison()" id="btn-livraison-sauver" style="margin-top:12px;padding:8px 16px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">Enregistrer</button>
-          <div id="livraison-exemple" style="margin-top:10px;font-size:12px;color:var(--mu);"></div>
-        </div>
-      </div>
-
-      <div class="dcard" style="margin-top:16px;">
-        <div class="dchdr">
-          <div class="dctit">📊 Ventes par produit</div>
-        </div>
-        <div id="zone-ventes-produits" style="padding:16px;font-size:13px;color:var(--mu);">Chargement…</div>
-      </div>
-
-      <div class="dcard" style="margin-top:16px;">
-        <div class="dchdr">
-          <div class="dctit"><svg viewBox="0 0 24 24" fill="none" stroke="#B5502F" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>Mon catalogue</div>
-          <button class="addb" onclick="openAjouterCatalogue()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter</button>
-        </div>
-        <div class="dcbdy" id="zone-catalogue" style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;">Chargement…</div>
-        <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 <strong>Disponible</strong> : prêt à vendre tout de suite. <strong>Sur commande</strong> : nécessite un délai de préparation (ex : gâteau). Marquez jusqu'à 3 produits ⭐ pour choisir vos produits phares — sans choix, ce sont vos meilleures ventes qui apparaissent automatiquement.</div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- COMPTABILITÉ -->
-  <div class="pnl" id="p2">
-    <div class="cpv2-card">
-      <div class="cpv2-matrix-head">
-        <div class="cpv2-matrix-headtext">
-          <p class="cpv2-matrix-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span id="compta-titre">Matrice CA — Clients &amp; Mois</span></p>
-          <p class="cpv2-matrix-subtitle">Vue d'ensemble de votre activité — chiffre d'affaires, cotisations et net par client</p>
-        </div>
-        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-          <div class="cpv2-toggle">
-            <button type="button" class="active" id="cta-prod" onclick="switchVueCompta('production')">Production</button>
-            <button type="button" id="cta-reel" onclick="switchVueCompta('reel')">Encaissement</button>
-          </div>
-          <div class="cpv2-toggle">
-            <button type="button" class="active" id="cpv2-btn-mois" onclick="setVueMoisTrim('mois')">Mois</button>
-            <button type="button" id="cpv2-btn-trim" onclick="setVueMoisTrim('trim')">Trimestre</button>
-          </div>
-          <div class="cpv2-yearnav">
-            <button onclick="anneeComptaPrec()">‹</button>
-            <span id="compta-annee">—</span>
-            <button onclick="anneeComptaSuiv()">›</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="cpv2-kpis">
-        <div class="cpv2-kpi">
-          <span class="cpv2-kpi-lbl">CA brut (année)</span>
-          <span class="cpv2-kpi-val" id="kpi-ca-brut">0 €</span>
-        </div>
-        <div class="cpv2-kpi cotis">
-          <span class="cpv2-kpi-lbl">Cotisations estimées</span>
-          <span class="cpv2-kpi-val" id="kpi-cotis">0 €</span>
-        </div>
-        <div class="cpv2-kpi net">
-          <span class="cpv2-kpi-lbl">CA net (année)</span>
-          <span class="cpv2-kpi-val" id="kpi-ca-net">0 €</span>
-        </div>
-      </div>
-
-      <div class="scroll-hint" id="compta-scroll-hint">👉 Faites glisser pour voir tous les mois</div>
-      <div class="dcbdy" id="compta-table-wrap" style="flex:1;min-height:0;">
-        <table id="tbl-compta" class="dtbl">
-          <thead><tr id="thead-compta-row"><th>Client</th></tr></thead>
-          <tbody id="tbody-compta"></tbody>
-        </table>
-      </div>
-      <div class="compta-mobile" id="compta-mobile">
-        <div class="compta-mobile-periodes" id="compta-mobile-periodes"></div>
-        <div id="compta-mobile-liste"></div>
-      </div>
-      <p class="cpv2-matrix-note" id="compta-note">💡 Vue <strong>Production</strong> : le CA est rangé dans le mois de l'intervention, dès qu'elle est marquée "Terminée" ou "Payée".</p>
-    </div>
-  </div>
-
-  <!-- FACTURATION — phase 5 -->
-  <div class="pnl" id="p3">
-    <div class="cpv2-page-wrap">
-      <div class="cpv2-card">
-        <div class="cpv2-matrix-head">
-          <div class="cpv2-matrix-headtext">
-            <p class="cpv2-matrix-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Nouvelle facture</p>
-            <p class="cpv2-matrix-subtitle">Choisissez un client, sélectionnez les prestations à facturer</p>
-          </div>
-        </div>
-        <div class="cpv2-fact-field">
-          <label>Client</label>
-          <select id="fact-client" class="cpv2-select" onchange="chargerPanierClient()">
-            <option value="">— Choisir un client —</option>
-          </select>
-        </div>
-        <div id="fact-panier" style="margin-top:14px;"></div>
-      </div>
-
-      <div class="cpv2-card">
-        <div class="cpv2-matrix-head">
-          <div class="cpv2-matrix-headtext">
-            <p class="cpv2-matrix-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>Factures émises</p>
-            <p class="cpv2-matrix-subtitle">Historique de vos factures générées</p>
-          </div>
-        </div>
-        <div class="scroll-hint">👉 Faites glisser pour voir plus</div>
-        <div class="dcbdy">
-          <table id="tbl-factures" class="dtbl">
-            <thead><tr><th style="text-align:left;">N°</th><th style="text-align:left;">Client</th><th>Date</th><th>Montant</th><th></th></tr></thead>
-            <tbody id="tbody-factures"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- TABLEAU DE BORD -->
-  <div class="pnl" id="p4">
-    <div id="encart-rappel-cloture"></div>
-    <div id="encart-abonnement"></div>
-    <div id="encart-alternance"></div>
-    <div class="dash-grid">
-      <div>
-        <div class="dash-jauge-card">
-          <div class="dj-header">
-            <div class="dj-icon" style="background:rgba(181,80,47,.1);">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#B5502F" stroke-width="2" width="13" height="13"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
-            </div>
-            <div class="dj-title-block">
-              <div class="dj-title">Plafond micro-entreprise</div>
-              <div class="dj-sub">BIC prestations de services : 77 700 €</div>
-            </div>
-            <div class="dj-pct" id="dash-me-pct">0%</div>
-          </div>
-          <div class="dj-track"><div class="dj-bar" id="dash-jauge-me"></div></div>
-          <div class="dj-footer">
-            <span id="dash-me-amt">0 € / 77 700 €</span>
-            <span class="dj-msg" id="dash-me-msg"></span>
-          </div>
-          <div style="font-size:10.5px;color:var(--mu);margin-top:4px;" id="dash-me-detail"></div>
-        </div>
-
-        <div class="dash-jauge-card">
-          <div class="dj-header">
-            <div class="dj-icon" style="background:rgba(15,157,120,.1);">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#0f9d78" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-            </div>
-            <div class="dj-title-block">
-              <div class="dj-title">Seuil gratuit — clients trouvés via CaraLink</div>
-              <div class="dj-sub" id="dash-annuaire-sub">Gratuit jusqu'à 200 € / mois, sur ces clients uniquement</div>
-            </div>
-            <div class="dj-pct" id="dash-annuaire-pct">0%</div>
-          </div>
-          <div class="dj-track"><div class="dj-bar" id="dash-jauge-annuaire"></div></div>
-          <div class="dj-footer">
-            <span id="dash-annuaire-amt">0 € / 200 €</span>
-            <span class="dj-msg" id="dash-annuaire-msg"></span>
-          </div>
-        </div>
-
-        <div id="encart-carte-prestations" style="margin-bottom:16px;"></div>
-
-        <div class="dash-jauge-card">
-
-          <div class="dj-header">
-            <div class="dj-icon" style="background:rgba(109,40,217,.1);">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#6d28d9" stroke-width="2" width="13" height="13"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            </div>
-            <div class="dj-title-block">
-              <div class="dj-title">Estimation impôt sur le revenu</div>
-              <div class="dj-sub">Abattement forfaitaire 50% — BIC services</div>
-            </div>
-          </div>
-          <div id="dash-ir-body"></div>
-          <div class="parts-inline">
-            Nombre de parts fiscales :
-            <input type="number" id="dash-parts" value="1" min="1" step="0.5" onchange="sauverPartsFiscales()">
-            <span style="font-size:9.5px;">(quotient familial — 1 pour un artisan seul)</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="dash-jauge-card" style="margin-bottom:0;">
-        <div class="dj-header">
-          <div class="dj-icon" style="background:rgba(59,130,246,.1);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" width="13" height="13"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          </div>
-          <div class="dj-title-block">
-            <div class="dj-title">Occupation du mois</div>
-            <div class="dj-sub">Jours travaillés & disponibilités</div>
-          </div>
-        </div>
-        <div class="dv2-cal-head">
-          <span class="dv2-cal-month" id="dv2-cal-month">—</span>
-          <div class="dv2-cal-nav">
-            <button onclick="dispoMoisPrec()">‹</button>
-            <button onclick="dispoMoisSuiv()">›</button>
-          </div>
-        </div>
-        <div class="dv2-cal-grid" id="dv2-cal-grid"></div>
-        <div class="dv2-cal-legend">
-          <span><span class="dv2-cal-legend-dot free"></span>Disponible</span>
-          <span><span class="dv2-cal-legend-dot busy"></span>Jour travaillé</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Demandes reçues -->
-  <div class="pnl" id="p5">
-    <div class="dcard">
-      <div class="dchdr">
-        <div class="dctit"><svg viewBox="0 0 24 24" fill="none" stroke="#B5502F" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>Demandes de devis</div>
-      </div>
-      <div class="dcbdy" id="zone-demandes" style="padding:16px;">Chargement…</div>
-      <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 <strong>Privée</strong> : un client vous a contacté vous précisément. <strong>Ouverte</strong> : visible par tous les artisans de votre secteur — prenez-la en charge pour la traiter.</div>
-    </div>
-  </div>
-
-  <!-- Avis reçus -->
-  <div class="pnl" id="p6">
-    <div class="dcard">
-      <div class="dchdr">
-        <div class="dctit"><svg viewBox="0 0 24 24" fill="none" stroke="#B5502F" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Avis clients</div>
-        <div id="avis-moyenne" style="font-size:13px;font-weight:700;color:var(--mu2);"></div>
-      </div>
-      <div class="dcbdy" id="zone-avis" style="padding:16px;">Chargement…</div>
-      <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Les avis ne peuvent pas être masqués ou supprimés — c'est ce qui fait leur crédibilité. Vous pouvez en revanche y répondre publiquement.</div>
-    </div>
-  </div>
-
-  <!-- Commandes reçues -->
-  <div class="pnl" id="p7">
-    <div class="dcard">
-      <div class="dchdr">
-        <div class="dctit"><svg viewBox="0 0 24 24" fill="none" stroke="#B5502F" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>Commandes</div>
-      </div>
-      <div class="dcbdy" id="zone-commandes" style="padding:16px;">Chargement…</div>
-      <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Pour une commande à livrer, "Planifier la livraison" l'ajoute directement à votre planning — elle passe alors par le calcul de trajet, comme n'importe quel rendez-vous.</div>
-    </div>
-  </div>
-
-  <footer style="max-width:1200px;margin:30px auto 10px;padding:20px;text-align:center;border-top:1px solid var(--brd);">
-    <div style="font-size:11.5px;color:var(--mu);">
-      MPA Artisans — <a href="#" onclick="ouvrirAvisProduit();return false;" style="color:var(--ac);text-decoration:underline;">Donner votre avis sur CaraLink Artisans</a> — <a href="#" onclick="ouvrirSuppressionCompte();return false;" style="color:var(--mu);text-decoration:underline;">Supprimer mon compte</a>
-    </div>
-  </footer>
-
+<button class="sbtn sm" onclick="openModifierFiche()">✎ Modifier</button>
 </div>
-
+<div class="fbdy">
+<div class="fr"><span class="fl">Nom / Raison sociale</span><span class="fv" id="fv-nom">—</span></div>
+<div class="fr"><span class="fl">Statut</span><span class="fv" id="fv-statut">—</span></div>
+<div class="fr"><span class="fl">Activité (secteur)</span><span class="fv" id="fv-act">—</span></div>
+<div class="fr"><span class="fl">SIRET</span><span class="fv" id="fv-siret">—</span></div>
+<div class="fr"><span class="fl">APE</span><span class="fv" id="fv-ape">—</span></div>
+<div class="fr"><span class="fl">N° TVA intra</span><span class="fv" id="fv-tva-intra">—</span></div>
+<div class="fr"><span class="fl">Adresse</span><span class="fv" id="fv-adr">—</span></div>
+<div class="fr"><span class="fl">CP</span><span class="fv" id="fv-cp">—</span></div>
+<div class="fr"><span class="fl">Commune</span><span class="fv" id="fv-com">—</span></div>
+<div class="fr"><span class="fl">Téléphone</span><span class="fv" id="fv-tel">—</span></div>
+<div class="fr"><span class="fl">E-mail</span><span class="fv" id="fv-email">—</span></div>
+<div class="fr"><span class="fl">Site web</span><span class="fv" id="fv-web">—</span></div>
+</div>
+</div>
+</div>
+<div class="fcol">
+<div class="fcard">
+<div class="fchdr">
+<div class="fctit"><svg fill="none" height="16" stroke="#8b5cf6" stroke-width="2" viewbox="0 0 24 24" width="16"><line x1="12" x2="12" y1="1" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>Paramètres fiscaux</div>
+<span class="dbg pu">⚙ Configurable</span>
+</div>
+<div class="fcbdy">
+<div class="ccrow">
+<div style="flex:1;">
+<span class="cclbl">Cotisations sociales</span>
+<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu);margin-top:2px;">Micro-entrepreneur : 22% par défaut</div>
+</div>
+<div style="display:flex;align-items:center;gap:4px;">
+<input class="ccinp" id="cfg-cotis" max="100" min="0" onchange="saveConfigFiscal()" step="0.1" style="width:60px;" type="number" value="22"/>
+<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mu);">%</span>
+</div>
+</div>
+<div class="ccrow" style="border-bottom:none;">
+<div style="flex:1;">
+<span class="cclbl">TVA</span>
+<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu);margin-top:2px;">Ex : Non assujetti, 20%, 8,5%</div>
+</div>
+<input class="ccinp" id="cfg-tva" onchange="saveConfigFiscal()" style="width:130px;" type="text" value="Non assujetti"/>
+</div>
+</div>
+</div>
+<div class="fcard">
+<div class="fchdr">
+<div class="fctit"><svg fill="none" height="16" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24" width="16"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>Horaires habituels</div>
+</div>
+<div class="fcbdy" id="zone-horaires" style="padding:16px;">Chargement…</div>
+<div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Ces horaires servent à calculer vos disponibilités affichées publiquement sur CaraLink Artisans — plusieurs plages possibles le même jour (ex : 8h-12h puis 14h-16h).</div>
+</div>
+<div class="fcard">
+<div class="fchdr">
+<div class="fctit"><svg fill="none" height="16" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24" width="16"><rect height="18" rx="2" ry="2" width="18" x="3" y="4"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>Journées bloquées</div>
+</div>
+<div class="fcbdy" id="zone-indispo" style="padding:16px;">Chargement…</div>
+<div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Congés, jour férié, absence ponctuelle... ces dates n'apparaîtront jamais comme disponibles, même si elles tombent sur un jour habituellement travaillé.</div>
+</div>
+</div>
+</div>
+</div><div class="bpnl" id="bp1">
+<div class="dcard">
+<div class="dchdr">
+<div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>Liste des clients habituels</div>
+<div class="dchdr-actions" style="display:flex;gap:8px;align-items:center;">
+<input class="sinp" id="sinp-clients" oninput="filtrerClients()" placeholder="Rechercher…" type="text"/>
+<button class="addb" onclick="openAjouterClient()"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>Ajouter</button>
+</div>
+</div>
+<div class="scroll-hint">👉 Faites glisser pour voir plus</div>
+<div class="dcbdy">
+<table class="dtbl">
+<thead><tr><th>Nom</th><th>Email</th><th>Adresse</th><th>CP</th><th>Commune</th><th>Délai paiement</th><th></th></tr></thead>
+<tbody id="tbody-clients"></tbody>
+</table>
+</div>
+</div>
+</div></div></div><div class="pnl" id="p0">
+<div class="cal-header">
+<div class="cal-nav">
+<button onclick="moisPrecedent()">‹</button>
+<div class="cal-month-title" id="cal-titre">—</div>
+<button onclick="moisSuivant()">›</button>
+</div>
+<button class="cal-today-btn" onclick="allerAujourdhui()">Aujourd'hui</button>
+<div class="cal-legend">
+<span><span class="dot" style="background:#f59e0b;"></span>Planifiée</span>
+<span><span class="dot" style="background:#6d28d9;"></span>En cours</span>
+<span><span class="dot" style="background:#3b82f6;"></span>Terminée</span>
+<span><span class="dot" style="background:#22c55e;"></span>Payée</span>
+</div>
+</div>
+<div style="font-size:11px;color:var(--mu);margin-bottom:10px;">💡 Cliquez sur une intervention pour faire avancer son statut — le crayon ✎ ouvre les détails (prix, date de paiement, notes…).</div>
+<div class="cal-grid" id="cal-dows"></div>
+<div class="cal-grid" id="cal-grid" style="margin-top:6px;"></div>
+<div class="dash-jauge-card" style="margin-top:16px;margin-bottom:0;">
+<div class="dj-header">
+<div class="dj-icon" style="background:rgba(59,130,246,.1);">
+<svg fill="none" height="13" stroke="#3b82f6" stroke-width="2" viewbox="0 0 24 24" width="13"><rect height="18" rx="2" width="18" x="3" y="4"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>
+</div>
+<div class="dj-title-block">
+<div class="dj-title">Occupation du mois</div>
+<div class="dj-sub">Jours travaillés &amp; disponibilités</div>
+</div>
+</div>
+<div class="dv2-cal-head">
+<span class="dv2-cal-month" id="dv2-cal-month">—</span>
+<div class="dv2-cal-nav">
+<button onclick="dispoMoisPrec()">‹</button>
+<button onclick="dispoMoisSuiv()">›</button>
+</div>
+</div>
+<div class="dv2-cal-grid" id="dv2-cal-grid"></div>
+<div class="dv2-cal-legend">
+<span><span class="dv2-cal-legend-dot free"></span>Disponible</span>
+<span><span class="dv2-cal-legend-dot busy"></span>Jour travaillé</span>
+</div>
+</div>
+</div><div class="pnl" id="p-interventions"><div class="sous-nav" id="nav-interventions"><button class="btab active" id="bt-int-0" onclick="switchSousOnglet('nav-interventions','conteneur-interventions',0)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>Mes services<span class="bcnt" id="cnt-s" style="display:none;background:var(--danger);color:#fff;">0</span></button><button class="btab" id="bt-int-1" onclick="switchSousOnglet('nav-interventions','conteneur-interventions',1)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>Mes demandes<span class="bcnt" id="cnt-demandes" style="display:none;background:var(--danger);color:#fff;">0</span></button><button class="btab" id="bt-int-2" onclick="switchSousOnglet('nav-interventions','conteneur-interventions',2)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><rect height="18" rx="2" width="18" x="3" y="3"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg>Mes photos</button></div><div id="conteneur-interventions"><div class="bpnl active" id="bp2">
+<div class="dcard">
+<div class="dchdr">
+<div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>Mes services</div>
+<div class="dchdr-actions" style="display:flex;gap:8px;align-items:center;">
+<input class="sinp" id="sinp-services" oninput="filtrerServices()" placeholder="Rechercher…" type="text"/>
+<button class="addb" onclick="openAjouterService()"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>Ajouter</button>
+</div>
+</div>
+<div class="scroll-hint">👉 Faites glisser pour voir plus</div>
+<div class="dcbdy">
+<table class="dtbl">
+<thead><tr><th>Service</th><th>Description</th><th>Durée estimée</th><th>Tarif indicatif</th><th></th></tr></thead>
+<tbody id="tbody-services"></tbody>
+</table>
+</div>
+<div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Cette liste alimente aussi bien votre vitrine CaraLink Artisans que la durée par défaut utilisée pour vos interventions.</div>
+</div>
+</div><div class="bpnl" id="p5">
+<div class="dcard">
+<div class="dchdr">
+<div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>Demandes de devis</div>
+</div>
+<div class="dcbdy" id="zone-demandes" style="padding:16px;">Chargement…</div>
+<div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 <strong>Privée</strong> : un client vous a contacté vous précisément. <strong>Ouverte</strong> : visible par tous les artisans de votre secteur — prenez-la en charge pour la traiter.</div>
+</div>
+</div><div class="bpnl" id="bp3">
+<div class="dcard">
+<div class="dchdr">
+<div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><rect height="18" rx="2" width="18" x="3" y="3"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg>Photos de mes réalisations</div>
+<input accept="image/*" id="photo-input" onchange="uploaderPhoto()" style="display:none;" type="file"/>
+<button class="addb" id="btn-ajouter-photo" onclick="document.getElementById('photo-input').click()"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>Ajouter</button>
+</div>
+<div class="dcbdy" id="zone-photos" style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;">Chargement…</div>
+<div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Ces photos apparaissent sur votre fiche publique CaraLink Artisans, pour donner confiance aux clients.</div>
+</div>
+</div></div></div><div class="pnl" id="p-ventes"><div class="sous-nav" id="nav-ventes"><button class="btab active" id="bt-vente-0" onclick="switchSousOnglet('nav-ventes','conteneur-ventes',0)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Mon catalogue</button><button class="btab" id="bt-vente-1" onclick="switchSousOnglet('nav-ventes','conteneur-ventes',1)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Mes commandes<span class="bcnt" id="cnt-commandes" style="display:none;background:var(--danger);color:#fff;">0</span></button></div><div id="conteneur-ventes"><div class="bpnl active" id="bp4">
+<div class="dcard">
+<div class="dchdr">
+<div class="dctit">🔗 Ma boutique en ligne</div>
+</div>
+<div style="padding:16px;">
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+<input id="boutique-lien" readonly="" style="flex:1;min-width:220px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--inp);font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mu2);" type="text"/>
+<button class="addb" onclick="copierLienBoutique()" style="flex-shrink:0;">📋 Copier</button>
+</div>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+<input id="boutique-code-promo" maxlength="30" placeholder="Code promo à afficher (ex : BIENVENUE10)" style="flex:1;min-width:200px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--inp);font-family:'Outfit',sans-serif;font-size:13px;" type="text"/>
+<button class="addb" id="btn-code-promo" onclick="sauverCodePromo()" style="flex-shrink:0;">Enregistrer</button>
+</div>
+</div>
+</div>
+<div id="encart-stripe-connect-catalogue" style="margin-top:16px;"></div>
+<div class="dcard" style="margin-top:16px;">
+<div class="dchdr">
+<div class="dctit">🚚 Frais de livraison</div>
+</div>
+<div style="padding:16px;">
+<p style="font-size:12.5px;color:var(--mu);margin-bottom:14px;">Calculés automatiquement selon la vraie distance entre vous et le client, au moment de la commande. Laissez à 0 pour ne rien facturer.</p>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+<div>
+<label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;">Forfait de base (€)</label>
+<input id="livraison-base" min="0" oninput="afficherExempleLivraison()" step="0.5" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--b2);font-size:13px;" type="number"/>
+</div>
+<div>
+<label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;">Distance incluse (km)</label>
+<input id="livraison-km-inclus" min="0" oninput="afficherExempleLivraison()" step="1" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--b2);font-size:13px;" type="number"/>
+</div>
+<div>
+<label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;">€/km au-delà</label>
+<input id="livraison-prix-km" min="0" oninput="afficherExempleLivraison()" step="0.1" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--b2);font-size:13px;" type="number"/>
+</div>
+</div>
+<button id="btn-livraison-sauver" onclick="sauverTarifLivraison()" style="margin-top:12px;padding:8px 16px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">Enregistrer</button>
+<div id="livraison-exemple" style="margin-top:10px;font-size:12px;color:var(--mu);"></div>
+</div>
+</div>
+<div class="dcard" style="margin-top:16px;">
+<div class="dchdr">
+<div class="dctit">📊 Ventes par produit</div>
+</div>
+<div id="zone-ventes-produits" style="padding:16px;font-size:13px;color:var(--mu);">Chargement…</div>
+</div>
+<div class="dcard" style="margin-top:16px;">
+<div class="dchdr">
+<div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Mon catalogue</div>
+<button class="addb" onclick="openAjouterCatalogue()"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>Ajouter</button>
+</div>
+<div class="dcbdy" id="zone-catalogue" style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;">Chargement…</div>
+<div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 <strong>Disponible</strong> : prêt à vendre tout de suite. <strong>Sur commande</strong> : nécessite un délai de préparation (ex : gâteau). Marquez jusqu'à 3 produits ⭐ pour choisir vos produits phares — sans choix, ce sont vos meilleures ventes qui apparaissent automatiquement.</div>
+</div>
+</div><div class="bpnl" id="p7">
+<div class="dcard">
+<div class="dchdr">
+<div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Commandes</div>
+</div>
+<div class="dcbdy" id="zone-commandes" style="padding:16px;">Chargement…</div>
+<div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Pour une commande à livrer, "Planifier la livraison" l'ajoute directement à votre planning — elle passe alors par le calcul de trajet, comme n'importe quel rendez-vous.</div>
+</div>
+</div></div></div><div class="pnl" id="p-livraisons">
+<div class="dcard">
+<div class="dchdr"><div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M3 3h13v13H3z"></path><path d="M16 8h4l3 3v5h-7V8z"></path><circle cx="7.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>Mes livraisons du jour</div>
+</div>
+<div class="dcbdy" id="zone-livraisons" style="padding:16px;">Chargement…</div>
+</div>
+</div><div class="pnl" id="p-compta">
+<div class="cpv2-card">
+<div class="cpv2-matrix-head">
+<div class="cpv2-matrix-headtext">
+<p class="cpv2-matrix-title"><svg fill="none" height="18" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="18"><rect height="7" rx="1" width="7" x="3" y="3"></rect><rect height="7" rx="1" width="7" x="14" y="3"></rect><rect height="7" rx="1" width="7" x="3" y="14"></rect><rect height="7" rx="1" width="7" x="14" y="14"></rect></svg><span id="compta-titre">Matrice CA — Clients &amp; Mois</span></p>
+<p class="cpv2-matrix-subtitle">Vue d'ensemble de votre activité — chiffre d'affaires, cotisations et net par client</p>
+</div>
+<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+<div class="cpv2-toggle">
+<button class="active" id="cta-prod" onclick="switchVueCompta('production')" type="button">Production</button>
+<button id="cta-reel" onclick="switchVueCompta('reel')" type="button">Encaissement</button>
+</div>
+<div class="cpv2-toggle">
+<button class="active" id="cpv2-btn-mois" onclick="setVueMoisTrim('mois')" type="button">Mois</button>
+<button id="cpv2-btn-trim" onclick="setVueMoisTrim('trim')" type="button">Trimestre</button>
+</div>
+<div class="cpv2-yearnav">
+<button onclick="anneeComptaPrec()">‹</button>
+<span id="compta-annee">—</span>
+<button onclick="anneeComptaSuiv()">›</button>
+</div>
+</div>
+</div>
+<div class="cpv2-kpis">
+<div class="cpv2-kpi">
+<span class="cpv2-kpi-lbl">CA brut (année)</span>
+<span class="cpv2-kpi-val" id="kpi-ca-brut">0 €</span>
+</div>
+<div class="cpv2-kpi cotis">
+<span class="cpv2-kpi-lbl">Cotisations estimées</span>
+<span class="cpv2-kpi-val" id="kpi-cotis">0 €</span>
+</div>
+<div class="cpv2-kpi net">
+<span class="cpv2-kpi-lbl">CA net (année)</span>
+<span class="cpv2-kpi-val" id="kpi-ca-net">0 €</span>
+</div>
+</div>
+<div class="scroll-hint" id="compta-scroll-hint">👉 Faites glisser pour voir tous les mois</div>
+<div class="dcbdy" id="compta-table-wrap" style="flex:1;min-height:0;">
+<table class="dtbl" id="tbl-compta">
+<thead><tr id="thead-compta-row"><th>Client</th></tr></thead>
+<tbody id="tbody-compta"></tbody>
+</table>
+</div>
+<div class="compta-mobile" id="compta-mobile">
+<div class="compta-mobile-periodes" id="compta-mobile-periodes"></div>
+<div id="compta-mobile-liste"></div>
+</div>
+<p class="cpv2-matrix-note" id="compta-note">💡 Vue <strong>Production</strong> : le CA est rangé dans le mois de l'intervention, dès qu'elle est marquée "Terminée" ou "Payée".</p>
+</div>
+<div class="cpv2-page-wrap">
+<div class="cpv2-card">
+<div class="cpv2-matrix-head">
+<div class="cpv2-matrix-headtext">
+<p class="cpv2-matrix-title"><svg fill="none" height="18" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>Nouvelle facture</p>
+<p class="cpv2-matrix-subtitle">Choisissez un client, sélectionnez les prestations à facturer</p>
+</div>
+</div>
+<div class="cpv2-fact-field">
+<label>Client</label>
+<select class="cpv2-select" id="fact-client" onchange="chargerPanierClient()">
+<option value="">— Choisir un client —</option>
+</select>
+</div>
+<div id="fact-panier" style="margin-top:14px;"></div>
+</div>
+<div class="cpv2-card">
+<div class="cpv2-matrix-head">
+<div class="cpv2-matrix-headtext">
+<p class="cpv2-matrix-title"><svg fill="none" height="18" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="18"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>Factures émises</p>
+<p class="cpv2-matrix-subtitle">Historique de vos factures générées</p>
+</div>
+</div>
+<div class="scroll-hint">👉 Faites glisser pour voir plus</div>
+<div class="dcbdy">
+<table class="dtbl" id="tbl-factures">
+<thead><tr><th style="text-align:left;">N°</th><th style="text-align:left;">Client</th><th>Date</th><th>Montant</th><th></th></tr></thead>
+<tbody id="tbody-factures"></tbody>
+</table>
+</div>
+</div>
+</div>
+<div id="encart-rappel-cloture"></div>
+<div id="encart-abonnement"></div>
+<div class="dash-grid">
+<div>
+<div class="dash-jauge-card">
+<div class="dj-header">
+<div class="dj-icon" style="background:rgba(181,80,47,.1);">
+<svg fill="none" height="13" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24" width="13"><rect height="14" rx="2" width="20" x="2" y="7"></rect><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path></svg>
+</div>
+<div class="dj-title-block">
+<div class="dj-title">Plafond micro-entreprise</div>
+<div class="dj-sub">BIC prestations de services : 77 700 €</div>
+</div>
+<div class="dj-pct" id="dash-me-pct">0%</div>
+</div>
+<div class="dj-track"><div class="dj-bar" id="dash-jauge-me"></div></div>
+<div class="dj-footer">
+<span id="dash-me-amt">0 € / 77 700 €</span>
+<span class="dj-msg" id="dash-me-msg"></span>
+</div>
+<div id="dash-me-detail" style="font-size:10.5px;color:var(--mu);margin-top:4px;"></div>
+</div>
+<div class="dash-jauge-card">
+<div class="dj-header">
+<div class="dj-icon" style="background:rgba(15,157,120,.1);">
+<svg fill="none" height="13" stroke="#0f9d78" stroke-width="2" viewbox="0 0 24 24" width="13"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+</div>
+<div class="dj-title-block">
+<div class="dj-title">Seuil gratuit — clients trouvés via CaraLink</div>
+<div class="dj-sub" id="dash-annuaire-sub">Gratuit jusqu'à 200 € / mois, sur ces clients uniquement</div>
+</div>
+<div class="dj-pct" id="dash-annuaire-pct">0%</div>
+</div>
+<div class="dj-track"><div class="dj-bar" id="dash-jauge-annuaire"></div></div>
+<div class="dj-footer">
+<span id="dash-annuaire-amt">0 € / 200 €</span>
+<span class="dj-msg" id="dash-annuaire-msg"></span>
+</div>
+</div>
+<div id="encart-carte-prestations" style="margin-bottom:16px;"></div>
+<div class="dash-jauge-card">
+<div class="dj-header">
+<div class="dj-icon" style="background:rgba(109,40,217,.1);">
+<svg fill="none" height="13" stroke="#6d28d9" stroke-width="2" viewbox="0 0 24 24" width="13"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+</div>
+<div class="dj-title-block">
+<div class="dj-title">Estimation impôt sur le revenu</div>
+<div class="dj-sub">Abattement forfaitaire 50% — BIC services</div>
+</div>
+</div>
+<div id="dash-ir-body"></div>
+<div class="parts-inline">
+            Nombre de parts fiscales :
+            <input id="dash-parts" min="1" onchange="sauverPartsFiscales()" step="0.5" type="number" value="1"/>
+<span style="font-size:9.5px;">(quotient familial — 1 pour un artisan seul)</span>
+</div>
+</div>
+</div>
+</div>
+</div><div class="pnl" id="p-avis">
+<div class="dcard">
+<div class="dchdr">
+<div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>Avis clients</div>
+<div id="avis-moyenne" style="font-size:13px;font-weight:700;color:var(--mu2);"></div>
+</div>
+<div class="dcbdy" id="zone-avis" style="padding:16px;">Chargement…</div>
+<div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Les avis ne peuvent pas être masqués ou supprimés — c'est ce qui fait leur crédibilité. Vous pouvez en revanche y répondre publiquement.</div>
+</div>
+</div></div>
 <!-- MODALE : Avis produit (CaraLink Artisans / MPA Artisans) -->
 <div class="modal-overlay" id="modal-avis-produit">
-  <div class="modal-box">
-    <h3>Votre avis sur CaraLink Artisans</h3>
-    <p style="font-size:13px;color:var(--mu);margin-bottom:14px;">Comment se passe votre expérience avec CaraLink Artisans et MPA Artisans ? Votre avis pourra être affiché sur nos pages, après vérification.</p>
-    <div class="modal-field"><label>Nom à afficher (ex : votre prénom ou le nom de votre entreprise)</label><input type="text" id="ap-nom" placeholder="Ex : Le Cocon d'Auré"></div>
-    <div class="modal-field"><label>Votre avis</label><textarea id="ap-texte" rows="4" placeholder="Qu'est-ce que CaraLink Artisans a changé pour vous ?"></textarea></div>
-    <div id="ap-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>
-    <div id="ap-ok" style="display:none;color:#0f9d78;font-size:12.5px;margin-bottom:10px;"></div>
-    <div class="modal-actions">
-      <button class="btn-primary" onclick="envoyerAvisProduit()" id="btn-avis-produit">Envoyer mon avis</button>
-      <button class="btn-secondary" onclick="fermerModale('modal-avis-produit')">Annuler</button>
-    </div>
-  </div>
+<div class="modal-box">
+<h3>Votre avis sur CaraLink Artisans</h3>
+<p style="font-size:13px;color:var(--mu);margin-bottom:14px;">Comment se passe votre expérience avec CaraLink Artisans et MPA Artisans ? Votre avis pourra être affiché sur nos pages, après vérification.</p>
+<div class="modal-field"><label>Nom à afficher (ex : votre prénom ou le nom de votre entreprise)</label><input id="ap-nom" placeholder="Ex : Le Cocon d'Auré" type="text"/></div>
+<div class="modal-field"><label>Votre avis</label><textarea id="ap-texte" placeholder="Qu'est-ce que CaraLink Artisans a changé pour vous ?" rows="4"></textarea></div>
+<div id="ap-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>
+<div id="ap-ok" style="display:none;color:#0f9d78;font-size:12.5px;margin-bottom:10px;"></div>
+<div class="modal-actions">
+<button class="btn-primary" id="btn-avis-produit" onclick="envoyerAvisProduit()">Envoyer mon avis</button>
+<button class="btn-secondary" onclick="fermerModale('modal-avis-produit')">Annuler</button>
 </div>
-
+</div>
+</div>
 <!-- MODALE : Quoi de neuf -->
 <div class="modal-overlay" id="modal-nouveautes">
-  <div class="modal-box">
-    <h3>📣 Quoi de neuf</h3>
-    <div id="nouveautes-liste" style="max-height:340px;overflow-y:auto;margin-bottom:16px;"></div>
-    <div class="modal-actions">
-      <button class="btn-primary" onclick="fermerNouveautes()">Compris, merci !</button>
-    </div>
-  </div>
+<div class="modal-box">
+<h3>📣 Quoi de neuf</h3>
+<div id="nouveautes-liste" style="max-height:340px;overflow-y:auto;margin-bottom:16px;"></div>
+<div class="modal-actions">
+<button class="btn-primary" onclick="fermerNouveautes()">Compris, merci !</button>
 </div>
-
+</div>
+</div>
 <!-- MODALE : Enregistrer une carte pour la commission prestations -->
 <div class="modal-overlay" id="modal-carte-prestations">
-  <div class="modal-box">
-    <h3>Enregistrer une carte</h3>
-    <p style="font-size:13px;color:var(--mu);margin-bottom:14px;line-height:1.5;">
+<div class="modal-box">
+<h3>Enregistrer une carte</h3>
+<p style="font-size:13px;color:var(--mu);margin-bottom:14px;line-height:1.5;">
       Cette carte ne sera jamais débitée maintenant. Elle sert uniquement au prélèvement automatique, une fois par mois,
       de la commission sur vos prestations trouvées via CaraLink au-dessus de 200 € dans le mois — rien en dessous.
     </p>
-    <div id="cp-element" style="margin-bottom:14px;"></div>
-    <div id="cp-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>
-    <div class="modal-actions">
-      <button class="btn-primary" id="btn-cp-confirmer" onclick="confirmerCartePrestations()">Enregistrer cette carte</button>
-      <button class="btn-secondary" onclick="fermerModale('modal-carte-prestations')">Annuler</button>
-    </div>
-  </div>
+<div id="cp-element" style="margin-bottom:14px;"></div>
+<div id="cp-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>
+<div class="modal-actions">
+<button class="btn-primary" id="btn-cp-confirmer" onclick="confirmerCartePrestations()">Enregistrer cette carte</button>
+<button class="btn-secondary" onclick="fermerModale('modal-carte-prestations')">Annuler</button>
 </div>
-
+</div>
+</div>
 <!-- MODALE : Remboursement d'une commande payée en ligne -->
 <div class="modal-overlay" id="modal-remboursement">
-  <div class="modal-box">
-    <h3>Rembourser une commande</h3>
-    <p id="rb-resume" style="font-size:13px;color:var(--mu2);margin-bottom:14px;line-height:1.5;"></p>
-    <div class="modal-field">
-      <label>Montant à rembourser (€)</label>
-      <input type="number" id="rb-montant" step="0.01" min="0.01" oninput="majApercuRemboursement()">
-    </div>
-    <div class="modal-field">
-      <label>Motif (facultatif)</label>
-      <input type="text" id="rb-motif" maxlength="200" placeholder="Ex : commande annulée, article indisponible">
-    </div>
-    <p id="rb-info" style="font-size:12px;color:var(--mu);margin-bottom:10px;line-height:1.5;"></p>
-    <div id="rb-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>
-    <div class="modal-actions">
-      <button class="btn-primary" id="btn-rb-confirmer" onclick="confirmerRemboursement()">Confirmer le remboursement</button>
-      <button class="btn-secondary" onclick="fermerModale('modal-remboursement')">Annuler</button>
-    </div>
-  </div>
+<div class="modal-box">
+<h3>Rembourser une commande</h3>
+<p id="rb-resume" style="font-size:13px;color:var(--mu2);margin-bottom:14px;line-height:1.5;"></p>
+<div class="modal-field">
+<label>Montant à rembourser (€)</label>
+<input id="rb-montant" min="0.01" oninput="majApercuRemboursement()" step="0.01" type="number"/>
 </div>
-
+<div class="modal-field">
+<label>Motif (facultatif)</label>
+<input id="rb-motif" maxlength="200" placeholder="Ex : commande annulée, article indisponible" type="text"/>
+</div>
+<p id="rb-info" style="font-size:12px;color:var(--mu);margin-bottom:10px;line-height:1.5;"></p>
+<div id="rb-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>
+<div class="modal-actions">
+<button class="btn-primary" id="btn-rb-confirmer" onclick="confirmerRemboursement()">Confirmer le remboursement</button>
+<button class="btn-secondary" onclick="fermerModale('modal-remboursement')">Annuler</button>
+</div>
+</div>
+</div>
 <!-- MODALE : Suppression de compte (RGPD) -->
 <div class="modal-overlay" id="modal-suppr-compte">
-  <div class="modal-box">
-    <h3>Supprimer mon compte</h3>
-    <p style="font-size:13px;color:var(--mu);margin-bottom:14px;line-height:1.6;">
+<div class="modal-box">
+<h3>Supprimer mon compte</h3>
+<p style="font-size:13px;color:var(--mu);margin-bottom:14px;line-height:1.6;">
       Cette action est <strong>définitive et irréversible</strong>. Seront supprimés : votre fiche, vos services, vos photos, vos horaires, vos clients habituels, vos interventions, vos factures et vos demandes de devis. Votre abonnement en cours sera résilié.
     </p>
-    <div class="modal-field">
-      <label>Pour confirmer, tapez SUPPRIMER ci-dessous</label>
-      <input type="text" id="suppr-confirm-texte" placeholder="SUPPRIMER">
-    </div>
-    <div id="suppr-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>
-    <div class="modal-actions">
-      <button class="btn-primary" style="background:var(--danger);" onclick="confirmerSuppressionCompte()" id="btn-suppr-compte">Supprimer définitivement mon compte</button>
-      <button class="btn-secondary" onclick="fermerModale('modal-suppr-compte')">Annuler</button>
-    </div>
-  </div>
+<div class="modal-field">
+<label>Pour confirmer, tapez SUPPRIMER ci-dessous</label>
+<input id="suppr-confirm-texte" placeholder="SUPPRIMER" type="text"/>
 </div>
-
+<div id="suppr-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>
+<div class="modal-actions">
+<button class="btn-primary" id="btn-suppr-compte" onclick="confirmerSuppressionCompte()" style="background:var(--danger);">Supprimer définitivement mon compte</button>
+<button class="btn-secondary" onclick="fermerModale('modal-suppr-compte')">Annuler</button>
+</div>
+</div>
+</div>
 <!-- MODALE : Modifier la fiche -->
 <div class="modal-overlay" id="modal-fiche">
-  <div class="modal-box">
-    <h3>Modifier mes informations</h3>
-    <div class="modal-field">
-      <label>Logo / Photo de profil</label>
-      <div style="display:flex;align-items:center;gap:14px;">
-        <div id="apercu-logo" style="width:64px;height:64px;border-radius:50%;background:var(--p2,#f6f9fe);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:22px;color:var(--mu);">—</div>
-        <div>
-          <input type="file" id="logo-input" accept="image/*" style="display:none;" onchange="uploaderLogo()">
-          <button type="button" onclick="document.getElementById('logo-input').click()" id="btn-logo" style="padding:8px 14px;border-radius:8px;border:1px solid var(--b2);background:transparent;color:var(--tx);font-size:12.5px;font-weight:600;cursor:pointer;">Choisir une image</button>
-          <div style="font-size:11px;color:var(--mu);margin-top:4px;">Remplace les initiales dans votre bulle, sur l'annuaire et votre boutique. Idéal : une photo carrée (ex. 500 × 500 px), recadrée en rond automatiquement.</div>
-        </div>
-      </div>
-    </div>
-    <div class="modal-field"><label>Nom / Raison sociale</label><input type="text" id="m-nom"></div>
-    <div class="modal-field"><label>Statut</label><input type="text" id="m-statut" placeholder="Artisan Indépendant"></div>
-    <div class="modal-field"><label>SIRET</label><input type="text" id="m-siret"></div>
-    <div class="modal-field"><label>APE</label><input type="text" id="m-ape"></div>
-    <div class="modal-field"><label>N° TVA intra</label><input type="text" id="m-tva-intra"></div>
-    <div class="modal-field"><label>Secteur</label><select id="m-secteur"></select></div>
-    <div class="modal-field"><label>Adresse</label><input type="text" id="m-adr"></div>
-    <div class="modal-field"><label>Code postal</label><input type="text" id="m-cp"></div>
-    <div class="modal-field"><label>Commune</label><input type="text" id="m-com"></div>
-    <div class="modal-field"><label>Rayon d'intervention (km)</label><input type="number" id="m-rayon" value="15"></div>
-    <div class="modal-field"><label>Téléphone</label><input type="text" id="m-tel"></div>
-    <div class="modal-field"><label>E-mail</label><input type="text" id="m-email"></div>
-    <div class="modal-field"><label>Site web</label><input type="text" id="m-web"></div>
-    <div class="modal-field"><label>Présentation (visible sur votre fiche publique)</label><textarea id="m-bio" rows="3"></textarea></div>
-    <div class="modal-actions">
-      <button class="btn-primary" onclick="sauverFiche()">Enregistrer</button>
-      <button class="btn-secondary" onclick="fermerModale('modal-fiche')">Annuler</button>
-    </div>
-  </div>
+<div class="modal-box">
+<h3>Modifier mes informations</h3>
+<div class="modal-field">
+<label>Logo / Photo de profil</label>
+<div style="display:flex;align-items:center;gap:14px;">
+<div id="apercu-logo" style="width:64px;height:64px;border-radius:50%;background:var(--p2,#f6f9fe);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:22px;color:var(--mu);">—</div>
+<div>
+<input accept="image/*" id="logo-input" onchange="uploaderLogo()" style="display:none;" type="file"/>
+<button id="btn-logo" onclick="document.getElementById('logo-input').click()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--b2);background:transparent;color:var(--tx);font-size:12.5px;font-weight:600;cursor:pointer;" type="button">Choisir une image</button>
+<div style="font-size:11px;color:var(--mu);margin-top:4px;">Remplace les initiales dans votre bulle, sur l'annuaire et votre boutique. Idéal : une photo carrée (ex. 500 × 500 px), recadrée en rond automatiquement.</div>
 </div>
-
+</div>
+</div>
+<div class="modal-field"><label>Nom / Raison sociale</label><input id="m-nom" type="text"/></div>
+<div class="modal-field"><label>Statut</label><input id="m-statut" placeholder="Artisan Indépendant" type="text"/></div>
+<div class="modal-field"><label>SIRET</label><input id="m-siret" type="text"/></div>
+<div class="modal-field"><label>APE</label><input id="m-ape" type="text"/></div>
+<div class="modal-field"><label>N° TVA intra</label><input id="m-tva-intra" type="text"/></div>
+<div class="modal-field"><label>Secteur</label><select id="m-secteur"></select></div>
+<div class="modal-field"><label>Adresse</label><input id="m-adr" type="text"/></div>
+<div class="modal-field"><label>Code postal</label><input id="m-cp" type="text"/></div>
+<div class="modal-field"><label>Commune</label><input id="m-com" type="text"/></div>
+<div class="modal-field"><label>Rayon d'intervention (km)</label><input id="m-rayon" type="number" value="15"/></div>
+<div class="modal-field"><label>Téléphone</label><input id="m-tel" type="text"/></div>
+<div class="modal-field"><label>E-mail</label><input id="m-email" type="text"/></div>
+<div class="modal-field"><label>Site web</label><input id="m-web" type="text"/></div>
+<div class="modal-field"><label>Présentation (visible sur votre fiche publique)</label><textarea id="m-bio" rows="3"></textarea></div>
+<div class="modal-actions">
+<button class="btn-primary" onclick="sauverFiche()">Enregistrer</button>
+<button class="btn-secondary" onclick="fermerModale('modal-fiche')">Annuler</button>
+</div>
+</div>
+</div>
 <!-- MODALE : Ajouter un client -->
 <div class="modal-overlay" id="modal-client">
-  <div class="modal-box">
-    <h3>Ajouter un client habituel</h3>
-    <div class="modal-field"><label>Nom</label><input type="text" id="c-nom"></div>
-    <div class="modal-field"><label>Email (optionnel — nécessaire pour demander un avis)</label><input type="email" id="c-email"></div>
-    <div class="modal-field"><label>Adresse</label><input type="text" id="c-adr"></div>
-    <div class="modal-field"><label>Code postal</label><input type="text" id="c-cp"></div>
-    <div class="modal-field"><label>Commune</label><input type="text" id="c-com"></div>
-    <div class="modal-field"><label>Délai de paiement (jours)</label><input type="number" id="c-delai" value="30"></div>
-    <div class="modal-actions">
-      <button class="btn-primary" onclick="sauverClient()">Ajouter</button>
-      <button class="btn-secondary" onclick="fermerModale('modal-client')">Annuler</button>
-    </div>
-  </div>
+<div class="modal-box">
+<h3>Ajouter un client habituel</h3>
+<div class="modal-field"><label>Nom</label><input id="c-nom" type="text"/></div>
+<div class="modal-field"><label>Email (optionnel — nécessaire pour demander un avis)</label><input id="c-email" type="email"/></div>
+<div class="modal-field"><label>Adresse</label><input id="c-adr" type="text"/></div>
+<div class="modal-field"><label>Code postal</label><input id="c-cp" type="text"/></div>
+<div class="modal-field"><label>Commune</label><input id="c-com" type="text"/></div>
+<div class="modal-field"><label>Délai de paiement (jours)</label><input id="c-delai" type="number" value="30"/></div>
+<div class="modal-actions">
+<button class="btn-primary" onclick="sauverClient()">Ajouter</button>
+<button class="btn-secondary" onclick="fermerModale('modal-client')">Annuler</button>
 </div>
-
+</div>
+</div>
 <div class="modal-overlay" id="modal-service">
-  <div class="modal-box">
-    <h3 id="modal-service-titre">Ajouter un service</h3>
-    <div class="modal-field"><label>Nom du service</label><input type="text" id="s-nom" placeholder="Ex : Tonte de pelouse"></div>
-    <div class="modal-field"><label>Description</label><input type="text" id="s-desc" placeholder="Ex : Entretien complet, évacuation des déchets comprise"></div>
-    <div class="modal-field">
-      <label>Durée estimée</label>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <input type="number" id="s-duree" min="0" step="15" style="width:100px;" placeholder="60">
-        <span style="font-size:12px;color:var(--mu);">minutes</span>
-      </div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu);margin-top:4px;">Sert de valeur de départ pour vos interventions — modifiable à chaque fois.</div>
-    </div>
-    <div class="modal-field">
-      <label>Tarif indicatif</label>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <input type="number" id="s-prix" min="0" step="0.5" style="width:100px;">
-        <span style="font-size:13px;color:var(--mu);">€ /</span>
-        <input type="text" id="s-unite" placeholder="ex : heure, m², forfait" style="flex:1;">
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-primary" id="modal-service-btn" onclick="sauverService()">Ajouter</button>
-      <button class="btn-secondary" onclick="fermerModale('modal-service')">Annuler</button>
-    </div>
-  </div>
+<div class="modal-box">
+<h3 id="modal-service-titre">Ajouter un service</h3>
+<div class="modal-field"><label>Nom du service</label><input id="s-nom" placeholder="Ex : Tonte de pelouse" type="text"/></div>
+<div class="modal-field"><label>Description</label><input id="s-desc" placeholder="Ex : Entretien complet, évacuation des déchets comprise" type="text"/></div>
+<div class="modal-field">
+<label>Durée estimée</label>
+<div style="display:flex;align-items:center;gap:6px;">
+<input id="s-duree" min="0" placeholder="60" step="15" style="width:100px;" type="number"/>
+<span style="font-size:12px;color:var(--mu);">minutes</span>
 </div>
-
+<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu);margin-top:4px;">Sert de valeur de départ pour vos interventions — modifiable à chaque fois.</div>
+</div>
+<div class="modal-field">
+<label>Tarif indicatif</label>
+<div style="display:flex;align-items:center;gap:6px;">
+<input id="s-prix" min="0" step="0.5" style="width:100px;" type="number"/>
+<span style="font-size:13px;color:var(--mu);">€ /</span>
+<input id="s-unite" placeholder="ex : heure, m², forfait" style="flex:1;" type="text"/>
+</div>
+</div>
+<div class="modal-actions">
+<button class="btn-primary" id="modal-service-btn" onclick="sauverService()">Ajouter</button>
+<button class="btn-secondary" onclick="fermerModale('modal-service')">Annuler</button>
+</div>
+</div>
+</div>
 <!-- MODALE : Catalogue -->
 <div class="modal-overlay" id="modal-catalogue">
-  <div class="modal-box">
-    <h3 id="modal-catalogue-titre">Ajouter un article au catalogue</h3>
-    <div class="modal-field"><label>Nom de l'article</label><input type="text" id="cat-nom" placeholder="Ex : Crème hydratante visage"></div>
-    <div class="modal-field"><label>Catégorie (facultatif)</label><input type="text" id="cat-categorie" placeholder="Ex : Soins visage, Gâteaux, Décoration…"></div>
-    <div class="modal-field"><label>Description</label><input type="text" id="cat-desc" placeholder="Ex : Hydratation longue durée, tous types de peau"></div>
-    <div class="modal-field">
-      <label>Prix</label>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <input type="number" id="cat-prix" min="0" step="0.5" style="width:100px;">
-        <span style="font-size:13px;color:var(--mu);">€</span>
-      </div>
-    </div>
-    <div class="modal-field">
-      <label>Disponibilité</label>
-      <select id="cat-type" onchange="document.getElementById('cat-delai-wrap').style.display = this.value === 'sur_commande' ? 'block' : 'none';">
-        <option value="disponible">Disponible tout de suite</option>
-        <option value="sur_commande">Sur commande</option>
-      </select>
-    </div>
-    <div class="modal-field" id="cat-delai-wrap" style="display:none;">
-      <label>Délai de préparation</label>
-      <input type="text" id="cat-delai" placeholder="Ex : 48h, 3-4 jours">
-    </div>
-    <div class="modal-field">
-      <label>Photo</label>
-      <input type="file" id="cat-photo-input" accept="image/*">
-      <div style="font-size:11px;color:var(--mu);margin-top:4px;">📐 Idéal : une photo <strong>carrée</strong>, environ <strong>1000 × 1000 pixels</strong> (soit environ <strong>8,5 × 8,5 cm</strong> à l'impression) — sinon elle sera recadrée automatiquement au centre.</div>
-      <div style="font-size:11px;color:var(--mu);margin-top:4px;">En modification : laissez vide pour garder la photo actuelle.</div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-primary" id="btn-cat-sauver" onclick="sauverCatalogue()">Ajouter</button>
-      <button class="btn-secondary" onclick="fermerModale('modal-catalogue')">Annuler</button>
-    </div>
-  </div>
+<div class="modal-box">
+<h3 id="modal-catalogue-titre">Ajouter un article au catalogue</h3>
+<div class="modal-field"><label>Nom de l'article</label><input id="cat-nom" placeholder="Ex : Crème hydratante visage" type="text"/></div>
+<div class="modal-field"><label>Catégorie (facultatif)</label><input id="cat-categorie" placeholder="Ex : Soins visage, Gâteaux, Décoration…" type="text"/></div>
+<div class="modal-field"><label>Description</label><input id="cat-desc" placeholder="Ex : Hydratation longue durée, tous types de peau" type="text"/></div>
+<div class="modal-field">
+<label>Prix</label>
+<div style="display:flex;align-items:center;gap:6px;">
+<input id="cat-prix" min="0" step="0.5" style="width:100px;" type="number"/>
+<span style="font-size:13px;color:var(--mu);">€</span>
 </div>
-
+</div>
+<div class="modal-field">
+<label>Disponibilité</label>
+<select id="cat-type" onchange="document.getElementById('cat-delai-wrap').style.display = this.value === 'sur_commande' ? 'block' : 'none';">
+<option value="disponible">Disponible tout de suite</option>
+<option value="sur_commande">Sur commande</option>
+</select>
+</div>
+<div class="modal-field" id="cat-delai-wrap" style="display:none;">
+<label>Délai de préparation</label>
+<input id="cat-delai" placeholder="Ex : 48h, 3-4 jours" type="text"/>
+</div>
+<div class="modal-field">
+<label>Photo</label>
+<input accept="image/*" id="cat-photo-input" type="file"/>
+<div style="font-size:11px;color:var(--mu);margin-top:4px;">📐 Idéal : une photo <strong>carrée</strong>, environ <strong>1000 × 1000 pixels</strong> (soit environ <strong>8,5 × 8,5 cm</strong> à l'impression) — sinon elle sera recadrée automatiquement au centre.</div>
+<div style="font-size:11px;color:var(--mu);margin-top:4px;">En modification : laissez vide pour garder la photo actuelle.</div>
+</div>
+<div class="modal-actions">
+<button class="btn-primary" id="btn-cat-sauver" onclick="sauverCatalogue()">Ajouter</button>
+<button class="btn-secondary" onclick="fermerModale('modal-catalogue')">Annuler</button>
+</div>
+</div>
+</div>
 <!-- MODALE : Intervention -->
 <div class="modal-overlay" id="modal-intervention">
-  <div class="modal-box">
-    <h3 id="mi-titre">Nouvelle intervention</h3>
-    <div class="modal-field"><label>Date</label><input type="date" id="mi-date" onchange="calculerCreneaux()"></div>
-    <div class="modal-field"><label>Client</label>
-      <select id="mi-client" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;" onchange="preRemplirAdresseIntervention()"></select>
-    </div>
-    <div class="modal-field"><label>Adresse de l'intervention</label><input type="text" id="mi-adr" placeholder="Peut différer de l'adresse habituelle du client" oninput="calculerCreneaux()"></div>
-    <div class="modal-row" style="display:flex;gap:10px;">
-      <div class="modal-field" style="flex:1;"><label>Code postal</label><input type="text" id="mi-cp" oninput="calculerCreneaux()"></div>
-      <div class="modal-field" style="flex:2;"><label>Commune</label><input type="text" id="mi-com" oninput="calculerCreneaux()"></div>
-    </div>
-    <div class="modal-field"><label>Service</label>
-      <select id="mi-service" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;" onchange="preRemplirDureeIntervention()"></select>
-    </div>
-    <div class="modal-field" style="max-width:160px;">
-      <label>Durée estimée</label>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <input type="number" id="mi-duree" min="0" step="15" placeholder="60" oninput="calculerCreneaux()">
-        <span style="font-size:12px;color:var(--mu);">min</span>
-      </div>
-    </div>
-    <div class="modal-field" id="mi-creneaux-wrap">
-      <label>Créneaux possibles</label>
-      <div id="mi-creneaux-zone" style="font-size:11.5px;color:var(--mu);">Renseignez la date, l'adresse et la durée pour voir les créneaux qui tiennent compte de vos trajets.</div>
-    </div>
-    <div class="modal-row" style="display:flex;gap:10px;">
-      <div class="modal-field" style="flex:1;"><label>Heure début</label><input type="time" id="mi-heure-debut" onchange="recalculerHeureFin()"></div>
-      <div class="modal-field" style="flex:1;"><label>Heure fin</label><input type="time" id="mi-heure-fin"></div>
-    </div>
-    <div class="modal-field"><label>Créneau</label>
-      <select id="mi-creneau" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
-        <option value="matin">Matin</option>
-        <option value="apres_midi">Après-midi</option>
-      </select>
-    </div>
-    <div class="modal-field"><label>Prix (€)</label><input type="number" id="mi-prix" step="0.01"></div>
-    <div class="modal-field"><label>Notes</label><input type="text" id="mi-notes" placeholder="Optionnel"></div>
-    <div class="modal-field"><label>Statut</label>
-      <select id="mi-statut" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;" onchange="toggleDatePaiement()">
-        <option value="planifiee">🟠 Planifiée</option>
-        <option value="terminee">🔵 Terminée</option>
-        <option value="payee">🟢 Payée</option>
-        <option value="annulee">⚫ Annulée</option>
-      </select>
-    </div>
-    <div class="modal-field" id="mi-date-paiement-wrap" style="display:none;">
-      <label>Date de paiement réelle</label>
-      <input type="date" id="mi-date-paiement">
-    </div>
-    <div class="modal-actions">
-      <button class="btn-primary" onclick="sauverIntervention()">Enregistrer</button>
-      <button class="btn-secondary" onclick="fermerModale('modal-intervention')">Annuler</button>
-    </div>
-    <div id="mi-avis-wrap" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--brd);text-align:center;"></div>
-    <div id="mi-delete-wrap" style="display:none;margin-top:10px;text-align:center;">
-      <button onclick="supprimerIntervention()" style="background:none;border:none;color:var(--danger);font-size:12.5px;cursor:pointer;text-decoration:underline;">Supprimer cette intervention</button>
-    </div>
-  </div>
+<div class="modal-box">
+<h3 id="mi-titre">Nouvelle intervention</h3>
+<div class="modal-field"><label>Date</label><input id="mi-date" onchange="calculerCreneaux()" type="date"/></div>
+<div class="modal-field"><label>Client</label>
+<select id="mi-client" onchange="preRemplirAdresseIntervention()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;"></select>
 </div>
-
+<div class="modal-field"><label>Adresse de l'intervention</label><input id="mi-adr" oninput="calculerCreneaux()" placeholder="Peut différer de l'adresse habituelle du client" type="text"/></div>
+<div class="modal-row" style="display:flex;gap:10px;">
+<div class="modal-field" style="flex:1;"><label>Code postal</label><input id="mi-cp" oninput="calculerCreneaux()" type="text"/></div>
+<div class="modal-field" style="flex:2;"><label>Commune</label><input id="mi-com" oninput="calculerCreneaux()" type="text"/></div>
+</div>
+<div class="modal-field"><label>Service</label>
+<select id="mi-service" onchange="preRemplirDureeIntervention()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;"></select>
+</div>
+<div class="modal-field" style="max-width:160px;">
+<label>Durée estimée</label>
+<div style="display:flex;align-items:center;gap:6px;">
+<input id="mi-duree" min="0" oninput="calculerCreneaux()" placeholder="60" step="15" type="number"/>
+<span style="font-size:12px;color:var(--mu);">min</span>
+</div>
+</div>
+<div class="modal-field" id="mi-creneaux-wrap">
+<label>Créneaux possibles</label>
+<div id="mi-creneaux-zone" style="font-size:11.5px;color:var(--mu);">Renseignez la date, l'adresse et la durée pour voir les créneaux qui tiennent compte de vos trajets.</div>
+</div>
+<div class="modal-row" style="display:flex;gap:10px;">
+<div class="modal-field" style="flex:1;"><label>Heure début</label><input id="mi-heure-debut" onchange="recalculerHeureFin()" type="time"/></div>
+<div class="modal-field" style="flex:1;"><label>Heure fin</label><input id="mi-heure-fin" type="time"/></div>
+</div>
+<div class="modal-field"><label>Créneau</label>
+<select id="mi-creneau" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
+<option value="matin">Matin</option>
+<option value="apres_midi">Après-midi</option>
+</select>
+</div>
+<div class="modal-field"><label>Prix (€)</label><input id="mi-prix" step="0.01" type="number"/></div>
+<div class="modal-field"><label>Notes</label><input id="mi-notes" placeholder="Optionnel" type="text"/></div>
+<div class="modal-field"><label>Statut</label>
+<select id="mi-statut" onchange="toggleDatePaiement()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
+<option value="planifiee">🟠 Planifiée</option>
+<option value="terminee">🔵 Terminée</option>
+<option value="payee">🟢 Payée</option>
+<option value="annulee">⚫ Annulée</option>
+</select>
+</div>
+<div class="modal-field" id="mi-date-paiement-wrap" style="display:none;">
+<label>Date de paiement réelle</label>
+<input id="mi-date-paiement" type="date"/>
+</div>
+<div class="modal-actions">
+<button class="btn-primary" onclick="sauverIntervention()">Enregistrer</button>
+<button class="btn-secondary" onclick="fermerModale('modal-intervention')">Annuler</button>
+</div>
+<div id="mi-avis-wrap" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--brd);text-align:center;"></div>
+<div id="mi-delete-wrap" style="display:none;margin-top:10px;text-align:center;">
+<button onclick="supprimerIntervention()" style="background:none;border:none;color:var(--danger);font-size:12.5px;cursor:pointer;text-decoration:underline;">Supprimer cette intervention</button>
+</div>
+</div>
+</div>
 <!-- ════ BULLE MPA AI ════ -->
 <button class="mpa-ai-fab" id="mpa-ai-fab" onclick="toggleMpaAi()" title="MPA AI">
-  <div class="mpa-ai-loader">
-    <div class="mpa-ai-loader-inner">
-      <div class="mpa-blob mpa-b1"></div>
-      <div class="mpa-blob mpa-b2"></div>
-      <div class="mpa-blob mpa-b3"></div>
-      <div class="mpa-blob mpa-b4"></div>
-      <div class="mpa-blob mpa-b5"></div>
-      <div class="mpa-blob mpa-b6"></div>
-    </div>
-  </div>
-  <span class="mpa-ai-dot" id="mpa-ai-dot"></span>
-</button>
-
-<div class="mpa-ai-panel" id="mpa-ai-panel">
-  <div class="mpa-ai-panel-header">
-    <div>
-      <span>✨ MPA AI</span>
-      <div id="mpa-ai-abonnement-info" style="font-size:10.5px;font-weight:400;opacity:.85;margin-top:2px;"></div>
-    </div>
-    <button onclick="toggleMpaAi()">✕</button>
-  </div>
-  <div id="mpa-ai-feed"></div>
+<div class="mpa-ai-loader">
+<div class="mpa-ai-loader-inner">
+<div class="mpa-blob mpa-b1"></div>
+<div class="mpa-blob mpa-b2"></div>
+<div class="mpa-blob mpa-b3"></div>
+<div class="mpa-blob mpa-b4"></div>
+<div class="mpa-blob mpa-b5"></div>
+<div class="mpa-blob mpa-b6"></div>
 </div>
-
+</div>
+<span class="mpa-ai-dot" id="mpa-ai-dot"></span>
+</button>
+<div class="mpa-ai-panel" id="mpa-ai-panel">
+<div class="mpa-ai-panel-header">
+<div>
+<span>✨ MPA AI</span>
+<div id="mpa-ai-abonnement-info" style="font-size:10.5px;font-weight:400;opacity:.85;margin-top:2px;"></div>
+</div>
+<button onclick="toggleMpaAi()">✕</button>
+</div>
+<div id="mpa-ai-feed"></div>
+</div>
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-
 <script src="/mpa/mpa-artisans.js"></script>
 </body>
 </html>
