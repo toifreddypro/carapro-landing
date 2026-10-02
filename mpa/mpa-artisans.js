@@ -2486,9 +2486,11 @@ function afficherExempleLivraison() {
   var prixKm = document.getElementById('livraison-prix-km').value;
   var zone = document.getElementById('livraison-exemple');
   if (base === '' || kmInclus === '') { zone.textContent = ''; return; }
-  var exemple15 = calculerFraisLivraison(base, kmInclus, prixKm, 15);
-  var exempleInclus = calculerFraisLivraison(base, kmInclus, prixKm, Number(kmInclus));
-  zone.textContent = '💡 Exemple : à ' + kmInclus + ' km ou moins → ' + exempleInclus + ' € · à 15 km → ' + exemple15 + ' €';
+  var texte = '💡 ' + base + '€ jusqu\'à ' + kmInclus + ' km depuis le local de l\'artisan';
+  texte += (prixKm && Number(prixKm) > 0)
+    ? ', puis ' + prixKm + '€ tous les km supplémentaires.'
+    : ', rien au-delà (pas de tarif au km supplémentaire réglé).';
+  zone.textContent = texte;
 }
 
 async function sauverTarifLivraison() {
