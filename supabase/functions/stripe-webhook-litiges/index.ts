@@ -29,6 +29,9 @@ const corsHeaders = {
 };
 
 const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET_LITIGES") ?? "";
+// Secret temporaire, pour vérifier le branchement via `stripe trigger` (mode test) sans jamais
+// toucher au vrai secret live — à retirer (variable d'environnement) une fois la vérification faite.
+const STRIPE_WEBHOOK_SECRET_TEST = Deno.env.get("STRIPE_WEBHOOK_SECRET_LITIGES_TEST") ?? "";
 const EMAIL_ADMIN = "toifreddypro@gmail.com";
 
 function json(payload: unknown, status = 200): Response {
@@ -81,7 +84,10 @@ Deno.serve(async (req: Request) => {
     console.error("[stripe-webhook-litiges] STRIPE_WEBHOOK_SECRET_LITIGES manquante.");
     return json({ error: "Configuration serveur incomplète." }, 500);
   }
-  const signatureValide = await verifierSignatureStripe(payloadBrut, enTeteSignature, STRIPE_WEBHOOK_SECRET);
+  var signatureValide = await verifierSignatureStripe(payloadBrut, enTeteSignature, STRIPE_WEBHOOK_SECRET);
+  if (!signatureValide && STRIPE_WEBHOOK_SECRET_TEST) {
+    signatureValide = await verifierSignatureStripe(payloadBrut, enTeteSignature, STRIPE_WEBHOOK_SECRET_TEST);
+  }
   if (!signatureValide) {
     console.error("[stripe-webhook-litiges] Signature Stripe invalide — requête rejetée.");
     return json({ error: "Signature invalide." }, 400);

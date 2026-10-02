@@ -34,7 +34,7 @@
   @media(max-width:480px){.grille{grid-template-columns:1fr;}}
 
   .carte-produit{background:var(--panel);border:1px solid var(--brd);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;}
-  .photo-wrap{position:relative;aspect-ratio:1;background:var(--inp);}
+  .photo-wrap{position:relative;aspect-ratio:1;background:var(--inp);overflow:hidden;min-height:0;flex-shrink:0;}
   .photo-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
   .photo-vide{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;}
   .badge-remise{position:absolute;top:10px;right:10px;background:#1a1a1a;color:#fff;font-size:12px;font-weight:700;padding:5px 10px;border-radius:20px;}
@@ -458,11 +458,6 @@ function render() {
     (a.code_promo ? '<div class="wrap"><div class="promo-bandeau">🎁 ' + T('cat_code_promo') + ' <span class="promo-code">' + escHtml(a.code_promo) + '</span></div></div>' : '') +
     '</header>' +
     '<div class="wrap">';
-
-  var nouveautes = DATA.produits.filter(function(p) { return p.est_nouveaute; });
-  if (nouveautes.length) {
-    html += '<h2 class="section-titre">✨ ' + T('cat_nouveautes') + '</h2><div class="grille">' + nouveautes.map(carteProduit).join('') + '</div>';
-  }
 
   if (DATA.produits.length) {
     html += '<h2 class="section-titre">' + T('cat_tous_produits') + '</h2>';
