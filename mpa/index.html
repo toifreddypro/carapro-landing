@@ -718,7 +718,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="dcbdy" id="zone-livraisons" style="padding:16px;">Chargement…</div>
 </div>
 </div><div class="pnl" id="p-compta">
-<div class="cpv2-card">
+
+
+
+
+
+<div class="sous-nav" id="nav-compta"><button class="btab active" id="bt-compta-0" onclick="switchSousOnglet('nav-compta','conteneur-compta',0)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><line x1="12" x2="12" y1="1" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>Mon chiffre d'affaires</button><button class="btab" id="bt-compta-1" onclick="switchSousOnglet('nav-compta','conteneur-compta',1)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" x2="8" y1="13" y2="13"></line><line x1="16" x2="8" y1="17" y2="17"></line></svg>Mes factures</button><button class="btab" id="bt-compta-2" onclick="switchSousOnglet('nav-compta','conteneur-compta',2)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><line x1="18" x2="18" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="6" x2="6" y1="20" y2="14"></line></svg>Tableau de bord</button></div><div id="conteneur-compta"><div class="bpnl active"><div class="cpv2-card">
 <div class="cpv2-matrix-head">
 <div class="cpv2-matrix-headtext">
 <p class="cpv2-matrix-title"><svg fill="none" height="18" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="18"><rect height="7" rx="1" width="7" x="3" y="3"></rect><rect height="7" rx="1" width="7" x="14" y="3"></rect><rect height="7" rx="1" width="7" x="3" y="14"></rect><rect height="7" rx="1" width="7" x="14" y="14"></rect></svg><span id="compta-titre">Matrice CA — Clients &amp; Mois</span></p>
@@ -766,8 +771,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div id="compta-mobile-liste"></div>
 </div>
 <p class="cpv2-matrix-note" id="compta-note">💡 Vue <strong>Production</strong> : le CA est rangé dans le mois de l'intervention, dès qu'elle est marquée "Terminée" ou "Payée".</p>
-</div>
-<div class="cpv2-page-wrap">
+</div></div><div class="bpnl"><div class="cpv2-page-wrap">
 <div class="cpv2-card">
 <div class="cpv2-matrix-head">
 <div class="cpv2-matrix-headtext">
@@ -798,10 +802,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </table>
 </div>
 </div>
-</div>
-<div id="encart-rappel-cloture"></div>
-<div id="encart-abonnement"></div>
-<div class="dash-grid">
+</div></div><div class="bpnl"><div id="encart-rappel-cloture"></div><div id="encart-abonnement"></div><div class="dash-grid">
 <div>
 <div class="dash-jauge-card">
 <div class="dj-header">
@@ -857,8 +858,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div>
 </div>
-</div>
-</div><div class="pnl" id="p-avis">
+</div></div></div></div><div class="pnl" id="p-avis">
 <div class="dcard">
 <div class="dchdr">
 <div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>Avis clients</div>
