@@ -91,6 +91,27 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 
 /* ── Base de données (tables) ── */
 .sous-nav{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+
+/* ── FAQ (modale accessible depuis MPA AI) ── */
+#modal-faq .modal-box{max-width:480px;width:100%;max-height:82vh;display:flex;flex-direction:column;padding:0;overflow:hidden;}
+.faq-header{padding:16px 20px;border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.faq-header h3{font-size:16px;margin:0;}
+.faq-search-wrap{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--brd);flex-shrink:0;background:var(--panel);}
+.faq-search{flex:1;background:none;border:none;outline:none;color:var(--tx);font-family:'Outfit',sans-serif;font-size:14px;}
+.faq-search::placeholder{color:var(--mu);}
+.faq-body{overflow-y:auto;flex:1;}
+.faq-group{margin-bottom:6px;}
+.faq-group-title{padding:10px 20px 4px;font-family:'JetBrains Mono',monospace;font-size:9.5px;font-weight:700;color:var(--mu);letter-spacing:1px;text-transform:uppercase;}
+.faq-item{border-bottom:1px solid var(--brd);}
+.faq-item.hidden{display:none;}
+.faq-q{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--tx);gap:10px;}
+.faq-q:hover{background:var(--inp,#f6f9fe);}
+.faq-q span{flex:1;line-height:1.4;}
+.faq-chevron{flex-shrink:0;transition:transform .2s;color:var(--mu);}
+.faq-item.open .faq-chevron{transform:rotate(180deg);}
+.faq-a{display:none;padding:2px 20px 16px;font-size:13px;color:var(--mu2);line-height:1.65;}
+.faq-item.open .faq-a{display:block;}
+.faq-vide{padding:30px 20px;text-align:center;color:var(--mu);font-size:13px;}
 .btab{display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:9px;border:1px solid var(--brd);background:var(--panel);color:var(--mu);font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;}
 .btab svg{width:15px;height:15px;}
 .btab.active{background:var(--ac-dim,rgba(181,80,47,.08));border-color:var(--ac);color:var(--ac);}
@@ -1144,10 +1165,99 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <span>✨ MPA AI</span>
 <div id="mpa-ai-abonnement-info" style="font-size:10.5px;font-weight:400;opacity:.85;margin-top:2px;"></div>
 </div>
+<div style="display:flex;gap:6px;">
+<button onclick="ouvrirFAQ()" title="Questions fréquentes">❓</button>
 <button onclick="toggleMpaAi()">✕</button>
+</div>
 </div>
 <div id="mpa-ai-feed"></div>
 </div>
+<!-- MODALE : FAQ (questions fréquentes) -->
+<div class="modal-overlay" id="modal-faq">
+  <div class="modal-box">
+    <div class="faq-header">
+      <h3>❓ Questions fréquentes</h3>
+      <button onclick="fermerModale('modal-faq')" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--mu);">✕</button>
+    </div>
+    <div class="faq-search-wrap">
+      <span>🔍</span>
+      <input type="text" class="faq-search" id="faq-search-input" placeholder="Cherchez un mot-clé…" oninput="filterFAQ(this.value)">
+    </div>
+    <div class="faq-body" id="faq-body">
+
+      <div class="faq-group" data-faq-group>
+        <div class="faq-group-title">Mon compte</div>
+        <div class="faq-item" data-q="inscription créer compte artisan">
+          <div class="faq-q" onclick="toggleFAQItem(this.parentElement)"><span>Comment créer mon compte ?</span><svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="faq-a">Inscrivez-vous depuis <strong>caralink.app/artisans/inscription.html</strong>. Vous recevrez un email de confirmation — cliquez sur le lien, puis terminez votre inscription (vérification anti-robot + document d'assurance si vous l'avez). Une fois fait, "Mon espace" vous amène directement ici.</div>
+        </div>
+        <div class="faq-item" data-q="mot de passe oublié perdu réinitialiser">
+          <div class="faq-q" onclick="toggleFAQItem(this.parentElement)"><span>J'ai oublié mon mot de passe, comment faire ?</span><svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="faq-a">Sur l'écran de connexion, cliquez sur "Mot de passe oublié ?", entrez votre email — vous recevrez un lien pour en choisir un nouveau. Pensez à vérifier vos spams si l'email met du temps à arriver.</div>
+        </div>
+        <div class="faq-item" data-q="email confirmation jamais reçu spam">
+          <div class="faq-q" onclick="toggleFAQItem(this.parentElement)"><span>Je ne reçois jamais l'email de confirmation, pourquoi ?</span><svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="faq-a">Vérifiez d'abord vos spams. Si vraiment rien n'arrive après quelques minutes, contactez le support — ça peut arriver si votre messagerie bloque fortement les emails automatiques.</div>
+        </div>
+      </div>
+
+      <div class="faq-group" data-faq-group>
+        <div class="faq-group-title">Mes interventions</div>
+        <div class="faq-item" data-q="planifier rendez-vous intervention créneau">
+          <div class="faq-q" onclick="toggleFAQItem(this.parentElement)"><span>Comment planifier un rendez-vous ?</span><svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="faq-a">Depuis <strong>Mon planning</strong>, cliquez sur le "+" du jour voulu, ou depuis une demande reçue dans <strong>Mes interventions → Mes demandes</strong>. Le système vous propose automatiquement des créneaux réalistes, en tenant compte de vos horaires, de la durée du service et du vrai trajet entre vos rendez-vous.</div>
+        </div>
+        <div class="faq-item" data-q="statut planifiée en cours terminée payée couleur">
+          <div class="faq-q" onclick="toggleFAQItem(this.parentElement)"><span>Que veut dire chaque statut d'intervention ?</span><svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="faq-a"><strong>Planifiée</strong> (orange) : prévue, pas encore commencée. <strong>En cours</strong> (violet) : vous vous en occupez, utile pour les chantiers qui durent plusieurs jours. <strong>Terminée</strong> (bleu) : le travail est fini, prêt à facturer. <strong>Payée</strong> (vert) : réglée. Cliquez directement sur une intervention pour faire avancer son statut.</div>
+        </div>
+        <div class="faq-item" data-q="bloqué impossible planifier nouvelle intervention non soldée">
+          <div class="faq-q" onclick="toggleFAQItem(this.parentElement)"><span>Pourquoi je ne peux plus planifier de nouvelle intervention ?</span><svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="faq-a">Une intervention passée, trouvée via l'annuaire CaraLink, est restée "Planifiée" trop longtemps (plus de 7 jours) ou "En cours" trop longtemps (plus de 90 jours). Ouvrez-la et marquez-la au moins "En cours" si vous vous en occupez encore, ou "Terminée"/"Annulée" si c'est fini — ça débloque immédiatement.</div>
+        </div>
+        <div class="faq-item" data-q="IA intelligence créneaux trajet smart dispatch calcul">
+          <div class="faq-q" onclick="toggleFAQItem(this.parentElement)"><span>Comment l'IA calcule-t-elle mes créneaux ?</span><svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="faq-a">Elle regarde vos horaires de travail, la durée du service demandé, et le <strong>vrai trajet par la route</strong> (pas à vol d'oiseau) entre vos rendez-vous déjà fixés. Elle ne déplace jamais un rendez-vous déjà confirmé — elle trouve juste les créneaux où un nouveau rendez-vous tient vraiment, marge de sécurité incluse.</div>
+        </div>
+      </div>
+
+      <div class="faq-group" data-faq-group>
+        <div class="faq-group-title">Ma boutique</div>
+        <div class="faq-item" data-q="ajouter produit catalogue photo prix">
+          <div class="faq-q" onclick="toggleFAQItem(this.parentElement)"><span>Comment ajouter un produit à mon catalogue ?</span><svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="faq-a">Dans <strong>Mes ventes → Mon catalogue</strong>, bouton "Ajouter un article". Une photo carrée (environ 1000×1000 px) donne le meilleur rendu — toute autre taille est recadrée automatiquement au centre.</div>
+        </div>
+        <div class="faq-item" data-q="frais livraison forfait distance tarif km">
+          <div class="faq-q" onclick="toggleFAQItem(this.parentElement)"><span>Comment fonctionnent les frais de livraison ?</span><svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="faq-a">Réglez un forfait de base, une distance incluse, et un prix au km au-delà — dans <strong>Mes ventes → Mon catalogue</strong>. Le montant exact est ensuite calculé automatiquement à chaque commande, selon la vraie distance entre vous et le client. Laissez à 0 pour ne rien facturer.</div>
+        </div>
+        <div class="faq-item" data-q="paiement en ligne stripe connect activer">
+          <div class="faq-q" onclick="toggleFAQItem(this.parentElement)"><span>Comment activer les paiements en ligne ?</span><svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="faq-a">Dans <strong>Mes ventes → Mon catalogue</strong>, encart "Activer les paiements". Vous serez redirigé vers Stripe pour renseigner vos coordonnées bancaires — une fois terminé, vos clients peuvent payer directement en ligne.</div>
+        </div>
+      </div>
+
+      <div class="faq-group" data-faq-group>
+        <div class="faq-group-title">Ma comptabilité</div>
+        <div class="faq-item" data-q="chiffre affaires CA calcul comment">
+          <div class="faq-q" onclick="toggleFAQItem(this.parentElement)"><span>Comment mon chiffre d'affaires est-il calculé ?</span><svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="faq-a">Il additionne vos prestations (interventions marquées Terminée/Payée) et vos ventes catalogue réglées. Le détail est visible dans <strong>Ma comptabilité → Tableau de bord</strong>.</div>
+        </div>
+        <div class="faq-item" data-q="seuil 200 euros gratuit commission annuaire">
+          <div class="faq-q" onclick="toggleFAQItem(this.parentElement)"><span>Qu'est-ce que le seuil de 200€ gratuit ?</span><svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="faq-a">Chaque mois, les premiers 200€ facturés en ligne ou réglés par des clients trouvés via CaraLink ne sont jamais commissionnés. Seule la part au-delà de ce seuil l'est — jamais vos clients personnels, apportés par vous-même.</div>
+        </div>
+        <div class="faq-item" data-q="facture générer créer client">
+          <div class="faq-q" onclick="toggleFAQItem(this.parentElement)"><span>Comment générer une facture ?</span><svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div class="faq-a">Dans <strong>Ma comptabilité → Mes factures</strong>, choisissez un client, cochez ses interventions Terminées/Payées pas encore facturées, et générez. Une seule facture peut regrouper plusieurs interventions.</div>
+        </div>
+      </div>
+
+    </div>
+    <div id="faq-aucun-resultat" class="faq-vide" style="display:none;">Aucun résultat pour cette recherche.</div>
+  </div>
+</div>
+
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>

@@ -24,6 +24,37 @@ async function doLogout() {
 function ouvrirModale(id) { document.getElementById(id).classList.add('show'); }
 function fermerModale(id) { document.getElementById(id).classList.remove('show'); }
 
+// ── FAQ — même mécanisme que celui déjà en place côté MPA Centres/Formation (plateforme.html) :
+// recherche par mots-clés sur un contenu écrit à l'avance, jamais un vrai dialogue IA générative.
+function ouvrirFAQ() {
+  document.getElementById('faq-search-input').value = '';
+  filterFAQ('');
+  ouvrirModale('modal-faq');
+  document.getElementById('faq-search-input').focus();
+}
+
+function toggleFAQItem(el) {
+  var etaitOuvert = el.classList.contains('open');
+  document.querySelectorAll('#faq-body .faq-item.open').forEach(function(i) { i.classList.remove('open'); });
+  if (!etaitOuvert) el.classList.add('open');
+}
+
+function filterFAQ(requete) {
+  var q = requete.trim().toLowerCase();
+  var auMoinsUnResultat = false;
+  document.querySelectorAll('#faq-body [data-faq-group]').forEach(function(groupe) {
+    var unVisibleDansCeGroupe = false;
+    groupe.querySelectorAll('.faq-item').forEach(function(item) {
+      var texte = (item.dataset.q || '') + ' ' + item.textContent.toLowerCase();
+      var correspond = !q || texte.toLowerCase().includes(q);
+      item.classList.toggle('hidden', !correspond);
+      if (correspond) { unVisibleDansCeGroupe = true; auMoinsUnResultat = true; }
+    });
+    groupe.style.display = unVisibleDansCeGroupe ? '' : 'none';
+  });
+  document.getElementById('faq-aucun-resultat').style.display = auMoinsUnResultat ? 'none' : 'block';
+}
+
 // ════════════════════════════════════════
 //  MPA AI — bulle compagnon flottante
 // ⚠️ Ajouté le 16/09 — même apparence et comportement que côté MPA
