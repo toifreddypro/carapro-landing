@@ -27,10 +27,7 @@ function fermerModale(id) { document.getElementById(id).classList.remove('show')
 // ── FAQ — même mécanisme que celui déjà en place côté MPA Centres/Formation (plateforme.html) :
 // recherche par mots-clés sur un contenu écrit à l'avance, jamais un vrai dialogue IA générative.
 function ouvrirFAQ() {
-  document.getElementById('faq-search-input').value = '';
-  filterFAQ('');
   ouvrirModale('modal-faq');
-  document.getElementById('faq-search-input').focus();
 }
 
 function toggleFAQItem(el) {
@@ -39,20 +36,45 @@ function toggleFAQItem(el) {
   if (!etaitOuvert) el.classList.add('open');
 }
 
-function filterFAQ(requete) {
-  var q = requete.trim().toLowerCase();
-  var auMoinsUnResultat = false;
-  document.querySelectorAll('#faq-body [data-faq-group]').forEach(function(groupe) {
-    var unVisibleDansCeGroupe = false;
-    groupe.querySelectorAll('.faq-item').forEach(function(item) {
-      var texte = (item.dataset.q || '') + ' ' + item.textContent.toLowerCase();
-      var correspond = !q || texte.toLowerCase().includes(q);
-      item.classList.toggle('hidden', !correspond);
-      if (correspond) { unVisibleDansCeGroupe = true; auMoinsUnResultat = true; }
-    });
-    groupe.style.display = unVisibleDansCeGroupe ? '' : 'none';
+// Recherche par mots-clés (jamais une vraie IA générative) — chaque mot de 3 lettres ou plus
+// de la question est comparé au contenu de chaque question de la FAQ (son data-q et son texte
+// visible) ; celle qui correspond sur le plus de mots gagne. Même principe que côté MPA Centres.
+function chercherFAQ(question) {
+  var mots = question.toLowerCase().split(/\s+/).filter(function(m) { return m.length > 2; });
+  if (!mots.length) return null;
+  var meilleurId = null, meilleurScore = 0;
+  document.querySelectorAll('#faq-body .faq-item').forEach(function(item) {
+    var texte = ((item.dataset.q || '') + ' ' + item.textContent).toLowerCase();
+    var score = mots.filter(function(m) { return texte.indexOf(m) !== -1; }).length;
+    if (score > meilleurScore) { meilleurScore = score; meilleurId = item.id; }
   });
-  document.getElementById('faq-aucun-resultat').style.display = auMoinsUnResultat ? 'none' : 'block';
+  return meilleurScore > 0 ? meilleurId : null;
+}
+
+function poserQuestionFAQ() {
+  var input = document.getElementById('mpa-ai-question-input');
+  if (!input) return;
+  var question = input.value.trim();
+  if (!question) return;
+  input.value = '';
+
+  var idTrouve = chercherFAQ(question);
+  if (idTrouve) {
+    ouvrirFAQ();
+    setTimeout(function() {
+      var el = document.getElementById(idTrouve);
+      if (!el) return;
+      document.querySelectorAll('#faq-body .faq-item.open').forEach(function(i) { i.classList.remove('open'); });
+      el.classList.add('open');
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.style.transition = 'background .4s';
+      el.style.background = 'var(--inp, #f6f9fe)';
+      setTimeout(function() { el.style.background = ''; }, 2000);
+    }, 150);
+    mpaAiDire('Voici ce que j\'ai trouvé dans la FAQ pour votre question.', 'success');
+  } else {
+    mpaAiDire('Je ne trouve pas de réponse à cette question dans la FAQ. Besoin d\'aide ? contact@learnlogicstudio.com', 'warning');
+  }
 }
 
 // ════════════════════════════════════════
