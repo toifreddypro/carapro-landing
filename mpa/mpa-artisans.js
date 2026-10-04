@@ -925,6 +925,56 @@ async function calculerCreneaux() {
 }
 
 // Vérification après enregistrement — jamais bloquante, juste informative
+// Détection de journée chargée — volontairement modeste : jamais de prétention à connaître le
+// trafic réel du moment (aucune API ne nous donne ça). Se contente de repérer un signal simple
+// et honnête : une journée déjà bien remplie, proche (dans les 3 prochains jours, l'esprit
+// "dernière minute"), à laquelle on vient d'ajouter une intervention dans un secteur différent
+// du reste. Jamais bloquant — juste un signal de tension, pour que l'artisan le sache avant
+// d'être surpris sur le terrain.
+const SEUIL_JOURNEE_CHARGEE = 3;
+const FENETRE_DERNIERE_MINUTE_JOURS = 3;
+
+async function verifierTensionJournee(dateStr, communeNouvelle, idAExclure) {
+  if (!communeNouvelle) return; // rien à comparer sans commune
+
+  var aujourdhui = new Date(); aujourdhui.setHours(0, 0, 0, 0);
+  var dateCible = new Date(dateStr + 'T00:00:00');
+  var joursAvant = Math.round((dateCible - aujourdhui) / 86400000);
+  if (joursAvant < 0 || joursAvant > FENETRE_DERNIERE_MINUTE_JOURS) return; // pas "dernière minute"
+
+  var requete = sb.from('mpa_artisans_interventions')
+    .select('id, commune')
+    .eq('artisan_id', _artisan.id)
+    .eq('date_intervention', dateStr)
+    .neq('statut', 'annulee');
+  if (idAExclure) requete = requete.neq('id', idAExclure);
+  var { data: autres } = await requete;
+  if (!autres || autres.length < SEUIL_JOURNEE_CHARGEE - 1) return; // pas assez chargée
+
+  // Secteur dominant du jour = la commune la plus fréquente parmi les autres interventions.
+  var compteurs = {};
+  autres.forEach(function(a) {
+    var c = (a.commune || '').trim().toLowerCase();
+    if (!c) return;
+    compteurs[c] = (compteurs[c] || 0) + 1;
+  });
+  var secteurDominant = Object.keys(compteurs).sort(function(x, y) { return compteurs[y] - compteurs[x]; })[0];
+  if (!secteurDominant) return; // aucune commune connue parmi les autres, rien à comparer
+
+  var communeNouvelleNorm = communeNouvelle.trim().toLowerCase();
+  if (communeNouvelleNorm === secteurDominant) return; // même secteur, pas de tension à signaler
+
+  var dateAff = dateCible.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  var nbTotal = autres.length + 1;
+  mpaAiDire(
+    '📅 Vous avez déjà ' + autres.length + ' intervention' + (autres.length > 1 ? 's' : '') + ' prévue' + (autres.length > 1 ? 's' : '') + ' ' + dateAff +
+    ' (secteur ' + escHtml(secteurDominant.charAt(0).toUpperCase() + secteurDominant.slice(1)) + '), et vous venez d\'en ajouter une à ' + escHtml(communeNouvelle) +
+    ' — un secteur différent. Avec ' + nbTotal + ' interventions ce jour-là, le planning risque d\'être serré.',
+    'warning',
+    { label: 'Voir mon planning', action: "switchTab(2)" },
+  );
+}
+
 async function verifierFaisabiliteJour(dateStr, idAModifier) {
   var duJour = _interventionsCache.filter(function(i) {
     return i.date_intervention === dateStr && i.statut !== 'annulee' && i.heure_debut && i.heure_fin && i.latitude != null;
@@ -1305,6 +1355,7 @@ async function sauverIntervention() {
   await chargerInterventions();
   if (maj.statut !== 'annulee') {
     verifierFaisabiliteJour(maj.date_intervention);
+    verifierTensionJournee(maj.date_intervention, maj.commune, _interventionEnCours);
   }
 
   // Si cette intervention vient d'une commande à livrer, on boucle la liaison.
