@@ -85,6 +85,15 @@ const ADMIN_EMAIL = 'toifreddypro@gmail.com';
 
 var _session = null;
 
+// Valeur à écrire DANS un attribut HTML, p. ex. onclick="f(' + attrJs(x) + ')". escHtml ne suffit pas ici :
+// il laisse passer les guillemets, ce qui permettait à un nom d'entreprise de refermer l'attribut et d'y
+// ajouter son propre code. JSON protège la chaîne côté JavaScript, puis l'échappement HTML complet
+// (& en premier, sinon un "&quot;" saisi par un utilisateur serait décodé en guillemet réel).
+function attrJs(val) {
+  return JSON.stringify(val == null ? '' : String(val))
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function slugify(s) {
@@ -121,7 +130,7 @@ function renderLigneNouveaute(n) {
     '<td><strong>' + escHtml(n.titre) + '</strong></td>' +
     '<td style="color:var(--mu);font-size:12px;max-width:280px;">' + escHtml(n.description) + '</td>' +
     '<td><input type="checkbox" ' + (n.actif ? 'checked' : '') + ' onchange="basculerNouveaute(\'' + n.id + '\', this.checked)"></td>' +
-    '<td><button class="btn-del" onclick="supprimerNouveaute(\'' + n.id + '\',\'' + escHtml(n.titre).replace(/'/g,"\\'") + '\')">Supprimer</button></td>' +
+    '<td><button class="btn-del" onclick="supprimerNouveaute(' + attrJs(n.id) + ',' + attrJs(n.titre) + ')">Supprimer</button></td>' +
   '</tr>';
 }
 
@@ -177,7 +186,7 @@ function renderLigneSecteur(s) {
     '</td>' +
     '<td><strong>' + escHtml(s.label_fr) + '</strong></td>' +
     '<td style="color:var(--mu);font-family:\'JetBrains Mono\',monospace;font-size:11.5px;">' + escHtml(s.code) + '</td>' +
-    '<td><button class="btn-del" onclick="supprimerSecteur(\'' + s.id + '\',\'' + escHtml(s.label_fr).replace(/'/g,"\\'") + '\')">Supprimer</button></td>' +
+    '<td><button class="btn-del" onclick="supprimerSecteur(' + attrJs(s.id) + ',' + attrJs(s.label_fr) + ')">Supprimer</button></td>' +
   '</tr>';
 }
 
@@ -447,49 +456,66 @@ async function recupererLitige(litigeId) {
   }
 }
 
+var _artisansCache = [];
+
 async function chargerArtisans() {
   var { data: artisans, error } = await sb.from('artisans').select('*').order('created_at', { ascending: false });
   if (error) {
     document.getElementById('zone-artisans').innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>';
     return;
   }
+  _artisansCache = artisans;
+
+  var nbPro = artisans.filter(function(a) { return a.plan === 'pro'; }).length;
+  var nbOffert = artisans.filter(function(a) { return a.plan === 'pro_offert'; }).length;
+  var nbEssentiel = artisans.length - nbPro - nbOffert;
 
   document.getElementById('zone-artisans').innerHTML =
     '<div class="dcard">' +
-      '<div class="dchdr"><span>Tous les artisans (' + artisans.length + ')</span></div>' +
+      '<div class="dchdr"><span>Tous les artisans (' + artisans.length + ')</span>' +
+        '<span style="font-size:12px;font-weight:600;color:var(--mu2);">' + nbEssentiel + ' Essentiel · ' + nbOffert + ' Pro offert · ' + nbPro + ' Pro abonné' + (nbPro > 1 ? 's' : '') + '</span></div>' +
       '<div class="dcbdy"><table class="dtbl">' +
-        '<thead><tr><th>Entreprise</th><th>Secteur</th><th>Commune</th><th>Vérifié</th><th>Abonnement</th><th>Inscrit le</th><th></th></tr></thead>' +
+        '<thead><tr><th>Entreprise</th><th>Secteur</th><th>Commune</th><th>Vérifié</th><th>Offre</th><th>Inscrit le</th><th></th></tr></thead>' +
         '<tbody>' + artisans.map(renderLigneArtisan).join('') + '</tbody>' +
       '</table></div>' +
-      '<div class="note">💡 Cliquez sur le badge "Vérifié" ou choisissez un statut d\'abonnement pour les modifier directement — l\'action passe par une fonction serveur sécurisée, jamais une écriture directe.</div>' +
+      '<div class="note">💡 Cliquez sur le badge "Vérifié" pour le modifier, ou choisissez l\'offre d\'un artisan (Essentiel / Pro offert). Un Pro abonné vient de Stripe : il se change dans Stripe, pas ici. Chaque modification passe par une fonction serveur sécurisée, jamais par une écriture directe.</div>' +
     '</div>';
+}
+
+// Colonne Offre. "Pro (abonné)" est posé par Stripe (webhook) : jamais modifiable à la main ici, le serveur
+// le refuse aussi. Seuls Essentiel et Pro offert se choisissent.
+function renderCelluleOffre(a) {
+  var plan = a.plan || 'gratuit';
+  if (plan === 'pro') {
+    var fin = a.abonnement_echeance ? new Date(a.abonnement_echeance).toLocaleDateString('fr-FR') : null;
+    var detail = a.abonnement_fin_programmee ? 'résilié' + (fin ? ' — Pro jusqu\'au ' + fin : '')
+      : a.abonnement_statut === 'essai' ? 'essai' + (fin ? ' jusqu\'au ' + fin : '')
+      : 'renouvellement' + (fin ? ' le ' + fin : '');
+    return '<span class="badge-ok">Pro (abonné)</span>' +
+      '<div style="font-size:10.5px;color:var(--mu);margin-top:3px;line-height:1.4;">Stripe — ' + escHtml(detail) +
+        (a.abonnement_paiement_en_echec ? ' · <strong style="color:var(--danger);">⚠️ paiement échoué</strong>' : '') +
+        '<br>À changer dans Stripe.</div>';
+  }
+  return '<select onchange="changerPlan(' + attrJs(a.id) + ', this.value)" style="font-size:11.5px;font-weight:600;padding:3px 6px;border-radius:6px;border:1px solid var(--brd);background:var(--p2);color:var(--mu2);">' +
+    '<option value="gratuit"' + (plan === 'gratuit' ? ' selected' : '') + '>Essentiel</option>' +
+    '<option value="pro_offert"' + (plan === 'pro_offert' ? ' selected' : '') + '>🎁 Pro offert</option></select>';
 }
 
 function renderLigneArtisan(a) {
   var dateAff = new Date(a.created_at).toLocaleDateString('fr-FR');
   var badgeVerifie = a.verifie
-    ? '<span class="badge-ok" style="cursor:pointer;" title="Cliquer pour retirer la vérification" onclick="toggleVerifie(\'' + a.id + '\', false)">Vérifié</span>'
-    : '<span class="badge-attente" style="cursor:pointer;" title="Cliquer pour marquer comme vérifié" onclick="toggleVerifie(\'' + a.id + '\', true)">' + (a.verification_statut === 'en_attente' ? 'En attente' : 'Non vérifié') + '</span>';
-
-  var statut = a.abonnement_statut || 'essai';
-  var LABELS_STATUT = { essai: '🎁 Essai', actif: '✅ Actif', lecture_seule: '🔒 Lecture seule', annule: '⛔ Annulé' };
-  var joursRestants = '';
-  if (statut === 'essai' && a.essai_fin) {
-    var j = Math.max(0, Math.ceil((new Date(a.essai_fin).getTime() - Date.now()) / 86400000));
-    joursRestants = ' (' + j + 'j)';
-  }
-  var optionsStatut = ['essai', 'actif', 'lecture_seule', 'annule'].map(function(s) {
-    return '<option value="' + s + '"' + (s === statut ? ' selected' : '') + '>' + LABELS_STATUT[s] + '</option>';
-  }).join('');
+    ? '<span class="badge-ok" style="cursor:pointer;" title="Cliquer pour retirer la vérification" onclick="toggleVerifie(' + attrJs(a.id) + ', false)">Vérifié</span>'
+    : '<span class="badge-attente" style="cursor:pointer;" title="Cliquer pour marquer comme vérifié" onclick="toggleVerifie(' + attrJs(a.id) + ', true)">' + (a.verification_statut === 'en_attente' ? 'En attente' : 'Non vérifié') + '</span>';
 
   return '<tr>' +
     '<td><strong>' + escHtml(a.nom_entreprise) + '</strong></td>' +
     '<td>' + escHtml(a.secteur) + '</td>' +
     '<td>' + escHtml(a.commune) + '</td>' +
     '<td>' + badgeVerifie + '</td>' +
-    '<td><select onchange="changerAbonnement(\'' + a.id + '\', this.value)" style="font-size:11.5px;font-weight:600;padding:3px 6px;border-radius:6px;border:1px solid var(--brd);background:var(--p2);color:var(--mu2);">' + optionsStatut + '</select><span style="font-size:10.5px;color:var(--mu);">' + joursRestants + '</span></td>' +
+    '<td>' + renderCelluleOffre(a) + '</td>' +
     '<td>' + dateAff + '</td>' +
-    '<td><button class="btn-del" onclick="supprimerCompte(\'' + a.user_id + '\',\'' + escHtml(a.nom_entreprise).replace(/'/g,"\\'") + '\')">Supprimer</button></td>' +
+    // Seul l'identifiant (généré par la base) passe dans l'attribut : le nom est relu dans _artisansCache.
+    '<td><button class="btn-del" onclick="supprimerCompte(' + attrJs(a.id) + ')">Supprimer</button></td>' +
   '</tr>';
 }
 
@@ -510,14 +536,22 @@ async function toggleVerifie(artisanId, nouvelleValeur) {
   } catch (e) { alert('Erreur : ' + e.message); }
 }
 
-async function changerAbonnement(artisanId, nouveauStatut) {
-  try {
-    await appelerActionAdmin(artisanId, { abonnement_statut: nouveauStatut });
-    await chargerArtisans();
-  } catch (e) { alert('Erreur : ' + e.message); await chargerArtisans(); }
+async function changerPlan(artisanId, nouveauPlan) {
+  var a = _artisansCache.find(function(x) { return x.id === artisanId; });
+  var nom = a ? a.nom_entreprise : 'cet artisan';
+  var question = nouveauPlan === 'pro_offert'
+    ? 'Offrir l\'offre Pro à « ' + nom + ' » ?\n\nElle lui donnera gratuitement : catalogue illimité, Mes fournitures avec scan, détection de planning chargé, suggestions d\'avis et bouton Retard.'
+    : 'Retirer le Pro offert à « ' + nom + ' » ?\n\nRien n\'est supprimé : ses produits et ses fournitures restent visibles. En revanche il ne pourra plus créer de fournitures ni dépasser 15 produits.';
+  if (!confirm(question)) { await chargerArtisans(); return; } // remet le menu sur sa valeur d'origine
+  try { await appelerActionAdmin(artisanId, { plan: nouveauPlan }); }
+  catch (e) { alert('Erreur : ' + e.message); }
+  await chargerArtisans();
 }
 
-async function supprimerCompte(userId, nom) {
+async function supprimerCompte(artisanId) {
+  var a = _artisansCache.find(function(x) { return x.id === artisanId; });
+  if (!a) return;
+  var userId = a.user_id, nom = a.nom_entreprise;
   if (!confirm('Supprimer définitivement le compte de "' + nom + '" ?\n\nCette action est irréversible : profil, services, photos, clients, interventions et factures seront tous effacés.')) return;
   if (!confirm('Vraiment sûr ? Il n\'y a aucun moyen de revenir en arrière.')) return;
 

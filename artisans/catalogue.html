@@ -162,7 +162,12 @@ let _stripeElements = null;
 let _dernierCommandeId = null;
 
 function escHtml(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function(m) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; }); }
-function jsAttr(v) { return "'" + String(v).replace(/'/g, "\\'") + "'"; }
+// Valeur à écrire DANS un attribut HTML (onclick="f(' + jsAttr(x) + ')"). Les catégories sont saisies par l'artisan :
+// JSON protège la chaîne côté JavaScript, puis l'échappement HTML complet (& en premier) empêche de refermer l'attribut.
+function jsAttr(v) {
+  return JSON.stringify(v == null ? '' : String(v))
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 function initiales(nom) {
   return (nom || '').split(' ').filter(Boolean).slice(0, 2).map(function(w) { return w[0].toUpperCase(); }).join('');

@@ -720,8 +720,12 @@ function secteurLabelLocal(code) {
   return code.charAt(0).toUpperCase() + code.slice(1);
 }
 
+// Valeur à écrire DANS un attribut HTML (onclick="f(' + jsAttrLocal(x) + ')"). Le & doit être échappé EN PREMIER :
+// sinon un texte saisi par un visiteur contenant "&quot;" serait décodé par le navigateur en vrai guillemet,
+// refermerait la chaîne et exécuterait du code dans la session de l'artisan.
 function jsAttrLocal(val) {
-  return JSON.stringify(val == null ? '' : String(val)).replace(/"/g, '&quot;');
+  return JSON.stringify(val == null ? '' : String(val))
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 async function repondreCreneauInApp(token, action) {
