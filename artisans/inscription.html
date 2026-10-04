@@ -154,10 +154,17 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
     <h1>Email confirmé !</h1>
     <p>Plus qu'une étape pour mettre votre profil en ligne :</p>
     <div id="resume-recap" style="text-align:left;background:var(--panel2,#f6f9fe);border-radius:10px;padding:16px 20px;margin:16px 0;font-size:14px;line-height:1.7;"></div>
+    <div class="field" style="text-align:left;margin:0 0 14px;">
+      <label>Attestation d'assurance (RC Pro ou décennale) — facultatif</label>
+      <div class="upload-zone" id="upload-zone-resume" onclick="document.getElementById('f-document-resume').click()">
+        <div class="upload-zone-text" id="upload-zone-text-resume">📎 Cliquez pour choisir un fichier (PDF, JPG, PNG)</div>
+      </div>
+      <input type="file" id="f-document-resume" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="onFichierRepriseChoisi()">
+    </div>
     <div id="turnstile-resume" style="margin:16px auto;display:flex;justify-content:center;"></div>
     <div id="resume-err" class="msg-err"></div>
     <button type="button" class="btn-submit" id="btn-resume" onclick="terminerInscription()">Terminer mon inscription</button>
-    <p style="margin-top:14px;font-size:12.5px;color:var(--mu,#888);">Le document d'assurance n'a pas pu être conservé pendant l'attente de confirmation — vous pourrez l'ajouter depuis votre profil une fois inscrit.</p>
+    <p style="margin-top:14px;font-size:12.5px;color:var(--mu,#888);">Cette pièce sert à obtenir le badge « Vérifié ». Elle n'avait pas pu être conservée pendant l'attente de votre confirmation d'email : vous pouvez la joindre maintenant, ou terminer sans elle.</p>
   </div>
 </div>
 
@@ -194,6 +201,14 @@ function rendreWidgetResumeSiPret() {
 }
 
 var _fichierChoisi = null;
+var _fichierReprise = null;
+var DOCUMENT_TAILLE_MAX = 10 * 1024 * 1024; // alignée sur la limite du stockage (securite-storage.sql)
+// Contrôle avant envoi : un message clair plutôt qu'un refus technique du stockage. Le serveur de stockage applique de toute façon les mêmes limites.
+function erreurFichierDocument(f) {
+  if (!/\.(pdf|jpe?g|png)$/i.test(f.name)) return 'Format non accepté : PDF, JPG ou PNG uniquement.';
+  if (f.size > DOCUMENT_TAILLE_MAX) return 'Fichier trop volumineux (10 Mo maximum).';
+  return null;
+}
 
 function basculerMotDePasse(id, btn) {
   var champ = document.getElementById(id);
@@ -234,9 +249,41 @@ function onFichierChoisi() {
   var zone = document.getElementById('upload-zone');
   var texte = document.getElementById('upload-zone-text');
   if (input.files && input.files[0]) {
+    var erreur = erreurFichierDocument(input.files[0]);
+    if (erreur) {
+      input.value = ''; _fichierChoisi = null; zone.classList.remove('has-file');
+      texte.textContent = '📎 Cliquez pour choisir un fichier (PDF, JPG, PNG)';
+      afficherErreur(erreur);
+      return;
+    }
     _fichierChoisi = input.files[0];
     zone.classList.add('has-file');
     texte.textContent = '✅ ' + _fichierChoisi.name;
+  }
+}
+
+function reinitialiserZoneReprise() {
+  var input = document.getElementById('f-document-resume');
+  if (input) input.value = '';
+  _fichierReprise = null;
+  document.getElementById('upload-zone-resume').classList.remove('has-file');
+  document.getElementById('upload-zone-text-resume').textContent = '📎 Cliquez pour choisir un fichier (PDF, JPG, PNG)';
+}
+
+function onFichierRepriseChoisi() {
+  var input = document.getElementById('f-document-resume');
+  var err = document.getElementById('resume-err');
+  err.classList.remove('show');
+  if (input.files && input.files[0]) {
+    var erreur = erreurFichierDocument(input.files[0]);
+    if (erreur) {
+      reinitialiserZoneReprise();
+      err.textContent = erreur; err.classList.add('show');
+      return;
+    }
+    _fichierReprise = input.files[0];
+    document.getElementById('upload-zone-resume').classList.add('has-file');
+    document.getElementById('upload-zone-text-resume').textContent = '✅ ' + _fichierReprise.name;
   }
 }
 
@@ -387,10 +434,22 @@ async function terminerInscription() {
     var { data: { session } } = await sb.auth.getSession();
     if (!infos || !session) throw new Error('Votre session a expiré — merci de vous reconnecter.');
 
+    // La personne est maintenant connectée : la règle de stockage autorise l'envoi dans SON dossier.
+    var documentPath = null;
+    if (_fichierReprise) {
+      var chemin = session.user.id + '/' + Date.now() + '_' + _fichierReprise.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      var envoi = await sb.storage.from('artisans-documents').upload(chemin, _fichierReprise);
+      if (envoi.error) {
+        reinitialiserZoneReprise();
+        throw new Error('Le document n\'a pas pu être envoyé (' + envoi.error.message + '). Cliquez de nouveau sur « Terminer mon inscription » pour continuer sans lui.');
+      }
+      documentPath = chemin;
+    }
+
     var res = await fetch(SUPABASE_URL + '/functions/v1/finaliser-inscription-artisan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
-      body: JSON.stringify(Object.assign({}, infos, { document_path: null, turnstile_token: turnstileToken })),
+      body: JSON.stringify(Object.assign({}, infos, { document_path: documentPath, turnstile_token: turnstileToken })),
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error);
