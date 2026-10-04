@@ -109,21 +109,33 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Un ou plusieurs articles de votre panier n'existent plus. Actualisez la page." }, 404);
     }
 
-    // Stock insuffisant — refusé proprement, jamais une vente silencieuse de ce qu'il n'y a pas.
-    // quantite_stock à null = illimité (ex : une formation), jamais vérifié.
-    for (const a of articles as any[]) {
-      if (a.quantite_stock == null) continue;
-      const demande = quantitesDemandees.get(a.id)!;
-      if (a.quantite_stock < demande) {
-        return json({ error: `Stock insuffisant pour "${a.nom}" — il n'en reste que ${a.quantite_stock}.` }, 422);
-      }
-    }
-
     const { data: artisan, error: errA } = await sb.from("artisans")
       .select("nom_entreprise, email, latitude, longitude, livraison_forfait_base, livraison_km_inclus, livraison_prix_km_supp")
       .eq("id", artisan_id).maybeSingle();
     if (errA) throw errA;
     if (!artisan) return json({ error: "Boutique introuvable." }, 404);
+
+    // Stock insuffisant — refusé proprement, jamais une vente silencieuse de ce qu'il n'y a pas.
+    // quantite_stock à null = illimité (ex : une formation), jamais vérifié. L'artisan ne voit
+    // jamais cette tentative autrement (rien n'est créé) — c'est MPA-AI qui le prévient, pour
+    // qu'une vente manquée par rupture de stock ne passe jamais inaperçue.
+    for (const a of articles as any[]) {
+      if (a.quantite_stock == null) continue;
+      const demande = quantitesDemandees.get(a.id)!;
+      if (a.quantite_stock < demande) {
+        if (artisan.email) {
+          const html = `<div style="font-family:sans-serif;max-width:480px;">
+            <h2 style="color:#B5502F;">✨ MPA AI — une vente vient d'échouer, faute de stock</h2>
+            <p><strong>${client_nom}</strong> a tenté de commander <strong>${demande} × ${a.nom}</strong>, mais il n'en restait que <strong>${a.quantite_stock}</strong>.</p>
+            <p>La commande n'a pas été enregistrée — le client a vu un message clair, mais rien n'apparaît dans vos commandes.</p>
+            <p style="margin-top:16px;">Pensez à réapprovisionner ce produit dans <strong>Mon stock → Mes produits</strong> si vous le pouvez.</p>
+            <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Voir dans MPA Artisans →</a></p>
+          </div>`;
+          await envoyerEmail(artisan.email, `✨ MPA AI — vente manquée : "${a.nom}" en rupture`, html);
+        }
+        return json({ error: `Stock insuffisant pour "${a.nom}" — il n'en reste que ${a.quantite_stock}.` }, 422);
+      }
+    }
 
     // Prix effectif = prix catalogue, remise en cours appliquée — figé ici, jamais recalculé
     // plus tard (même si l'artisan change son prix ou sa remise avant le paiement).
