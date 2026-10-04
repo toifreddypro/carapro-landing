@@ -193,6 +193,45 @@ async function verifierAlertesMpaAi() {
   if (!_clientsCache.length && !_servicesCache.length) {
     mpaAiDire('Bienvenue sur MPA Artisans ! Commencez par ajouter un client habituel dans "Mon profil", ou ajoutez vos services dans "Mes interventions".', 'info');
   }
+
+  // 4) Demandes et commandes en attente — réutilise les chiffres déjà calculés par
+  // chargerDemandes()/chargerCommandes() pour les badges, jamais un second comptage à part qui
+  // pourrait se désynchroniser du vrai badge affiché.
+  var badgeDemandes = document.getElementById('cnt-demandes');
+  var nbDemandes = (badgeDemandes && badgeDemandes.style.display !== 'none') ? parseInt(badgeDemandes.textContent, 10) || 0 : 0;
+  var badgeCommandes = document.getElementById('cnt-commandes');
+  var nbCommandes = (badgeCommandes && badgeCommandes.style.display !== 'none') ? parseInt(badgeCommandes.textContent, 10) || 0 : 0;
+
+  if (nbDemandes > 0 && nbCommandes > 0) {
+    mpaAiDire('📬 Vous avez ' + nbDemandes + ' demande' + (nbDemandes > 1 ? 's' : '') + ' et ' + nbCommandes + ' commande' + (nbCommandes > 1 ? 's' : '') + ' en attente.', 'info',
+      { label: 'Voir mes interventions', action: "switchTab(3)" });
+  } else if (nbDemandes > 0) {
+    mpaAiDire('📬 Vous avez ' + nbDemandes + ' nouvelle' + (nbDemandes > 1 ? 's' : '') + ' demande' + (nbDemandes > 1 ? 's' : '') + ' de devis en attente.', 'info',
+      { label: 'Voir mes demandes', action: "switchTab(3);switchSousOnglet('nav-interventions','conteneur-interventions',1)" });
+  } else if (nbCommandes > 0) {
+    mpaAiDire('🛒 Vous avez ' + nbCommandes + ' nouvelle' + (nbCommandes > 1 ? 's' : '') + ' commande' + (nbCommandes > 1 ? 's' : '') + ' à traiter.', 'info',
+      { label: 'Voir mes commandes', action: "switchTab(4);switchSousOnglet('nav-ventes','conteneur-ventes',1)" });
+  }
+
+  // 5) Interventions "En cours" qui traînent depuis plus de 60 jours — un simple rappel, jamais
+  // bloquant (contrairement au seuil des 90 jours, qui lui empêche de planifier du nouveau).
+  var nbEnCoursAnciennes = await compterInterventionsEnCoursAnciennes();
+  if (nbEnCoursAnciennes > 0) {
+    mpaAiDire('📅 ' + nbEnCoursAnciennes + ' intervention' + (nbEnCoursAnciennes > 1 ? 's sont' : ' est') + ' toujours "En cours" depuis plus de ' + DELAI_ALERTE_EN_COURS_JOURS + ' jours. Vérifiez leur statut pour garder votre planning à jour.', 'warning',
+      { label: 'Voir mon planning', action: "switchTab(2)" });
+  }
+
+  // 6) Avis à demander — 48h après une intervention terminée, c'est le bon moment.
+  var aProposerAvis = await trouverInterventionsAvisAProposer();
+  if (aProposerAvis.length === 1) {
+    var seule = aProposerAvis[0];
+    var nomClient = seule.mpa_artisans_clients.nom;
+    mpaAiDire('✨ L\'intervention chez ' + escHtml(nomClient) + ' s\'est terminée il y a 48h. Le bon moment pour lui demander un avis.', 'info',
+      { label: 'Demander un avis', action: "demanderAvis('" + seule.id + "')" });
+  } else if (aProposerAvis.length > 1) {
+    mpaAiDire('✨ ' + aProposerAvis.length + ' interventions terminées il y a 48h n\'ont pas encore reçu de demande d\'avis.', 'info',
+      { label: 'Voir mon planning', action: "switchTab(2)" });
+  }
 }
 
 // ── Onglets principaux ──
@@ -1000,6 +1039,33 @@ function renderZoneAvisIntervention(i) {
   }
 }
 
+async function signalerRetard(interventionId) {
+  if (!verifierAccesEcriture()) return;
+  var i = (_itinInterventionsSemaine || []).find(function(x) { return x.id === interventionId; });
+  if (!i) return;
+  var client = i.mpa_artisans_clients;
+  if (!client || !client.email) { alert('Ce client n\'a pas d\'email enregistré — impossible de le prévenir automatiquement.'); return; }
+
+  var minutes = prompt('Combien de minutes de retard environ, pour ' + client.nom + ' ?', '15');
+  if (minutes === null) return; // annulé
+  minutes = parseInt(minutes, 10);
+  if (!minutes || minutes <= 0) { alert('Indiquez un nombre de minutes valide.'); return; }
+
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/signaler-retard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({ intervention_id: interventionId, minutes: minutes }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    mpaAiDire('⏰ ' + client.nom + ' a été prévenu(e) d\'un retard d\'environ ' + minutes + ' minutes.', 'info');
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+  }
+}
+
 async function demanderAvis(interventionId) {
   if (!verifierAccesEcriture()) return;
   var btn = document.getElementById('btn-demander-avis');
@@ -1793,6 +1859,42 @@ async function trouverPrestationAnnuaireEnRetard() {
     .limit(1);
   if (err2) { console.error(err2); return null; }
   return (enCoursEnRetard && enCoursEnRetard.length) ? enCoursEnRetard[0] : null;
+}
+
+// Rappel souple, jamais bloquant — à ne pas confondre avec DELAI_GRACE_EN_COURS_JOURS (90j, qui
+// lui bloque la planification, et seulement pour les clients "annuaire"). Celui-ci concerne
+// TOUTE intervention "En cours" qui traîne, quel que soit le client — le risque qu'un artisan
+// oublie tout simplement un dossier, pas une question de commission.
+const DELAI_ALERTE_EN_COURS_JOURS = 60;
+
+// Avis automatique 48h après une intervention terminée — s'appuie sur date_intervention (la
+// date du service) faute de date de passage en "Terminée" enregistrée à part ; une fenêtre de
+// 48 à 72h (pas pile 48h) pour ne jamais rater le moment si l'artisan n'ouvre pas l'app ce
+// jour précis. Jamais suggéré deux fois : avis_demande_le, déjà utilisé par le bouton manuel.
+async function trouverInterventionsAvisAProposer() {
+  var il48h = new Date(); il48h.setDate(il48h.getDate() - 2);
+  var il72h = new Date(); il72h.setDate(il72h.getDate() - 3);
+  var { data, error } = await sb.from('mpa_artisans_interventions')
+    .select('id, date_intervention, mpa_artisans_clients(nom, email)')
+    .eq('artisan_id', _artisan.id)
+    .in('statut', ['terminee', 'payee'])
+    .is('avis_demande_le', null)
+    .gte('date_intervention', il72h.toISOString().slice(0, 10))
+    .lte('date_intervention', il48h.toISOString().slice(0, 10));
+  if (error) { console.error(error); return []; }
+  // Un avis ne sert à rien à demander sans email pour l'envoyer.
+  return (data || []).filter(function(i) { return i.mpa_artisans_clients && i.mpa_artisans_clients.email; });
+}
+
+async function compterInterventionsEnCoursAnciennes() {
+  var limite = new Date(); limite.setDate(limite.getDate() - DELAI_ALERTE_EN_COURS_JOURS);
+  var { count, error } = await sb.from('mpa_artisans_interventions')
+    .select('id', { count: 'exact', head: true })
+    .eq('artisan_id', _artisan.id)
+    .eq('statut', 'en_cours')
+    .lt('date_intervention', limite.toISOString().slice(0, 10));
+  if (error) { console.error(error); return 0; }
+  return count || 0;
 }
 
 const ABATTEMENT_BIC_SERVICES = 0.50;
@@ -3170,17 +3272,7 @@ async function planifierLivraisonCommande(commandeId) {
     }
 
     var { data: proches } = await requete.order('date_intervention', { ascending: true }).limit(1);
-    if (proches && proches.length) {
-      var p = proches[0];
-      var dateAff = new Date(p.date_intervention).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-      var texteConfirm = c.livraison_flexible
-        ? '💡 Dans la fenêtre choisie par le client, vous avez déjà une intervention à ' + c.commune_livraison + ' le ' + dateAff + ' (' + p.creneau + ').\n\nRegrouper cette livraison ce jour-là ?'
-        : '💡 Vous avez déjà une intervention à ' + c.commune_livraison + ' le ' + dateAff + ' (' + p.creneau + ').\n\nRegrouper cette livraison ce jour-là ?';
-      if (confirm(texteConfirm)) {
-        dateSuggestion = p.date_intervention;
-        creneauSuggestion = p.creneau;
-      }
-    }
+    var intervProche = (proches && proches.length) ? proches[0] : null;
   }
 
   // Crée (ou réutilise) une fiche client pour cette livraison, avec les coordonnées fournies.
@@ -3212,6 +3304,28 @@ async function planifierLivraisonCommande(commandeId) {
 
   // Lie la commande à cette future intervention dès l'ouverture — sera bien réelle une fois "Enregistrer" cliqué.
   window._commandeEnLivraison = { commandeId: commandeId };
+
+  // Suggestion de regroupement — jamais bloquante (ni confirm(), ni rien qui empêche de
+  // continuer) : la fenêtre est déjà ouverte avec une date par défaut sensée, et si un
+  // regroupement est possible, MPA-AI le propose simplement à côté, un bouton suffit à
+  // l'appliquer si l'artisan le veut.
+  if (intervProche) {
+    var dateAff = new Date(intervProche.date_intervention).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    mpaAiDire(
+      '📍 Vous avez déjà une intervention à ' + escHtml(c.commune_livraison) + ' le ' + dateAff + ' (' + intervProche.creneau + '). Regrouper cette livraison ce jour-là ?',
+      'info',
+      { label: 'Regrouper ce jour-là', action: "appliquerRegroupementLivraison('" + intervProche.date_intervention + "','" + intervProche.creneau + "')" },
+    );
+  }
+}
+
+function appliquerRegroupementLivraison(date, creneau) {
+  var champDate = document.getElementById('mi-date');
+  var champCreneau = document.getElementById('mi-creneau');
+  if (!champDate || !champCreneau) return; // la fenêtre a pu être fermée entre-temps
+  champDate.value = date;
+  champCreneau.value = creneau;
+  calculerCreneaux();
 }
 
 // ════════════════════════════════════════
@@ -3229,7 +3343,7 @@ async function renderItineraireWidget() {
   var finStr = fin.toISOString().slice(0, 10);
 
   var { data, error } = await sb.from('mpa_artisans_interventions')
-    .select('id, date_intervention, heure_debut, commune, latitude, longitude, mpa_artisans_clients(nom)')
+    .select('id, date_intervention, heure_debut, commune, latitude, longitude, mpa_artisans_clients(nom, email)')
     .eq('artisan_id', _artisan.id)
     .neq('statut', 'annulee')
     .gte('date_intervention', debutStr)
@@ -3298,12 +3412,19 @@ async function choisirJourItineraire(dateStr) {
       (minDepart != null ? '🚗 ' + minDepart + ' min de trajet' : '🚗 trajet non calculé (adresse manquante)') +
     '</div>');
   }
+  var estAujourdhui = dateStr === new Date().toISOString().slice(0, 10);
   for (var k = 0; k < duJour.length; k++) {
     var i = duJour[k];
     var nomClient = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '—';
+    // Bouton "Retard" discret — uniquement sur la journée en cours, jamais sur un jour futur
+    // affiché en avance (prévenir d'un retard n'a de sens que pour aujourd'hui).
+    var boutonRetard = estAujourdhui
+      ? '<button onclick="signalerRetard(\'' + i.id + '\')" title="Prévenir le client d\'un retard" style="margin-left:auto;flex-shrink:0;background:none;border:none;color:var(--mu);font-size:13px;cursor:pointer;opacity:.6;padding:2px 4px;">⏰</button>'
+      : '';
     morceaux.push('<div style="display:flex;gap:10px;align-items:center;padding:6px 0;font-size:13px;">' +
       '<strong style="width:48px;flex-shrink:0;">' + (i.heure_debut || '—') + '</strong>' +
       '<span>' + escHtml(i.commune || '—') + ' <span style="color:var(--mu);">(' + escHtml(nomClient) + ')</span></span>' +
+      boutonRetard +
     '</div>');
 
     if (k < duJour.length - 1) {
