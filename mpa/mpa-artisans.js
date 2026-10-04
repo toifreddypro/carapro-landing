@@ -165,7 +165,7 @@ async function verifierAlertesMpaAi() {
   var pct = (caBrut / PLAFOND_MICRO_BIC_SERVICES) * 100;
   if (pct >= 90) {
     mpaAiDire('Vous êtes à ' + pct.toFixed(0) + '% du plafond micro-entreprise (' + caBrut.toFixed(0) + '€ / 77 700€). Au-delà, changement de régime fiscal obligatoire.', 'important',
-      { label: 'Voir ma comptabilité', action: "switchTab(6)" });
+      { label: 'Voir ma comptabilité', action: "switchTab(7)" });
   } else if (pct >= 70) {
     mpaAiDire('Vous avez atteint ' + pct.toFixed(0) + '% du plafond micro-entreprise cette année — à surveiller.', 'warning');
   }
@@ -185,7 +185,7 @@ async function verifierAlertesMpaAi() {
       var f = facturesImpayees[0];
       var client = f.mpa_artisans_clients ? f.mpa_artisans_clients.nom : 'ce client';
       mpaAiDire('La facture ' + f.numero + ' (' + f.montant_total.toFixed(0) + '€, ' + escHtml(client) + ') a plus de 30 jours et n\'est pas encore marquée payée. Une petite relance ?', 'warning',
-        { label: 'Voir ma comptabilité', action: "switchTab(6)" });
+        { label: 'Voir ma comptabilité', action: "switchTab(7)" });
     }
   }
 
@@ -210,7 +210,7 @@ async function verifierAlertesMpaAi() {
       { label: 'Voir mes demandes', action: "switchTab(3);switchSousOnglet('nav-interventions','conteneur-interventions',1)" });
   } else if (nbCommandes > 0) {
     mpaAiDire('🛒 Vous avez ' + nbCommandes + ' nouvelle' + (nbCommandes > 1 ? 's' : '') + ' commande' + (nbCommandes > 1 ? 's' : '') + ' à traiter.', 'info',
-      { label: 'Voir mes commandes', action: "switchTab(4);switchSousOnglet('nav-ventes','conteneur-ventes',2)" });
+      { label: 'Voir mes commandes', action: "switchTab(5);switchSousOnglet('nav-ventes','conteneur-ventes',2)" });
   }
 
   // 5) Interventions "En cours" qui traînent depuis plus de 60 jours — un simple rappel, jamais
