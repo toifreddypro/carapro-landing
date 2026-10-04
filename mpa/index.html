@@ -33,6 +33,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@zxing/browser@latest"></script>
+<script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&amp;family=JetBrains+Mono:wght@400;500;700&amp;family=Outfit:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <style>
@@ -748,6 +750,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2.59 12.58a2 2 0 0 1 0-2.83l7.17-7.17a2 2 0 0 1 2.83 0l8 8a2 2 0 0 1 0 2.83z"></path><line x1="7" x2="7.01" y1="7" y2="7"></line></svg>Mes fournitures</div>
 <button class="addb" onclick="openAjouterFourniture()"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>Ajouter</button>
 </div>
+<div style="padding:14px 16px 0;display:flex;gap:8px;">
+<button onclick="ouvrirScanFourniture('achat')" style="flex:1;padding:9px;border-radius:8px;border:1px solid #16a34a;background:transparent;color:#16a34a;font-size:12.5px;font-weight:700;cursor:pointer;">📷 Scanner un achat</button>
+<button onclick="ouvrirScanFourniture('utilisation')" style="flex:1;padding:9px;border-radius:8px;border:1px solid #b45309;background:transparent;color:#b45309;font-size:12.5px;font-weight:700;cursor:pointer;">📷 Scanner une utilisation</button>
+</div>
 <div class="dcbdy" id="zone-fournitures" style="padding:16px;">Chargement…</div>
 </div>
 </div><div class="bpnl" id="bp-produits-stock">
@@ -1201,6 +1207,45 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-actions"><button class="btn-secondary" onclick="fermerModale('modal-choix-produit-vente')">Fermer</button></div>
 </div>
 </div>
+<!-- MODALE : scan caméra (QR code ou code-barres) -->
+<div class="modal-overlay" id="modal-scan-fourniture">
+  <div class="modal-box" style="max-width:380px;">
+    <h3 id="titre-scan-fourniture">Scanner</h3>
+    <p style="font-size:12.5px;color:var(--mu);margin-bottom:10px;">Visez le QR code ou le code-barres de la fourniture.</p>
+    <video id="video-scan-fourniture" style="width:100%;border-radius:10px;background:#000;" playsinline></video>
+    <div id="scan-fourniture-statut" style="font-size:12px;color:var(--mu);margin-top:8px;text-align:center;"></div>
+    <div class="modal-actions"><button class="btn-secondary" onclick="fermerScanFourniture()">Annuler</button></div>
+  </div>
+</div>
+
+<!-- MODALE : code scanné non reconnu -->
+<div class="modal-overlay" id="modal-associer-code">
+  <div class="modal-box" style="max-width:380px;">
+    <h3>Code non reconnu</h3>
+    <p style="font-size:12.5px;color:var(--mu);margin-bottom:10px;">Ce code n'est encore associé à aucune fourniture. À quelle fourniture l'associer ?</p>
+    <div class="modal-field">
+      <select id="associer-code-select"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="confirmerAssociationCode()">Associer</button>
+      <button class="btn-secondary" onclick="fermerModale('modal-associer-code')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALE : QR code imprimable d'une fourniture -->
+<div class="modal-overlay" id="modal-qr-fourniture">
+  <div class="modal-box" style="max-width:320px;text-align:center;">
+    <h3 id="titre-qr-fourniture">QR code</h3>
+    <div id="rendu-qr-fourniture" style="display:flex;justify-content:center;margin:16px 0;"></div>
+    <p style="font-size:11.5px;color:var(--mu);margin-bottom:14px;">Imprimez et collez-le sur l'étagère ou le contenant — un scan suffira ensuite pour un achat ou une utilisation.</p>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="window.print()">🖨 Imprimer</button>
+      <button class="btn-secondary" onclick="fermerModale('modal-qr-fourniture')">Fermer</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODALE : ajouter/modifier une fourniture -->
 <div class="modal-overlay" id="modal-fourniture">
 <div class="modal-box" style="max-width:420px;">

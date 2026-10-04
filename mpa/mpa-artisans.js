@@ -3651,6 +3651,7 @@ function renderFournitures() {
           '<span style="font-size:13px;color:' + (stockBas ? 'var(--danger)' : 'var(--mu2)') + ';font-weight:' + (stockBas ? '700' : '400') + ';">' + (stockBas ? '⚠️ ' : '') + f.quantite + ' ' + escHtml(f.unite) + '</span>' +
         '</div>' +
         '<div style="display:flex;gap:4px;flex-shrink:0;">' +
+          '<button onclick="genererQRFourniture(\'' + f.id + '\')" title="QR code à imprimer" style="background:none;border:none;cursor:pointer;color:var(--mu);font-size:14px;">▦</button>' +
           '<button onclick="ouvrirModifierFourniture(\'' + f.id + '\')" title="Modifier" style="background:none;border:none;cursor:pointer;color:var(--mu);font-size:14px;">✎</button>' +
           '<button onclick="supprimerFourniture(\'' + f.id + '\')" title="Supprimer" style="background:none;border:none;cursor:pointer;color:var(--mu);font-size:14px;">🗑</button>' +
         '</div>' +
@@ -3750,6 +3751,113 @@ async function enregistrerMouvementFourniture(id, type) {
 
   await chargerFournitures();
 }
+
+// ── Scan QR code / code-barres — ZXing lit indifféremment les deux depuis la caméra. Un QR
+// généré par nous-mêmes encode "CARALINK-FOURN:<id>" (reconnu directement) ; un vrai code-barres
+// d'un produit du commerce est comparé au champ code_barres de chaque fourniture.
+var _scanEnCours = null;    // contrôleur ZXing actif, pour pouvoir l'arrêter proprement
+var _scanTypePrevu = null;  // 'achat' ou 'utilisation', fixé au moment d'ouvrir le scan
+var _codeEnAttenteAssociation = null;
+
+async function ouvrirScanFourniture(type) {
+  _scanTypePrevu = type;
+  document.getElementById('titre-scan-fourniture').textContent = type === 'achat' ? 'Scanner un achat' : 'Scanner une utilisation';
+  document.getElementById('scan-fourniture-statut').textContent = '';
+  ouvrirModale('modal-scan-fourniture');
+
+  if (typeof ZXingBrowser === 'undefined') {
+    document.getElementById('scan-fourniture-statut').textContent = 'Le lecteur de code ne s\'est pas chargé — vérifiez votre connexion et réessayez.';
+    return;
+  }
+  try {
+    var lecteur = new ZXingBrowser.BrowserMultiFormatReader();
+    var videoEl = document.getElementById('video-scan-fourniture');
+    _scanEnCours = await lecteur.decodeFromConstraints(
+      { video: { facingMode: 'environment' } },
+      videoEl,
+      function(resultat, erreur, controles) {
+        if (resultat) {
+          controles.stop();
+          _scanEnCours = null;
+          fermerModale('modal-scan-fourniture');
+          traiterCodeScanne(resultat.getText(), type);
+        }
+      },
+    );
+  } catch (e) {
+    document.getElementById('scan-fourniture-statut').textContent = 'Caméra inaccessible : ' + e.message + ' (autorisez l\'accès à la caméra dans votre navigateur).';
+  }
+}
+
+function fermerScanFourniture() {
+  if (_scanEnCours && _scanEnCours.stop) _scanEnCours.stop();
+  _scanEnCours = null;
+  fermerModale('modal-scan-fourniture');
+}
+
+var PREFIXE_QR_FOURNITURE = 'CARALINK-FOURN:';
+
+function traiterCodeScanne(texte, type) {
+  var fourniture = null;
+  if (texte.indexOf(PREFIXE_QR_FOURNITURE) === 0) {
+    var id = texte.slice(PREFIXE_QR_FOURNITURE.length);
+    fourniture = _fournituresCache.find(function(f) { return f.id === id; });
+  } else {
+    fourniture = _fournituresCache.find(function(f) { return f.code_barres === texte; });
+  }
+
+  if (fourniture) {
+    enregistrerMouvementFourniture(fourniture.id, type);
+    return;
+  }
+
+  // Code jamais vu — on propose de l'associer à une fourniture existante plutôt que d'échouer
+  // silencieusement. On ne propose que les fournitures sans code-barres déjà enregistré, pour
+  // ne jamais en écraser un par erreur.
+  _codeEnAttenteAssociation = { code: texte, type: type };
+  var sel = document.getElementById('associer-code-select');
+  var disponibles = _fournituresCache.filter(function(f) { return !f.code_barres; });
+  if (!disponibles.length) {
+    alert('Code non reconnu, et toutes vos fournitures ont déjà un code associé. Créez d\'abord la fourniture correspondante.');
+    return;
+  }
+  sel.innerHTML = disponibles.map(function(f) { return '<option value="' + f.id + '">' + escHtml(f.nom) + '</option>'; }).join('');
+  ouvrirModale('modal-associer-code');
+}
+
+async function confirmerAssociationCode() {
+  if (!verifierAccesEcriture()) return;
+  var fournitureId = document.getElementById('associer-code-select').value;
+  var enAttente = _codeEnAttenteAssociation;
+  if (!fournitureId || !enAttente) return;
+
+  var { error } = await sb.from('artisans_fournitures').update({ code_barres: enAttente.code }).eq('id', fournitureId).eq('artisan_id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+
+  var f = _fournituresCache.find(function(x) { return x.id === fournitureId; });
+  if (f) f.code_barres = enAttente.code;
+
+  fermerModale('modal-associer-code');
+  _codeEnAttenteAssociation = null;
+  enregistrerMouvementFourniture(fournitureId, enAttente.type);
+}
+
+// Génère un QR code à imprimer pour une fourniture — jamais un code-barres existant, toujours
+// un identifiant interne, reconnu directement sans passer par l'étape d'association.
+function genererQRFourniture(id) {
+  var f = _fournituresCache.find(function(x) { return x.id === id; });
+  if (!f) return;
+  document.getElementById('titre-qr-fourniture').textContent = f.nom;
+  var zone = document.getElementById('rendu-qr-fourniture');
+  zone.innerHTML = '';
+  if (typeof QRCode === 'undefined') {
+    zone.textContent = 'Le générateur de QR code ne s\'est pas chargé — vérifiez votre connexion.';
+  } else {
+    new QRCode(zone, { text: PREFIXE_QR_FOURNITURE + f.id, width: 180, height: 180 });
+  }
+  ouvrirModale('modal-qr-fourniture');
+}
+
 async function chargerServices() {
   var { data, error } = await sb.from('artisans_services').select('*').eq('artisan_id', _artisan.id).order('ordre', { ascending: true });
   if (error) { console.error(error); return; }
