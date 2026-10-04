@@ -303,6 +303,7 @@ async function init() {
   await chargerServices();
   await chargerPhotos();
   await chargerCatalogue();
+  await chargerFournitures();
   await initPlanning();
   await chargerCompta();
   remplirSelectClientFacture();
@@ -3544,6 +3545,171 @@ async function dessinerCarteItineraire(interventions) {
       }
     } catch (e) { console.warn('Tracé itinéraire échoué :', e); }
   }
+}
+
+// ── Mes fournitures — stock interne, optionnellement relié à un produit vendu. Chaque variation
+// passe par un mouvement enregistré (achat/utilisation/correction), jamais un chiffre écrasé en
+// silence : on peut toujours comprendre a posteriori pourquoi le stock a bougé.
+var _fournituresCache = [];
+var _fournitureEnCours = null;
+var _filtreFournitures = 'toutes';
+
+async function chargerFournitures() {
+  var { data, error } = await sb.from('artisans_fournitures')
+    .select('*, artisans_catalogue(nom)')
+    .eq('artisan_id', _artisan.id)
+    .order('nom', { ascending: true });
+  if (error) { document.getElementById('zone-fournitures').innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>'; return; }
+  _fournituresCache = data || [];
+  renderFournitures();
+  remplirSelectProduitLie();
+}
+
+function filtrerFournitures(filtre, btn) {
+  _filtreFournitures = filtre;
+  document.querySelectorAll('#filtres-fournitures .pastille-filtre').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderFournitures();
+}
+
+function renderFournitures() {
+  var zone = document.getElementById('zone-fournitures');
+  var liste = _fournituresCache.filter(function(f) {
+    if (_filtreFournitures === 'liees') return !!f.produit_catalogue_id;
+    if (_filtreFournitures === 'internes') return !f.produit_catalogue_id;
+    return true;
+  });
+
+  if (!liste.length) {
+    zone.innerHTML = '<div class="etat-vide-tbl">' + (_fournituresCache.length ? 'Aucune fourniture dans ce filtre.' : 'Aucune fourniture pour l\'instant.') + '</div>';
+    return;
+  }
+
+  zone.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;">' + liste.map(function(f) {
+    var stockBas = f.seuil_alerte != null && f.quantite <= f.seuil_alerte;
+    var badgeLiee = f.produit_catalogue_id
+      ? '<span style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,.1);color:#3b82f6;font-size:10.5px;font-weight:700;">🔗 Liée à ' + escHtml(f.artisans_catalogue ? f.artisans_catalogue.nom : 'un produit') + '</span>'
+      : '';
+    return '<div style="border:1px solid ' + (stockBas ? '#fca5a5' : 'var(--brd)') + ';border-radius:10px;padding:12px 14px;' + (stockBas ? 'background:rgba(220,38,38,.04);' : '') + '">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">' +
+        '<div>' +
+          '<strong style="font-size:13.5px;">' + escHtml(f.nom) + '</strong><br>' +
+          '<span style="font-size:13px;color:' + (stockBas ? 'var(--danger)' : 'var(--mu2)') + ';font-weight:' + (stockBas ? '700' : '400') + ';">' + (stockBas ? '⚠️ ' : '') + f.quantite + ' ' + escHtml(f.unite) + '</span>' +
+          badgeLiee +
+        '</div>' +
+        '<div style="display:flex;gap:4px;flex-shrink:0;">' +
+          '<button onclick="ouvrirModifierFourniture(\'' + f.id + '\')" title="Modifier" style="background:none;border:none;cursor:pointer;color:var(--mu);font-size:14px;">✎</button>' +
+          '<button onclick="supprimerFourniture(\'' + f.id + '\')" title="Supprimer" style="background:none;border:none;cursor:pointer;color:var(--mu);font-size:14px;">🗑</button>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;margin-top:10px;">' +
+        '<button onclick="enregistrerMouvementFourniture(\'' + f.id + '\',\'achat\')" style="flex:1;padding:7px;border-radius:7px;border:1px solid #16a34a;background:transparent;color:#16a34a;font-size:12px;font-weight:700;cursor:pointer;">➕ Achat</button>' +
+        '<button onclick="enregistrerMouvementFourniture(\'' + f.id + '\',\'utilisation\')" style="flex:1;padding:7px;border-radius:7px;border:1px solid #b45309;background:transparent;color:#b45309;font-size:12px;font-weight:700;cursor:pointer;">➖ Utilisation</button>' +
+      '</div>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
+function remplirSelectProduitLie() {
+  var sel = document.getElementById('fourn-produit-lie');
+  if (!sel) return;
+  var valeurActuelle = sel.value;
+  sel.innerHTML = '<option value="">— Usage interne uniquement —</option>' +
+    (_catalogueCache || []).map(function(p) { return '<option value="' + p.id + '">' + escHtml(p.nom) + '</option>'; }).join('');
+  sel.value = valeurActuelle;
+}
+
+function openAjouterFourniture() {
+  _fournitureEnCours = null;
+  document.getElementById('titre-modal-fourniture').textContent = 'Nouvelle fourniture';
+  document.getElementById('btn-fourn-sauver').textContent = 'Ajouter';
+  document.getElementById('fourn-nom').value = '';
+  document.getElementById('fourn-quantite').value = '0';
+  document.getElementById('fourn-unite').value = 'unité';
+  document.getElementById('fourn-seuil').value = '';
+  remplirSelectProduitLie();
+  document.getElementById('fourn-produit-lie').value = '';
+  ouvrirModale('modal-fourniture');
+}
+
+function ouvrirModifierFourniture(id) {
+  var f = _fournituresCache.find(function(x) { return x.id === id; });
+  if (!f) return;
+  _fournitureEnCours = id;
+  document.getElementById('titre-modal-fourniture').textContent = 'Modifier la fourniture';
+  document.getElementById('btn-fourn-sauver').textContent = 'Enregistrer';
+  document.getElementById('fourn-nom').value = f.nom;
+  document.getElementById('fourn-quantite').value = f.quantite;
+  document.getElementById('fourn-unite').value = f.unite;
+  document.getElementById('fourn-seuil').value = f.seuil_alerte != null ? f.seuil_alerte : '';
+  remplirSelectProduitLie();
+  document.getElementById('fourn-produit-lie').value = f.produit_catalogue_id || '';
+  ouvrirModale('modal-fourniture');
+}
+
+async function sauverFourniture() {
+  if (!verifierAccesEcriture()) return;
+  var nom = document.getElementById('fourn-nom').value.trim();
+  if (!nom) { alert('Le nom est obligatoire.'); return; }
+  var maj = {
+    artisan_id: _artisan.id,
+    nom: nom,
+    quantite: parseFloat(document.getElementById('fourn-quantite').value) || 0,
+    unite: document.getElementById('fourn-unite').value,
+    seuil_alerte: document.getElementById('fourn-seuil').value ? parseFloat(document.getElementById('fourn-seuil').value) : null,
+    produit_catalogue_id: document.getElementById('fourn-produit-lie').value || null,
+  };
+
+  var res;
+  if (_fournitureEnCours) {
+    res = await sb.from('artisans_fournitures').update(maj).eq('id', _fournitureEnCours).eq('artisan_id', _artisan.id);
+  } else {
+    res = await sb.from('artisans_fournitures').insert(maj);
+  }
+  if (res.error) { alert('Erreur : ' + res.error.message); return; }
+  fermerModale('modal-fourniture');
+  await chargerFournitures();
+}
+
+async function supprimerFourniture(id) {
+  if (!verifierAccesEcriture()) return;
+  if (!confirm('Supprimer cette fourniture ? Son historique de mouvements sera perdu.')) return;
+  var { error } = await sb.from('artisans_fournitures').delete().eq('id', id).eq('artisan_id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerFournitures();
+}
+
+// Enregistre un mouvement (achat ou utilisation) ET met à jour le stock en une fois — jamais
+// l'un sans l'autre, pour que le journal corresponde toujours exactement au chiffre affiché.
+// Si la fourniture est liée à un produit et que le stock tombe à 0 (ou en dessous), le produit
+// est automatiquement retiré de la vente — jamais vendu alors qu'il n'y en a plus.
+async function enregistrerMouvementFourniture(id, type) {
+  if (!verifierAccesEcriture()) return;
+  var f = _fournituresCache.find(function(x) { return x.id === id; });
+  if (!f) return;
+
+  var quantiteStr = prompt((type === 'achat' ? 'Quantité achetée' : 'Quantité utilisée') + ' (' + f.unite + ') :', '1');
+  if (quantiteStr === null) return;
+  var quantite = parseFloat(quantiteStr);
+  if (!quantite || quantite <= 0) { alert('Indiquez une quantité valide.'); return; }
+
+  var nouvelleQuantite = type === 'achat' ? f.quantite + quantite : f.quantite - quantite;
+  if (nouvelleQuantite < 0) nouvelleQuantite = 0;
+
+  var { error: errMaj } = await sb.from('artisans_fournitures').update({ quantite: nouvelleQuantite, updated_at: new Date().toISOString() }).eq('id', id).eq('artisan_id', _artisan.id);
+  if (errMaj) { alert('Erreur : ' + errMaj.message); return; }
+
+  await sb.from('artisans_fournitures_mouvements').insert({
+    fourniture_id: id, artisan_id: _artisan.id, type: type, quantite: quantite,
+  });
+
+  if (f.produit_catalogue_id && nouvelleQuantite <= 0) {
+    await sb.from('artisans_catalogue').update({ en_vente: false }).eq('id', f.produit_catalogue_id).eq('artisan_id', _artisan.id);
+    mpaAiDire('📦 "' + escHtml(f.nom) + '" est à 0 — le produit lié a été automatiquement retiré de la vente.', 'warning',
+      { label: 'Voir mon catalogue', action: "switchTab(5);switchSousOnglet('nav-ventes','conteneur-ventes',0)" });
+  }
+
+  await chargerFournitures();
 }
 
 async function chargerServices() {

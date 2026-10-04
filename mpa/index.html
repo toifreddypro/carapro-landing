@@ -91,6 +91,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 
 /* ── Base de données (tables) ── */
 .sous-nav{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.pastille-filtre{padding:6px 13px;border-radius:20px;border:1px solid var(--brd);background:var(--panel);color:var(--mu);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;}
+.pastille-filtre.active{background:var(--ac);border-color:var(--ac);color:#fff;}
 
 /* ── FAQ (modale accessible depuis MPA AI) ── */
 #modal-faq .modal-box{max-width:480px;width:100%;max-height:82vh;display:flex;flex-direction:column;padding:0;overflow:hidden;}
@@ -681,6 +683,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2.59 12.58a2 2 0 0 1 0-2.83l7.17-7.17a2 2 0 0 1 2.83 0l8 8a2 2 0 0 1 0 2.83z"></path><line x1="7" x2="7.01" y1="7" y2="7"></line></svg>Mes fournitures</div>
 <button class="addb" onclick="openAjouterFourniture()"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>Ajouter</button>
 </div>
+<div style="padding:14px 16px 0;display:flex;gap:8px;flex-wrap:wrap;" id="filtres-fournitures">
+<button class="pastille-filtre active" onclick="filtrerFournitures('toutes', this)">Toutes</button>
+<button class="pastille-filtre" onclick="filtrerFournitures('liees', this)">Liées à une vente</button>
+<button class="pastille-filtre" onclick="filtrerFournitures('internes', this)">Usage interne</button>
+</div>
 <div class="dcbdy" id="zone-fournitures" style="padding:16px;">Chargement…</div>
 </div>
 </div><div class="bpnl" id="bp-produits-stock">
@@ -1185,6 +1192,37 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div>
 <!-- MODALE : FAQ (questions fréquentes) -->
+<!-- MODALE : ajouter/modifier une fourniture -->
+<div class="modal-overlay" id="modal-fourniture">
+  <div class="modal-box" style="max-width:420px;">
+    <h3 id="titre-modal-fourniture">Nouvelle fourniture</h3>
+    <div class="modal-field"><label>Nom</label><input id="fourn-nom" type="text" placeholder="Ex : Vernis rouge, Farine, Dissolvant…"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="modal-field"><label>Quantité actuelle</label><input id="fourn-quantite" type="number" min="0" step="0.1" value="0"></div>
+      <div class="modal-field"><label>Unité</label>
+        <select id="fourn-unite">
+          <option value="unité">unité(s)</option>
+          <option value="g">g</option>
+          <option value="kg">kg</option>
+          <option value="ml">ml</option>
+          <option value="L">L</option>
+          <option value="m">m</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-field"><label>Seuil d'alerte (optionnel)</label><input id="fourn-seuil" type="number" min="0" step="0.1" placeholder="Ex : 5 — prévenu si le stock passe en dessous"></div>
+    <div class="modal-field">
+      <label>Liée à un produit vendu (optionnel)</label>
+      <select id="fourn-produit-lie"><option value="">— Usage interne uniquement —</option></select>
+      <div style="font-size:11px;color:var(--mu);margin-top:4px;">Si reliée, ce produit sera automatiquement retiré de la vente quand le stock tombe à 0.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" id="btn-fourn-sauver" onclick="sauverFourniture()">Ajouter</button>
+      <button class="btn-secondary" onclick="fermerModale('modal-fourniture')">Annuler</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-faq">
 <div class="modal-box">
 <div class="faq-header">
