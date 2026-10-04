@@ -103,10 +103,20 @@ Deno.serve(async (req: Request) => {
 
     // Les articles doivent tous appartenir à CET artisan — jamais mélanger le panier de plusieurs boutiques.
     const { data: articles, error: errArt } = await sb.from("artisans_catalogue")
-      .select("id, nom, prix, promo_pct, artisan_id").in("id", idsArticles).eq("artisan_id", artisan_id);
+      .select("id, nom, prix, promo_pct, artisan_id, quantite_stock").in("id", idsArticles).eq("artisan_id", artisan_id);
     if (errArt) throw errArt;
     if (!articles || articles.length !== idsArticles.length) {
       return json({ error: "Un ou plusieurs articles de votre panier n'existent plus. Actualisez la page." }, 404);
+    }
+
+    // Stock insuffisant — refusé proprement, jamais une vente silencieuse de ce qu'il n'y a pas.
+    // quantite_stock à null = illimité (ex : une formation), jamais vérifié.
+    for (const a of articles as any[]) {
+      if (a.quantite_stock == null) continue;
+      const demande = quantitesDemandees.get(a.id)!;
+      if (a.quantite_stock < demande) {
+        return json({ error: `Stock insuffisant pour "${a.nom}" — il n'en reste que ${a.quantite_stock}.` }, 422);
+      }
     }
 
     const { data: artisan, error: errA } = await sb.from("artisans")
@@ -178,6 +188,18 @@ Deno.serve(async (req: Request) => {
       lignesAEnregistrer.map((l) => ({ commande_id: commande.id, catalogue_id: l.catalogue_id, nom_article: l.nom_article, prix_unitaire: l.prix_unitaire, quantite: l.quantite })),
     );
     if (errLignes) throw errLignes;
+
+    // Décrémente le stock de chaque article suivi (quantite_stock non nul). Le filtre
+    // gte() est un filet de sécurité contre une vente concurrente improbable entre la
+    // vérification plus haut et cet instant — si jamais ça arrivait, la mise à jour
+    // n'a simplement aucun effet plutôt que de passer en négatif.
+    for (const a of articles as any[]) {
+      if (a.quantite_stock == null) continue;
+      const demande = quantitesDemandees.get(a.id)!;
+      await sb.from("artisans_catalogue")
+        .update({ quantite_stock: a.quantite_stock - demande })
+        .eq("id", a.id).gte("quantite_stock", demande);
+    }
 
     if (artisan.email) {
       const detailLignes = lignesAEnregistrer.map((l) => `<li>${l.quantite} × ${l.nom_article} — ${(l.prix_unitaire * l.quantite).toFixed(2)} €</li>`).join("");
