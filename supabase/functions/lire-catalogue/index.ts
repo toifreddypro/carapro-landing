@@ -138,6 +138,6 @@ Deno.serve(async (req: Request) => {
   } catch (e) {
     console.error("[lire-catalogue]", e);
     const msg = (e instanceof Error) ? e.message : "Erreur serveur.";
-    return json({ error: msg }, 500);
+    return json({ error: "Une erreur est survenue. Réessayez dans un instant." }, 500);
   }
 });

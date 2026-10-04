@@ -29,6 +29,12 @@ function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
+// Tout ce qui vient d'un visiteur ou d'un artisan est échappé avant d'entrer dans un email HTML : sinon un nom
+// ou une note contenant du HTML (faux lien, faux bouton) serait envoyé tel quel, depuis l'adresse de la plateforme.
+function escHtml(s: unknown): string {
+  return String(s ?? "").replace(/[&<>"']/g, (m) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }) as Record<string, string>)[m]);
+}
+
 async function envoyerEmail(to: string, subject: string, html: string) {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   if (!apiKey) { console.warn("[soumettre-commande-panier] RESEND_API_KEY absente — email non envoyé."); return; }
@@ -126,7 +132,7 @@ Deno.serve(async (req: Request) => {
         if (artisan.email) {
           const html = `<div style="font-family:sans-serif;max-width:480px;">
             <h2 style="color:#B5502F;">✨ MPA AI — une vente vient d'échouer, faute de stock</h2>
-            <p><strong>${client_nom}</strong> a tenté de commander <strong>${demande} × ${a.nom}</strong>, mais il n'en restait que <strong>${a.quantite_stock}</strong>.</p>
+            <p><strong>${escHtml(client_nom)}</strong> a tenté de commander <strong>${demande} × ${escHtml(a.nom)}</strong>, mais il n'en restait que <strong>${a.quantite_stock}</strong>.</p>
             <p>La commande n'a pas été enregistrée — le client a vu un message clair, mais rien n'apparaît dans vos commandes.</p>
             <p style="margin-top:16px;">Pensez à réapprovisionner ce produit dans <strong>Mon stock → Mes produits</strong> si vous le pouvez.</p>
             <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Voir dans MPA Artisans →</a></p>
@@ -214,14 +220,14 @@ Deno.serve(async (req: Request) => {
     }
 
     if (artisan.email) {
-      const detailLignes = lignesAEnregistrer.map((l) => `<li>${l.quantite} × ${l.nom_article} — ${(l.prix_unitaire * l.quantite).toFixed(2)} €</li>`).join("");
+      const detailLignes = lignesAEnregistrer.map((l) => `<li>${l.quantite} × ${escHtml(l.nom_article)} — ${(l.prix_unitaire * l.quantite).toFixed(2)} €</li>`).join("");
       const html = `<div style="font-family:sans-serif;max-width:480px;">
         <h2 style="color:#B5502F;">Nouvelle commande — ${montantTotal.toFixed(2)} €</h2>
-        <p><strong>${client_nom}</strong> (${client_telephone}) commande :</p>
+        <p><strong>${escHtml(client_nom)}</strong> (${escHtml(client_telephone)}) commande :</p>
         <ul>${detailLignes}</ul>
-        <p>Mode : ${mode === "livraison" ? "🚚 Livraison — " + adresse_livraison + (fraisLivraison > 0 ? ` (frais de livraison : ${fraisLivraison.toFixed(2)} €)` : "") : "🏠 Retrait sur place"}</p>
-        ${date_souhaitee ? `<p>Date ${livraison_flexible ? "souhaitée au plus tôt" : "souhaitée"} : ${date_souhaitee}${livraison_flexible ? ` (flexible, ${FENETRE_LIVRAISON_FLEXIBLE_JOURS} jours — à vous de choisir le meilleur jour)` : ""}</p>` : ""}
-        ${notes ? `<p>Précisions : ${notes}</p>` : ""}
+        <p>Mode : ${mode === "livraison" ? "🚚 Livraison — " + escHtml(adresse_livraison) + (fraisLivraison > 0 ? ` (frais de livraison : ${fraisLivraison.toFixed(2)} €)` : "") : "🏠 Retrait sur place"}</p>
+        ${date_souhaitee ? `<p>Date ${livraison_flexible ? "souhaitée au plus tôt" : "souhaitée"} : ${escHtml(date_souhaitee)}${livraison_flexible ? ` (flexible, ${FENETRE_LIVRAISON_FLEXIBLE_JOURS} jours — à vous de choisir le meilleur jour)` : ""}</p>` : ""}
+        ${notes ? `<p>Précisions : ${escHtml(notes)}</p>` : ""}
         <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Voir dans MPA Artisans →</a></p>
       </div>`;
       await envoyerEmail(artisan.email, `Nouvelle commande : ${resumeNom}`, html);
@@ -231,6 +237,6 @@ Deno.serve(async (req: Request) => {
 
   } catch (e) {
     console.error("[soumettre-commande-panier]", e);
-    return json({ error: (e as Error).message }, 500);
+    return json({ error: "Une erreur est survenue. Réessayez dans un instant." }, 500); // le détail reste dans les journaux, jamais chez le visiteur
   }
 });

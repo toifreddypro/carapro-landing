@@ -60,6 +60,12 @@ async function verifierSignatureStripe(payloadBrut: string, enTeteSignature: str
   }
 }
 
+// Tout ce qui vient d'un visiteur ou d'un artisan est échappé avant d'entrer dans un email HTML : sinon un nom
+// ou une note contenant du HTML (faux lien, faux bouton) serait envoyé tel quel, depuis l'adresse de la plateforme.
+function escHtml(s: unknown): string {
+  return String(s ?? "").replace(/[&<>"']/g, (m) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }) as Record<string, string>)[m]);
+}
+
 async function envoyerEmail(to: string, subject: string, html: string) {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   if (!apiKey) { console.warn("[stripe-webhook-litiges] RESEND_API_KEY absente — email non envoyé."); return; }
@@ -132,10 +138,10 @@ Deno.serve(async (req: Request) => {
         : "non précisée";
       const html = `<div style="font-family:sans-serif;max-width:520px;">
         <h2 style="color:#B3261E;">⚠️ Nouveau litige Stripe — ${(dispute.amount / 100).toFixed(2)} €</h2>
-        <p><strong>Artisan :</strong> ${artisanInfos?.nom_entreprise ?? "non identifié"}</p>
-        <p><strong>Motif indiqué par la banque :</strong> ${dispute.reason}</p>
+        <p><strong>Artisan :</strong> ${escHtml(artisanInfos?.nom_entreprise ?? "non identifié")}</p>
+        <p><strong>Motif indiqué par la banque :</strong> ${escHtml(dispute.reason)}</p>
         <p><strong>Date limite pour répondre à Stripe :</strong> ${dateLimite}</p>
-        <p style="margin-top:16px;">Répondez directement dans le <a href="https://dashboard.stripe.com/disputes/${dispute.id}" style="color:#B5502F;font-weight:700;">Dashboard Stripe</a> avant cette date, sans quoi le litige est automatiquement perdu.</p>
+        <p style="margin-top:16px;">Répondez directement dans le <a href="https://dashboard.stripe.com/disputes/${encodeURIComponent(String(dispute.id))}" style="color:#B5502F;font-weight:700;">Dashboard Stripe</a> avant cette date, sans quoi le litige est automatiquement perdu.</p>
         <p style="margin-top:12px;"><a href="https://caralink.app/artisans/admin.html" style="color:#B5502F;font-weight:700;">Voir dans Admin →</a></p>
       </div>`;
       await envoyerEmail(EMAIL_ADMIN, `⚠️ Litige Stripe (${(dispute.amount / 100).toFixed(2)} €) — réponse avant le ${dateLimite}`, html);

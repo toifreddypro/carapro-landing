@@ -19,6 +19,12 @@ function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
+// Tout ce qui vient d'un visiteur ou d'un artisan est échappé avant d'entrer dans un email HTML : sinon un nom
+// ou une note contenant du HTML (faux lien, faux bouton) serait envoyé tel quel, depuis l'adresse de la plateforme.
+function escHtml(s: unknown): string {
+  return String(s ?? "").replace(/[&<>"']/g, (m) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }) as Record<string, string>)[m]);
+}
+
 async function envoyerEmail(to: string, subject: string, html: string) {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   if (!apiKey) { console.warn("[signaler-retard] RESEND_API_KEY absente — email non envoyé."); return; }
@@ -65,8 +71,8 @@ Deno.serve(async (req: Request) => {
 
     const html = `<div style="font-family:sans-serif;max-width:480px;">
       <h2 style="color:#B5502F;">⏰ Léger retard prévu</h2>
-      <p>Bonjour ${client.nom},</p>
-      <p><strong>${artisan.nom_entreprise}</strong> vous informe d'un retard d'environ <strong>${minutes} minutes</strong> sur votre rendez-vous${intervention.heure_debut ? " de " + intervention.heure_debut : ""} aujourd'hui.</p>
+      <p>Bonjour ${escHtml(client.nom)},</p>
+      <p><strong>${escHtml(artisan.nom_entreprise)}</strong> vous informe d'un retard d'environ <strong>${minutes} minutes</strong> sur votre rendez-vous${intervention.heure_debut ? " de " + escHtml(intervention.heure_debut) : ""} aujourd'hui.</p>
       <p>Merci de votre compréhension.</p>
     </div>`;
     await envoyerEmail(client.email, `⏰ Léger retard prévu — ${artisan.nom_entreprise}`, html);
