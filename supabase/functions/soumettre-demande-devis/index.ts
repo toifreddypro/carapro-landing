@@ -1,4 +1,4 @@
-// ═══════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════
 // CaraPro — Edge Function : soumettre-demande-devis
 // Propriété : TOI Freddy
 // Crée une demande de devis, ouverte aux artisans du secteur/commune
@@ -8,13 +8,20 @@
 // immédiatement dans son espace MPA Artisans (onglet "Demandes").
 //
 // Envoie aussi un email de notification (Resend) : à l'artisan visé
-// si la demande est privée, ou à tous les artisans du secteur si elle
-// est ouverte. Un échec d'envoi d'email ne fait jamais échouer la
-// demande elle-même — l'email est un bonus, pas une dépendance dure.
+// si la demande est privée, ou aux artisans du secteur dont le rayon
+// couvre la commune si elle est ouverte. Un échec d'envoi d'email ne
+// fait jamais échouer la demande elle-même.
 //
-// POST { client_nom, client_telephone, secteur, description_besoin,
-//        commune, artisan_id? }
-// ═══════════════════════════════════════════════════════════
+// Sécurité (cette fonction est publique : n'importe qui peut l'appeler, avec n'importe quoi) :
+//  - toutes les valeurs sont contrôlées côté serveur (type, taille, format) — jamais seulement par la page ;
+//  - le secteur doit exister (sinon un texte quelconque serait enregistré puis affiché chez les artisans) ;
+//  - l'artisan visé et le service doivent exister, et le service appartenir à cet artisan ;
+//  - tout ce qui entre dans un email est échappé ;
+//  - les photos sont reconnues par leur CONTENU (JPEG, PNG, WebP), pas par ce qu'elles prétendent être ;
+//  - un même téléphone ou email ne peut pas envoyer plus de 10 demandes par heure ;
+//  - une demande ouverte ne prévient que les 15 artisans les plus proches ;
+//  - une panne interne ne révèle jamais son détail au visiteur.
+// ═════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -23,11 +30,34 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
+const TYPES_INTERVENTION_VALIDES = ["urgence", "installation", "devis", "entretien"];
+const LIMITE_DEMANDES_PAR_HEURE = 10;
+const MAX_ARTISANS_NOTIFIES = 15;
+const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const REGEX_EMAIL = /^[^\s@<>"'()\[\]\\,;:]+@[^\s@<>"'()\[\]\\,;:]+\.[^\s@<>"'()\[\]\\,;:]+$/;
+const REGEX_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const REGEX_HEURE = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+// Tout ce qui vient d'un visiteur est échappé avant d'entrer dans un email HTML : sinon un nom ou un message
+// contenant du HTML (faux lien, faux bouton) serait envoyé tel quel aux artisans, depuis l'adresse de la plateforme.
+function escHtml(s: unknown): string {
+  return String(s ?? "").replace(/[&<>"']/g, (m) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }) as Record<string, string>)[m]);
+}
+function texteHtml(s: unknown): string { return escHtml(s).replace(/\r?\n/g, "<br>"); } // conserve les retours à la ligne du message
+function telHref(tel: string): string { return tel.replace(/[^0-9+]/g, ""); }
+
+function dateValide(s: string): boolean {
+  if (!REGEX_DATE.test(s)) return false;
+  const d = new Date(s + "T00:00:00Z");
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s; // refuse aussi le 31 février
 }
 
 async function envoyerEmail(to: string, subject: string, html: string) {
@@ -63,8 +93,8 @@ function badgeTypeIntervention(type: string | null | undefined): string {
 
 function emailHtmlDemande(clientNom: string, clientTel: string, clientEmail: string | null, contactPrefere: string, commune: string, description: string, secteur: string, nbPhotos: number, typeIntervention: string | null): string {
   const contactHtml = contactPrefere === "email"
-    ? `<p>📧 Préfère être recontacté(e) par email : <a href="mailto:${clientEmail}">${clientEmail}</a></p>`
-    : `<p>📞 Préfère être recontacté(e) par téléphone : <a href="tel:${clientTel}">${clientTel}</a></p>`;
+    ? `<p>📧 Préfère être recontacté(e) par email : <a href="mailto:${escHtml(clientEmail)}">${escHtml(clientEmail)}</a></p>`
+    : `<p>📞 Préfère être recontacté(e) par téléphone : <a href="tel:${escHtml(telHref(clientTel))}">${escHtml(clientTel)}</a></p>`;
   const photosHtml = nbPhotos > 0
     ? `<p>📷 ${nbPhotos} photo${nbPhotos > 1 ? "s" : ""} jointe${nbPhotos > 1 ? "s" : ""} — à consulter dans votre espace MPA Artisans.</p>`
     : "";
@@ -72,8 +102,8 @@ function emailHtmlDemande(clientNom: string, clientTel: string, clientEmail: str
     <div style="font-family:sans-serif;max-width:480px;">
       <h2 style="color:#B5502F;">📢 Nouvelle demande de devis</h2>
       ${badgeTypeIntervention(typeIntervention)}
-      <p><strong>${clientNom}</strong> (${commune}) recherche un artisan en <strong>${secteur}</strong>.</p>
-      <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${description}</p>
+      <p><strong>${escHtml(clientNom)}</strong> (${escHtml(commune)}) recherche un artisan en <strong>${escHtml(secteur)}</strong>.</p>
+      <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${texteHtml(description)}</p>
       ${contactHtml}
       ${photosHtml}
       <p style="font-size:12px;color:#6b7c96;margin-top:20px;">Répondez directement depuis votre espace MPA Artisans, onglet « Demandes ».</p>
@@ -86,7 +116,7 @@ async function geocoderAdresse(adresse: string, cp: string | null, commune: stri
   if (!q) return null;
   try {
     const res = await fetch("https://api-adresse.data.gouv.fr/search/?limit=1&q=" + encodeURIComponent(q));
-    if (!res.ok) { console.error("[soumettre-demande-devis] API Adresse a répondu " + res.status + " pour \"" + q + "\"."); return null; }
+    if (!res.ok) { console.error("[soumettre-demande-devis] API Adresse a répondu " + res.status + "."); return null; }
     const data = await res.json();
     const feature = data?.features?.[0];
     if (feature?.geometry?.coordinates) {
@@ -99,11 +129,11 @@ async function geocoderAdresse(adresse: string, cp: string | null, commune: stri
 
 function emailHtmlCreneau(clientNom: string, clientTel: string, clientEmail: string | null, contactPrefere: string, commune: string, adresse: string, description: string, dateAff: string, heureDebut: string, heureFin: string, nbPhotos: number, token: string, horsHoraires: boolean, typeIntervention: string | null): string {
   const base = Deno.env.get("SUPABASE_URL") ?? "";
-  const lienConfirmer = `${base}/functions/v1/repondre-devis?token=${token}&action=confirmer`;
-  const lienRefuser = `${base}/functions/v1/repondre-devis?token=${token}&action=refuser`;
+  const lienConfirmer = `${base}/functions/v1/repondre-devis?token=${encodeURIComponent(token)}&action=confirmer`;
+  const lienRefuser = `${base}/functions/v1/repondre-devis?token=${encodeURIComponent(token)}&action=refuser`;
   const contactHtml = contactPrefere === "email"
-    ? `📧 <a href="mailto:${clientEmail}">${clientEmail}</a>`
-    : `📞 <a href="tel:${clientTel}">${clientTel}</a>`;
+    ? `📧 <a href="mailto:${escHtml(clientEmail)}">${escHtml(clientEmail)}</a>`
+    : `📞 <a href="tel:${escHtml(telHref(clientTel))}">${escHtml(clientTel)}</a>`;
   const photosHtml = nbPhotos > 0 ? `<p>📷 ${nbPhotos} photo${nbPhotos > 1 ? "s" : ""} jointe${nbPhotos > 1 ? "s" : ""} — à consulter dans votre espace MPA Artisans.</p>` : "";
   const alerteHorsHoraires = horsHoraires
     ? `<p style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;padding:10px 14px;border-radius:8px;font-weight:700;">⚠️ Demande hors de vos horaires habituels — vérifiez que ça vous convient avant de confirmer.</p>`
@@ -113,13 +143,13 @@ function emailHtmlCreneau(clientNom: string, clientTel: string, clientEmail: str
       <h2 style="color:#B5502F;">📅 Proposition de créneau</h2>
       ${alerteHorsHoraires}
       ${badgeTypeIntervention(typeIntervention)}
-      <p><strong>${clientNom}</strong> (${commune}) souhaite une intervention le <strong>${dateAff} entre ${heureDebut} et ${heureFin}</strong>, à cette adresse : ${adresse}.</p>
-      <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${description}</p>
+      <p><strong>${escHtml(clientNom)}</strong> (${escHtml(commune)}) souhaite une intervention le <strong>${escHtml(dateAff)} entre ${escHtml(heureDebut)} et ${escHtml(heureFin)}</strong>, à cette adresse : ${escHtml(adresse)}.</p>
+      <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${texteHtml(description)}</p>
       <p>Contact : ${contactHtml}</p>
       ${photosHtml}
       <div style="margin:24px 0;">
-        <a href="${lienConfirmer}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#16a34a;color:#fff;font-weight:700;text-decoration:none;margin-right:10px;">✅ Confirmer ce créneau</a>
-        <a href="${lienRefuser}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#f1f5f9;color:#475569;font-weight:700;text-decoration:none;">❌ Refuser</a>
+        <a href="${escHtml(lienConfirmer)}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#16a34a;color:#fff;font-weight:700;text-decoration:none;margin-right:10px;">✅ Confirmer ce créneau</a>
+        <a href="${escHtml(lienRefuser)}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#f1f5f9;color:#475569;font-weight:700;text-decoration:none;">❌ Refuser</a>
       </div>
       <p style="font-size:12px;color:#6b7c96;">En confirmant, ce rendez-vous sera automatiquement ajouté à votre planning MPA Artisans, sans avoir à vous connecter.</p>
     </div>
@@ -127,9 +157,19 @@ function emailHtmlCreneau(clientNom: string, clientTel: string, clientEmail: str
 }
 
 const BUCKET_PHOTOS = "devis-photos";
+const TAILLE_MAX_PHOTO_OCTETS = 3 * 1024 * 1024;
+const TAILLE_MAX_BASE64 = Math.ceil(TAILLE_MAX_PHOTO_OCTETS * 4 / 3) + 4; // refuse AVANT de décoder : pas de décodage d'un fichier géant
+
+// Reconnaît le vrai format d'après les premiers octets. Le type annoncé par le visiteur n'est qu'une déclaration.
+function formatReel(b: Uint8Array): { mime: string; ext: string } | null {
+  if (b.length > 3 && b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) return { mime: "image/jpeg", ext: "jpg" };
+  if (b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47 && b[4] === 0x0D && b[5] === 0x0A && b[6] === 0x1A && b[7] === 0x0A) return { mime: "image/png", ext: "png" };
+  if (b.length > 12 && b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return { mime: "image/webp", ext: "webp" };
+  return null;
+}
 
 // Décode et téléverse jusqu'à 4 photos (data URLs base64) envoyées par le client, retourne leurs URLs publiques.
-// Jamais bloquant : une photo qui échoue est simplement ignorée, la demande reste valide sans elle.
+// Jamais bloquant : une photo refusée ou qui échoue est simplement ignorée, la demande reste valide sans elle.
 async function uploaderPhotos(sb: any, demandeId: string, photosBase64: unknown): Promise<string[]> {
   if (!Array.isArray(photosBase64)) return [];
   const urls: string[] = [];
@@ -137,14 +177,15 @@ async function uploaderPhotos(sb: any, demandeId: string, photosBase64: unknown)
     try {
       const dataUrl = photosBase64[i];
       if (typeof dataUrl !== "string") continue;
-      const match = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
+      const match = dataUrl.match(/^data:image\/(?:jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/);
       if (!match) continue;
-      const mime = match[1];
-      const bytes = Uint8Array.from(atob(match[2]), (c) => c.charCodeAt(0));
-      if (bytes.length > 3 * 1024 * 1024) continue; // garde-fou : 3 Mo max par photo après compression
-      const ext = mime.split("/")[1] || "jpg";
-      const path = `${demandeId}/${i}.${ext}`;
-      const { error } = await sb.storage.from(BUCKET_PHOTOS).upload(path, bytes, { contentType: mime, upsert: true });
+      if (match[1].length > TAILLE_MAX_BASE64) continue;
+      const bytes = Uint8Array.from(atob(match[1]), (c) => c.charCodeAt(0));
+      if (bytes.length > TAILLE_MAX_PHOTO_OCTETS) continue;
+      const format = formatReel(bytes);
+      if (!format) continue; // pas une vraie image JPEG/PNG/WebP : refusée, quoi qu'elle prétende
+      const path = `${demandeId}/${i}.${format.ext}`;
+      const { error } = await sb.storage.from(BUCKET_PHOTOS).upload(path, bytes, { contentType: format.mime, upsert: true });
       if (error) { console.error("[soumettre-demande-devis] upload photo échoué:", error); continue; }
       const { data: pub } = sb.storage.from(BUCKET_PHOTOS).getPublicUrl(path);
       if (pub?.publicUrl) urls.push(pub.publicUrl);
@@ -171,8 +212,8 @@ function emailHtmlDemandeOuverte(commune: string, description: string, secteur: 
     <div style="font-family:sans-serif;max-width:480px;">
       <h2 style="color:#B5502F;">📢 Un client vous cherche</h2>
       ${badgeTypeIntervention(typeIntervention)}
-      <p>Un client recherche un professionnel en <strong>${secteur}</strong>, disponible rapidement, à <strong>${commune}</strong>.</p>
-      <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${description}</p>
+      <p>Un client recherche un professionnel en <strong>${escHtml(secteur)}</strong>, disponible rapidement, à <strong>${escHtml(commune)}</strong>.</p>
+      <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${texteHtml(description)}</p>
       ${photosHtml}
       <p style="font-size:13px;">Soyez le premier à lui proposer un créneau — ses coordonnées apparaissent dès que vous prenez la demande en charge, depuis votre espace MPA Artisans, onglet « Demandes ».</p>
     </div>
@@ -190,57 +231,133 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => null);
-    if (!body) return json({ error: "Requête invalide." }, 400);
+    if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Requête invalide." }, 400);
 
     const { client_nom, client_telephone, client_email, contact_prefere, secteur, description_besoin, commune, artisan_id, photos,
             date_intervention, heure_debut, heure_fin, adresse, code_postal, latitude, longitude, service_id, hors_horaires, type_intervention } = body;
 
-    if (!client_nom || !client_telephone || !secteur || !description_besoin || !commune) {
+    // ── Types : un champ texte doit être du texte (sinon : 400 propre, jamais une panne 500) ──
+    for (const v of [client_nom, client_telephone, client_email, contact_prefere, secteur, description_besoin, commune, adresse, type_intervention, date_intervention, heure_debut, heure_fin, artisan_id, service_id]) {
+      if (v != null && typeof v !== "string") return json({ error: "Requête invalide." }, 400);
+    }
+    if (code_postal != null && typeof code_postal !== "string" && typeof code_postal !== "number") return json({ error: "Requête invalide." }, 400);
+
+    const nom = (client_nom ?? "").trim();
+    const tel = (client_telephone ?? "").trim();
+    const email = (client_email ?? "").trim();
+    const secteurCode = (secteur ?? "").trim();
+    const description = (description_besoin ?? "").trim();
+    const communeNom = (commune ?? "").trim();
+    const adresseTxt = (adresse ?? "").trim();
+    const cp = code_postal == null || code_postal === "" ? null : String(code_postal).trim();
+
+    if (!nom || !tel || !secteurCode || !description || !communeNom) {
       return json({ error: "Champs obligatoires manquants." }, 400);
     }
-    if (!/^[0-9+\s.-]{8,20}$/.test(client_telephone)) {
+    if (nom.length > 100) return json({ error: "Texte trop long pour « Votre nom » (100 caractères maximum)." }, 400);
+    if (communeNom.length > 100) return json({ error: "Texte trop long pour « La commune » (100 caractères maximum)." }, 400);
+    if (description.length > 2000) return json({ error: "Texte trop long pour « Votre demande » (2000 caractères maximum)." }, 400);
+    if (adresseTxt.length > 250) return json({ error: "Texte trop long pour « L'adresse » (250 caractères maximum)." }, 400);
+    if (cp != null && cp.length > 12) return json({ error: "Code postal invalide." }, 400);
+    if (secteurCode.length > 50) return json({ error: "Secteur inconnu." }, 400);
+    if (!/^[0-9+\s.-]{8,20}$/.test(tel)) {
       return json({ error: "Numéro de téléphone invalide." }, 400);
     }
     const contactChoisi = (contact_prefere === "email") ? "email" : "telephone";
-    if (contactChoisi === "email" && (!client_email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(client_email))) {
+    if ((contactChoisi === "email" && !email) || (email && (email.length > 200 || !REGEX_EMAIL.test(email)))) {
       return json({ error: "Adresse email invalide." }, 400);
     }
+    const typeIntervention = (type_intervention ?? "").trim() || null;
+    if (typeIntervention && !TYPES_INTERVENTION_VALIDES.includes(typeIntervention)) return json({ error: "Type de demande invalide." }, 400);
+    const artisanId = (artisan_id ?? "").trim() || null;
+    if (artisanId && !REGEX_UUID.test(artisanId)) return json({ error: "Artisan introuvable." }, 404);
+    const serviceId = (service_id ?? "").trim() || null;
+    if (serviceId && !REGEX_UUID.test(serviceId)) return json({ error: "Service invalide." }, 400);
+    const dateIntervention = (date_intervention ?? "").trim() || null;
+    if (dateIntervention && !dateValide(dateIntervention)) return json({ error: "Date invalide." }, 400);
+    const heureDebut = (heure_debut ?? "").trim() || null;
+    const heureFin = (heure_fin ?? "").trim() || null;
+    if ((heureDebut && !REGEX_HEURE.test(heureDebut)) || (heureFin && !REGEX_HEURE.test(heureFin))) return json({ error: "Heure invalide." }, 400);
+    const nombreOuNull = (v: unknown, min: number, max: number): number | null | "invalide" => {
+      if (v == null || v === "") return null;
+      const n = Number(v);
+      return Number.isFinite(n) && n >= min && n <= max ? n : "invalide";
+    };
+    const latClient = nombreOuNull(latitude, -90, 90);
+    const lonClient = nombreOuNull(longitude, -180, 180);
+    if (latClient === "invalide" || lonClient === "invalide") return json({ error: "Coordonnées invalides." }, 400);
 
-    const estUneProposionDeCreneau = !!(date_intervention && heure_debut && artisan_id);
-    if (estUneProposionDeCreneau && !adresse) {
+    // ── L'artisan visé et le service doivent exister (et le service lui appartenir) ──
+    let artisanVise: any = null;
+    if (artisanId) {
+      const { data: a, error: errArt } = await sb.from("artisans").select("id, user_id, nom_entreprise, secteur").eq("id", artisanId).maybeSingle();
+      if (errArt) throw errArt;
+      if (!a) return json({ error: "Artisan introuvable." }, 404);
+      artisanVise = a;
+      if (serviceId) {
+        const { data: svc, error: errSvc } = await sb.from("artisans_services").select("id").eq("id", serviceId).eq("artisan_id", artisanId).maybeSingle();
+        if (errSvc) throw errSvc;
+        if (!svc) return json({ error: "Service invalide." }, 400);
+      }
+    }
+
+    // ── Le secteur doit exister (le secteur "autre" est le repli prévu par la page). Pour une demande adressée à un
+    //    artisan précis, son propre secteur est aussi accepté : un secteur supprimé de la liste depuis l'inscription
+    //    ne doit pas empêcher de lui écrire. ──
+    if (secteurCode !== "autre" && secteurCode !== artisanVise?.secteur) {
+      const { data: secteurExiste, error: errSect } = await sb.from("secteurs").select("code").eq("code", secteurCode).maybeSingle();
+      if (errSect) throw errSect;
+      if (!secteurExiste) return json({ error: "Secteur inconnu." }, 400);
+    }
+
+    // ── Limite d'envois : un même téléphone ou email ne peut pas inonder les artisans ──
+    // (freine les boucles de script basiques ; la vraie protection contre un robot est un contrôle anti-robot de type Turnstile)
+    const depuis = new Date(Date.now() - 3600 * 1000).toISOString();
+    const compter = async (colonne: string, valeur: string) => {
+      const { count, error } = await sb.from("demandes_devis").select("id", { count: "exact", head: true }).eq(colonne, valeur).gte("created_at", depuis);
+      if (error) throw error;
+      return count ?? 0;
+    };
+    if ((await compter("client_telephone", tel)) >= LIMITE_DEMANDES_PAR_HEURE || (email && (await compter("client_email", email)) >= LIMITE_DEMANDES_PAR_HEURE)) {
+      return json({ error: "Trop de demandes envoyées. Réessayez dans un moment." }, 429);
+    }
+
+    const estUneProposionDeCreneau = !!(dateIntervention && heureDebut && artisanId);
+    if (estUneProposionDeCreneau && !adresseTxt) {
       return json({ error: "Adresse d'intervention manquante." }, 400);
     }
 
     // Coordonnées : reçues du client (vérification préalable), sinon géocodées ici
     // (cas de la demande sur-mesure, qui ne passe pas par la vérification de dispo)
-    let lat = latitude ?? null;
-    let lon = longitude ?? null;
+    let lat = latClient;
+    let lon = lonClient;
     if (estUneProposionDeCreneau && (lat == null || lon == null)) {
-      const pt = await geocoderAdresse(adresse, code_postal || null, commune);
+      const pt = await geocoderAdresse(adresseTxt, cp, communeNom);
       if (pt) { lat = pt.lat; lon = pt.lon; }
     }
 
     const token = estUneProposionDeCreneau ? crypto.randomUUID() : null;
 
     const { data: demande, error } = await sb.from("demandes_devis").insert({
-      client_nom, client_telephone, client_email: client_email || null, contact_prefere: contactChoisi,
-      secteur, description_besoin, commune, type_intervention: type_intervention || null,
-      statut: estUneProposionDeCreneau ? "creneau_propose" : (artisan_id ? "directe" : "ouverte"),
+      client_nom: nom, client_telephone: tel, client_email: email || null, contact_prefere: contactChoisi,
+      secteur: secteurCode, description_besoin: description, commune: communeNom, type_intervention: typeIntervention,
+      statut: estUneProposionDeCreneau ? "creneau_propose" : (artisanId ? "directe" : "ouverte"),
       ...(estUneProposionDeCreneau ? {
-        token, date_intervention, heure_debut, heure_fin: heure_fin || null,
-        adresse, code_postal: code_postal || null, latitude: lat, longitude: lon,
-        service_id: service_id || null, hors_horaires: !!hors_horaires,
+        token, date_intervention: dateIntervention, heure_debut: heureDebut, heure_fin: heureFin,
+        adresse: adresseTxt, code_postal: cp, latitude: lat, longitude: lon,
+        service_id: serviceId, hors_horaires: !!hors_horaires,
       } : {}),
     }).select().single();
     if (error) throw error;
 
-    if (artisan_id) {
-      await sb.from("devis_reponses").insert({
+    if (artisanId) {
+      const { error: errRep } = await sb.from("devis_reponses").insert({
         demande_id: demande.id,
-        artisan_id,
+        artisan_id: artisanId,
         message: "",
         statut: "envoyee",
       });
+      if (errRep) throw errRep; // sans cette ligne, l'artisan ne verrait jamais la demande : on ne répond pas "succès" dans le vide
     }
 
     // ── Photos jointes — jamais bloquant pour la demande elle-même ──
@@ -258,43 +375,44 @@ Deno.serve(async (req: Request) => {
     // ── Notification email — jamais bloquante pour la demande elle-même ──
     try {
       if (estUneProposionDeCreneau) {
-        const { data: artisan } = await sb.from("artisans").select("user_id").eq("id", artisan_id).maybeSingle();
-        if (artisan?.user_id) {
-          const { data: userData } = await sb.auth.admin.getUserById(artisan.user_id);
+        if (artisanVise?.user_id) {
+          const { data: userData } = await sb.auth.admin.getUserById(artisanVise.user_id);
           if (userData?.user?.email) {
-            const dateAff = new Date(date_intervention).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
-            const emailHtml = emailHtmlCreneau(client_nom, client_telephone, client_email || null, contactChoisi, commune, adresse, description_besoin, dateAff, heure_debut, heure_fin || "?", nbPhotos, token as string, !!hors_horaires, type_intervention || null);
-            await envoyerEmail(userData.user.email, `${hors_horaires ? "⚠️ Demande hors horaires — " : ""}Proposition de créneau — ${client_nom} le ${dateAff}`, emailHtml);
+            const dateAff = new Date(dateIntervention!).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+            const emailHtml = emailHtmlCreneau(nom, tel, email || null, contactChoisi, communeNom, adresseTxt, description, dateAff, heureDebut!, heureFin || "?", nbPhotos, token as string, !!hors_horaires, typeIntervention);
+            await envoyerEmail(userData.user.email, `${hors_horaires ? "⚠️ Demande hors horaires — " : ""}Proposition de créneau — ${nom} le ${dateAff}`, emailHtml);
           }
         }
       } else {
-        const emailHtml = emailHtmlDemande(client_nom, client_telephone, client_email || null, contactChoisi, commune, description_besoin, secteur, nbPhotos, type_intervention || null);
-        if (artisan_id) {
+        if (artisanId) {
           // Demande privée : uniquement l'artisan visé
-          const { data: artisan } = await sb.from("artisans").select("user_id, nom_entreprise").eq("id", artisan_id).maybeSingle();
-          if (artisan?.user_id) {
-            const { data: userData } = await sb.auth.admin.getUserById(artisan.user_id);
+          if (artisanVise?.user_id) {
+            const { data: userData } = await sb.auth.admin.getUserById(artisanVise.user_id);
             if (userData?.user?.email) {
-              await envoyerEmail(userData.user.email, `Nouvelle demande de devis — ${client_nom}`, emailHtml);
+              const emailHtml = emailHtmlDemande(nom, tel, email || null, contactChoisi, communeNom, description, secteurCode, nbPhotos, typeIntervention);
+              await envoyerEmail(userData.user.email, `Nouvelle demande de devis — ${nom}`, emailHtml);
             }
           }
         } else {
-          // Demande ouverte : uniquement les artisans du secteur dont le rayon
-          // d'intervention déclaré couvre la commune du client — jamais un envoi
-          // en masse à tout le secteur, peu importe la distance réelle.
-          const ptClient = await geocoderAdresse("", null, commune);
+          // Demande ouverte : uniquement les artisans du secteur dont le rayon d'intervention déclaré couvre la
+          // commune du client — et au plus les MAX_ARTISANS_NOTIFIES plus proches, jamais un envoi en masse.
+          const ptClient = await geocoderAdresse("", null, communeNom);
           const { data: artisans } = await sb.from("artisans")
-            .select("user_id, latitude, longitude, rayon_intervention_km").eq("secteur", secteur);
-          const emailOuverte = emailHtmlDemandeOuverte(commune, description_besoin, secteur, nbPhotos, type_intervention || null);
+            .select("user_id, latitude, longitude, rayon_intervention_km").eq("secteur", secteurCode);
+          const emailOuverte = emailHtmlDemandeOuverte(communeNom, description, secteurCode, nbPhotos, typeIntervention);
+          const candidats: Array<{ user_id: string; km: number }> = [];
           for (const a of artisans ?? []) {
             if (!ptClient || a.latitude == null || a.longitude == null) continue; // impossible de vérifier la distance : on ne notifie pas par prudence
             const rayon = a.rayon_intervention_km || 15;
-            if (distanceKm(ptClient.lat, ptClient.lon, a.latitude, a.longitude) > rayon) continue;
-            const { data: userData } = await sb.auth.admin.getUserById(a.user_id);
-            if (userData?.user?.email) {
-              await envoyerEmail(userData.user.email, `Un client vous cherche à ${commune}`, emailOuverte);
-            }
+            const km = distanceKm(ptClient.lat, ptClient.lon, a.latitude, a.longitude);
+            if (km > rayon) continue;
+            candidats.push({ user_id: a.user_id, km });
           }
+          candidats.sort((x, y) => x.km - y.km);
+          await Promise.allSettled(candidats.slice(0, MAX_ARTISANS_NOTIFIES).map(async (a) => {
+            const { data: userData } = await sb.auth.admin.getUserById(a.user_id);
+            if (userData?.user?.email) await envoyerEmail(userData.user.email, `Un client vous cherche à ${communeNom}`, emailOuverte);
+          }));
         }
       }
     } catch (emailErr) {
@@ -305,7 +423,6 @@ Deno.serve(async (req: Request) => {
 
   } catch (e) {
     console.error("[soumettre-demande-devis]", e);
-    const msg = (e instanceof Error) ? e.message : (e && typeof e === "object" && "message" in e) ? String((e as any).message) : "Erreur serveur.";
-    return json({ error: msg }, 500);
+    return json({ error: MSG_ERREUR_GENERIQUE }, 500); // le détail reste dans les journaux, jamais chez le visiteur
   }
 });
