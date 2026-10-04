@@ -69,13 +69,25 @@ const SUPABASE_URL  = 'https://uzgboxfxpxazhysusewv.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-// Destination après connexion : MPA Artisans par défaut — c'est le seul vrai espace
-// connecté de CaraLink Artisans aujourd'hui. Un ?next=... dans l'URL peut la remplacer,
-// pour rester correct si cette page sert un jour depuis un autre point d'entrée.
+// Destination après connexion : MPA Artisans par défaut. Un ?next=... peut la remplacer, mais UNIQUEMENT vers
+// notre propre site. Sans cette vérification, un lien piégé (connexion.html?next=https://faux-site...) renverrait
+// l'artisan vers un faux site juste après qu'il s'est authentifié sur la vraie page ; et avec next=javascript:...,
+// du code s'exécuterait chez lui, avec sa session déjà ouverte.
+var ORIGINE_AUTORISEE = 'https://caralink.app';
+
 function destinationApresConnexion() {
-  var params = new URLSearchParams(window.location.search);
-  var next = params.get('next');
-  return next || 'https://caralink.app/mpa/';
+  var defaut = ORIGINE_AUTORISEE + '/mpa/';
+  var next = new URLSearchParams(window.location.search).get('next');
+  if (!next) return defaut;
+  try {
+    // Résolu par rapport à NOTRE adresse (pas à celle de la page) : un chemin comme "/mpa/" reste chez nous. On
+    // compare ensuite l'ORIGINE réellement obtenue, ce qui écarte d'un coup javascript:, data:, //autre-site,
+    // /\autre-site, https://caralink.app.autre-site, https://caralink.app@autre-site, http:// et les autres ports.
+    var url = new URL(next, ORIGINE_AUTORISEE + '/artisans/connexion.html');
+    // https seulement : une adresse blob: hérite de l'origine qu'elle contient et passerait sinon le test d'origine.
+    if (url.protocol === 'https:' && url.origin === ORIGINE_AUTORISEE) return url.href;
+  } catch (e) { /* adresse illisible : on l'ignore */ }
+  return defaut;
 }
 
 function ouvrirMotDePasseOublie() {
