@@ -3,11 +3,16 @@
 // Propriété : TOI Freddy
 //
 // Permet à l'admin (toifreddypro@gmail.com uniquement, vérifié côté
-// serveur) de modifier le statut d'abonnement ou le badge vérifié
+// serveur) de modifier le statut d'abonnement, le plan ou le badge vérifié
 // d'un artisan — jamais d'écriture directe depuis le client, même
 // pour l'admin, comme pour la suppression de compte.
 //
-// POST { artisan_id, abonnement_statut? , verifie? }
+// PLAN : seuls "gratuit" et "pro_offert" se choisissent à la main. "pro" correspond
+// TOUJOURS à un vrai abonnement Stripe (posé par le webhook) — jamais par ici. Et on
+// ne touche pas au plan d'un artisan qui a un abonnement Pro actif : on l'annule
+// d'abord dans Stripe, sinon il continuerait de payer pour rien.
+//
+// POST { artisan_id, abonnement_statut? , verifie? , plan? }
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -19,6 +24,7 @@ const corsHeaders = {
 
 const ADMIN_EMAIL = "toifreddypro@gmail.com";
 const STATUTS_VALIDES = ["essai", "actif", "lecture_seule", "annule"];
+const PLANS_MODIFIABLES = ["gratuit", "pro_offert"];
 
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -52,9 +58,25 @@ Deno.serve(async (req: Request) => {
     if (body?.verifie !== undefined) {
       maj.verifie = !!body.verifie;
     }
+    if (body?.plan !== undefined) {
+      if (!PLANS_MODIFIABLES.includes(body.plan)) {
+        return json({ error: "Plan invalide. Seuls « gratuit » et « pro_offert » se choisissent à la main — « pro » correspond toujours à un vrai abonnement Stripe." }, 400);
+      }
+      maj.plan = body.plan;
+    }
     if (Object.keys(maj).length === 0) return json({ error: "Rien à modifier." }, 400);
 
     const sbAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    if (maj.plan !== undefined) {
+      const { data: actuel, error: errLecture } = await sbAdmin.from("artisans").select("plan").eq("id", artisanId).maybeSingle();
+      if (errLecture) throw errLecture;
+      if (!actuel) return json({ error: "Artisan introuvable." }, 404);
+      if (actuel.plan === "pro") {
+        return json({ error: "Cet artisan a un abonnement Pro actif. Annulez-le d'abord dans Stripe, son plan redescendra tout seul." }, 409);
+      }
+    }
+
     const { error } = await sbAdmin.from("artisans").update(maj).eq("id", artisanId);
     if (error) throw error;
 

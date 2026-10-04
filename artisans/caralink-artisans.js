@@ -19,8 +19,11 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 // Encode une valeur de façon sûre pour l'insérer dans un attribut onclick="...(ICI)" —
 // gère absolument tous les caractères spéciaux (apostrophes, guillemets, retours à la
 // ligne...), contrairement à un simple remplacement d'apostrophes qui casse facilement.
+// Le & doit être échappé EN PREMIER : sinon un texte saisi par un artisan contenant "&quot;" serait décodé par le
+// navigateur en vrai guillemet, refermerait la chaîne JavaScript et exécuterait du code chez le visiteur.
 function jsAttr(val) {
-  return JSON.stringify(val == null ? '' : String(val)).replace(/"/g, '&quot;');
+  return JSON.stringify(val == null ? '' : String(val))
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // Secteurs — chargés depuis la table `secteurs` (modifiable depuis l'admin),
@@ -468,16 +471,16 @@ function renderArtisanCard(a) {
       '<div class="card-info">' +
         '<div class="card-name">' + escHtml(a.nom_entreprise) + '</div>' +
         '<div class="card-title">' + secteurLabel(a.secteur) + ' · 📍 ' + escHtml(a.commune) + '</div>' +
-        '<div class="card-tags" id="tags-carte-' + a.id + '">' + pastillesSpecialesCarte(a) + '</div>' +
+        '<div class="card-tags" id="tags-carte-' + escHtml(a.id) + '">' + pastillesSpecialesCarte(a) + '</div>' +
       '</div>' +
     '</div>' +
     (a.bio ? '<div class="card-bio">' + escHtml(a.bio) + '</div>' : '') +
     '<div class="card-meta">' +
       '<div class="card-stars">' + etoilesCarte(noteAff) + '<span>' + noteAff.toFixed(1) + ' (' + nb + ' ' + (nb === 1 ? T('avis_un') : T('avis_plusieurs')) + ')</span></div>' +
-      '<div class="card-badges" id="dispo-carte-' + a.id + '"></div>' +
+      '<div class="card-badges" id="dispo-carte-' + escHtml(a.id) + '"></div>' +
     '</div>' +
-    '<div class="dispo-grid" id="grille-carte-' + a.id + '" style="display:none;"></div>' +
-    '<div id="phares-carte-' + a.id + '"></div>' +
+    '<div class="dispo-grid" id="grille-carte-' + escHtml(a.id) + '" style="display:none;"></div>' +
+    '<div id="phares-carte-' + escHtml(a.id) + '"></div>' +
   '</div>';
 }
 
@@ -565,7 +568,7 @@ function buildProfilHTML(data) {
 
   var servicesHtml = data.services.length
     ? data.services.map(function(s) {
-        var prix = s.prix_indicatif ? (s.prix_indicatif + '€' + (s.unite ? '/' + s.unite : '')) : T('sur_devis');
+        var prix = s.prix_indicatif ? (escHtml(s.prix_indicatif) + '€' + (s.unite ? '/' + escHtml(s.unite) : '')) : T('sur_devis');
         return '<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line,#eee);">' +
           '<div><strong>' + escHtml(s.nom_service) + '</strong>' + (s.description ? '<div style="font-size:12.5px;color:var(--mu2,#777);">' + escHtml(s.description) + '</div>' : '') + '</div>' +
           '<div style="font-weight:700;white-space:nowrap;margin-left:12px;">' + prix + '</div>' +
@@ -628,7 +631,7 @@ function buildProfilHTML(data) {
       '<div style="font-weight:700;margin-bottom:6px;">' + T('services_titre') + '</div>' + servicesHtml +
       photosHtml +
       pharesHtml +
-      '<div id="dispo-zone-' + a.id + '" style="margin:16px 0;"><div style="font-size:12.5px;color:var(--mu,#999);">⏳ Vérification des disponibilités…</div></div>' +
+      '<div id="dispo-zone-' + escHtml(a.id) + '" style="margin:16px 0;"><div style="font-size:12.5px;color:var(--mu,#999);">⏳ Vérification des disponibilités…</div></div>' +
       '<div style="font-weight:700;margin:18px 0 6px;">' + T('avis_titre') + (data.note_moyenne ? ' — ' + data.note_moyenne + '/5 (' + data.nb_avis + ')' : '') + '</div>' + avisHtml +
       '<button onclick="ouvrirModalDevis(' + jsAttr(a.id) + ',' + jsAttr(a.nom_entreprise) + ',' + jsAttr(a.secteur) + ')" style="width:100%;margin-top:18px;padding:13px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">' + T('demander_devis') + '</button>' +
     '</div>' +
@@ -1025,7 +1028,7 @@ function renderPhotosDevis() {
   if (!zone) return;
   zone.innerHTML = _devisPhotos.map(function(url, i) {
     return '<div style="position:relative;">' +
-      '<img src="' + url + '" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--line,#ddd);">' +
+      '<img src="' + escHtml(url) + '" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--line,#ddd);">' +
       '<button type="button" onclick="retirerPhotoDevis(' + i + ')" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#dc2626;color:#fff;border:none;font-size:11px;line-height:1;cursor:pointer;padding:0;">✕</button>' +
     '</div>';
   }).join('');
@@ -1498,7 +1501,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     return '<div class="t-card">' +
       '<div class="t-card-quote">« ' + escHtmlTemoin(t.texte) + ' »</div>' +
       '<div class="t-card-author">' +
-        '<div class="t-card-avatar">' + initiale + '</div>' +
+        '<div class="t-card-avatar">' + escHtmlTemoin(initiale) + '</div>' +
         '<div><div class="t-card-name">' + escHtmlTemoin(t.nom_affiche) + '</div><div class="t-card-role">' + (TYPE_ROLE_TEMOIN[t.type] || 'Utilisateur') + '</div></div>' +
       '</div>' +
     '</div>';

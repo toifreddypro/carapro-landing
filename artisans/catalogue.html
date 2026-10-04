@@ -430,7 +430,7 @@ function carteProduit(p) {
       (p.description ? '<div class="produit-desc">' + escHtml(p.description) + '</div>' : '') +
       prixHtml +
       (p.type === 'sur_commande' && p.delai_preparation ? '<div class="delai-sur-commande">⏱️ ' + T('cat_sur_commande') + ' — ' + escHtml(p.delai_preparation) + '</div>' : '') +
-      '<button class="btn-commander" onclick="ajouterAuPanier(' + jsAttr(p.id) + ')" id="btn-add-' + p.id + '">' + T('cat_ajouter_panier') + '</button>' +
+      '<button class="btn-commander" onclick="ajouterAuPanier(' + jsAttr(p.id) + ')" id="btn-add-' + escHtml(p.id) + '">' + T('cat_ajouter_panier') + '</button>' +
     '</div>' +
   '</div>';
 }
