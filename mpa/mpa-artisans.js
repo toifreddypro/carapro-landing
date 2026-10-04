@@ -210,7 +210,7 @@ async function verifierAlertesMpaAi() {
       { label: 'Voir mes demandes', action: "switchTab(3);switchSousOnglet('nav-interventions','conteneur-interventions',1)" });
   } else if (nbCommandes > 0) {
     mpaAiDire('🛒 Vous avez ' + nbCommandes + ' nouvelle' + (nbCommandes > 1 ? 's' : '') + ' commande' + (nbCommandes > 1 ? 's' : '') + ' à traiter.', 'info',
-      { label: 'Voir mes commandes', action: "switchTab(5);switchSousOnglet('nav-ventes','conteneur-ventes',2)" });
+      { label: 'Voir mes commandes', action: "switchTab(4);switchSousOnglet('nav-ventes','conteneur-ventes',2)" });
   }
 
   // 5) Interventions "En cours" qui traînent depuis plus de 60 jours — un simple rappel, jamais
@@ -2764,6 +2764,7 @@ async function chargerCatalogue() {
   }
 
   renderCatalogueGrille();
+  renderProduitsStock();
   renderVentesProduits();
 }
 
@@ -2806,11 +2807,14 @@ function renderVentesProduits() {
 function renderCatalogueGrille() {
   var zone = document.getElementById('zone-catalogue');
   if (!zone) return;
-  if (!_catalogueCache.length) {
-    zone.innerHTML = '<p style="grid-column:1/-1;font-size:13px;color:var(--mu);">Aucun article pour l\'instant — ajoutez vos produits ou prestations à la vente.</p>';
+  // Mon catalogue = uniquement ce qui est actuellement en vente. Pour ajouter un article ici,
+  // il doit d'abord exister dans Mes produits (Mon stock), puis être choisi via "Ajouter".
+  var enVente = _catalogueCache.filter(function(c) { return c.en_vente !== false; });
+  if (!enVente.length) {
+    zone.innerHTML = '<p style="grid-column:1/-1;font-size:13px;color:var(--mu);">Rien en vente pour l\'instant — ajoutez un produit depuis votre stock.</p>';
     return;
   }
-  zone.innerHTML = _catalogueCache.map(function(c) {
+  zone.innerHTML = enVente.map(function(c) {
     var badge = c.type === 'sur_commande'
       ? '<span style="display:inline-block;padding:2px 8px;border-radius:6px;background:rgba(245,158,11,.1);color:#b45309;font-size:10.5px;font-weight:700;">Sur commande' + (c.delai_preparation ? ' · ' + escHtml(c.delai_preparation) : '') + '</span>'
       : '<span style="display:inline-block;padding:2px 8px;border-radius:6px;background:rgba(15,157,120,.1);color:#0f9d78;font-size:10.5px;font-weight:700;">Disponible</span>';
@@ -2838,6 +2842,69 @@ function renderCatalogueGrille() {
       '</div>' +
     '</div>';
   }).join('');
+}
+
+// ── Mes produits (Mon stock) — TOUS les produits, en vente ou non. C'est ici qu'on les crée ;
+// "Mon catalogue" (Mes ventes) ne fait plus que choisir, parmi ceux-là, lesquels sont en vente.
+function renderProduitsStock() {
+  var zone = document.getElementById('zone-produits-stock');
+  if (!zone) return;
+  if (!_catalogueCache.length) {
+    zone.innerHTML = '<p style="grid-column:1/-1;font-size:13px;color:var(--mu);">Aucun produit pour l\'instant — créez votre premier article.</p>';
+    return;
+  }
+  zone.innerHTML = _catalogueCache.map(function(c) {
+    var enVente = c.en_vente !== false;
+    var stockTexte = c.quantite_stock == null ? 'Illimité' : c.quantite_stock + ' en stock';
+    var stockBas = c.quantite_stock != null && c.quantite_stock <= 0;
+    var photo = c.url_photo
+      ? '<img src="' + escHtml(c.url_photo) + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px 8px 0 0;">'
+      : '<div style="width:100%;aspect-ratio:1;background:var(--p2);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:24px;">📦</div>';
+    return '<div style="border:1px solid var(--brd);border-radius:10px;overflow:hidden;position:relative;">' +
+      '<button onclick="supprimerCatalogue(\'' + c.id + '\')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:7px;width:24px;height:24px;cursor:pointer;font-size:12px;z-index:1;">✕</button>' +
+      photo +
+      '<div style="padding:10px;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:3px;">' +
+          '<div style="font-size:13px;font-weight:700;">' + escHtml(c.nom) + '</div>' +
+          '<button onclick="ouvrirModifierCatalogue(\'' + c.id + '\')" title="Modifier cet article" style="flex-shrink:0;background:none;border:1px solid var(--brd);border-radius:6px;width:22px;height:22px;cursor:pointer;font-size:11px;color:var(--mu2);">✎</button>' +
+        '</div>' +
+        (c.prix != null ? '<div style="font-size:13px;color:var(--ac);font-weight:700;margin-bottom:4px;">' + c.prix + ' €</div>' : '') +
+        '<div style="font-size:11.5px;color:' + (stockBas ? 'var(--danger)' : 'var(--mu2)') + ';font-weight:' + (stockBas ? '700' : '400') + ';">' + (stockBas ? '⚠️ ' : '') + stockTexte + '</div>' +
+        '<span style="display:inline-block;margin-top:6px;padding:2px 8px;border-radius:6px;font-size:10.5px;font-weight:700;' + (enVente ? 'background:rgba(15,157,120,.1);color:#0f9d78;' : 'background:var(--p2);color:var(--mu);') + '">' + (enVente ? '✅ En vente' : 'Pas en vente') + '</span>' +
+        '<button onclick="toggleEnVenteCatalogue(\'' + c.id + '\')" style="display:block;width:100%;margin-top:8px;padding:6px;border-radius:7px;border:1px solid ' + (enVente ? 'var(--brd)' : 'var(--ac)') + ';background:transparent;color:' + (enVente ? 'var(--mu2)' : 'var(--ac)') + ';font-size:11.5px;font-weight:700;cursor:pointer;">' + (enVente ? 'Retirer de la vente' : 'Mettre en vente') + '</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+async function toggleEnVenteCatalogue(id) {
+  if (!verifierAccesEcriture()) return;
+  var c = _catalogueCache.find(function(x) { return x.id === id; });
+  if (!c) return;
+  var nouvelEtat = !(c.en_vente !== false);
+  var { error } = await sb.from('artisans_catalogue').update({ en_vente: nouvelEtat }).eq('id', id).eq('artisan_id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  c.en_vente = nouvelEtat;
+  renderProduitsStock();
+  renderCatalogueGrille();
+}
+
+// Depuis Mon catalogue, "Ajouter" ne crée plus un produit — il choisit, parmi ceux déjà créés
+// dans Mes produits mais pas encore en vente, lequel publier.
+function openChoisirProduitAVendre() {
+  var horsVente = _catalogueCache.filter(function(c) { return c.en_vente === false; });
+  var zone = document.getElementById('zone-choix-produit-vente');
+  if (!horsVente.length) {
+    zone.innerHTML = '<p style="font-size:13px;color:var(--mu);padding:10px 0;">Tous vos produits sont déjà en vente. Créez-en un nouveau depuis <strong>Mon stock → Mes produits</strong>.</p>';
+  } else {
+    zone.innerHTML = horsVente.map(function(c) {
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--brd);">' +
+        '<span style="font-size:13px;">' + escHtml(c.nom) + (c.prix != null ? ' <span style="color:var(--mu);">— ' + c.prix + ' €</span>' : '') + '</span>' +
+        '<button onclick="toggleEnVenteCatalogue(\'' + c.id + '\');fermerModale(\'modal-choix-produit-vente\');" class="addb">Mettre en vente</button>' +
+      '</div>';
+    }).join('');
+  }
+  ouvrirModale('modal-choix-produit-vente');
 }
 
 async function togglePhareCatalogue(id) {
@@ -2874,6 +2941,7 @@ function openAjouterCatalogue() {
   document.getElementById('cat-type').value = 'disponible';
   document.getElementById('cat-delai').value = '';
   document.getElementById('cat-delai-wrap').style.display = 'none';
+  document.getElementById('cat-stock').value = '';
   document.getElementById('cat-photo-input').value = '';
   ouvrirModale('modal-catalogue');
 }
@@ -2891,6 +2959,7 @@ function ouvrirModifierCatalogue(id) {
   document.getElementById('cat-type').value = c.type || 'disponible';
   document.getElementById('cat-delai').value = c.delai_preparation || '';
   document.getElementById('cat-delai-wrap').style.display = c.type === 'sur_commande' ? 'block' : 'none';
+  document.getElementById('cat-stock').value = c.quantite_stock != null ? c.quantite_stock : '';
   document.getElementById('cat-photo-input').value = '';
   ouvrirModale('modal-catalogue');
 }
@@ -2920,6 +2989,7 @@ async function sauverCatalogue() {
       prix: parseFloat(document.getElementById('cat-prix').value) || null,
       type: document.getElementById('cat-type').value,
       delai_preparation: document.getElementById('cat-delai').value.trim() || null,
+      quantite_stock: document.getElementById('cat-stock').value !== '' ? parseInt(document.getElementById('cat-stock').value, 10) : null,
     };
     if (urlPhoto) champs.url_photo = urlPhoto; // garde la photo existante si aucune nouvelle n'est choisie
 
@@ -2927,7 +2997,9 @@ async function sauverCatalogue() {
       var { error } = await sb.from('artisans_catalogue').update(champs).eq('id', _catalogueEnEdition).eq('artisan_id', _artisan.id);
       if (error) throw error;
     } else {
-      var nouveau = Object.assign({ artisan_id: _artisan.id, ordre: _catalogueCache.length }, champs);
+      // Un produit tout juste créé depuis "Mes produits" n'est pas mis en vente tout seul — il
+      // faut explicitement le choisir depuis "Mon catalogue" (voir openChoisirProduitAVendre).
+      var nouveau = Object.assign({ artisan_id: _artisan.id, ordre: _catalogueCache.length, en_vente: false }, champs);
       var { error } = await sb.from('artisans_catalogue').insert(nouveau);
       if (error) throw error;
     }
@@ -3552,50 +3624,31 @@ async function dessinerCarteItineraire(interventions) {
 // silence : on peut toujours comprendre a posteriori pourquoi le stock a bougé.
 var _fournituresCache = [];
 var _fournitureEnCours = null;
-var _filtreFournitures = 'toutes';
 
 async function chargerFournitures() {
   var { data, error } = await sb.from('artisans_fournitures')
-    .select('*, artisans_catalogue(nom)')
+    .select('*')
     .eq('artisan_id', _artisan.id)
     .order('nom', { ascending: true });
   if (error) { document.getElementById('zone-fournitures').innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>'; return; }
   _fournituresCache = data || [];
   renderFournitures();
-  remplirSelectProduitLie();
-}
-
-function filtrerFournitures(filtre, btn) {
-  _filtreFournitures = filtre;
-  document.querySelectorAll('#filtres-fournitures .pastille-filtre').forEach(function(b) { b.classList.remove('active'); });
-  btn.classList.add('active');
-  renderFournitures();
 }
 
 function renderFournitures() {
   var zone = document.getElementById('zone-fournitures');
-  var liste = _fournituresCache.filter(function(f) {
-    if (_filtreFournitures === 'liees') return !!f.produit_catalogue_id;
-    if (_filtreFournitures === 'internes') return !f.produit_catalogue_id;
-    return true;
-  });
-
-  if (!liste.length) {
-    zone.innerHTML = '<div class="etat-vide-tbl">' + (_fournituresCache.length ? 'Aucune fourniture dans ce filtre.' : 'Aucune fourniture pour l\'instant.') + '</div>';
+  if (!_fournituresCache.length) {
+    zone.innerHTML = '<div class="etat-vide-tbl">Aucune fourniture pour l\'instant.</div>';
     return;
   }
 
-  zone.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;">' + liste.map(function(f) {
+  zone.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;">' + _fournituresCache.map(function(f) {
     var stockBas = f.seuil_alerte != null && f.quantite <= f.seuil_alerte;
-    var badgeLiee = f.produit_catalogue_id
-      ? '<span style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,.1);color:#3b82f6;font-size:10.5px;font-weight:700;">🔗 Liée à ' + escHtml(f.artisans_catalogue ? f.artisans_catalogue.nom : 'un produit') + '</span>'
-      : '';
     return '<div style="border:1px solid ' + (stockBas ? '#fca5a5' : 'var(--brd)') + ';border-radius:10px;padding:12px 14px;' + (stockBas ? 'background:rgba(220,38,38,.04);' : '') + '">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">' +
         '<div>' +
           '<strong style="font-size:13.5px;">' + escHtml(f.nom) + '</strong><br>' +
           '<span style="font-size:13px;color:' + (stockBas ? 'var(--danger)' : 'var(--mu2)') + ';font-weight:' + (stockBas ? '700' : '400') + ';">' + (stockBas ? '⚠️ ' : '') + f.quantite + ' ' + escHtml(f.unite) + '</span>' +
-          badgeLiee +
         '</div>' +
         '<div style="display:flex;gap:4px;flex-shrink:0;">' +
           '<button onclick="ouvrirModifierFourniture(\'' + f.id + '\')" title="Modifier" style="background:none;border:none;cursor:pointer;color:var(--mu);font-size:14px;">✎</button>' +
@@ -3610,15 +3663,6 @@ function renderFournitures() {
   }).join('') + '</div>';
 }
 
-function remplirSelectProduitLie() {
-  var sel = document.getElementById('fourn-produit-lie');
-  if (!sel) return;
-  var valeurActuelle = sel.value;
-  sel.innerHTML = '<option value="">— Usage interne uniquement —</option>' +
-    (_catalogueCache || []).map(function(p) { return '<option value="' + p.id + '">' + escHtml(p.nom) + '</option>'; }).join('');
-  sel.value = valeurActuelle;
-}
-
 function openAjouterFourniture() {
   _fournitureEnCours = null;
   document.getElementById('titre-modal-fourniture').textContent = 'Nouvelle fourniture';
@@ -3627,8 +3671,6 @@ function openAjouterFourniture() {
   document.getElementById('fourn-quantite').value = '0';
   document.getElementById('fourn-unite').value = 'unité';
   document.getElementById('fourn-seuil').value = '';
-  remplirSelectProduitLie();
-  document.getElementById('fourn-produit-lie').value = '';
   ouvrirModale('modal-fourniture');
 }
 
@@ -3642,8 +3684,6 @@ function ouvrirModifierFourniture(id) {
   document.getElementById('fourn-quantite').value = f.quantite;
   document.getElementById('fourn-unite').value = f.unite;
   document.getElementById('fourn-seuil').value = f.seuil_alerte != null ? f.seuil_alerte : '';
-  remplirSelectProduitLie();
-  document.getElementById('fourn-produit-lie').value = f.produit_catalogue_id || '';
   ouvrirModale('modal-fourniture');
 }
 
@@ -3657,7 +3697,6 @@ async function sauverFourniture() {
     quantite: parseFloat(document.getElementById('fourn-quantite').value) || 0,
     unite: document.getElementById('fourn-unite').value,
     seuil_alerte: document.getElementById('fourn-seuil').value ? parseFloat(document.getElementById('fourn-seuil').value) : null,
-    produit_catalogue_id: document.getElementById('fourn-produit-lie').value || null,
   };
 
   var res;
@@ -3681,8 +3720,8 @@ async function supprimerFourniture(id) {
 
 // Enregistre un mouvement (achat ou utilisation) ET met à jour le stock en une fois — jamais
 // l'un sans l'autre, pour que le journal corresponde toujours exactement au chiffre affiché.
-// Si la fourniture est liée à un produit et que le stock tombe à 0 (ou en dessous), le produit
-// est automatiquement retiré de la vente — jamais vendu alors qu'il n'y en a plus.
+// Purement un suivi interne (matériel, consommables) — aucun lien avec ce qui est vendu,
+// qui a son propre suivi de stock dans Mes produits.
 async function enregistrerMouvementFourniture(id, type) {
   if (!verifierAccesEcriture()) return;
   var f = _fournituresCache.find(function(x) { return x.id === id; });
@@ -3703,15 +3742,14 @@ async function enregistrerMouvementFourniture(id, type) {
     fourniture_id: id, artisan_id: _artisan.id, type: type, quantite: quantite,
   });
 
-  if (f.produit_catalogue_id && nouvelleQuantite <= 0) {
-    await sb.from('artisans_catalogue').update({ en_vente: false }).eq('id', f.produit_catalogue_id).eq('artisan_id', _artisan.id);
-    mpaAiDire('📦 "' + escHtml(f.nom) + '" est à 0 — le produit lié a été automatiquement retiré de la vente.', 'warning',
-      { label: 'Voir mon catalogue', action: "switchTab(5);switchSousOnglet('nav-ventes','conteneur-ventes',0)" });
+  // Alerte de stock bas — le vrai cœur de cette fonctionnalité : prévenir avant la pénurie.
+  if (f.seuil_alerte != null && nouvelleQuantite <= f.seuil_alerte) {
+    mpaAiDire('📦 "' + escHtml(f.nom) + '" est bas (' + nouvelleQuantite + ' ' + escHtml(f.unite) + ' restant' + (nouvelleQuantite > 1 ? 's' : '') + ') — pensez à en racheter.', 'warning',
+      { label: 'Voir mon stock', action: "switchTab(6);switchSousOnglet('nav-stock','conteneur-stock',0)" });
   }
 
   await chargerFournitures();
 }
-
 async function chargerServices() {
   var { data, error } = await sb.from('artisans_services').select('*').eq('artisan_id', _artisan.id).order('ordre', { ascending: true });
   if (error) { console.error(error); return; }
