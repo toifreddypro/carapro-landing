@@ -184,7 +184,7 @@ async function verifierAlertesMpaAi() {
     if (facturesImpayees.length) {
       var f = facturesImpayees[0];
       var client = f.mpa_artisans_clients ? f.mpa_artisans_clients.nom : 'ce client';
-      mpaAiDire('La facture ' + f.numero + ' (' + f.montant_total.toFixed(0) + '€, ' + escHtml(client) + ') a plus de 30 jours et n\'est pas encore marquée payée. Une petite relance ?', 'warning',
+      mpaAiDire('La facture ' + escHtml(f.numero) + ' (' + f.montant_total.toFixed(0) + '€, ' + escHtml(client) + ') a plus de 30 jours et n\'est pas encore marquée payée. Une petite relance ?', 'warning',
         { label: 'Voir ma comptabilité', action: "switchTab(7)" });
     }
   }
@@ -440,7 +440,7 @@ function renderCalendrier() {
 
     var pointsUniques = [];
     interDuJour.forEach(function(i) {
-      var s = i.statut || 'planifiee';
+      var s = classeStatut(i.statut);
       if (s !== 'annulee' && pointsUniques.indexOf(s) === -1) pointsUniques.push(s);
     });
     var compactHtml = c.autreMonth ? '' :
@@ -461,6 +461,9 @@ function renderCalendrier() {
   }).join('');
 }
 
+// Un statut ne sert que dans des noms de classes CSS : on n'accepte que de simples mots (jamais de guillemet, d'espace ni de chevron).
+function classeStatut(s) { return /^[a-z_-]{1,30}$/.test(s || '') ? s : 'planifiee'; }
+
 function renderCreneauHtml(creneau, dateStr, liste) {
   var maxVisible = 2;
   var visibles = liste.slice(0, maxVisible);
@@ -472,7 +475,7 @@ function renderCreneauHtml(creneau, dateStr, liste) {
     var client = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '';
     var service = i.artisans_services ? i.artisans_services.nom_service : '(sans service)';
     var heure = i.heure_debut ? i.heure_debut.slice(0,5) : '';
-    var statut = i.statut || 'planifiee';
+    var statut = classeStatut(i.statut);
     var statutSuivant = CYCLE_STATUT[statut] || 'planifiee';
     var titreStatut = statut === 'annulee' ? 'Intervention annulée' : 'Statut : ' + LABEL_STATUT[statut] + ' — cliquer pour passer à ' + LABEL_STATUT[statutSuivant];
     return '<div class="cal-pill st-' + statut + '" onclick="event.stopPropagation();ouvrirIntervention(\'' + i.id + '\')" title="Cliquer pour voir/modifier les détails">' +
@@ -515,7 +518,7 @@ function ouvrirDetailJourMobile(dateStr) {
         var client = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '—';
         var service = i.artisans_services ? i.artisans_services.nom_service : '(sans service)';
         var heure = i.heure_debut ? i.heure_debut.slice(0,5) : '';
-        var statut = i.statut || 'planifiee';
+        var statut = classeStatut(i.statut);
         return '<div onclick="fermerModale(\'modal-jour-mobile\');ouvrirIntervention(\'' + i.id + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--brd);cursor:pointer;">' +
           '<span class="cal-status-dot cal-status-' + statut + '" style="flex-shrink:0;"></span>' +
           '<div style="flex:1;">' +
@@ -636,8 +639,8 @@ async function chargerDemandes() {
     var actionsHaut;
     if (d.statut === 'creneau_propose') {
       actionsHaut = '<div style="display:flex;gap:6px;">' +
-          '<button class="addb" style="background:#16a34a;" onclick="repondreCreneauInApp(\'' + d.token + '\',\'confirmer\')">✅ Confirmer</button>' +
-          '<button class="addb" style="background:var(--mu2);" onclick="repondreCreneauInApp(\'' + d.token + '\',\'refuser\')">❌ Refuser</button>' +
+          '<button class="addb" style="background:#16a34a;" onclick="repondreCreneauInApp(' + jsAttrLocal(d.token) + ',\'confirmer\')">✅ Confirmer</button>' +
+          '<button class="addb" style="background:var(--mu2);" onclick="repondreCreneauInApp(' + jsAttrLocal(d.token) + ',\'refuser\')">❌ Refuser</button>' +
         '</div>';
     } else if (estCreneau) {
       actionsHaut = '<span style="font-size:11.5px;color:var(--mu);">Traité</span>';
@@ -717,7 +720,7 @@ function secteurLabelLocal(code) {
   // MPA Artisans n'a pas la table secteurs chargée en mémoire comme CaraLink Artisans —
   // on affiche simplement le code proprement capitalisé, suffisant pour un usage interne.
   if (!code) return '—';
-  return code.charAt(0).toUpperCase() + code.slice(1);
+  return escHtml(code.charAt(0).toUpperCase() + code.slice(1)); // le secteur d'une demande vient du formulaire d'un visiteur
 }
 
 // Valeur à écrire DANS un attribut HTML (onclick="f(' + jsAttrLocal(x) + ')"). Le & doit être échappé EN PREMIER :
@@ -1134,7 +1137,7 @@ async function signalerRetard(interventionId) {
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error);
-    mpaAiDire('⏰ ' + client.nom + ' a été prévenu(e) d\'un retard d\'environ ' + minutes + ' minutes.', 'info');
+    mpaAiDire('⏰ ' + escHtml(client.nom) + ' a été prévenu(e) d\'un retard d\'environ ' + minutes + ' minutes.', 'info');
   } catch (e) {
     if (!traiterErreurPlan(e)) alert('Erreur : ' + e.message);
   }
@@ -3283,7 +3286,7 @@ async function chargerLivraisons() {
       : '<div style="font-size:11.5px;color:var(--mu);margin-top:4px;">Livraison isolée ce jour.</div>';
     return '<div style="padding:12px 0;border-bottom:1px solid var(--brd);">' +
       '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">' +
-        '<strong>' + heure + '</strong>' +
+        '<strong>' + escHtml(heure) + '</strong>' +
         '<span style="font-size:12px;color:var(--mu);">' + escHtml(l.nom_article) + ' × ' + l.quantite + '</span>' +
       '</div>' +
       '<div style="font-size:13px;margin-top:2px;">' + escHtml(l.client_nom) + ' — ' + escHtml(l.adresse_livraison || '') + (l.commune_livraison ? ', ' + escHtml(l.commune_livraison) : '') + '</div>' +
@@ -3391,7 +3394,7 @@ function renderCommandes() {
     return '<div style="border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">' +
         enTeteCommande +
-        '<span style="font-size:11px;font-weight:700;color:var(--mu2);flex-shrink:0;margin-left:10px;">' + (LABELS_STATUT_COMMANDE[c.statut] || c.statut) + '</span>' +
+        '<span style="font-size:11px;font-weight:700;color:var(--mu2);flex-shrink:0;margin-left:10px;">' + (LABELS_STATUT_COMMANDE[c.statut] || escHtml(c.statut)) + '</span>' +
       '</div>' +
       '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:3px;">' + modeTxt + '</div>' +
       '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:3px;">📅 Souhaitée le ' + dateTxt + '</div>' +
@@ -3639,9 +3642,9 @@ async function planifierLivraisonCommande(commandeId) {
   if (intervProche) {
     var dateAff = new Date(intervProche.date_intervention).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     mpaAiDire(
-      '📍 Vous avez déjà une intervention à ' + escHtml(c.commune_livraison) + ' le ' + dateAff + ' (' + intervProche.creneau + '). Regrouper cette livraison ce jour-là ?',
+      '📍 Vous avez déjà une intervention à ' + escHtml(c.commune_livraison) + ' le ' + dateAff + ' (' + escHtml(intervProche.creneau) + '). Regrouper cette livraison ce jour-là ?',
       'info',
-      { label: 'Regrouper ce jour-là', action: "appliquerRegroupementLivraison('" + intervProche.date_intervention + "','" + intervProche.creneau + "')" },
+      { label: 'Regrouper ce jour-là', action: "appliquerRegroupementLivraison(" + jsAttrLocal(intervProche.date_intervention) + "," + jsAttrLocal(intervProche.creneau) + ")" },
     );
   }
 }
