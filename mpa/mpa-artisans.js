@@ -97,7 +97,7 @@ function mpaAiDire(message, type, cta) {
   dot.classList.add('show');
   dot.className = 'mpa-ai-dot show' + (type === 'important' ? ' important' : type === 'warning' ? ' warning' : '');
 
-  if (type === 'important') {
+  if (type === 'important' || type === 'pro') {
     document.getElementById('mpa-ai-panel').classList.add('open');
   }
 }
@@ -312,6 +312,8 @@ async function init() {
   renderMpaAiFeed();
   await verifierAlertesMpaAi();
   await verifierNouveautes();
+  renderMonOffre();
+  traiterRetourAbonnement(); // sans attendre : peut patienter jusqu'à 30 s le temps que Stripe prévienne le serveur
 }
 
 // ── Quoi de neuf — annonces publiées depuis l'admin, montrées une fois par artisan ──
@@ -2045,23 +2047,166 @@ function renderEncartAbonnement() {
   if (zone) zone.innerHTML = '';
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// Offre Essentiel / Pro
+// La colonne artisans.plan (gratuit / pro / pro_offert) est l'unique source de vérité. Le VRAI
+// blocage est fait par la base de données (impossible à contourner depuis le navigateur) ; tout
+// ce qui suit sert seulement à expliquer clairement à l'artisan ce qui se passe — avant, ou juste
+// après un refus de la base.
+// ═════════════════════════════════════════════════════════════════════════════
+var LIMITE_PRODUITS_ESSENTIEL = 15; // à garder identique à la limite écrite dans paywall-plan.sql
+var PRIX_PRO_AFFICHE = '9,90 €/mois';
+var _dernierMessagePro = 0;
+
+function estPro() {
+  return !!_artisan && (_artisan.plan === 'pro' || _artisan.plan === 'pro_offert');
+}
+
+// L'essai n'est offert qu'une fois (le serveur y veille) : on ne le mentionne que s'il reste possible.
+function texteEssai() {
+  return (_artisan && _artisan.stripe_subscription_id) ? '' : ' 14 jours d\'essai gratuit, sans carte.';
+}
+
+function texteLimiteProduits() {
+  return 'Vous avez atteint la limite de ' + LIMITE_PRODUITS_ESSENTIEL + ' produits de l\'offre Essentiel. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : catalogue illimité, Mes fournitures et scan QR code / code-barres.';
+}
+
+function proposerPassagePro(raison) {
+  var maintenant = Date.now();
+  if (maintenant - _dernierMessagePro < 5000) return; // jamais deux fois le même message sur un double-clic
+  _dernierMessagePro = maintenant;
+  var message = raison === 'produits'
+    ? texteLimiteProduits() + texteEssai()
+    : '🔒 Mes fournitures fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : suivi de vos consommables, scan QR code / code-barres et alerte avant la rupture.' + texteEssai();
+  mpaAiDire(message, 'pro', { label: 'Passer en Pro', action: 'lancerAbonnement()' });
+}
+
+function exigerPro(raison) {
+  if (estPro()) return true;
+  proposerPassagePro(raison);
+  return false;
+}
+
+// refus === true : l'artisan vient d'être bloqué (on ouvre MPA-AI) ; false : simple information
+// juste après avoir créé son dernier produit gratuit.
+function afficherLimiteProduits(refus) {
+  if (refus) { proposerPassagePro('produits'); return; }
+  mpaAiDire(texteLimiteProduits(), 'warning', { label: 'Passer en Pro', action: 'lancerAbonnement()' });
+}
+
+// Rattrape un refus venu de la base — y compris quand l'écran croyait encore l'artisan Pro
+// (ex. essai terminé entre-temps) : on resynchronise l'écran en même temps.
+function traiterErreurPlan(erreur) {
+  var m = (erreur && erreur.message) || '';
+  var raison = m.indexOf('fournitures_reservees_pro') !== -1 ? 'fournitures'
+    : m.indexOf('limite_produits_essentiel') !== -1 ? 'produits' : null;
+  if (!raison) return false;
+  rafraichirPlan();
+  proposerPassagePro(raison);
+  return true;
+}
+
+async function rafraichirPlan() {
+  var { data } = await sb.from('artisans')
+    .select('plan, abonnement_statut, abonnement_echeance, stripe_subscription_id')
+    .eq('id', _artisan.id).maybeSingle();
+  if (data) {
+    Object.assign(_artisan, data);
+    renderMonOffre();
+    renderFournitures();
+  }
+  return data;
+}
+
 async function lancerAbonnement() {
   var btn = document.getElementById('btn-abonnement');
+  var libelle = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Redirection vers Stripe…'; }
+  var redirige = false;
   try {
     var { data: { session: authSession } } = await sb.auth.getSession();
     var res = await fetch(SUPABASE_URL + '/functions/v1/create-checkout-session-artisans', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
-      body: JSON.stringify({ origin: window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '') }),
+      body: JSON.stringify({}), // les adresses de retour sont fixées côté serveur, jamais fournies par le navigateur
     });
     var data = await res.json();
+    if (res.status === 409) {
+      await rafraichirPlan(); // l'écran n'était pas à jour : l'artisan a déjà l'offre Pro
+      mpaAiDire('Vous avez déjà l\'offre Pro — rien à faire de plus.', 'info');
+      return;
+    }
     if (data.error) throw new Error(data.error);
+    redirige = true;
     window.location.href = data.url;
   } catch (e) {
     alert('Erreur : ' + e.message);
-    if (btn) { btn.disabled = false; btn.textContent = 'S\'abonner maintenant →'; }
+  } finally {
+    if (btn && !redirige) { btn.disabled = false; btn.textContent = libelle || 'Passer en Pro →'; }
   }
+}
+
+function dateFR(iso) { return iso ? new Date(iso).toLocaleDateString('fr-FR') : null; }
+
+function annonceBienvenuePro(d) {
+  var fin = dateFR(d.abonnement_echeance);
+  mpaAiDire(
+    '🎉 Bienvenue dans l\'offre Pro ! Votre catalogue est désormais illimité et Mes fournitures avec scan est débloqué.' +
+      (d.abonnement_statut === 'essai' && fin ? ' Votre essai gratuit court jusqu\'au ' + fin + '.' : ''),
+    'pro',
+    { label: 'Voir mes fournitures', action: "switchTab(6);switchSousOnglet('nav-stock','conteneur-stock',0)" });
+}
+
+// Au retour de Stripe (?abonnement=succes|annule). Stripe prévient notre serveur quelques secondes
+// APRÈS le paiement, parfois après le retour de l'artisan : on attend (jusqu'à 30 s) que le plan
+// bascule avant de féliciter, plutôt que d'annoncer trop tôt ou jamais.
+async function traiterRetourAbonnement() {
+  var retour = new URLSearchParams(window.location.search).get('abonnement');
+  if (!retour) return;
+  history.replaceState(null, '', window.location.pathname); // un rechargement ne rejoue pas le message
+  if (retour === 'annule') {
+    mpaAiDire('Pas de souci — vous pouvez passer en Pro quand vous le souhaitez.', 'info', { label: 'Passer en Pro', action: 'lancerAbonnement()' });
+    return;
+  }
+  if (retour !== 'succes') return;
+  for (var essai = 0; essai < 10; essai++) {
+    var d = await rafraichirPlan();
+    if (d && d.plan === 'pro') { annonceBienvenuePro(d); return; }
+    await new Promise(function(r) { setTimeout(r, 3000); });
+  }
+  mpaAiDire('Votre paiement est en cours de validation. Rechargez la page dans un instant pour voir votre offre Pro.', 'info');
+}
+
+// Carte "Mon offre" en haut de Ma fiche artisan.
+function renderMonOffre() {
+  var zone = document.getElementById('zone-mon-offre');
+  if (!zone || !_artisan) return;
+  var plan = _artisan.plan || 'gratuit';
+  var fin = dateFR(_artisan.abonnement_echeance);
+  var styleBadge = 'font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;';
+  var badge, corps;
+
+  if (plan === 'pro_offert') {
+    badge = '<span style="' + styleBadge + 'background:rgba(15,157,120,.12);color:#0f9d78;">Pro · offert</span>';
+    corps = 'Toutes les fonctions Pro vous sont offertes : catalogue illimité, Mes fournitures avec scan QR code / code-barres.';
+  } else if (plan === 'pro') {
+    badge = '<span style="' + styleBadge + 'background:rgba(15,157,120,.12);color:#0f9d78;">Pro</span>';
+    corps = (_artisan.abonnement_statut === 'essai'
+        ? 'Essai gratuit' + (fin ? ' jusqu\'au <strong>' + fin + '</strong>' : '') + '. Sans carte enregistrée à cette date, vous repasserez en Essentiel — rien n\'est supprimé.'
+        : 'Abonnement actif' + (fin ? ' — prochain renouvellement le <strong>' + fin + '</strong>' : '') + ' (' + PRIX_PRO_AFFICHE + ').') +
+      '<div style="margin-top:8px;font-size:11.5px;color:var(--mu);">Pour modifier ou résilier votre abonnement : contact@learnlogicstudio.com</div>';
+  } else {
+    var nb = (typeof _catalogueCache !== 'undefined' && _catalogueCache) ? _catalogueCache.length : 0;
+    badge = '<span style="' + styleBadge + 'background:var(--p2);color:var(--mu2);">Essentiel</span>';
+    corps = '<strong>' + nb + ' / ' + LIMITE_PRODUITS_ESSENTIEL + ' produits</strong> créés. ' +
+      (_artisan.stripe_subscription_id
+        ? 'Votre essai Pro est terminé. Reprenez l\'offre Pro (' + PRIX_PRO_AFFICHE + ') quand vous le souhaitez — la carte est demandée, sans nouvel essai.'
+        : 'Passez en Pro (' + PRIX_PRO_AFFICHE + ') : catalogue illimité, Mes fournitures avec scan QR code / code-barres. 14 jours d\'essai gratuit, sans carte.') +
+      '<div><button class="addb" id="btn-abonnement" onclick="lancerAbonnement()" style="margin-top:10px;">Passer en Pro →</button></div>';
+  }
+
+  zone.innerHTML = '<div class="dcard"><div class="dchdr"><div class="dctit">⭐ Mon offre</div>' + badge + '</div>' +
+    '<div class="dcbdy" style="padding:14px 16px;font-size:13px;line-height:1.6;color:var(--mu2);">' + corps + '</div></div>';
 }
 
 // ── Rappel : interventions passées encore marquées "Planifiée" ──
@@ -2766,6 +2911,7 @@ async function chargerCatalogue() {
   renderCatalogueGrille();
   renderProduitsStock();
   renderVentesProduits();
+  renderMonOffre();
 }
 
 function copierLienBoutique() {
@@ -2931,6 +3077,7 @@ async function sauverPromoCatalogue(id) {
 var _catalogueEnEdition = null;
 
 function openAjouterCatalogue() {
+  if (!estPro() && _catalogueCache.length >= LIMITE_PRODUITS_ESSENTIEL) { afficherLimiteProduits(true); return; }
   _catalogueEnEdition = null;
   document.getElementById('modal-catalogue-titre').textContent = 'Ajouter un article';
   document.getElementById('btn-cat-sauver').textContent = 'Enregistrer';
@@ -3005,8 +3152,9 @@ async function sauverCatalogue() {
     }
     fermerModale('modal-catalogue');
     await chargerCatalogue();
+    if (!_catalogueEnEdition && !estPro() && _catalogueCache.length >= LIMITE_PRODUITS_ESSENTIEL) afficherLimiteProduits(false);
   } catch (e) {
-    alert('Erreur : ' + e.message);
+    if (!traiterErreurPlan(e)) alert('Erreur : ' + e.message);
   }
   btn.disabled = false; btn.textContent = _catalogueEnEdition ? 'Enregistrer les modifications' : 'Ajouter';
 }
@@ -3635,7 +3783,7 @@ async function chargerFournitures() {
   renderFournitures();
 }
 
-function renderFournitures() {
+function renderFournituresListe() {
   var zone = document.getElementById('zone-fournitures');
   if (!_fournituresCache.length) {
     zone.innerHTML = '<div class="etat-vide-tbl">Aucune fourniture pour l\'instant.</div>';
@@ -3664,7 +3812,19 @@ function renderFournitures() {
   }).join('') + '</div>';
 }
 
+function renderFournitures() {
+  renderFournituresListe();
+  var zone = document.getElementById('zone-fournitures');
+  if (!zone || estPro()) return;
+  zone.insertAdjacentHTML('afterbegin',
+    '<div style="border:1px dashed var(--ac);background:rgba(181,80,47,.05);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.55;">' +
+      '🔒 <strong>Mes fournitures fait partie de l\'offre Pro</strong> (' + PRIX_PRO_AFFICHE + '). Suivez vos consommables, scannez QR codes et codes-barres, soyez prévenu avant la rupture.' + texteEssai() +
+      '<div><button class="addb" onclick="lancerAbonnement()" style="margin-top:8px;">Passer en Pro →</button></div>' +
+    '</div>');
+}
+
 function openAjouterFourniture() {
+  if (!exigerPro('fournitures')) return;
   _fournitureEnCours = null;
   document.getElementById('titre-modal-fourniture').textContent = 'Nouvelle fourniture';
   document.getElementById('btn-fourn-sauver').textContent = 'Ajouter';
@@ -3676,6 +3836,7 @@ function openAjouterFourniture() {
 }
 
 function ouvrirModifierFourniture(id) {
+  if (!exigerPro('fournitures')) return;
   var f = _fournituresCache.find(function(x) { return x.id === id; });
   if (!f) return;
   _fournitureEnCours = id;
@@ -3689,6 +3850,7 @@ function ouvrirModifierFourniture(id) {
 }
 
 async function sauverFourniture() {
+  if (!exigerPro('fournitures')) return;
   if (!verifierAccesEcriture()) return;
   var nom = document.getElementById('fourn-nom').value.trim();
   if (!nom) { alert('Le nom est obligatoire.'); return; }
@@ -3706,7 +3868,7 @@ async function sauverFourniture() {
   } else {
     res = await sb.from('artisans_fournitures').insert(maj);
   }
-  if (res.error) { alert('Erreur : ' + res.error.message); return; }
+  if (res.error) { if (!traiterErreurPlan(res.error)) alert('Erreur : ' + res.error.message); return; }
   fermerModale('modal-fourniture');
   await chargerFournitures();
 }
@@ -3724,6 +3886,7 @@ async function supprimerFourniture(id) {
 // Purement un suivi interne (matériel, consommables) — aucun lien avec ce qui est vendu,
 // qui a son propre suivi de stock dans Mes produits.
 async function enregistrerMouvementFourniture(id, type) {
+  if (!exigerPro('fournitures')) return;
   if (!verifierAccesEcriture()) return;
   var f = _fournituresCache.find(function(x) { return x.id === id; });
   if (!f) return;
@@ -3737,7 +3900,7 @@ async function enregistrerMouvementFourniture(id, type) {
   if (nouvelleQuantite < 0) nouvelleQuantite = 0;
 
   var { error: errMaj } = await sb.from('artisans_fournitures').update({ quantite: nouvelleQuantite, updated_at: new Date().toISOString() }).eq('id', id).eq('artisan_id', _artisan.id);
-  if (errMaj) { alert('Erreur : ' + errMaj.message); return; }
+  if (errMaj) { if (!traiterErreurPlan(errMaj)) alert('Erreur : ' + errMaj.message); return; }
 
   await sb.from('artisans_fournitures_mouvements').insert({
     fourniture_id: id, artisan_id: _artisan.id, type: type, quantite: quantite,
@@ -3760,6 +3923,7 @@ var _scanTypePrevu = null;  // 'achat' ou 'utilisation', fixé au moment d'ouvri
 var _codeEnAttenteAssociation = null;
 
 async function ouvrirScanFourniture(type) {
+  if (!exigerPro('fournitures')) return;
   _scanTypePrevu = type;
   document.getElementById('titre-scan-fourniture').textContent = type === 'achat' ? 'Scanner un achat' : 'Scanner une utilisation';
   document.getElementById('scan-fourniture-statut').textContent = '';
@@ -3826,6 +3990,7 @@ function traiterCodeScanne(texte, type) {
 }
 
 async function confirmerAssociationCode() {
+  if (!exigerPro('fournitures')) return;
   if (!verifierAccesEcriture()) return;
   var fournitureId = document.getElementById('associer-code-select').value;
   var enAttente = _codeEnAttenteAssociation;
@@ -3845,6 +4010,7 @@ async function confirmerAssociationCode() {
 // Génère un QR code à imprimer pour une fourniture — jamais un code-barres existant, toujours
 // un identifiant interne, reconnu directement sans passer par l'étape d'association.
 function genererQRFourniture(id) {
+  if (!exigerPro('fournitures')) return;
   var f = _fournituresCache.find(function(x) { return x.id === id; });
   if (!f) return;
   document.getElementById('titre-qr-fourniture').textContent = f.nom;
