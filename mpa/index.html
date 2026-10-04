@@ -666,8 +666,20 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="dcbdy" id="zone-photos" style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;">Chargement…</div>
 <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Ces photos apparaissent sur votre fiche publique CaraLink Artisans, pour donner confiance aux clients.</div>
 </div>
-</div></div></div><div class="pnl" id="p-ventes"><div class="sous-nav" id="nav-ventes"><button class="btab active" id="bt-vente-0" onclick="switchSousOnglet('nav-ventes','conteneur-ventes',0)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Mon catalogue</button><button class="btab" id="bt-vente-1" onclick="switchSousOnglet('nav-ventes','conteneur-ventes',1)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Mes commandes<span class="bcnt" id="cnt-commandes" style="display:none;background:var(--danger);color:#fff;">0</span></button></div><div id="conteneur-ventes"><div class="bpnl active" id="bp4">
-<div class="dcard">
+</div></div></div><div class="pnl" id="p-ventes"><div class="sous-nav" id="nav-ventes"><button class="btab active" id="bt-vente-0" onclick="switchSousOnglet('nav-ventes','conteneur-ventes',0)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Mon catalogue</button><button class="btab" id="bt-vente-1" onclick="switchSousOnglet('nav-ventes','conteneur-ventes',1)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>Ma boutique</button><button class="btab" id="bt-vente-2" onclick="switchSousOnglet('nav-ventes','conteneur-ventes',2)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Mes commandes<span class="bcnt" id="cnt-commandes" style="display:none;background:var(--danger);color:#fff;">0</span></button></div><div id="conteneur-ventes"><div class="bpnl active" id="bp4">
+
+
+
+
+<div class="dcard" style="margin-top:16px;">
+<div class="dchdr">
+<div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Mon catalogue</div>
+<button class="addb" onclick="openAjouterCatalogue()"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>Ajouter</button>
+</div>
+<div class="dcbdy" id="zone-catalogue" style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;">Chargement…</div>
+<div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 <strong>Disponible</strong> : prêt à vendre tout de suite. <strong>Sur commande</strong> : nécessite un délai de préparation (ex : gâteau). Marquez jusqu'à 3 produits ⭐ pour choisir vos produits phares — sans choix, ce sont vos meilleures ventes qui apparaissent automatiquement.</div>
+</div>
+</div><div class="bpnl"><div class="dcard">
 <div class="dchdr">
 <div class="dctit">🔗 Ma boutique en ligne</div>
 </div>
@@ -681,8 +693,25 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <button class="addb" id="btn-code-promo" onclick="sauverCodePromo()" style="flex-shrink:0;">Enregistrer</button>
 </div>
 </div>
+</div><div id="encart-stripe-connect-catalogue" style="margin-top:16px;"></div><div class="dcard" style="margin-top:16px;">
+<div class="dchdr">
+<div class="dctit">📊 Ventes par produit</div>
 </div>
-<div id="encart-stripe-connect-catalogue" style="margin-top:16px;"></div>
+<div id="zone-ventes-produits" style="padding:16px;font-size:13px;color:var(--mu);">Chargement…</div>
+</div></div><div class="bpnl" id="p7">
+<div class="dcard">
+<div class="dchdr">
+<div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Commandes</div>
+</div>
+<div class="dcbdy" id="zone-commandes" style="padding:16px;">Chargement…</div>
+<div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Pour une commande à livrer, "Planifier la livraison" l'ajoute directement à votre planning — elle passe alors par le calcul de trajet, comme n'importe quel rendez-vous.</div>
+</div>
+</div></div></div><div class="pnl" id="p-livraisons">
+<div class="dcard">
+<div class="dchdr"><div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M3 3h13v13H3z"></path><path d="M16 8h4l3 3v5h-7V8z"></path><circle cx="7.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>Mes livraisons du jour</div>
+</div>
+<div class="dcbdy" id="zone-livraisons" style="padding:16px;">Chargement…</div>
+</div>
 <div class="dcard" style="margin-top:16px;">
 <div class="dchdr">
 <div class="dctit">🚚 Frais de livraison</div>
@@ -706,36 +735,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <button id="btn-livraison-sauver" onclick="sauverTarifLivraison()" style="margin-top:12px;padding:8px 16px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">Enregistrer</button>
 <div id="livraison-exemple" style="margin-top:10px;font-size:12px;color:var(--mu);"></div>
 </div>
-</div>
-<div class="dcard" style="margin-top:16px;">
-<div class="dchdr">
-<div class="dctit">📊 Ventes par produit</div>
-</div>
-<div id="zone-ventes-produits" style="padding:16px;font-size:13px;color:var(--mu);">Chargement…</div>
-</div>
-<div class="dcard" style="margin-top:16px;">
-<div class="dchdr">
-<div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Mon catalogue</div>
-<button class="addb" onclick="openAjouterCatalogue()"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>Ajouter</button>
-</div>
-<div class="dcbdy" id="zone-catalogue" style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;">Chargement…</div>
-<div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 <strong>Disponible</strong> : prêt à vendre tout de suite. <strong>Sur commande</strong> : nécessite un délai de préparation (ex : gâteau). Marquez jusqu'à 3 produits ⭐ pour choisir vos produits phares — sans choix, ce sont vos meilleures ventes qui apparaissent automatiquement.</div>
-</div>
-</div><div class="bpnl" id="p7">
-<div class="dcard">
-<div class="dchdr">
-<div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Commandes</div>
-</div>
-<div class="dcbdy" id="zone-commandes" style="padding:16px;">Chargement…</div>
-<div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Pour une commande à livrer, "Planifier la livraison" l'ajoute directement à votre planning — elle passe alors par le calcul de trajet, comme n'importe quel rendez-vous.</div>
-</div>
-</div></div></div><div class="pnl" id="p-livraisons">
-<div class="dcard">
-<div class="dchdr"><div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M3 3h13v13H3z"></path><path d="M16 8h4l3 3v5h-7V8z"></path><circle cx="7.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>Mes livraisons du jour</div>
-</div>
-<div class="dcbdy" id="zone-livraisons" style="padding:16px;">Chargement…</div>
-</div>
-</div><div class="pnl" id="p-compta">
+</div></div><div class="pnl" id="p-compta">
 <div class="sous-nav" id="nav-compta"><button class="btab active" id="bt-compta-0" onclick="switchSousOnglet('nav-compta','conteneur-compta',0)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><line x1="12" x2="12" y1="1" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>Mon chiffre d'affaires</button><button class="btab" id="bt-compta-1" onclick="switchSousOnglet('nav-compta','conteneur-compta',1)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" x2="8" y1="13" y2="13"></line><line x1="16" x2="8" y1="17" y2="17"></line></svg>Mes factures</button><button class="btab" id="bt-compta-2" onclick="switchSousOnglet('nav-compta','conteneur-compta',2)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><line x1="18" x2="18" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="6" x2="6" y1="20" y2="14"></line></svg>Tableau de bord</button></div><div id="conteneur-compta"><div class="bpnl active"><div class="cpv2-card">
 <div class="cpv2-matrix-head">
 <div class="cpv2-matrix-headtext">

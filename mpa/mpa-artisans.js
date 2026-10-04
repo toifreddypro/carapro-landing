@@ -210,7 +210,7 @@ async function verifierAlertesMpaAi() {
       { label: 'Voir mes demandes', action: "switchTab(3);switchSousOnglet('nav-interventions','conteneur-interventions',1)" });
   } else if (nbCommandes > 0) {
     mpaAiDire('🛒 Vous avez ' + nbCommandes + ' nouvelle' + (nbCommandes > 1 ? 's' : '') + ' commande' + (nbCommandes > 1 ? 's' : '') + ' à traiter.', 'info',
-      { label: 'Voir mes commandes', action: "switchTab(4);switchSousOnglet('nav-ventes','conteneur-ventes',1)" });
+      { label: 'Voir mes commandes', action: "switchTab(4);switchSousOnglet('nav-ventes','conteneur-ventes',2)" });
   }
 
   // 5) Interventions "En cours" qui traînent depuis plus de 60 jours — un simple rappel, jamais
