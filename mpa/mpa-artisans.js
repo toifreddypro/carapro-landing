@@ -222,7 +222,7 @@ async function verifierAlertesMpaAi() {
   }
 
   // 6) Avis à demander — 48h après une intervention terminée, c'est le bon moment.
-  var aProposerAvis = await trouverInterventionsAvisAProposer();
+  var aProposerAvis = estPro() ? await trouverInterventionsAvisAProposer() : []; // suggestion réservée à l'offre Pro
   if (aProposerAvis.length === 1) {
     var seule = aProposerAvis[0];
     var nomClient = seule.mpa_artisans_clients.nom;
@@ -231,6 +231,21 @@ async function verifierAlertesMpaAi() {
   } else if (aProposerAvis.length > 1) {
     mpaAiDire('✨ ' + aProposerAvis.length + ' interventions terminées il y a 48h n\'ont pas encore reçu de demande d\'avis.', 'info',
       { label: 'Voir mon planning', action: "switchTab(2)" });
+  }
+
+  // 7) Abonnement Pro : paiement en échec, ou essai qui se termine bientôt. Le message ne suppose pas
+  // qu'il manque une carte (on ne sait pas si l'artisan en a déjà ajouté une) : il renvoie vers le portail.
+  if (_artisan.plan === 'pro') {
+    if (_artisan.abonnement_paiement_en_echec) {
+      mpaAiDire('⚠️ Le dernier paiement de votre abonnement Pro a échoué. Mettez votre carte à jour pour garder le Pro.', 'warning',
+        { label: 'Mettre à jour ma carte', action: 'ouvrirPortailAbonnement()' });
+    } else if (_artisan.abonnement_statut === 'essai' && !_artisan.abonnement_fin_programmee && _artisan.abonnement_echeance) {
+      var joursRestants = Math.ceil((new Date(_artisan.abonnement_echeance).getTime() - Date.now()) / 86400000);
+      if (joursRestants >= 0 && joursRestants <= 3) {
+        mpaAiDire('⏳ Votre essai Pro se termine ' + (joursRestants === 0 ? 'aujourd\'hui' : 'dans ' + joursRestants + ' jour' + (joursRestants > 1 ? 's' : '')) + '. Sans carte enregistrée, vous repasserez en Essentiel (rien n\'est supprimé).', 'warning',
+          { label: 'Gérer mon abonnement', action: 'ouvrirPortailAbonnement()' });
+      }
+    }
   }
 }
 
@@ -938,6 +953,7 @@ const SEUIL_JOURNEE_CHARGEE = 3;
 const FENETRE_DERNIERE_MINUTE_JOURS = 3;
 
 async function verifierTensionJournee(dateStr, communeNouvelle, idAExclure) {
+  if (!estPro()) return; // réservé à l'offre Pro (simple message d'information, jamais bloquant)
   if (!communeNouvelle) return; // rien à comparer sans commune
 
   var aujourdhui = new Date(); aujourdhui.setHours(0, 0, 0, 0);
@@ -1094,6 +1110,7 @@ function renderZoneAvisIntervention(i) {
 
 async function signalerRetard(interventionId) {
   if (!verifierAccesEcriture()) return;
+  if (!exigerPro('retard')) return;
   var i = (_itinInterventionsSemaine || []).find(function(x) { return x.id === interventionId; });
   if (!i) return;
   var client = i.mpa_artisans_clients;
@@ -1115,7 +1132,7 @@ async function signalerRetard(interventionId) {
     if (data.error) throw new Error(data.error);
     mpaAiDire('⏰ ' + client.nom + ' a été prévenu(e) d\'un retard d\'environ ' + minutes + ' minutes.', 'info');
   } catch (e) {
-    alert('Erreur : ' + e.message);
+    if (!traiterErreurPlan(e)) alert('Erreur : ' + e.message);
   }
 }
 
@@ -2077,6 +2094,8 @@ function proposerPassagePro(raison) {
   _dernierMessagePro = maintenant;
   var message = raison === 'produits'
     ? texteLimiteProduits() + texteEssai()
+    : raison === 'retard'
+    ? '⏰ Prévenir un client d\'un retard fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
     : '🔒 Mes fournitures fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : suivi de vos consommables, scan QR code / code-barres et alerte avant la rupture.' + texteEssai();
   mpaAiDire(message, 'pro', { label: 'Passer en Pro', action: 'lancerAbonnement()' });
 }
@@ -2099,7 +2118,8 @@ function afficherLimiteProduits(refus) {
 function traiterErreurPlan(erreur) {
   var m = (erreur && erreur.message) || '';
   var raison = m.indexOf('fournitures_reservees_pro') !== -1 ? 'fournitures'
-    : m.indexOf('limite_produits_essentiel') !== -1 ? 'produits' : null;
+    : m.indexOf('limite_produits_essentiel') !== -1 ? 'produits'
+    : m.indexOf('retard_reserve_pro') !== -1 ? 'retard' : null;
   if (!raison) return false;
   rafraichirPlan();
   proposerPassagePro(raison);
@@ -2143,6 +2163,29 @@ async function lancerAbonnement() {
     alert('Erreur : ' + e.message);
   } finally {
     if (btn && !redirige) { btn.disabled = false; btn.textContent = libelle || 'Passer en Pro →'; }
+  }
+}
+
+async function ouvrirPortailAbonnement() {
+  var btn = document.getElementById('btn-portail');
+  var libelle = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Ouverture du portail…'; }
+  var redirige = false;
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/create-portal-session-artisans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({}), // le client Stripe et l'adresse de retour sont décidés côté serveur
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    redirige = true;
+    window.location.href = data.url;
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+  } finally {
+    if (btn && !redirige) { btn.disabled = false; btn.textContent = libelle || 'Gérer mon abonnement →'; }
   }
 }
 
@@ -2191,10 +2234,18 @@ function renderMonOffre() {
     corps = 'Toutes les fonctions Pro vous sont offertes : catalogue illimité, Mes fournitures avec scan QR code / code-barres.';
   } else if (plan === 'pro') {
     badge = '<span style="' + styleBadge + 'background:rgba(15,157,120,.12);color:#0f9d78;">Pro</span>';
-    corps = (_artisan.abonnement_statut === 'essai'
-        ? 'Essai gratuit' + (fin ? ' jusqu\'au <strong>' + fin + '</strong>' : '') + '. Sans carte enregistrée à cette date, vous repasserez en Essentiel — rien n\'est supprimé.'
-        : 'Abonnement actif' + (fin ? ' — prochain renouvellement le <strong>' + fin + '</strong>' : '') + ' (' + PRIX_PRO_AFFICHE + ').') +
-      '<div style="margin-top:8px;font-size:11.5px;color:var(--mu);">Pour modifier ou résilier votre abonnement : contact@learnlogicstudio.com</div>';
+    var alerte = _artisan.abonnement_paiement_en_echec
+      ? '<div style="margin-bottom:8px;padding:9px 11px;border-radius:8px;background:rgba(220,38,38,.07);color:var(--danger);font-size:12.5px;font-weight:600;">⚠️ Le dernier paiement de votre abonnement a échoué. Mettez votre carte à jour pour garder le Pro.</div>'
+      : '';
+    var texte;
+    if (_artisan.abonnement_fin_programmee) {
+      texte = 'Résiliation programmée : vous gardez le Pro' + (fin ? ' jusqu\'au <strong>' + fin + '</strong>' : '') + ', puis vous repasserez en Essentiel — rien n\'est supprimé. Vous pouvez annuler cette résiliation à tout moment.';
+    } else if (_artisan.abonnement_statut === 'essai') {
+      texte = 'Essai gratuit' + (fin ? ' jusqu\'au <strong>' + fin + '</strong>' : '') + '. Ajoutez une carte avant cette date pour garder le Pro sans interruption — sinon vous repasserez en Essentiel, rien n\'est supprimé.';
+    } else {
+      texte = 'Abonnement actif' + (fin ? ' — prochain renouvellement le <strong>' + fin + '</strong>' : '') + ' (' + PRIX_PRO_AFFICHE + ').';
+    }
+    corps = alerte + texte + '<div><button class="addb" id="btn-portail" onclick="ouvrirPortailAbonnement()" style="margin-top:10px;">Gérer mon abonnement →</button></div>';
   } else {
     var nb = (typeof _catalogueCache !== 'undefined' && _catalogueCache) ? _catalogueCache.length : 0;
     badge = '<span style="' + styleBadge + 'background:var(--p2);color:var(--mu2);">Essentiel</span>';
@@ -3690,7 +3741,7 @@ async function choisirJourItineraire(dateStr) {
     var nomClient = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '—';
     // Bouton "Retard" discret — uniquement sur la journée en cours, jamais sur un jour futur
     // affiché en avance (prévenir d'un retard n'a de sens que pour aujourd'hui).
-    var boutonRetard = estAujourdhui
+    var boutonRetard = (estAujourdhui && estPro())
       ? '<button onclick="signalerRetard(\'' + i.id + '\')" title="Prévenir le client d\'un retard" style="margin-left:auto;flex-shrink:0;background:none;border:none;color:var(--mu);font-size:13px;cursor:pointer;opacity:.6;padding:2px 4px;">⏰</button>'
       : '';
     morceaux.push('<div style="display:flex;gap:10px;align-items:center;padding:6px 0;font-size:13px;">' +

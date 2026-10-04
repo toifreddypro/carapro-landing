@@ -7,6 +7,16 @@
 // artisans. Deux points d'entrée Stripe distincts pointent ici (un
 // webhook standard + un webhook "Connect"), chacun avec son propre
 // secret de signature — d'où les deux secrets vérifiés ci-dessous.
+//
+// PLAN ESSENTIEL / PRO : la colonne "plan" (gratuit / pro / pro_offert) est la
+// seule source de vérité pour savoir si un artisan a accès aux fonctions Pro.
+// Ce webhook la met à jour d'après l'état de l'abonnement Stripe, avec deux
+// garde-fous :
+//  - il ne touche JAMAIS à "pro_offert" (un testeur gardera son Pro même si
+//    un ancien abonnement Stripe expire) ;
+//  - un abonnement qui se termine ne fait redescendre l'artisan en gratuit que
+//    s'il s'agit de SON abonnement courant — la fin d'un vieil abonnement mis
+//    en pause ne doit jamais retirer le Pro de quelqu'un qui en a un nouveau.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -39,12 +49,56 @@ async function verifierSignatureMultiple(payload: string, sigHeader: string): Pr
   return false;
 }
 
+// Ancienne colonne abonnement_statut — conservée telle quelle (l'Admin l'affiche encore).
 function mapStatutStripeVersArtisans(statutStripe: string): string {
   if (statutStripe === "trialing") return "essai";
   if (statutStripe === "active") return "actif";
   if (statutStripe === "past_due") return "actif"; // Stripe retente le paiement automatiquement, on ne coupe pas tout de suite
-  // paused (essai expiré sans carte), canceled, unpaid, incomplete_expired → lecture seule
+  // paused (essai expiré sans carte), canceled, unpaid, incomplete_expired → lecture_seule (nom hérité de l'ancien modèle)
   return "lecture_seule";
+}
+
+// Un abonnement donne accès au Pro tant qu'il est en essai, actif, ou en retard de paiement
+// (Stripe retente seul — on ne retire pas le Pro à la première échéance ratée).
+function abonnementDonneLePro(statutStripe: string): boolean {
+  return statutStripe === "trialing" || statutStripe === "active" || statutStripe === "past_due";
+}
+
+// Date de fin d'essai (si essai) ou de prochain renouvellement (si actif) — affichée dans MPA.
+// Selon la version d'API Stripe, current_period_end est sur l'abonnement ou sur son premier élément.
+function extraireEcheance(sub: any): string | null {
+  if (!abonnementDonneLePro(sub.status)) return null;
+  const secondes = sub.status === "trialing"
+    ? sub.trial_end
+    : (sub.current_period_end ?? sub.items?.data?.[0]?.current_period_end);
+  return secondes ? new Date(secondes * 1000).toISOString() : null;
+}
+
+async function appliquerAbonnement(sub: any) {
+  const donneLePro = abonnementDonneLePro(sub.status);
+  const artisanId = sub.metadata?.artisan_id;
+  // Retrouve l'artisan par les métadonnées de l'abonnement ; filet de sécurité par customer_id si elles
+  // n'ont pas suivi (abonnement modifié depuis le dashboard Stripe sans passer par notre code).
+  const cible = (q: any) => artisanId ? q.eq("id", artisanId) : q.eq("stripe_customer_id", sub.customer);
+  // Un abonnement qui se TERMINE ne s'applique que s'il est l'abonnement courant de l'artisan
+  // (ou si l'artisan n'en a encore aucun) ; un abonnement qui DÉMARRE devient le courant.
+  const seulementSiCourant = (q: any) => donneLePro ? q : q.or(`stripe_subscription_id.eq.${sub.id},stripe_subscription_id.is.null`);
+
+  const { error: errAbo } = await seulementSiCourant(cible(sbAdmin.from("artisans").update({
+    abonnement_statut: mapStatutStripeVersArtisans(sub.status),
+    stripe_subscription_id: sub.id,
+    abonnement_echeance: extraireEcheance(sub),
+    // Résiliation demandée dans le portail : le Pro dure jusqu'à la fin de la période payée.
+    // (selon la version d'API, c'est cancel_at_period_end ou une date cancel_at)
+    abonnement_fin_programmee: donneLePro && (sub.cancel_at_period_end === true || sub.cancel_at != null),
+    abonnement_paiement_en_echec: sub.status === "past_due",
+  })));
+  if (errAbo) console.error("[stripe-webhook-artisans] Maj abonnement artisan échouée:", errAbo.message);
+
+  const { error: errPlan } = await seulementSiCourant(cible(sbAdmin.from("artisans").update({
+    plan: donneLePro ? "pro" : "gratuit",
+  }))).neq("plan", "pro_offert"); // jamais d'écrasement d'un Pro offert
+  if (errPlan) console.error("[stripe-webhook-artisans] Maj plan artisan échouée:", errPlan.message);
 }
 
 Deno.serve(async (req: Request) => {
@@ -58,25 +112,7 @@ Deno.serve(async (req: Request) => {
     const event = JSON.parse(payload);
 
     if (event.type.startsWith("customer.subscription.")) {
-      const sub = event.data.object;
-      const artisanId = sub.metadata?.artisan_id;
-      const statut = mapStatutStripeVersArtisans(sub.status);
-
-      if (artisanId) {
-        const { error } = await sbAdmin.from("artisans").update({
-          abonnement_statut: statut,
-          stripe_subscription_id: sub.id,
-        }).eq("id", artisanId);
-        if (error) console.error("[stripe-webhook-artisans] Maj artisan (par artisan_id) échouée:", error.message);
-      } else {
-        // Filet de sécurité : si le metadata n'a pas suivi (ex. abonnement modifié depuis le dashboard Stripe
-        // sans passer par notre code), on retrouve l'artisan via le customer_id.
-        const { error } = await sbAdmin.from("artisans").update({
-          abonnement_statut: statut,
-          stripe_subscription_id: sub.id,
-        }).eq("stripe_customer_id", sub.customer);
-        if (error) console.error("[stripe-webhook-artisans] Maj artisan (par customer_id) échouée:", error.message);
-      }
+      await appliquerAbonnement(event.data.object);
     }
 
     // ── Paiement d'une commande du catalogue (destination charge) ──

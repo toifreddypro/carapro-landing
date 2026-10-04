@@ -44,8 +44,10 @@ Deno.serve(async (req: Request) => {
     const { data: userData, error: userErr } = await sbAnon.auth.getUser(token);
     if (userErr || !userData?.user) return json({ error: "Session invalide." }, 401);
 
-    const { data: artisan } = await sbAdmin.from("artisans").select("id, nom_entreprise").eq("user_id", userData.user.id).maybeSingle();
+    const { data: artisan } = await sbAdmin.from("artisans").select("id, nom_entreprise, plan").eq("user_id", userData.user.id).maybeSingle();
     if (!artisan) return json({ error: "Profil artisan introuvable." }, 404);
+    // Réservé à l'offre Pro — refusé ici aussi, jamais seulement caché dans l'interface.
+    if (artisan.plan !== "pro" && artisan.plan !== "pro_offert") return json({ error: "retard_reserve_pro" }, 403);
 
     const body = await req.json().catch(() => null);
     const minutes = Number(body?.minutes);
