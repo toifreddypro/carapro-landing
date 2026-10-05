@@ -262,43 +262,45 @@ function renderZonePrelevementPrestations() {
     '<div class="dcard">' +
       '<div class="dchdr"><span>Prélèvement mensuel — commission prestations</span></div>' +
       '<div class="dcbdy" style="padding:16px;">' +
-        '<p style="font-size:12.5px;color:var(--mu);margin-bottom:12px;">Calcule et débite, pour chaque artisan ayant une carte enregistrée, 7 % de la part au-dessus de 300 € de prestations "annuaire" sur le mois choisi. Un mois déjà traité n\'est jamais retraité.</p>' +
+        '<p style="font-size:12.5px;color:var(--mu);margin-bottom:12px;">Calcule et débite, pour chaque artisan ayant une carte enregistrée, 7 % de la part au-dessus de 200 € de prestations "annuaire" sur le mois choisi. Un mois déjà traité n\'est jamais retraité.</p>' +
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">' +
           '<label style="font-size:12.5px;color:var(--mu2);">Mois à traiter :</label>' +
           '<input type="month" id="pp-mois" value="' + moisDernierISO().slice(0, 7) + '" style="padding:6px 10px;border-radius:7px;border:1px solid var(--brd);">' +
-          '<button class="btn-primary" id="btn-pp-lancer" onclick="lancerPrelevementPrestations()" style="padding:8px 16px;font-size:12.5px;">Lancer le prélèvement</button>' +
+          '<button class="btn-secondary" id="btn-pp-simuler" onclick="lancerPrelevementPrestations(true)" style="padding:8px 16px;font-size:12.5px;">Simuler (rien n\'est débité)</button>' +
+          '<button class="btn-primary" id="btn-pp-lancer" onclick="lancerPrelevementPrestations(false)" style="padding:8px 16px;font-size:12.5px;">Lancer le prélèvement</button>' +
         '</div>' +
         '<div id="pp-resultat"></div>' +
       '</div>' +
     '</div>';
 }
 
-async function lancerPrelevementPrestations() {
+async function lancerPrelevementPrestations(simuler) {
   var btn = document.getElementById('btn-pp-lancer');
+  var btnSim = document.getElementById('btn-pp-simuler');
   var zoneRes = document.getElementById('pp-resultat');
   var moisChoisi = document.getElementById('pp-mois').value; // "AAAA-MM"
   if (!moisChoisi) { alert('Choisis un mois.'); return; }
   var moisISO = moisChoisi + '-01';
 
-  if (!confirm('Lancer le prélèvement pour ' + moisChoisi + ' ?\n\nÇa va débiter réellement les cartes enregistrées des artisans concernés. Cette action ne peut pas être annulée (mais ne prélève jamais deux fois le même mois).')) return;
+  if (!simuler && !confirm('Lancer le prélèvement pour ' + moisChoisi + ' ?\n\nÇa va débiter réellement les cartes enregistrées des artisans concernés. Cette action ne peut pas être annulée (mais ne prélève jamais deux fois le même mois).')) return;
 
-  btn.disabled = true; btn.textContent = 'Traitement en cours…';
+  btn.disabled = true; btnSim.disabled = true; (simuler ? btnSim : btn).textContent = 'Traitement en cours…';
   zoneRes.innerHTML = '';
   try {
     var { data: { session } } = await sb.auth.getSession();
     var res = await fetch(SUPABASE_URL + '/functions/v1/prelever-commission-prestations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
-      body: JSON.stringify({ mois_iso: moisISO }),
+      body: JSON.stringify({ mois_iso: moisISO, simuler: !!simuler }),
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    var LABELS = { reussi: '✅ Prélevé', sous_le_seuil: '— Sous le seuil (rien dû)', sous_minimum_stripe: 'ℹ️ Trop petit pour Stripe (< 0,50€)', echoue: '❌ Échec', deja_traite: '⏭️ Déjà traité', erreur: '⚠️ Erreur' };
-    var COULEURS = { reussi: '#0f9d78', sous_le_seuil: 'var(--mu)', sous_minimum_stripe: 'var(--mu)', echoue: '#dc2626', deja_traite: 'var(--mu)', erreur: '#dc2626' };
+    var LABELS = { reussi: '✅ Prélevé', sous_le_seuil: '— Sous le seuil (rien dû)', sous_minimum_stripe: 'ℹ️ Trop petit pour Stripe (< 0,50€)', echoue: '❌ Échec', deja_traite: '⏭️ Déjà traité', erreur: '⚠️ Erreur', a_prelever: '💶 Serait prélevé', carte_manquante: '⚠️ Aucune carte enregistrée', reussi_non_enregistre: '⚠️ Prélevé mais NON enregistré' };
+    var COULEURS = { reussi: '#0f9d78', sous_le_seuil: 'var(--mu)', sous_minimum_stripe: 'var(--mu)', echoue: '#dc2626', deja_traite: 'var(--mu)', erreur: '#dc2626', a_prelever: '#0f9d78', carte_manquante: '#d97706', reussi_non_enregistre: '#dc2626' };
 
     zoneRes.innerHTML =
-      '<p style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;">' + data.traites + ' artisan(s) examiné(s) pour ' + moisChoisi + '.</p>' +
+      '<p style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;">' + (data.simulation ? '<strong>SIMULATION — aucune carte n\'a été débitée, rien n\'a été enregistré.</strong> ' : '') + data.traites + ' artisan(s) examiné(s) pour ' + moisChoisi + '.</p>' +
       '<table style="width:100%;border-collapse:collapse;font-size:12.5px;">' +
         '<thead><tr style="text-align:left;color:var(--mu);"><th style="padding:4px 8px;">Artisan</th><th style="padding:4px 8px;">Résultat</th><th style="padding:4px 8px;">Détail</th></tr></thead>' +
         '<tbody>' +
@@ -306,9 +308,12 @@ async function lancerPrelevementPrestations() {
             var detail = r.statut === 'reussi' ? (r.commission || 0) + ' € prélevés'
               : r.statut === 'sous_le_seuil' ? (r.ca || 0) + ' € de CA ce mois-ci'
               : r.statut === 'sous_minimum_stripe' ? (r.commission || 0) + ' € dus, non prélevés (trop petit)'
+              : r.statut === 'a_prelever' ? (r.commission || 0) + ' € seraient prélevés'
+              : r.statut === 'carte_manquante' ? (r.commission || 0) + ' € dus, mais aucune carte enregistrée'
+              : r.statut === 'reussi_non_enregistre' ? (r.erreur || '') + ' Paiement Stripe : ' + (r.stripe_payment_intent_id || '?')
               : r.erreur || '';
             return '<tr style="border-top:1px solid var(--brd);">' +
-              '<td style="padding:4px 8px;">' + escHtml(r.artisan_id) + '</td>' +
+              '<td style="padding:4px 8px;">' + escHtml(r.nom || r.artisan_id) + '</td>' +
               '<td style="padding:4px 8px;color:' + (COULEURS[r.statut] || 'inherit') + ';font-weight:600;">' + (LABELS[r.statut] || r.statut) + '</td>' +
               '<td style="padding:4px 8px;color:var(--mu2);">' + escHtml(String(detail)) + '</td>' +
             '</tr>';
@@ -318,7 +323,7 @@ async function lancerPrelevementPrestations() {
   } catch (e) {
     zoneRes.innerHTML = '<p style="color:var(--danger);font-size:12.5px;">Erreur : ' + escHtml(e.message) + '</p>';
   } finally {
-    btn.disabled = false; btn.textContent = 'Lancer le prélèvement';
+    btn.disabled = false; btnSim.disabled = false; btn.textContent = 'Lancer le prélèvement'; btnSim.textContent = 'Simuler (rien n\'est débité)';
   }
 }
 
@@ -349,8 +354,8 @@ async function chargerAvisProduit() {
             return '<div style="border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;">' +
               '<div style="font-size:12px;color:var(--mu);margin-bottom:6px;">' + escHtml(a.type) + ' — ' + escHtml(a.nom_affiche) + '</div>' +
               '<div style="font-size:13.5px;margin-bottom:12px;">« ' + escHtml(a.texte) + ' »</div>' +
-              '<button class="btn-primary" style="padding:6px 14px;font-size:12px;" onclick="modererAvisProduit(\'' + a.id + '\',\'valider\')">✓ Valider</button> ' +
-              '<button class="btn-secondary" style="padding:6px 14px;font-size:12px;" onclick="modererAvisProduit(\'' + a.id + '\',\'refuser\')">✕ Refuser</button>' +
+              '<button class="btn-primary" style="padding:6px 14px;font-size:12px;" onclick="modererAvisProduit(' + attrJs(a.id) + ',\'valider\')">✓ Valider</button> ' +
+              '<button class="btn-secondary" style="padding:6px 14px;font-size:12px;" onclick="modererAvisProduit(' + attrJs(a.id) + ',\'refuser\')">✕ Refuser</button>' +
             '</div>';
           }).join('') +
         '</div>' +
