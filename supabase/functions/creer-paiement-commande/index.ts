@@ -94,10 +94,21 @@ function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
+// Stripe répond 409 quand une requête portant la MÊME clé d'idempotence est encore en cours (double-clic, deux lancements qui
+// se croisent) : on attend un instant puis on renvoie la même requête, qui rejoue alors le résultat du premier appel.
+async function fetchAvecReprise(url: string, init: RequestInit): Promise<Response> {
+  let res = await fetch(url, init);
+  for (let i = 1; i <= 4 && res.status === 409; i++) {
+    await new Promise((r) => setTimeout(r, 300 * i));
+    res = await fetch(url, init);
+  }
+  return res;
+}
+
 async function stripeCall(path: string, params: Record<string, string>, cleIdempotence?: string) {
   const headers: Record<string, string> = { "Authorization": `Bearer ${STRIPE_SECRET_KEY}`, "Content-Type": "application/x-www-form-urlencoded" };
   if (cleIdempotence) headers["Idempotency-Key"] = cleIdempotence;
-  const res = await fetch(`https://api.stripe.com/v1/${path}`, { method: "POST", headers, body: new URLSearchParams(params) });
+  const res = await fetchAvecReprise(`https://api.stripe.com/v1/${path}`, { method: "POST", headers, body: new URLSearchParams(params) });
   const data = await res.json();
   if (!res.ok) { const e: any = new Error(data?.error?.message || "Erreur Stripe"); e.stripeCode = data?.error?.code || data?.error?.type; throw e; }
   return data;

@@ -102,6 +102,17 @@ async function soldeArtisanCents(accountId: string): Promise<number> {
   return somme(data.available) + somme(data.pending);
 }
 
+// Stripe répond 409 quand une requête portant la MÊME clé d'idempotence est encore en cours (double-clic, deux lancements qui
+// se croisent) : on attend un instant puis on renvoie la même requête, qui rejoue alors le résultat du premier appel.
+async function fetchAvecReprise(url: string, init: RequestInit): Promise<Response> {
+  let res = await fetch(url, init);
+  for (let i = 1; i <= 4 && res.status === 409; i++) {
+    await new Promise((r) => setTimeout(r, 300 * i));
+    res = await fetch(url, init);
+  }
+  return res;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
@@ -167,7 +178,7 @@ Deno.serve(async (req: Request) => {
     });
     if (motif) params.set("metadata[motif]", motif);
 
-    const res = await fetch("https://api.stripe.com/v1/refunds", {
+    const res = await fetchAvecReprise("https://api.stripe.com/v1/refunds", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${STRIPE_SECRET_KEY}`,

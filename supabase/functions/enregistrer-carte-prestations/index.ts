@@ -11,6 +11,14 @@
 // Une fois confirmé, c'est le webhook (événement setup_intent.succeeded)
 // qui marque la carte comme enregistrée — jamais le frontend seul, pour ne
 // jamais faire confiance à une confirmation qu'on n'a pas vue soi-même.
+//
+// Sécurité :
+//  - chaque appel agit sur le profil de la personne CONNECTÉE (jamais un identifiant envoyé par la page) ;
+//  - la création du client Stripe est idempotente : deux appels simultanés (double-clic) ne créent jamais deux clients,
+//    sinon la carte se retrouverait sur un client orphelin et le prélèvement mensuel n'en trouverait aucune ;
+//  - la carte seule est proposée (le prélèvement mensuel ne sait débiter qu'une carte) ;
+//  - l'adresse email du client Stripe est celle du compte de connexion si le profil n'en a pas ;
+//  - le détail d'une erreur Stripe n'est jamais renvoyé.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -21,15 +29,29 @@ const corsHeaders = {
 };
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
+const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
 
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
-async function stripeCall(path: string, params: Record<string, string>) {
-  const res = await fetch(`https://api.stripe.com/v1/${path}`, {
+// Stripe répond 409 quand une requête portant la MÊME clé d'idempotence est encore en cours (double-clic, deux lancements qui
+// se croisent) : on attend un instant puis on renvoie la même requête, qui rejoue alors le résultat du premier appel.
+async function fetchAvecReprise(url: string, init: RequestInit): Promise<Response> {
+  let res = await fetch(url, init);
+  for (let i = 1; i <= 4 && res.status === 409; i++) {
+    await new Promise((r) => setTimeout(r, 300 * i));
+    res = await fetch(url, init);
+  }
+  return res;
+}
+
+async function stripeCall(path: string, params: Record<string, string>, cleIdempotence?: string) {
+  const headers: Record<string, string> = { "Authorization": `Bearer ${STRIPE_SECRET_KEY}`, "Content-Type": "application/x-www-form-urlencoded" };
+  if (cleIdempotence) headers["Idempotency-Key"] = cleIdempotence;
+  const res = await fetchAvecReprise(`https://api.stripe.com/v1/${path}`, {
     method: "POST",
-    headers: { "Authorization": `Bearer ${STRIPE_SECRET_KEY}`, "Content-Type": "application/x-www-form-urlencoded" },
+    headers,
     body: new URLSearchParams(params),
   });
   const data = await res.json();
@@ -59,26 +81,28 @@ Deno.serve(async (req: Request) => {
 
     let customerId = artisan.stripe_customer_id as string | null;
     if (!customerId) {
+      // Clé d'idempotence : deux appels simultanés obtiennent le MÊME client Stripe (jamais deux).
       const customer = await stripeCall("customers", {
-        email: artisan.email || "",
+        email: artisan.email || user.email || "",
         name: artisan.nom_entreprise || "",
         "metadata[artisan_id]": artisan.id,
-      });
+      }, `client-carte-prestations_${artisan.id}`);
       customerId = customer.id;
-      await sb.from("artisans").update({ stripe_customer_id: customerId }).eq("id", artisan.id);
+      const { error: errMaj } = await sb.from("artisans").update({ stripe_customer_id: customerId }).eq("id", artisan.id);
+      if (errMaj) throw errMaj;
     }
 
     const setupIntent = await stripeCall("setup_intents", {
       customer: customerId!,
       usage: "off_session",
       "metadata[artisan_id]": artisan.id,
-      "automatic_payment_methods[enabled]": "true",
+      "payment_method_types[0]": "card", // le prélèvement mensuel ne débite qu'une carte
     });
 
     return json({ client_secret: setupIntent.client_secret });
 
   } catch (e) {
     console.error("[enregistrer-carte-prestations]", e);
-    return json({ error: (e as Error).message || "Erreur serveur." }, 500);
+    return json({ error: MSG_ERREUR_GENERIQUE }, 500); // le détail (Stripe, base) reste dans les journaux
   }
 });

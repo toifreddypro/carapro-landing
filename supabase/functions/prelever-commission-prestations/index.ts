@@ -107,12 +107,23 @@ async function caPrestationsAnnuaireDuMois(sb: any, artisanId: string, debut: st
   return totalCentimes;
 }
 
+// Stripe répond 409 quand une requête portant la MÊME clé d'idempotence est encore en cours (double-clic, deux lancements qui
+// se croisent) : on attend un instant puis on renvoie la même requête, qui rejoue alors le résultat du premier appel.
+async function fetchAvecReprise(url: string, init: RequestInit): Promise<Response> {
+  let res = await fetch(url, init);
+  for (let i = 1; i <= 4 && res.status === 409; i++) {
+    await new Promise((r) => setTimeout(r, 300 * i));
+    res = await fetch(url, init);
+  }
+  return res;
+}
+
 async function stripeCall(path: string, params: Record<string, string>, cleIdempotence?: string) {
   const headers: Record<string, string> = { "Authorization": `Bearer ${STRIPE_SECRET_KEY}`, "Content-Type": "application/x-www-form-urlencoded" };
   if (cleIdempotence) headers["Idempotency-Key"] = cleIdempotence;
-  const res = await fetch(`https://api.stripe.com/v1/${path}`, { method: "POST", headers, body: new URLSearchParams(params) });
+  const res = await fetchAvecReprise(`https://api.stripe.com/v1/${path}`, { method: "POST", headers, body: new URLSearchParams(params) });
   const data = await res.json();
-  return { ok: res.ok, data };
+  return { ok: res.ok, status: res.status, data };
 }
 
 async function stripeGet(path: string) {
@@ -192,7 +203,7 @@ async function traiterUnArtisan(sb: any, artisan: any, debut: string, finExclusi
 
   if (simuler) return { artisan_id: artisan.id, nom, statut: "a_prelever", commission: commissionCentimes / 100 };
 
-  const { ok, data: intent } = await stripeCall("payment_intents", {
+  const { ok, status, data: intent } = await stripeCall("payment_intents", {
     amount: String(commissionCentimes),
     currency: "eur",
     customer: artisan.stripe_customer_id,
@@ -203,6 +214,10 @@ async function traiterUnArtisan(sb: any, artisan: any, debut: string, finExclusi
     "metadata[artisan_id]": artisan.id,
     "metadata[mois]": moisISO,
   }, `commission-prestations_${artisan.id}_${moisISO}_${commissionCentimes}`); // même artisan + même mois + même montant = jamais deux débits
+
+  // Une autre requête avec la même clé est encore en cours après plusieurs attentes (lancement simultané) : ce n'est PAS un échec de
+  // carte. On ne note rien et on n'écrit pas à l'artisan : l'autre lancement fait le travail.
+  if (!ok && status === 409) return { artisan_id: artisan.id, nom, statut: "deja_traite" };
 
   // Seul un paiement dont Stripe confirme l'état « réussi » compte comme prélevé.
   if (!ok || intent?.status !== "succeeded") {

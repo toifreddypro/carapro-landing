@@ -23,6 +23,7 @@
 //    14 chiffres avant d'être envoyé à l'API de l'État ;
 //  - les champs sont vérifiés AVANT l'anti-robot : une faute de frappe ne consomme pas le jeton ;
 //  - un seul profil par compte, même si deux appels se croisent (voir securite-inscription.sql) ;
+//  - l'email du profil est celui du COMPTE DE CONNEXION (jamais une valeur envoyée par la page) ;
 //  - une erreur interne n'est jamais détaillée.
 // ═══════════════════════════════════════════════════════════
 
@@ -184,7 +185,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data: artisan, error } = await sbAdmin.from("artisans").insert({
-      user_id: userId, nom_entreprise: nom, secteur: secteurCode, commune: communeNom, telephone: tel,
+      user_id: userId, email: userData.user.email ?? null, // l'email du compte de connexion : les notifications (commandes, prélèvement…) partent de là
+      nom_entreprise: nom, secteur: secteurCode, commune: communeNom, telephone: tel,
       bio: bioTxt || null, rayon_intervention_km: rayon,
       siret: siretPropre || null, verifie: false, verification_statut: statutVerif,
       actif: true,
