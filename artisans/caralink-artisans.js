@@ -790,7 +790,7 @@ function ouvrirModalCreneau() {
   var dateAff = new Date(ctx.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   div.innerHTML =
     '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:12px;" onclick="if(event.target===this)fermerModalDevis()">' +
-      '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;">' +
+      '<div style="' + STYLE_BOITE_DEVIS + '">' +
         '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">' + T('creneau_titre') + '</div>' +
         '<div style="font-size:12.5px;color:var(--mu2,#777);margin-bottom:16px;text-transform:capitalize;">' + dateAff + ' à ' + ctx.heureDebut + ' — ' + escHtml(ctx.adresse) + '</div>' +
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
@@ -878,7 +878,7 @@ function ouvrirModalSurMesure() {
   if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
   div.innerHTML =
     '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:12px;" onclick="if(event.target===this)fermerModalDevis()">' +
-      '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;">' +
+      '<div style="' + STYLE_BOITE_DEVIS + '">' +
         '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">' + T('surmesure_titre') + '</div>' +
         '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">' + T('surmesure_intro1') + '<br>📍 ' + escHtml(ctx.adresse) + '</div>' +
         '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
@@ -974,6 +974,9 @@ function redimensionnerImage(file, maxWidth) {
 //  « renseignement » : un échange de messages, aucun déplacement.
 //  « visite »        : l'artisan se déplace pour estimer le chantier (frais de déplacement annoncés avant l'envoi).
 //  « reservation »   : réservation directe d'un créneau par un client qui connaît déjà l'artisan (fenêtres de créneau seulement).
+// Boîte des fenêtres de demande : plus haute que l'écran dès qu'on affiche les frais ou la question « première intervention » →
+// elle DÉFILE (comme la fenêtre de commande), pour que les boutons du bas restent toujours accessibles, aussi sur téléphone.
+var STYLE_BOITE_DEVIS = 'background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;max-height:90vh;overflow-y:auto;overscroll-behavior:contain;';
 var _typeInterventionChoisi = null;
 var TYPES_INTERVENTION = [
   { code: 'renseignement', labelKey: 'type_renseignement', descKey: 'type_renseignement_desc' },
@@ -1171,7 +1174,7 @@ function ouvrirModalDevis(artisanId, nomArtisan, secteurArtisan) {
   if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
   div.innerHTML =
     '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:12px;" onclick="if(event.target===this)fermerModalDevis()">' +
-      '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;">' +
+      '<div style="' + STYLE_BOITE_DEVIS + '">' +
         '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">' + T('devis_titre') + '</div>' +
         '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">' + (nomArtisan ? T('devis_sub_a') + ' ' + escHtml(nomArtisan) + '. ' : '') + T('devis_sub_suite') + '</div>' +
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
@@ -1380,7 +1383,7 @@ function ouvrirModalDevisGeneral() {
   }).join('');
   div.innerHTML =
     '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:12px;" onclick="if(event.target===this)fermerModalDevis()">' +
-      '<div style="background:var(--panel,#fff);border-radius:14px;padding:24px;max-width:440px;width:100%;">' +
+      '<div style="' + STYLE_BOITE_DEVIS + '">' +
         '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">' + T('devisgen_titre') + '</div>' +
         '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">' + T('devisgen_intro') + '</div>' +
         '<select id="devis-secteur" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Outfit\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:6px;">' + options + '</select>' +
