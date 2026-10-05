@@ -454,6 +454,7 @@ async function recupererLitige(litigeId) {
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error);
+    if (data.avertissement) alert('⚠️ ' + data.avertissement);
     await chargerLitiges();
   } catch (e) {
     alert('Erreur : ' + e.message);

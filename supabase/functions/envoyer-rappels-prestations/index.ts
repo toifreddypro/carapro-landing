@@ -15,6 +15,14 @@
 // en Guadeloupe, UTC-4) — loin de tout passage de minuit des deux côtés,
 // pour que "demain" ne se calcule jamais de travers (voir le piège connu
 // de fuseau horaire noté dans le projet).
+//
+// Sécurité :
+//  - tout ce qui entre dans l'email (nom du client, de l'entreprise, du service, téléphone) est échappé : sans ça,
+//    un artisan pouvait y glisser un faux lien, envoyé depuis ton adresse à n'importe quelle adresse de client ;
+//  - le rappel est « réclamé » AVANT l'envoi : deux lancements simultanés (cron + bouton) n'envoient jamais deux fois
+//    le même rappel ; si l'envoi échoue, la réclamation est annulée et le rappel sera retenté ;
+//  - « demain » se calcule à l'heure de la Guadeloupe (UTC-4), jamais en UTC ;
+//  - la date demandée est contrôlée ; le secret du déclenchement automatique est comparé sans fuite sur le temps.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -26,13 +34,31 @@ const corsHeaders = {
 
 const ADMIN_EMAIL = "toifreddypro@gmail.com";
 const CRON_SECRET = Deno.env.get("RAPPELS_CRON_SECRET");
+const DECALAGE_LOCAL_MS = 4 * 3600 * 1000; // Guadeloupe = UTC-4
+const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
+
+function escHtml(s: unknown): string {
+  return String(s ?? "").replace(/[&<>"']/g, (m) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }) as Record<string, string>)[m]);
+}
+function egalConstant(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+function dateValide(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(s + "T00:00:00Z");
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
 
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
 function demainISO(): string {
-  const d = new Date();
+  // La date du jour en Guadeloupe (UTC-4), puis +1 jour : correct à n'importe quelle heure, pas seulement à 14h UTC.
+  const d = new Date(Date.now() - DECALAGE_LOCAL_MS);
   d.setUTCDate(d.getUTCDate() + 1);
   return d.toISOString().slice(0, 10);
 }
@@ -60,7 +86,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const secretCron = req.headers.get("X-Cron-Secret");
-    const estCron = !!CRON_SECRET && secretCron === CRON_SECRET;
+    const estCron = !!CRON_SECRET && egalConstant(secretCron ?? "", CRON_SECRET);
 
     if (!estCron) {
       const authHeader = req.headers.get("Authorization");
@@ -74,6 +100,8 @@ Deno.serve(async (req: Request) => {
 
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const body = await req.json().catch(() => ({}));
+    if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Requête invalide." }, 400);
+    if (body.date_iso != null && body.date_iso !== "" && (typeof body.date_iso !== "string" || !dateValide(body.date_iso))) return json({ error: "Date invalide (format AAAA-MM-JJ)." }, 400);
     const dateCible = body.date_iso || demainISO();
 
     const { data: interventions, error } = await sb.from("mpa_artisans_interventions")
@@ -94,19 +122,29 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      const heure = inter.heure_debut || (inter.creneau === "matin" ? "dans la matinée" : inter.creneau === "apres-midi" ? "dans l'après-midi" : "");
+      const heure = inter.heure_debut || (inter.creneau === "matin" ? "dans la matinée" : (inter.creneau === "apres_midi" || inter.creneau === "apres-midi") ? "dans l'après-midi" : "");
+      // « Réclamation » AVANT l'envoi : un seul des lancements simultanés l'obtient (jamais deux emails identiques).
+      const { data: reclame, error: errReclame } = await sb.from("mpa_artisans_interventions")
+        .update({ rappel_envoye: true }).eq("id", inter.id).eq("rappel_envoye", false).select("id");
+      if (errReclame) { console.error("[envoyer-rappels-prestations] Réclamation impossible :", errReclame.message); resultats.push({ intervention_id: inter.id, statut: "erreur" }); continue; }
+      if (!reclame || reclame.length === 0) { resultats.push({ intervention_id: inter.id, statut: "deja_envoye" }); continue; }
+
       const html = `<div style="font-family:sans-serif;max-width:480px;">
         <h2 style="color:#B5502F;">Rappel — rendez-vous demain</h2>
-        <p>Bonjour ${client.nom || ""},</p>
-        <p>Petit rappel : <strong>${artisan?.nom_entreprise || "votre artisan"}</strong> a rendez-vous avec vous demain${service?.nom_service ? " pour : " + service.nom_service : ""}${heure ? " — " + heure : ""}.</p>
-        ${artisan?.telephone ? `<p>Une question ou besoin de reporter ? Contactez directement l'artisan au ${artisan.telephone}.</p>` : ""}
+        <p>Bonjour ${escHtml(client.nom || "")},</p>
+        <p>Petit rappel : <strong>${escHtml(artisan?.nom_entreprise || "votre artisan")}</strong> a rendez-vous avec vous demain${service?.nom_service ? " pour : " + escHtml(service.nom_service) : ""}${heure ? " — " + escHtml(heure) : ""}.</p>
+        ${artisan?.telephone ? `<p>Une question ou besoin de reporter ? Contactez directement l'artisan au ${escHtml(artisan.telephone)}.</p>` : ""}
       </div>`;
 
-      const envoye = await envoyerEmail(client.email, `Rappel : rendez-vous demain avec ${artisan?.nom_entreprise || "votre artisan"}`, html);
+      // Sujet : texte brut sur une seule ligne, de longueur raisonnable.
+      const nomSujet = String(artisan?.nom_entreprise || "votre artisan").replace(/[\u0000-\u001f\u007f]+/g, " ").trim().slice(0, 80);
+      const envoye = await envoyerEmail(client.email, `Rappel : rendez-vous demain avec ${nomSujet}`, html);
       if (envoye) {
-        await sb.from("mpa_artisans_interventions").update({ rappel_envoye: true }).eq("id", inter.id);
         resultats.push({ intervention_id: inter.id, statut: "envoye" });
       } else {
+        // L'envoi a échoué : on annule la réclamation, le rappel sera retenté au prochain passage.
+        const { error: errAnnul } = await sb.from("mpa_artisans_interventions").update({ rappel_envoye: false }).eq("id", inter.id);
+        if (errAnnul) console.error("[envoyer-rappels-prestations] Annulation de la réclamation impossible :", errAnnul.message);
         resultats.push({ intervention_id: inter.id, statut: "echec_envoi" });
       }
     }
@@ -115,6 +153,6 @@ Deno.serve(async (req: Request) => {
 
   } catch (e) {
     console.error("[envoyer-rappels-prestations]", e);
-    return json({ error: (e as Error).message || "Erreur serveur." }, 500);
+    return json({ error: MSG_ERREUR_GENERIQUE }, 500); // le détail reste dans les journaux
   }
 });
