@@ -21,7 +21,12 @@
 //   • vérification du solde Stripe de l'artisan AVANT de rembourser (Stripe ne
 //     bloque pas un solde négatif, et c'est la plateforme qui en répond) ;
 //   • clé d'idempotence : un double clic ne rembourse jamais deux fois ;
-//   • jamais plus que le montant encore remboursable.
+//   • jamais plus que le montant encore remboursable ;
+//   • les entrées sont contrôlées (identifiant, montant, motif) et aucune erreur interne n'est détaillée ;
+//   • un message de refus de Stripe n'est montré qu'à l'admin (il peut parler des finances de la plateforme) ;
+//   • la mise à jour de la commande ne remplace jamais une valeur plus récente (deux remboursements simultanés).
+//   Les colonnes de paiement d'une commande ne sont modifiables que par le serveur (securite-commandes.sql) : cette
+//   fonction peut donc se fier à ce qu'elle lit.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -33,6 +38,16 @@ const corsHeaders = {
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const ADMIN_EMAIL = "toifreddypro@gmail.com";
+const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant ou contactez le support.";
+
+// Montant demandé : rien (= tout le reste), un nombre, ou un texte numérique (« 12.50 » / « 12,50 »). Tout autre type est refusé.
+function lireMontant(v: unknown): number | null | "invalide" {
+  if (v === null || v === undefined || v === "") return null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : "invalide";
+  if (typeof v === "string" && /^\d+([.,]\d{1,2})?$/.test(v.trim())) return Number(v.trim().replace(",", "."));
+  return "invalide";
+}
 
 class ErreurMetier extends Error {
   status: number;
@@ -102,7 +117,11 @@ Deno.serve(async (req: Request) => {
     if (!user) return json({ error: "Session invalide." }, 401);
 
     const body = await req.json().catch(() => null);
-    if (!body?.commande_id) return json({ error: "commande_id manquant." }, 400);
+    if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Requête invalide." }, 400);
+    if (!body.commande_id) return json({ error: "commande_id manquant." }, 400);
+    if (typeof body.commande_id !== "string" || !REGEX_UUID.test(body.commande_id)) return json({ error: "commande_id invalide." }, 400);
+    const montantDemande = lireMontant(body.montant);
+    if (montantDemande === "invalide") return json({ error: "Montant à rembourser invalide." }, 400);
 
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: commande, error: errC } = await sb.from("commandes_catalogue")
@@ -120,7 +139,7 @@ Deno.serve(async (req: Request) => {
       throw new ErreurMetier("Cette commande n'a pas été payée en ligne (ou elle est déjà remboursée en totalité).");
     }
 
-    const calc = calculerRemboursement(commande, body.montant);
+    const calc = calculerRemboursement(commande, montantDemande);
 
     // ── Garde-fou : l'artisan doit avoir de quoi couvrir la reprise ──
     // (l'admin peut forcer : c'est alors CaraLink qui assume la différence)
@@ -137,7 +156,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── Remboursement Stripe ──
-    const motif = (body.motif || "").toString().trim().slice(0, 400);
+    const motif = typeof body.motif === "string" ? body.motif.trim().slice(0, 400) : "";
     const params = new URLSearchParams({
       payment_intent: commande.stripe_payment_intent_id,
       amount: String(calc.montantCents),
@@ -159,7 +178,11 @@ Deno.serve(async (req: Request) => {
       body: params,
     });
     const refund = await res.json();
-    if (!res.ok) throw new ErreurMetier(refund?.error?.message || "Erreur Stripe lors du remboursement.", 502);
+    if (!res.ok) {
+      console.error("[rembourser-commande] Stripe a refusé le remboursement :", refund?.error?.message);
+      // Le message de Stripe peut évoquer les finances de la plateforme : seul l'admin le voit.
+      throw new ErreurMetier(estAdmin ? (refund?.error?.message || "Erreur Stripe lors du remboursement.") : "Stripe n'a pas pu effectuer ce remboursement. Contactez le support CaraLink.", 502);
+    }
 
     // ── Mise à jour de la commande (le webhook charge.refunded confirmera avec les valeurs Stripe) ──
     const maj: Record<string, unknown> = {
@@ -168,8 +191,13 @@ Deno.serve(async (req: Request) => {
       rembourse_le: new Date().toISOString(),
     };
     if (motif) maj.motif_remboursement = motif;
-    const { error: errMaj } = await sb.from("commandes_catalogue").update(maj).eq("id", commande.id);
+    // Mise à jour « si rien n'a bougé entre-temps » : deux remboursements simultanés ne s'écrasent pas l'un l'autre
+    // (le webhook charge.refunded rétablit les valeurs exactes de Stripe de toute façon).
+    let majReq = sb.from("commandes_catalogue").update(maj).eq("id", commande.id);
+    majReq = commande.montant_rembourse == null ? majReq.is("montant_rembourse", null) : majReq.eq("montant_rembourse", commande.montant_rembourse);
+    const { data: majFaite, error: errMaj } = await majReq.select("id");
     if (errMaj) console.error("[rembourser-commande] Remboursement fait chez Stripe mais mise à jour base échouée :", errMaj.message);
+    else if (!majFaite || majFaite.length === 0) console.warn("[rembourser-commande] La commande a changé pendant le remboursement : le webhook charge.refunded fera foi.");
 
     if (calc.statut === "rembourse") {
       // Commande pas encore livrée/récupérée → elle est annulée. Une commande déjà terminée garde son statut.
@@ -189,6 +217,6 @@ Deno.serve(async (req: Request) => {
   } catch (e) {
     if (e instanceof ErreurMetier) return json({ error: e.message }, e.status);
     console.error("[rembourser-commande]", e);
-    return json({ error: (e as Error).message || "Erreur serveur." }, 500);
+    return json({ error: MSG_ERREUR_GENERIQUE }, 500); // le détail reste dans les journaux
   }
 });
