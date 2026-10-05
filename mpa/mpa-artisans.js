@@ -740,9 +740,13 @@ async function repondreCreneauInApp(token, action) {
   if (message === null) return; // annulé
   if (action === 'refuser' && !confirm('Confirmer le refus de ce créneau ?')) return;
   try {
-    var url = SUPABASE_URL + '/functions/v1/repondre-devis?token=' + encodeURIComponent(token) + '&action=' + action + '&execute=1&message=' + encodeURIComponent(message);
-    var res = await fetch(url);
-    if (!res.ok) throw new Error('Erreur serveur (' + res.status + ')');
+    var res = await fetch(SUPABASE_URL + '/functions/v1/repondre-devis', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: token, action: action, message: message }),
+    });
+    var data = await res.json().catch(function() { return {}; });
+    // Le serveur répond maintenant par des données : une proposition déjà traitée, périmée ou en erreur n'est plus prise pour un succès.
+    if (!res.ok || !data.ok) throw new Error(data.error || ('Erreur serveur (' + res.status + ')'));
     await chargerDemandes();
     if (action === 'confirmer') await chargerInterventions();
   } catch (e) {

@@ -31,6 +31,8 @@ const corsHeaders = {
 };
 
 const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
+// Supabase n'affiche pas les pages HTML sur son domaine par défaut : les boutons des emails mènent à une page de ton site.
+const PAGE_REPONSE = "https://caralink.app/artisans/repondre.html";
 const TYPES_INTERVENTION_VALIDES = ["urgence", "installation", "devis", "entretien"];
 const LIMITE_DEMANDES_PAR_HEURE = 10;
 const MAX_ARTISANS_NOTIFIES = 15;
@@ -128,9 +130,8 @@ async function geocoderAdresse(adresse: string, cp: string | null, commune: stri
 }
 
 function emailHtmlCreneau(clientNom: string, clientTel: string, clientEmail: string | null, contactPrefere: string, commune: string, adresse: string, description: string, dateAff: string, heureDebut: string, heureFin: string, nbPhotos: number, token: string, horsHoraires: boolean, typeIntervention: string | null): string {
-  const base = Deno.env.get("SUPABASE_URL") ?? "";
-  const lienConfirmer = `${base}/functions/v1/repondre-devis?token=${encodeURIComponent(token)}&action=confirmer`;
-  const lienRefuser = `${base}/functions/v1/repondre-devis?token=${encodeURIComponent(token)}&action=refuser`;
+  const lienConfirmer = `${PAGE_REPONSE}?token=${encodeURIComponent(token)}&action=confirmer`;
+  const lienRefuser = `${PAGE_REPONSE}?token=${encodeURIComponent(token)}&action=refuser`;
   const contactHtml = contactPrefere === "email"
     ? `📧 <a href="mailto:${escHtml(clientEmail)}">${escHtml(clientEmail)}</a>`
     : `📞 <a href="tel:${escHtml(telHref(clientTel))}">${escHtml(clientTel)}</a>`;

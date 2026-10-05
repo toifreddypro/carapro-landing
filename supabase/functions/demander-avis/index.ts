@@ -8,6 +8,9 @@
 // Jamais automatique — c'est toujours l'artisan qui décide d'envoyer.
 //
 // POST { intervention_id }
+//
+// Le lien envoyé au client mène à une page de ton site (caralink.app/artisans/avis.html) : Supabase n'affiche pas
+// les pages HTML sur son domaine par défaut. Le nom de l'entreprise est échappé avant d'entrer dans l'email.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -19,6 +22,13 @@ const corsHeaders = {
 
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+
+const PAGE_AVIS = "https://caralink.app/artisans/avis.html";
+const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
+
+function escHtml(s: unknown): string {
+  return String(s ?? "").replace(/[&<>"']/g, (m) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }) as Record<string, string>)[m]);
 }
 
 async function envoyerEmail(to: string, subject: string, html: string) {
@@ -49,6 +59,7 @@ Deno.serve(async (req: Request) => {
 
     const { intervention_id } = await req.json().catch(() => ({}));
     if (!intervention_id) return json({ error: "intervention_id manquant." }, 400);
+    if (typeof intervention_id !== "string") return json({ error: "intervention_id invalide." }, 400);
 
     const sbAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
@@ -77,11 +88,10 @@ Deno.serve(async (req: Request) => {
       if (errMaj) throw errMaj;
     }
 
-    const base = Deno.env.get("SUPABASE_URL") ?? "";
-    const lien = `${base}/functions/v1/soumettre-avis-artisan?token=${token}`;
+    const lien = `${PAGE_AVIS}?token=${encodeURIComponent(token)}`;
     const html = `<div style="font-family:sans-serif;max-width:480px;">
       <h2 style="color:#B5502F;">Votre avis compte !</h2>
-      <p>${artisan.nom_entreprise} vous invite à partager votre expérience sur l'intervention réalisée.</p>
+      <p>${escHtml(artisan.nom_entreprise)} vous invite à partager votre expérience sur l'intervention réalisée.</p>
       <div style="margin:24px 0;">
         <a href="${lien}" style="display:inline-block;padding:12px 24px;border-radius:8px;background:#B5502F;color:#fff;font-weight:700;text-decoration:none;">⭐ Laisser mon avis</a>
       </div>
@@ -93,6 +103,6 @@ Deno.serve(async (req: Request) => {
 
   } catch (e) {
     console.error("[demander-avis]", e);
-    return json({ error: (e as Error).message }, 500);
+    return json({ error: MSG_ERREUR_GENERIQUE }, 500); // le détail reste dans les journaux
   }
 });
