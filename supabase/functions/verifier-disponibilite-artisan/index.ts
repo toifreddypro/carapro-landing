@@ -23,6 +23,11 @@
 // Sécurité : ne renvoie JAMAIS le détail du planning de l'artisan
 // (noms de clients, adresses des autres interventions) — uniquement
 // des horaires libres/occupés calculés côté serveur.
+//
+// Sécurité : l'artisan doit exister ET être actif (jamais les horaires ni le code promo d'un artisan désactivé) ; seuls les
+// produits MIS AU CATALOGUE (en_vente) sont montrés ; toutes les entrées sont contrôlées ; limitation par visiteur (le mode
+// « créneaux » interroge des services extérieurs : adresse et itinéraires) ; délai maximum sur chaque service extérieur ;
+// aucune erreur interne n'est détaillée.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -31,6 +36,26 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// ── Limitation par visiteur (voir securite-limites.sql). Si le limiteur lui-même tombe en panne, on laisse passer :
+//    ce sont des lectures publiques, mieux vaut un service disponible qu'un site bloqué par une panne du limiteur. ──
+const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
+
+function ipVisiteur(req: Request): string {
+  return req.headers.get("cf-connecting-ip") || (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "inconnue";
+}
+async function limiteAtteinte(sb: any, cle: string, max: number, fenetreSecondes: number): Promise<boolean> {
+  try {
+    const { data, error } = await sb.rpc("limiter_appel", { p_cle: cle, p_max: max, p_fenetre_s: fenetreSecondes });
+    if (error) { console.error("[limiter_appel]", error.message); return false; }
+    return data === false;
+  } catch (e) { console.error("[limiter_appel]", e); return false; }
+}
+function reponseTropDeRequetes(corsHeaders: Record<string, string>): Response {
+  return new Response(JSON.stringify({ error: "Trop de requêtes. Réessayez dans une minute." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" } });
+}
+const ADRESSE_MAX = 200, CODE_POSTAL_MAX = 10, COMMUNE_MAX = 100, DUREE_MIN = 15, DUREE_MAX = 480;
 
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
@@ -76,7 +101,7 @@ async function geocoderAdresse(adresse: string, cp: string, commune: string) {
   const q = [adresse, cp, commune].filter(Boolean).join(" ");
   if (!q) return null;
   try {
-    const res = await fetch("https://api-adresse.data.gouv.fr/search/?limit=1&q=" + encodeURIComponent(q));
+    const res = await fetch("https://api-adresse.data.gouv.fr/search/?limit=1&q=" + encodeURIComponent(q), { signal: AbortSignal.timeout(5000) });
     const texte = await res.text();
     if (!res.ok) {
       console.error("[geocoderAdresse] API Adresse a répondu " + res.status + " pour \"" + q + "\" — corps : " + texte.slice(0, 300));
@@ -106,7 +131,7 @@ async function tempsTrajetIGN(latA: number, lonA: number, latB: number, lonB: nu
   const url = "https://data.geopf.fr/navigation/itineraire?resource=bdtopo-osrm&profile=car&optimization=fastest" +
     "&getSteps=false&geometryFormat=polyline&distanceUnit=meter&timeUnit=second" +
     `&start=${lonA},${latA}&end=${lonB},${latB}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
   if (!res.ok) return null; // ex. 429 : limite de 5 requêtes/seconde dépassée
   const data = await res.json();
   return typeof data.duration === "number" ? Math.ceil(data.duration / 60) : null;
@@ -114,7 +139,7 @@ async function tempsTrajetIGN(latA: number, lonA: number, latB: number, lonB: nu
 
 async function tempsTrajetOSRM(latA: number, lonA: number, latB: number, lonB: number): Promise<number | null> {
   const url = `https://router.project-osrm.org/route/v1/driving/${lonA},${latA};${lonB},${latB}?overview=false`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
   const data = await res.json();
   if (data.routes && data.routes[0]) return Math.ceil(data.routes[0].duration / 60);
   return null;
@@ -148,8 +173,18 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => null);
-    if (!body || !body.artisan_id) return json({ error: "artisan_id manquant." }, 400);
+    if (!body || typeof body !== "object" || Array.isArray(body) || !body.artisan_id) return json({ error: "artisan_id manquant." }, 400);
     const { mode, artisan_id } = body;
+    if (typeof artisan_id !== "string" || !REGEX_UUID.test(artisan_id)) return json({ error: "Artisan introuvable." }, 404);
+    if (mode !== "apercu" && mode !== "creneaux") return json({ error: "mode invalide (attendu : apercu | creneaux)." }, 400);
+
+    // Limitation par visiteur : l'aperçu est léger (une vignette par artisan), les créneaux appellent des services extérieurs.
+    if (await limiteAtteinte(sb, `dispo-${mode}:` + ipVisiteur(req), mode === "creneaux" ? 30 : 300, 60)) return reponseTropDeRequetes(corsHeaders);
+
+    // L'artisan doit exister ET être actif : jamais les horaires ni le code promo d'un artisan désactivé.
+    const { data: artisanPublic, error: errArt } = await sb.from("artisans").select("id, slug_catalogue, code_promo").eq("id", artisan_id).eq("actif", true).maybeSingle();
+    if (errArt) throw errArt;
+    if (!artisanPublic) return json({ error: "Artisan introuvable." }, 404);
 
     // Aperçu de vignette : noms des services (pastilles), même si l'artisan n'a pas encore d'horaires.
     let services: string[] = [];
@@ -161,15 +196,14 @@ Deno.serve(async (req: Request) => {
         .select("nom_service").eq("artisan_id", artisan_id).order("ordre", { ascending: true }).limit(20);
       services = (svc || []).map((s: any) => s.nom_service).filter(Boolean);
 
-      const { data: infosBoutique } = await sb.from("artisans")
-        .select("slug_catalogue, code_promo").eq("id", artisan_id).maybeSingle();
-      slugCatalogue = infosBoutique?.slug_catalogue ?? null;
-      codePromo = infosBoutique?.code_promo ?? null;
+      slugCatalogue = artisanPublic.slug_catalogue ?? null;
+      codePromo = artisanPublic.code_promo ?? null;
 
       // Produits phares : choisis à la main par l'artisan, sinon repli sur les 3 meilleures
       // ventes (jamais un compteur stocké — toujours recalculé sur les commandes réglées).
       const { data: produits } = await sb.from("artisans_catalogue")
-        .select("id, nom, url_photo, est_phare").eq("artisan_id", artisan_id);
+        .select("id, nom, url_photo, est_phare").eq("artisan_id", artisan_id)
+        .or("en_vente.is.null,en_vente.eq.true"); // jamais « Mon stock »
       const listeProduits = produits || [];
       if (listeProduits.length) {
         const idsProduits = listeProduits.map((p: any) => p.id);
@@ -283,8 +317,12 @@ Deno.serve(async (req: Request) => {
     // affichage en grille façon Doctolib) — date_debut permet de paginer vers l'avant.
     if (mode === "creneaux") {
       const { adresse, code_postal, commune } = body;
-      const duree = parseInt(body.duree_min, 10) || 60;
       if (!adresse) return json({ error: "Adresse manquante." }, 400);
+      if (typeof adresse !== "string" || adresse.length > ADRESSE_MAX) return json({ error: "Adresse invalide." }, 400);
+      if (code_postal != null && (typeof code_postal !== "string" || code_postal.length > CODE_POSTAL_MAX)) return json({ error: "Code postal invalide." }, 400);
+      if (commune != null && (typeof commune !== "string" || commune.length > COMMUNE_MAX)) return json({ error: "Commune invalide." }, 400);
+      const duree = Math.min(DUREE_MAX, Math.max(DUREE_MIN, parseInt(body.duree_min, 10) || 60));
+      if (body.date_debut != null && body.date_debut !== "" && (typeof body.date_debut !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(body.date_debut) || Number.isNaN(new Date(body.date_debut + "T00:00:00Z").getTime()))) return json({ error: "date_debut invalide (format AAAA-MM-JJ)." }, 400);
 
       let dateDebutFenetre = body.date_debut ? new Date(body.date_debut + "T00:00:00") : new Date(aujourdhui);
       const dateMaxAutorisee = new Date(aujourdhui);
@@ -375,7 +413,6 @@ Deno.serve(async (req: Request) => {
 
   } catch (e) {
     console.error("[verifier-disponibilite-artisan]", e);
-    const msg = (e instanceof Error) ? e.message : (e && typeof e === "object" && "message" in e) ? String((e as any).message) : "Erreur serveur.";
-    return json({ error: msg }, 500);
+    return json({ error: MSG_ERREUR_GENERIQUE }, 500); // le détail reste dans les journaux
   }
 });

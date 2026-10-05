@@ -7,6 +7,10 @@
 // directes avant qu'un artisan choisisse de répondre).
 //
 // GET ?id=X
+//
+// Sécurité : seuls les produits MIS AU CATALOGUE (en_vente) sont montrés (jamais « Mon stock ») ; l'identifiant est contrôlé ;
+// limitation par visiteur ; note moyenne et nombre d'avis calculés sur TOUS les avis (la liste n'en montre que 10) ;
+// aucune erreur interne n'est détaillée.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -15,6 +19,25 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// ── Limitation par visiteur (voir securite-limites.sql). Si le limiteur lui-même tombe en panne, on laisse passer :
+//    ce sont des lectures publiques, mieux vaut un service disponible qu'un site bloqué par une panne du limiteur. ──
+const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
+
+function ipVisiteur(req: Request): string {
+  return req.headers.get("cf-connecting-ip") || (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "inconnue";
+}
+async function limiteAtteinte(sb: any, cle: string, max: number, fenetreSecondes: number): Promise<boolean> {
+  try {
+    const { data, error } = await sb.rpc("limiter_appel", { p_cle: cle, p_max: max, p_fenetre_s: fenetreSecondes });
+    if (error) { console.error("[limiter_appel]", error.message); return false; }
+    return data === false;
+  } catch (e) { console.error("[limiter_appel]", e); return false; }
+}
+function reponseTropDeRequetes(corsHeaders: Record<string, string>): Response {
+  return new Response(JSON.stringify({ error: "Trop de requêtes. Réessayez dans une minute." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" } });
+}
 
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
@@ -25,6 +48,7 @@ function json(payload: unknown, status = 200): Response {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "GET") return json({ error: "Méthode non autorisée." }, 405);
 
   const sb = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -35,6 +59,8 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const id = url.searchParams.get("id");
     if (!id) return json({ error: "Identifiant manquant." }, 400);
+    if (!REGEX_UUID.test(id)) return json({ error: "Artisan introuvable." }, 404);
+    if (await limiteAtteinte(sb, "lire-artisan:" + ipVisiteur(req), 120, 60)) return reponseTropDeRequetes(corsHeaders);
 
     const { data: artisan, error } = await sb.from("artisans")
       .select("id, nom_entreprise, secteur, commune, bio, photo_profil_url, verifie, rayon_intervention_km, alternance_niveau, stripe_connect_statut, slug_catalogue, code_promo")
@@ -61,7 +87,8 @@ Deno.serve(async (req: Request) => {
     // ne montre qu'un aperçu soigné des produits phares, pas la liste entière.
     const { data: produitsArtisan } = await sb.from("artisans_catalogue")
       .select("id, nom, description, prix, url_photo, type, delai_preparation, promo_pct, est_phare")
-      .eq("artisan_id", id);
+      .eq("artisan_id", id)
+      .or("en_vente.is.null,en_vente.eq.true"); // jamais « Mon stock »
     const listeProduits = produitsArtisan || [];
     let produitsPhares: any[] = [];
     if (listeProduits.length) {
@@ -88,9 +115,10 @@ Deno.serve(async (req: Request) => {
       .order("created_at", { ascending: false })
       .limit(10);
 
-    const noteMoyenne = avis && avis.length
-      ? Math.round((avis.reduce((s, a) => s + a.note, 0) / avis.length) * 10) / 10
-      : null;
+    // Note moyenne et nombre d'avis sur TOUS les avis (la liste ci-dessus n'en montre que les 10 derniers).
+    const { data: toutesLesNotes } = await sb.from("avis_carapro").select("note").eq("artisan_id", id);
+    const notes = (toutesLesNotes || []).map((a: any) => Number(a.note)).filter((n: number) => Number.isFinite(n));
+    const noteMoyenne = notes.length ? Math.round((notes.reduce((s: number, n: number) => s + n, 0) / notes.length) * 10) / 10 : null;
 
     return json({
       artisan,
@@ -99,12 +127,11 @@ Deno.serve(async (req: Request) => {
       produits_phares: produitsPhares,
       avis: avis || [],
       note_moyenne: noteMoyenne,
-      nb_avis: (avis || []).length,
+      nb_avis: notes.length,
     });
 
   } catch (e) {
     console.error("[lire-artisan]", e);
-    const msg = (e instanceof Error) ? e.message : (e && typeof e === "object" && "message" in e) ? String((e as any).message) : "Erreur serveur.";
-    return json({ error: msg }, 500);
+    return json({ error: MSG_ERREUR_GENERIQUE }, 500); // le détail reste dans les journaux
   }
 });

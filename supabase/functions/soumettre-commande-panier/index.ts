@@ -109,9 +109,10 @@ Deno.serve(async (req: Request) => {
 
     // Les articles doivent tous appartenir à CET artisan — jamais mélanger le panier de plusieurs boutiques.
     const { data: articles, error: errArt } = await sb.from("artisans_catalogue")
-      .select("id, nom, prix, promo_pct, artisan_id, quantite_stock").in("id", idsArticles).eq("artisan_id", artisan_id);
+      .select("id, nom, prix, promo_pct, artisan_id, quantite_stock, en_vente").in("id", idsArticles).eq("artisan_id", artisan_id);
     if (errArt) throw errArt;
-    if (!articles || articles.length !== idsArticles.length) {
+    // Un produit hors vente (« Mon stock », en_vente = false) est traité comme inexistant : jamais commandable (comme dans soumettre-commande).
+    if (!articles || articles.length !== idsArticles.length || (articles as any[]).some((a) => a.en_vente === false)) {
       return json({ error: "Un ou plusieurs articles de votre panier n'existent plus. Actualisez la page." }, 404);
     }
 

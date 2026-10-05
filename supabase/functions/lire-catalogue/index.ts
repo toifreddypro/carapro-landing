@@ -51,6 +51,7 @@ Deno.serve(async (req: Request) => {
     const { data: produits, error: errP } = await sb.from("artisans_catalogue")
       .select("id, nom, description, prix, url_photo, type, delai_preparation, est_phare, promo_pct, categorie, created_at")
       .eq("artisan_id", artisan.id)
+      .or("en_vente.is.null,en_vente.eq.true") // « Mon stock » (en_vente = false) n'est jamais affiché : seulement ce que l'artisan a mis au catalogue
       .order("ordre", { ascending: true });
     if (errP) throw errP;
 
