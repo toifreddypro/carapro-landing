@@ -692,6 +692,7 @@ async function chargerDemandes() {
       '</div>' +
       ligneCreneau +
       (typeInterventionLabelLocal(d.type_intervention) ? '<div style="display:inline-block;font-size:12px;font-weight:700;color:#4338ca;background:#eef2ff;padding:3px 10px;border-radius:20px;margin-bottom:8px;">' + typeInterventionLabelLocal(d.type_intervention) + '</div><br>' : '') +
+        ligneVisiteMPA(d) +
       '<div style="font-size:13px;margin-bottom:10px;">' + escHtml(d.description_besoin) + '</div>' +
       ((d.photos && d.photos.length) ?
         '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' +
@@ -707,11 +708,33 @@ async function chargerDemandes() {
 }
 
 var LABELS_TYPE_INTERVENTION = {
+  renseignement: '💬 Devis / Renseignement simple',
+  visite: '🚗 Devis / Rendez-vous sur place',
+  reservation: '📅 Réservation directe',
   urgence: '🔥 Urgent',
   installation: '📅 Rendez-vous classique',
   devis: '💬 Devis / Renseignement',
   entretien: '🔁 Suivi / Habitué·e',
 };
+// Frais de déplacement saisis par l'artisan : « » = vide ; virgule ou point ; de 0 à 500 € ; au plus 2 décimales.
+function lireFraisDeplacement(brut) {
+  var original = String(brut == null ? '' : brut).trim();
+  if (original === '') return { ok: true, valeur: null }; // champ vide = pas de frais
+  var s = original.replace(/\s/g, '').replace('€', '').replace(',', '.');
+  if (!/^\d+(\.\d{1,2})?$/.test(s)) return { ok: false }; // un champ rempli mais illisible est REFUSÉ (jamais effacé en silence)
+  var n = Number(s);
+  if (!isFinite(n) || n > 500) return { ok: false };
+  return { ok: true, valeur: n };
+}
+// Rappel sur la carte d'une demande de visite : les frais annoncés au client (figés au moment de sa demande).
+function ligneVisiteMPA(d) {
+  if (!d || d.type_intervention !== 'visite') return '';
+  var f = Number(d.frais_deplacement);
+  var texte = d.frais_deplacement == null
+    ? 'Le client souhaite une visite sur place pour estimer le chantier.'
+    : (f > 0 ? 'Frais de déplacement annoncés au client : <strong>' + f.toFixed(2).replace('.', ',') + ' €</strong>, à lui facturer lors de votre visite.' : 'Visite sans frais de déplacement.');
+  return '<div style="font-size:12px;color:#1e40af;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:6px 10px;margin-bottom:8px;">🚗 ' + texte + ' Le devis définitif des travaux est à remettre après la visite.</div>';
+}
 function typeInterventionLabelLocal(code) {
   return LABELS_TYPE_INTERVENTION[code] || null;
 }
@@ -2520,6 +2543,7 @@ async function openModifierFiche() {
   document.getElementById('m-cp').value = a.code_postal || '';
   document.getElementById('m-com').value = a.commune || '';
   document.getElementById('m-rayon').value = a.rayon_intervention_km || 15;
+  document.getElementById('m-frais').value = (a.frais_deplacement != null && a.frais_deplacement !== '') ? String(a.frais_deplacement).replace('.', ',') : '';
   document.getElementById('m-tel').value = a.telephone || '';
   document.getElementById('m-email').value = a.email || '';
   document.getElementById('m-web').value = a.site_web || '';
@@ -2709,6 +2733,11 @@ async function sauverFiche() {
     site_web: document.getElementById('m-web').value.trim(),
     bio: document.getElementById('m-bio').value.trim(),
   };
+  // Frais de déplacement d'une visite sur place : annoncés au client avant sa demande. Envoyés SEULEMENT s'ils sont renseignés
+  // ou s'il y avait déjà une valeur à effacer : ainsi l'enregistrement du profil ne dépend pas de la colonne tant qu'on n'y touche pas.
+  var frais = lireFraisDeplacement(document.getElementById('m-frais').value);
+  if (!frais.ok) { alert('Les frais de déplacement doivent être un montant entre 0 et 500 € (par exemple 25 ou 25,50).'); return; }
+  if (frais.valeur !== null || _artisan.frais_deplacement != null) maj.frais_deplacement = frais.valeur;
   // Géocodage de l'adresse pro — sert de point de départ pour le calcul des trajets (Smart Dispatch)
   if (maj.adresse) {
     var pt = await geocoderAdresse(maj.adresse, maj.code_postal, maj.commune);

@@ -674,6 +674,7 @@ async function chargerApercuDispo(artisanId) {
 }
 
 function ouvrirVerifDispo(artisanId) {
+  window._visiteDemandee = false; // une ouverture des disponibilités à l'initiative du client repart de zéro
   var zone = document.getElementById('dispo-zone-' + artisanId);
   if (!zone || !_profilDataCourant) return;
   var services = _profilDataCourant.services || [];
@@ -795,6 +796,7 @@ function ouvrirModalCreneau() {
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-email" type="email" placeholder="' + T('ph_email_optionnel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        premiereInterventionHTML() +
         '<textarea id="devis-message" rows="3" placeholder="' + T('ph_precisions') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         photosPickerHTML() +
         '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
@@ -804,6 +806,7 @@ function ouvrirModalCreneau() {
         '</div>' +
       '</div>' +
     '</div>';
+  appliquerVisiteDemandee();
 }
 
 function afficherConfirmationDemande(nomArtisan, emailDonne) {
@@ -837,6 +840,7 @@ async function envoyerCreneauDevis() {
   var btn = document.getElementById('btn-devis');
 
   if (!nom || !tel) { err.textContent = T('err_champs'); err.style.display = 'block'; return; }
+  if (_typeInterventionChoisi !== 'visite' && _typeInterventionChoisi !== 'reservation') { err.textContent = T('err_premiere_requise'); err.style.display = 'block'; return; }
   btn.disabled = true; btn.textContent = T('btn_envoi_cours');
 
   try {
@@ -884,7 +888,7 @@ function ouvrirModalSurMesure() {
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-email" type="email" placeholder="' + T('ph_email_optionnel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
-        typeInterventionPickerHTML() +
+        premiereInterventionHTML() +
         '<textarea id="devis-message" rows="3" placeholder="' + T('ph_pourquoi') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         photosPickerHTML() +
         '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
@@ -894,6 +898,7 @@ function ouvrirModalSurMesure() {
         '</div>' +
       '</div>' +
     '</div>';
+  appliquerVisiteDemandee();
 }
 
 async function envoyerSurMesureDevis() {
@@ -909,6 +914,7 @@ async function envoyerSurMesureDevis() {
   var btn = document.getElementById('btn-devis');
 
   if (!dateVal || !heureVal || !nom || !tel) { err.textContent = T('err_champs'); err.style.display = 'block'; return; }
+  if (_typeInterventionChoisi !== 'visite' && _typeInterventionChoisi !== 'reservation') { err.textContent = T('err_premiere_requise'); err.style.display = 'block'; return; }
   btn.disabled = true; btn.textContent = T('btn_envoi_cours');
 
   var heureFin = minVersHeurePublic(heureVersMinPublic(heureVal) + (ctx.duree || 60));
@@ -964,41 +970,117 @@ function redimensionnerImage(file, maxWidth) {
   });
 }
 
-// ── Type d'intervention (étiquettes rapides) — partagé entre les 4 formulaires de devis ──
+// ── Nature de la demande — deux choix clairs dès le départ (refonte du 05/10), partagés entre les formulaires de devis ──
+//  « renseignement » : un échange de messages, aucun déplacement.
+//  « visite »        : l'artisan se déplace pour estimer le chantier (frais de déplacement annoncés avant l'envoi).
+//  « reservation »   : réservation directe d'un créneau par un client qui connaît déjà l'artisan (fenêtres de créneau seulement).
 var _typeInterventionChoisi = null;
 var TYPES_INTERVENTION = [
+  { code: 'renseignement', labelKey: 'type_renseignement', descKey: 'type_renseignement_desc' },
+  { code: 'visite', labelKey: 'type_visite', descKey: 'type_visite_desc' },
+];
+// Anciens types : uniquement pour LIRE d'anciennes demandes (libellés). Jamais proposés au client.
+var TYPES_INTERVENTION_ANCIENS = [
   { code: 'urgence', labelKey: 'type_urgence' },
   { code: 'installation', labelKey: 'type_installation' },
   { code: 'devis', labelKey: 'type_devis' },
   { code: 'entretien', labelKey: 'type_entretien' },
 ];
 
+function formaterEurosPublic(n) {
+  var loc = AT_LANG === 'en' ? 'en-GB' : (AT_LANG === 'es' ? 'es-ES' : 'fr-FR');
+  return Number(n).toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+// Frais de déplacement de l'artisan dont la fiche est ouverte : un nombre (0 = visite sans frais), ou undefined si on ne
+// connaît pas l'artisan (demande ouverte à plusieurs artisans : chacun a les siens).
+function fraisDeplacementContexte(artisanId) {
+  var a = _profilDataCourant && _profilDataCourant.artisan;
+  if (!a || (artisanId && a.id !== artisanId)) return undefined;
+  var f = Number(a.frais_deplacement);
+  return (a.frais_deplacement == null || !isFinite(f) || f < 0) ? 0 : f;
+}
+
+function visiteInfoHTML(frais) {
+  var ligne = frais === undefined
+    ? T('visite_frais_variables')
+    : (frais > 0 ? T('visite_frais') + ' <strong>' + formaterEurosPublic(frais) + '</strong>' : T('visite_sans_frais'));
+  return '<div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:9px;padding:10px 12px;font-size:12.5px;line-height:1.45;margin-top:8px;">' +
+    '<div style="font-weight:600;">' + ligne + '</div>' +
+    '<div style="margin-top:4px;">' + T('visite_mention') + '</div>' +
+  '</div>';
+}
+
 function typeInterventionPickerHTML() {
   return '<div style="margin-bottom:10px;">' +
       '<div style="font-size:11.5px;font-weight:600;color:var(--mu2,#777);margin-bottom:6px;">' + T('type_interv_titre') + '</div>' +
-      '<div id="type-interv-pills" style="display:flex;gap:6px;flex-wrap:wrap;">' +
+      '<div id="type-interv-pills" style="display:flex;flex-direction:column;gap:8px;">' +
         TYPES_INTERVENTION.map(function(t) {
-          return '<button type="button" id="type-interv-' + t.code + '" onclick="choisirTypeIntervention(\'' + t.code + '\')" style="padding:6px 11px;border-radius:20px;border:1.5px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);font-size:12px;font-weight:600;cursor:pointer;">' + T(t.labelKey) + '</button>';
+          return '<button type="button" id="type-interv-' + t.code + '" onclick="choisirTypeIntervention(\'' + t.code + '\')" style="text-align:left;padding:10px 12px;border-radius:10px;border:1.5px solid var(--line,#ddd);background:transparent;color:var(--mu2,#555);cursor:pointer;font-family:inherit;">' +
+            '<div style="font-size:13px;font-weight:700;">' + T(t.labelKey) + '</div>' +
+            '<div class="type-interv-desc" style="font-size:12px;margin-top:3px;line-height:1.4;opacity:.85;">' + T(t.descKey) + '</div>' +
+          '</button>';
         }).join('') +
       '</div>' +
+      '<div id="type-interv-info"></div>' +
     '</div>';
 }
 
 function choisirTypeIntervention(code) {
-  _typeInterventionChoisi = (_typeInterventionChoisi === code) ? null : code; // recliquer désélectionne
+  _typeInterventionChoisi = code; // un choix est obligatoire : pas de désélection
   TYPES_INTERVENTION.forEach(function(t) {
     var btn = document.getElementById('type-interv-' + t.code);
     if (!btn) return;
     var actif = _typeInterventionChoisi === t.code;
     btn.style.background = actif ? 'var(--ac,#B5502F)' : 'transparent';
-    btn.style.color = actif ? '#fff' : 'var(--mu2,#777)';
+    btn.style.color = actif ? '#fff' : 'var(--mu2,#555)';
     btn.style.borderColor = actif ? 'var(--ac,#B5502F)' : 'var(--line,#ddd)';
   });
+  var info = document.getElementById('type-interv-info');
+  if (info) info.innerHTML = code === 'visite' ? visiteInfoHTML(window._typeInterventionFrais) : '';
+  if (typeof window._onTypeInterventionChoisi === 'function') window._onTypeInterventionChoisi(code);
 }
 
 function typeInterventionLabel(code) {
-  var t = TYPES_INTERVENTION.find(function(x) { return x.code === code; });
+  var t = TYPES_INTERVENTION.concat(TYPES_INTERVENTION_ANCIENS).find(function(x) { return x.code === code; });
   return t ? T(t.labelKey) : null;
+}
+
+// « Devis / Rendez-vous sur place » choisi dans le formulaire de message d'un artisan : un rendez-vous a besoin d'un créneau,
+// on passe donc à la vérification de disponibilité (la question « première intervention ? » y est déjà répondue : oui).
+function commencerVisiteDepuisDevis(artisanId) {
+  var zone = document.getElementById('dispo-zone-' + artisanId);
+  if (!zone || !_profilDataCourant) { showToast(T('visite_pas_de_creneaux')); return; }
+  fermerModalDevis();
+  ouvrirVerifDispo(artisanId);       // (remet le drapeau à zéro : on le pose APRÈS)
+  window._visiteDemandee = artisanId; // lié à CET artisan : ne s'applique pas à une autre fiche
+  if (zone.scrollIntoView) zone.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ── Fenêtres de créneau : « première intervention avec cet artisan ? » (réponse obligatoire) ──
+function premiereInterventionHTML() {
+  window._typeInterventionFrais = fraisDeplacementContexte(window._dispoContexte && window._dispoContexte.artisanId);
+  return '<div id="premiere-interv" style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:12px;margin-bottom:10px;">' +
+      '<div style="font-size:13px;font-weight:700;color:#9a3412;margin-bottom:4px;">' + T('premiere_titre') + '</div>' +
+      '<div style="font-size:12.5px;color:#9a3412;line-height:1.45;margin-bottom:8px;">' + T('premiere_texte') + '</div>' +
+      '<label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;cursor:pointer;margin-bottom:6px;"><input type="radio" name="premiere-interv" value="oui" onchange="choisirPremiereIntervention(\'visite\')" style="margin-top:2px;"><span>' + T('premiere_oui') + '</span></label>' +
+      '<label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;cursor:pointer;"><input type="radio" name="premiere-interv" value="non" onchange="choisirPremiereIntervention(\'reservation\')" style="margin-top:2px;"><span>' + T('premiere_non') + '</span></label>' +
+      '<div id="premiere-interv-info"></div>' +
+    '</div>';
+}
+
+function choisirPremiereIntervention(code) {
+  _typeInterventionChoisi = code; // 'visite' (devis / rendez-vous sur place) ou 'reservation' (réservation directe)
+  var info = document.getElementById('premiere-interv-info');
+  if (info) info.innerHTML = code === 'visite' ? visiteInfoHTML(window._typeInterventionFrais) : '';
+}
+
+// Si le client vient de choisir « Rendez-vous sur place » dans le formulaire de message : la réponse est déjà « oui ».
+function appliquerVisiteDemandee() {
+  var ctx = window._dispoContexte;
+  if (!window._visiteDemandee || !ctx || window._visiteDemandee !== ctx.artisanId) return;
+  var radio = document.querySelector('input[name="premiere-interv"][value="oui"]');
+  if (radio) { radio.checked = true; choisirPremiereIntervention('visite'); }
 }
 
 function photosPickerHTML() {
@@ -1072,6 +1154,19 @@ function ouvrirModalDevis(artisanId, nomArtisan, secteurArtisan) {
   _devisContactPref = 'telephone'; // réinitialisé à chaque ouverture
   _devisPhotos = []; document.getElementById('devis-photos-preview') && (document.getElementById('devis-photos-preview').innerHTML = '');
   _typeInterventionChoisi = null;
+  window._typeInterventionFrais = fraisDeplacementContexte(artisanId);
+  // « Rendez-vous sur place » : le bouton devient « Choisir un créneau de visite » (un rendez-vous a besoin d'un créneau).
+  window._onTypeInterventionChoisi = function(code) {
+    var b = document.getElementById('btn-devis'); if (!b) return;
+    // Fonctions directes (pas d'attribut HTML) : aucune valeur à échapper.
+    if (code === 'visite') {
+      b.textContent = T('visite_choisir_creneau');
+      b.onclick = function() { commencerVisiteDepuisDevis(artisanId); };
+    } else {
+      b.textContent = T('btn_envoyer');
+      b.onclick = function() { envoyerDemandeDevis(artisanId, secteurArtisan || 'autre'); };
+    }
+  };
   var div = document.getElementById('modal-devis');
   if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
   div.innerHTML =
@@ -1094,7 +1189,7 @@ function ouvrirModalDevis(artisanId, nomArtisan, secteurArtisan) {
       '</div>' +
     '</div>';
 }
-function fermerModalDevis() { var div = document.getElementById('modal-devis'); if (div) div.innerHTML = ''; }
+function fermerModalDevis() { var div = document.getElementById('modal-devis'); if (div) div.innerHTML = ''; window._onTypeInterventionChoisi = null; }
 
 // ⚠️ À REMPLIR avant déploiement — Stripe Dashboard → Développeurs → Clés API → "Clé publiable" (pk_live_...).
 // Jamais la clé secrète ici, uniquement la clé publique (faite pour être visible côté client).
@@ -1275,6 +1370,8 @@ function ouvrirModalDevisGeneral() {
   _devisContactPref = 'telephone'; // réinitialisé à chaque ouverture
   _devisPhotos = []; document.getElementById('devis-photos-preview') && (document.getElementById('devis-photos-preview').innerHTML = '');
   _typeInterventionChoisi = null;
+  window._typeInterventionFrais = undefined; // demande ouverte à plusieurs artisans : chacun a ses propres frais
+  window._onTypeInterventionChoisi = null;
   var div = document.getElementById('modal-devis');
   if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
   var champLabel = secteurLabelChamp();
@@ -1314,6 +1411,8 @@ async function envoyerDemandeDevisGenerale() {
   var err = document.getElementById('devis-err');
   var btn = document.getElementById('btn-devis');
 
+  if (!_typeInterventionChoisi) { err.textContent = T('err_type_requis'); err.style.display = 'block'; return; }
+
   if (!nom || !tel || !commune || !message) {
     err.textContent = T('err_champs'); err.style.display = 'block'; return;
   }
@@ -1351,6 +1450,9 @@ async function envoyerDemandeDevis(artisanId, secteurArtisan) {
   var message = document.getElementById('devis-message').value.trim();
   var err = document.getElementById('devis-err');
   var btn = document.getElementById('btn-devis');
+
+  if (_typeInterventionChoisi === 'visite') { commencerVisiteDepuisDevis(artisanId); return; } // un rendez-vous sur place a besoin d'un créneau
+  if (!_typeInterventionChoisi) { err.textContent = T('err_type_requis'); err.style.display = 'block'; return; }
 
   if (!nom || !tel || !commune || !message) {
     err.textContent = T('err_champs'); err.style.display = 'block'; return;

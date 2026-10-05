@@ -183,7 +183,12 @@ Deno.serve(async (req: Request) => {
       clientId = client.id;
 
       // 2) Intervention créée directement dans le planning
-      const notesIntervention = message ? `${demande.description_besoin} (Note de l'artisan à la confirmation : ${message})` : demande.description_besoin;
+      // Une visite d'estimation est signalée dans le planning, avec ses frais de déplacement : l'artisan sait pourquoi il y va.
+      const fraisVisite = Number(demande.frais_deplacement);
+      const prefixeVisite = demande.type_intervention === "visite"
+        ? `🚗 Visite d'estimation${fraisVisite > 0 ? ` — frais de déplacement : ${fraisVisite.toFixed(2).replace(".", ",")} €` : " (sans frais de déplacement)"}. `
+        : "";
+      const notesIntervention = prefixeVisite + (message ? `${demande.description_besoin} (Note de l'artisan à la confirmation : ${message})` : demande.description_besoin);
       const { error: errInter } = await sb.from("mpa_artisans_interventions").insert({
         artisan_id: artisanId,
         client_id: client.id,
@@ -211,10 +216,14 @@ Deno.serve(async (req: Request) => {
     // 3) Email de confirmation au client, avec le message éventuel — jamais bloquant
     try {
       if (demande.client_email) {
+        const fraisConfirmes = Number(demande.frais_deplacement);
+        const visiteHtml = demande.type_intervention === "visite"
+          ? `<p style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:10px 14px;border-radius:8px;">🚗 Visite d'estimation sur place${fraisConfirmes > 0 ? ` — frais de déplacement : <strong>${escHtml(fraisConfirmes.toFixed(2).replace(".", ","))} €</strong>, à régler à l'artisan lors de sa visite` : " (sans frais de déplacement)"}. Le devis définitif des travaux vous sera remis par l'artisan après sa visite.</p>`
+          : "";
         const html = `<div style="font-family:sans-serif;max-width:480px;">
           <h2 style="color:#16a34a;">✅ Rendez-vous confirmé</h2>
           <p>Votre intervention du <strong>${escHtml(dateAff)} à ${escHtml(heure)}</strong> est confirmée${artisanInfos?.nom_entreprise ? ` avec <strong>${escHtml(artisanInfos.nom_entreprise)}</strong>` : ""}.</p>
-          ${message ? `<p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${escHtml(message)}</p>` : ""}
+          ${visiteHtml}${message ? `<p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${escHtml(message)}</p>` : ""}
           ${artisanInfos?.telephone ? `<p style="font-size:12.5px;color:#6b7c96;">En cas d'empêchement, vous pouvez contacter directement l'artisan au <a href="tel:${escHtml(telHref(artisanInfos.telephone))}">${escHtml(artisanInfos.telephone)}</a>.</p>` : ""}
           <p style="font-size:12px;color:#6b7c96;">À bientôt !</p>
         </div>`;

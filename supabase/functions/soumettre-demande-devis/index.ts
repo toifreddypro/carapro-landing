@@ -21,6 +21,14 @@
 //  - un même téléphone ou email ne peut pas envoyer plus de 10 demandes par heure ;
 //  - une demande ouverte ne prévient que les 15 artisans les plus proches ;
 //  - une panne interne ne révèle jamais son détail au visiteur.
+//
+// Types de demande (refonte du 05/10) :
+//  - « renseignement » : simple échange de messages, aucun créneau, aucun déplacement ;
+//  - « visite » : rendez-vous sur place pour estimer le chantier. Adressée à un artisan précis, elle EXIGE un créneau.
+//    Les frais de déplacement sont lus chez l'artisan au moment de la demande puis FIGÉS sur la demande : jamais une
+//    valeur envoyée par la page ;
+//  - « reservation » : réservation directe d'un créneau (client qui connaît déjà l'artisan) — exige un créneau ;
+//  - les anciens types (urgence, installation, devis, entretien) restent acceptés : pages déjà ouvertes, anciennes demandes.
 // ═════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -33,7 +41,8 @@ const corsHeaders = {
 const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
 // Supabase n'affiche pas les pages HTML sur son domaine par défaut : les boutons des emails mènent à une page de ton site.
 const PAGE_REPONSE = "https://caralink.app/artisans/repondre.html";
-const TYPES_INTERVENTION_VALIDES = ["urgence", "installation", "devis", "entretien"];
+const TYPES_INTERVENTION_VALIDES = ["renseignement", "visite", "reservation", "urgence", "installation", "devis", "entretien"];
+const FRAIS_DEPLACEMENT_MAX = 500; // plafond de sécurité (la base impose aussi 0 à 500)
 const LIMITE_DEMANDES_PAR_HEURE = 10;
 const MAX_ARTISANS_NOTIFIES = 15;
 const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -83,6 +92,9 @@ async function envoyerEmail(to: string, subject: string, html: string) {
 }
 
 const LABELS_TYPE_INTERVENTION: Record<string, string> = {
+  renseignement: "💬 Devis / Renseignement simple",
+  visite: "🚗 Devis / Rendez-vous sur place",
+  reservation: "📅 Réservation directe",
   urgence: "🔥 Urgent",
   installation: "📅 Rendez-vous classique",
   devis: "💬 Devis / Renseignement",
@@ -129,7 +141,16 @@ async function geocoderAdresse(adresse: string, cp: string | null, commune: stri
   return null;
 }
 
-function emailHtmlCreneau(clientNom: string, clientTel: string, clientEmail: string | null, contactPrefere: string, commune: string, adresse: string, description: string, dateAff: string, heureDebut: string, heureFin: string, nbPhotos: number, token: string, horsHoraires: boolean, typeIntervention: string | null): string {
+const euros = (n: number) => n.toFixed(2).replace(".", ",") + " €";
+function blocVisiteArtisan(typeIntervention: string | null, fraisDeplacement: number | null): string {
+  if (typeIntervention !== "visite") return "";
+  const frais = fraisDeplacement && fraisDeplacement > 0
+    ? `Frais de déplacement annoncés au client : <strong>${escHtml(euros(fraisDeplacement))}</strong>, à lui facturer lors de votre visite.`
+    : "Visite sans frais de déplacement.";
+  return `<p style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:10px 14px;border-radius:8px;">🚗 ${frais} Le devis définitif des travaux sera à remettre au client après la visite.</p>`;
+}
+
+function emailHtmlCreneau(clientNom: string, clientTel: string, clientEmail: string | null, contactPrefere: string, commune: string, adresse: string, description: string, dateAff: string, heureDebut: string, heureFin: string, nbPhotos: number, token: string, horsHoraires: boolean, typeIntervention: string | null, fraisDeplacement: number | null = null): string {
   const lienConfirmer = `${PAGE_REPONSE}?token=${encodeURIComponent(token)}&action=confirmer`;
   const lienRefuser = `${PAGE_REPONSE}?token=${encodeURIComponent(token)}&action=refuser`;
   const contactHtml = contactPrefere === "email"
@@ -144,6 +165,7 @@ function emailHtmlCreneau(clientNom: string, clientTel: string, clientEmail: str
       <h2 style="color:#B5502F;">📅 Proposition de créneau</h2>
       ${alerteHorsHoraires}
       ${badgeTypeIntervention(typeIntervention)}
+      ${blocVisiteArtisan(typeIntervention, fraisDeplacement)}
       <p><strong>${escHtml(clientNom)}</strong> (${escHtml(commune)}) souhaite une intervention le <strong>${escHtml(dateAff)} entre ${escHtml(heureDebut)} et ${escHtml(heureFin)}</strong>, à cette adresse : ${escHtml(adresse)}.</p>
       <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${texteHtml(description)}</p>
       <p>Contact : ${contactHtml}</p>
@@ -291,7 +313,9 @@ Deno.serve(async (req: Request) => {
     // ── L'artisan visé et le service doivent exister (et le service lui appartenir) ──
     let artisanVise: any = null;
     if (artisanId) {
-      const { data: a, error: errArt } = await sb.from("artisans").select("id, user_id, nom_entreprise, secteur").eq("id", artisanId).maybeSingle();
+      let { data: a, error: errArt } = await sb.from("artisans").select("id, user_id, nom_entreprise, secteur, frais_deplacement").eq("id", artisanId).maybeSingle();
+      // Tolérance : si la colonne des frais n'existe pas encore (devis-visite.sql pas lancé), on continue sans (frais = 0).
+      if (errArt && (errArt as any).code === "42703") ({ data: a, error: errArt } = await sb.from("artisans").select("id, user_id, nom_entreprise, secteur").eq("id", artisanId).maybeSingle());
       if (errArt) throw errArt;
       if (!a) return json({ error: "Artisan introuvable." }, 404);
       artisanVise = a;
@@ -324,6 +348,18 @@ Deno.serve(async (req: Request) => {
     }
 
     const estUneProposionDeCreneau = !!(dateIntervention && heureDebut && artisanId);
+    // Cohérence du type et du créneau : un rendez-vous (visite ou réservation) sans créneau n'a pas de sens, et un simple
+    // renseignement n'en a pas besoin. (Une demande OUVERTE de visite, sans artisan précis, reste possible sans créneau.)
+    if (typeIntervention === "visite" && artisanId && !estUneProposionDeCreneau) return json({ error: "Choisissez un créneau pour le rendez-vous sur place." }, 400);
+    if (typeIntervention === "reservation" && !estUneProposionDeCreneau) return json({ error: "Choisissez un créneau pour cette réservation." }, 400);
+    if (typeIntervention === "renseignement" && (dateIntervention || heureDebut)) return json({ error: "Une demande de renseignement n'a pas de créneau." }, 400);
+
+    // Frais de déplacement d'une visite : lus chez l'artisan MAINTENANT, puis figés sur la demande. La page n'en envoie jamais.
+    let fraisVisite: number | null = null;
+    if (typeIntervention === "visite" && artisanVise) {
+      const f = Number(artisanVise.frais_deplacement);
+      fraisVisite = Number.isFinite(f) && f > 0 ? Math.min(f, FRAIS_DEPLACEMENT_MAX) : 0;
+    }
     if (estUneProposionDeCreneau && !adresseTxt) {
       return json({ error: "Adresse d'intervention manquante." }, 400);
     }
@@ -339,16 +375,23 @@ Deno.serve(async (req: Request) => {
 
     const token = estUneProposionDeCreneau ? crypto.randomUUID() : null;
 
-    const { data: demande, error } = await sb.from("demandes_devis").insert({
+    const lignesDemande: Record<string, unknown> = {
       client_nom: nom, client_telephone: tel, client_email: email || null, contact_prefere: contactChoisi,
       secteur: secteurCode, description_besoin: description, commune: communeNom, type_intervention: typeIntervention,
+      ...(fraisVisite !== null ? { frais_deplacement: fraisVisite } : {}),
       statut: estUneProposionDeCreneau ? "creneau_propose" : (artisanId ? "directe" : "ouverte"),
       ...(estUneProposionDeCreneau ? {
         token, date_intervention: dateIntervention, heure_debut: heureDebut, heure_fin: heureFin,
         adresse: adresseTxt, code_postal: cp, latitude: lat, longitude: lon,
         service_id: serviceId, hors_horaires: !!hors_horaires,
       } : {}),
-    }).select().single();
+    };
+    let { data: demande, error } = await sb.from("demandes_devis").insert(lignesDemande).select().single();
+    // Tolérance : colonne des frais absente de la table (SQL pas lancé) → on enregistre la demande sans, jamais une panne.
+    if (error && (error as any).code === "42703" && "frais_deplacement" in lignesDemande) {
+      delete lignesDemande.frais_deplacement;
+      ({ data: demande, error } = await sb.from("demandes_devis").insert(lignesDemande).select().single());
+    }
     if (error) throw error;
 
     if (artisanId) {
@@ -380,7 +423,7 @@ Deno.serve(async (req: Request) => {
           const { data: userData } = await sb.auth.admin.getUserById(artisanVise.user_id);
           if (userData?.user?.email) {
             const dateAff = new Date(dateIntervention!).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
-            const emailHtml = emailHtmlCreneau(nom, tel, email || null, contactChoisi, communeNom, adresseTxt, description, dateAff, heureDebut!, heureFin || "?", nbPhotos, token as string, !!hors_horaires, typeIntervention);
+            const emailHtml = emailHtmlCreneau(nom, tel, email || null, contactChoisi, communeNom, adresseTxt, description, dateAff, heureDebut!, heureFin || "?", nbPhotos, token as string, !!hors_horaires, typeIntervention, fraisVisite);
             await envoyerEmail(userData.user.email, `${hors_horaires ? "⚠️ Demande hors horaires — " : ""}Proposition de créneau — ${nom} le ${dateAff}`, emailHtml);
           }
         }
