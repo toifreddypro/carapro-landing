@@ -673,8 +673,10 @@ async function chargerApercuDispo(artisanId) {
   }
 }
 
-function ouvrirVerifDispo(artisanId) {
-  window._visiteDemandee = false; // une ouverture des disponibilités à l'initiative du client repart de zéro
+function ouvrirVerifDispo(artisanId, pourVisite) {
+  // « pourVisite » : vient du choix « Rendez-vous sur place » (lié à CET artisan, ne s'applique pas à une autre fiche).
+  // Sinon (bouton « Voir les disponibilités ») : le client repart de zéro et la question « première intervention ? » lui sera posée.
+  window._visiteDemandee = pourVisite ? artisanId : false;
   var zone = document.getElementById('dispo-zone-' + artisanId);
   if (!zone || !_profilDataCourant) return;
   var services = _profilDataCourant.services || [];
@@ -683,6 +685,7 @@ function ouvrirVerifDispo(artisanId) {
   }).join('');
   zone.innerHTML =
     '<div style="border:1px solid var(--line,#eee);border-radius:10px;padding:14px;">' +
+      (pourVisite ? '<div style="font-size:13px;font-weight:700;color:#1e40af;margin-bottom:8px;">' + T('type_visite') + '</div>' : '') +
       '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:10px;">' + T('dispo_intro') + '</div>' +
       (options ? '<select id="dispo-service" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' + options + '</select>' : '') +
       '<input id="dispo-adresse" type="text" placeholder="' + T('ph_adresse_interv') + '" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' +
@@ -806,7 +809,6 @@ function ouvrirModalCreneau() {
         '</div>' +
       '</div>' +
     '</div>';
-  appliquerVisiteDemandee();
 }
 
 function afficherConfirmationDemande(nomArtisan, emailDonne) {
@@ -898,7 +900,6 @@ function ouvrirModalSurMesure() {
         '</div>' +
       '</div>' +
     '</div>';
-  appliquerVisiteDemandee();
 }
 
 async function envoyerSurMesureDevis() {
@@ -1055,14 +1056,22 @@ function commencerVisiteDepuisDevis(artisanId) {
   var zone = document.getElementById('dispo-zone-' + artisanId);
   if (!zone || !_profilDataCourant) { showToast(T('visite_pas_de_creneaux')); return; }
   fermerModalDevis();
-  ouvrirVerifDispo(artisanId);       // (remet le drapeau à zéro : on le pose APRÈS)
-  window._visiteDemandee = artisanId; // lié à CET artisan : ne s'applique pas à une autre fiche
+  ouvrirVerifDispo(artisanId, true); // true = le client a déjà choisi « Rendez-vous sur place » : on ne le lui redemande pas
   if (zone.scrollIntoView) zone.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // ── Fenêtres de créneau : « première intervention avec cet artisan ? » (réponse obligatoire) ──
 function premiereInterventionHTML() {
-  window._typeInterventionFrais = fraisDeplacementContexte(window._dispoContexte && window._dispoContexte.artisanId);
+  var ctx = window._dispoContexte;
+  window._typeInterventionFrais = fraisDeplacementContexte(ctx && ctx.artisanId);
+  // Le client vient de choisir « Rendez-vous sur place » pour CET artisan : la réponse est déjà donnée, on affiche seulement le rappel.
+  if (window._visiteDemandee && ctx && window._visiteDemandee === ctx.artisanId) {
+    _typeInterventionChoisi = 'visite';
+    return '<div id="premiere-interv" style="margin-bottom:10px;">' +
+        '<div style="font-size:13px;font-weight:700;color:#1e40af;">' + T('type_visite') + '</div>' +
+        visiteInfoHTML(window._typeInterventionFrais) +
+      '</div>';
+  }
   return '<div id="premiere-interv" style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:12px;margin-bottom:10px;">' +
       '<div style="font-size:13px;font-weight:700;color:#9a3412;margin-bottom:4px;">' + T('premiere_titre') + '</div>' +
       '<div style="font-size:12.5px;color:#9a3412;line-height:1.45;margin-bottom:8px;">' + T('premiere_texte') + '</div>' +
@@ -1076,14 +1085,6 @@ function choisirPremiereIntervention(code) {
   _typeInterventionChoisi = code; // 'visite' (devis / rendez-vous sur place) ou 'reservation' (réservation directe)
   var info = document.getElementById('premiere-interv-info');
   if (info) info.innerHTML = code === 'visite' ? visiteInfoHTML(window._typeInterventionFrais) : '';
-}
-
-// Si le client vient de choisir « Rendez-vous sur place » dans le formulaire de message : la réponse est déjà « oui ».
-function appliquerVisiteDemandee() {
-  var ctx = window._dispoContexte;
-  if (!window._visiteDemandee || !ctx || window._visiteDemandee !== ctx.artisanId) return;
-  var radio = document.querySelector('input[name="premiere-interv"][value="oui"]');
-  if (radio) { radio.checked = true; choisirPremiereIntervention('visite'); }
 }
 
 function photosPickerHTML() {
@@ -1161,6 +1162,8 @@ function ouvrirModalDevis(artisanId, nomArtisan, secteurArtisan) {
   // « Rendez-vous sur place » : le bouton devient « Choisir un créneau de visite » (un rendez-vous a besoin d'un créneau).
   window._onTypeInterventionChoisi = function(code) {
     var b = document.getElementById('btn-devis'); if (!b) return;
+    // Un renseignement a besoin des coordonnées et du message ; un rendez-vous sur place, non : tout est demandé APRÈS le créneau.
+    var champs = document.getElementById('devis-champs'); if (champs) champs.style.display = code === 'visite' ? 'none' : 'block';
     // Fonctions directes (pas d'attribut HTML) : aucune valeur à échapper.
     if (code === 'visite') {
       b.textContent = T('visite_choisir_creneau');
@@ -1177,13 +1180,15 @@ function ouvrirModalDevis(artisanId, nomArtisan, secteurArtisan) {
       '<div style="' + STYLE_BOITE_DEVIS + '">' +
         '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">' + T('devis_titre') + '</div>' +
         '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">' + (nomArtisan ? T('devis_sub_a') + ' ' + escHtml(nomArtisan) + '. ' : '') + T('devis_sub_suite') + '</div>' +
+        typeInterventionPickerHTML() +
+        '<div id="devis-champs" style="display:none;">' +
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         contactPrefHTML() +
         '<input id="devis-commune" type="text" placeholder="' + T('ph_commune') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
-        typeInterventionPickerHTML() +
         '<textarea id="devis-message" rows="4" placeholder="' + T('ph_message') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         photosPickerHTML() +
+        '</div>' +
         '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
         '<div style="display:flex;gap:8px;">' +
           '<button id="btn-devis" onclick="envoyerDemandeDevis(' + jsAttr(artisanId) + ',' + jsAttr(secteurArtisan||'autre') + ')" style="flex:1;padding:11px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">' + T('btn_envoyer') + '</button>' +
