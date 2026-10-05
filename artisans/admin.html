@@ -557,7 +557,7 @@ async function supprimerCompte(artisanId) {
   var a = _artisansCache.find(function(x) { return x.id === artisanId; });
   if (!a) return;
   var userId = a.user_id, nom = a.nom_entreprise;
-  if (!confirm('Supprimer définitivement le compte de "' + nom + '" ?\n\nCette action est irréversible : profil, services, photos, clients, interventions et factures seront tous effacés.')) return;
+  if (!confirm('Supprimer définitivement le compte de "' + nom + '" ?\n\nCette action est irréversible : profil, services, photos, clients, interventions et factures seront tous effacés, son abonnement Stripe résilié, et ses fichiers supprimés. Un résumé comptable est conservé.')) return;
   if (!confirm('Vraiment sûr ? Il n\'y a aucun moyen de revenir en arrière.')) return;
 
   try {
@@ -568,7 +568,7 @@ async function supprimerCompte(artisanId) {
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error);
-    alert('Compte supprimé : ' + data.email);
+    alert('Compte supprimé : ' + data.email + (data.avertissements && data.avertissements.length ? '\n\n⚠️ À traiter à la main (le compte, lui, est bien supprimé) :\n- ' + data.avertissements.join('\n- ') : ''));
     await chargerArtisans();
   } catch(e) {
     alert('Erreur : ' + e.message);
