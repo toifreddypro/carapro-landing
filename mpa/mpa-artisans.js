@@ -2521,6 +2521,12 @@ function renderFiche() {
   document.getElementById('fv-tel').textContent = a.telephone || '—';
   document.getElementById('fv-email').textContent = a.email || '—';
   document.getElementById('fv-web').textContent = a.site_web || '—';
+  var fvFrais = document.getElementById('fv-frais'); // (absent si la page HTML en mémoire est plus ancienne que ce code : on ne plante pas)
+  if (fvFrais) {
+    var fr = Number(a.frais_deplacement);
+    fvFrais.textContent = (a.frais_deplacement == null || a.frais_deplacement === '' || !isFinite(fr)) ? 'Non renseigné — visite sans frais'
+      : (fr > 0 ? fr.toFixed(2).replace('.', ',') + ' €' : '0,00 € — visite sans frais');
+  }
 
   document.getElementById('cfg-cotis').value = a.cotisation_sociale_pct ?? 22;
   document.getElementById('cfg-tva').value = a.tva_config || 'Non assujetti';
@@ -2543,7 +2549,8 @@ async function openModifierFiche() {
   document.getElementById('m-cp').value = a.code_postal || '';
   document.getElementById('m-com').value = a.commune || '';
   document.getElementById('m-rayon').value = a.rayon_intervention_km || 15;
-  document.getElementById('m-frais').value = (a.frais_deplacement != null && a.frais_deplacement !== '') ? String(a.frais_deplacement).replace('.', ',') : '';
+  var champFrais = document.getElementById('m-frais'); // (absent si la page HTML en mémoire est plus ancienne que ce code)
+  if (champFrais) champFrais.value = (a.frais_deplacement != null && a.frais_deplacement !== '') ? String(a.frais_deplacement).replace('.', ',') : '';
   document.getElementById('m-tel').value = a.telephone || '';
   document.getElementById('m-email').value = a.email || '';
   document.getElementById('m-web').value = a.site_web || '';
@@ -2735,9 +2742,13 @@ async function sauverFiche() {
   };
   // Frais de déplacement d'une visite sur place : annoncés au client avant sa demande. Envoyés SEULEMENT s'ils sont renseignés
   // ou s'il y avait déjà une valeur à effacer : ainsi l'enregistrement du profil ne dépend pas de la colonne tant qu'on n'y touche pas.
-  var frais = lireFraisDeplacement(document.getElementById('m-frais').value);
-  if (!frais.ok) { alert('Les frais de déplacement doivent être un montant entre 0 et 500 € (par exemple 25 ou 25,50).'); return; }
-  if (frais.valeur !== null || _artisan.frais_deplacement != null) maj.frais_deplacement = frais.valeur;
+  // Si le champ n'existe pas dans la page affichée (ancienne page en mémoire), on ne touche PAS aux frais : jamais d'effacement silencieux.
+  var champFrais = document.getElementById('m-frais');
+  if (champFrais) {
+    var frais = lireFraisDeplacement(champFrais.value);
+    if (!frais.ok) { alert('Les frais de déplacement doivent être un montant entre 0 et 500 € (par exemple 25 ou 25,50).'); return; }
+    if (frais.valeur !== null || _artisan.frais_deplacement != null) maj.frais_deplacement = frais.valeur;
+  }
   // Géocodage de l'adresse pro — sert de point de départ pour le calcul des trajets (Smart Dispatch)
   if (maj.adresse) {
     var pt = await geocoderAdresse(maj.adresse, maj.code_postal, maj.commune);
