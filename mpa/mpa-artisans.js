@@ -3281,7 +3281,7 @@ async function chargerLivraisons() {
 
   zone.innerHTML = duJour.map(function(l) {
     var i = l.mpa_artisans_interventions;
-    var heure = i.heure_debut || (i.creneau === 'matin' ? 'Matin' : i.creneau === 'apres-midi' ? 'Après-midi' : '—');
+    var heure = i.heure_debut || (i.creneau === 'matin' ? 'Matin' : (i.creneau === 'apres_midi' || i.creneau === 'apres-midi') ? 'Après-midi' : '—');
     var autresMemeCommune = (interventionsDuJour || []).filter(function(x) {
       return x.id !== i.id && (x.commune || '').toLowerCase().trim() === (i.commune || '').toLowerCase().trim();
     }).length;
