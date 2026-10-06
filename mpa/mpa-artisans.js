@@ -726,10 +726,10 @@ function majVisiteChamps() { // les frais n'ont de sens que si l'artisan propose
 // le client réserve directement. Aucun autre secteur : pas de suggestion.
 function suggestionVisite(texte) {
   var s = String(texte || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[_\-]+/g, ' '); // « espaces_verts » = « espaces verts »
-  if (/plomb/.test(s)) return { reponse: true, phrase: 'Pour la plomberie, un diagnostic sur place est souvent nécessaire avant d\'intervenir : nous vous suggérons « Oui ».' };
-  if (/electr/.test(s)) return { reponse: true, phrase: 'Pour l\'électricité, un diagnostic sur place est souvent nécessaire avant d\'intervenir : nous vous suggérons « Oui ».' };
-  if (/mecani|garag/.test(s)) return { reponse: true, phrase: 'Pour la mécanique, un diagnostic est souvent nécessaire avant d\'intervenir : nous vous suggérons « Oui ».' };
-  if (/jardin|paysag|espaces? verts?/.test(s)) return { reponse: false, phrase: 'Pour le jardinage, les clients réservent en général directement une intervention : nous vous suggérons « Non ».' };
+  if (/plomb/.test(s)) return { reponse: true, phrase: 'En plomberie, c\'est souvent le cas : nous vous suggérons « Oui ».' };
+  if (/electr/.test(s)) return { reponse: true, phrase: 'En électricité, c\'est souvent le cas : nous vous suggérons « Oui ».' };
+  if (/mecani|garag/.test(s)) return { reponse: true, phrase: 'En mécanique, c\'est souvent le cas : nous vous suggérons « Oui ».' };
+  if (/jardin|paysag|espaces? verts?/.test(s)) return { reponse: false, phrase: 'En jardinage, vos clients réservent en général directement : nous vous suggérons « Non ».' };
   return { reponse: null, phrase: '' };
 }
 async function libelleSecteurArtisan() { // « code + libellé » du secteur de l'artisan (le libellé n'est pas chargé au démarrage)
@@ -746,7 +746,7 @@ async function demanderReglageVisite() {
   if (window._questionVisiteDite || !_artisan || !('proposer_visite' in _artisan) || _artisan.proposer_visite != null) return;
   window._questionVisiteDite = true;
   window._suggestionVisite = suggestionVisite(await libelleSecteurArtisan());
-  mpaAiDire('Une question rapide pour votre fiche publique : votre activité nécessite-t-elle souvent une visite d\'estimation avant une première intervention ?' + (window._suggestionVisite.phrase ? ' ' + window._suggestionVisite.phrase : ''),
+  mpaAiDire('Une question rapide pour votre fiche publique : est-ce qu\'il vous faut souvent aller voir le chantier avant de pouvoir faire votre devis ?' + (window._suggestionVisite.phrase ? ' ' + window._suggestionVisite.phrase : ''),
     'pro', { label: 'Répondre', action: 'ouvrirQuestionVisite()' });
 }
 function ouvrirQuestionVisite() {
@@ -755,17 +755,38 @@ function ouvrirQuestionVisite() {
   if (zone) { zone.style.display = sug.phrase ? 'block' : 'none'; zone.textContent = sug.phrase ? '✨ ' + sug.phrase : ''; }
   var oui = document.getElementById('visite-btn-oui'), non = document.getElementById('visite-btn-non');
   if (oui) oui.textContent = 'Oui, souvent' + (sug.reponse === true ? ' (suggéré)' : '');
-  if (non) non.textContent = 'Non, mes clients réservent directement' + (sug.reponse === false ? ' (suggéré)' : '');
+  if (non) non.textContent = 'Non, mes clients peuvent réserver directement' + (sug.reponse === false ? ' (suggéré)' : '');
+  var q = document.getElementById('visite-vue-question'), c = document.getElementById('visite-vue-confirmation');
+  if (q) q.style.display = 'block'; if (c) c.style.display = 'none';   // toujours la QUESTION à l'ouverture
   ouvrirModale('modal-visite-question');
+}
+function fermerQuestionVisite() {
+  fermerModale('modal-visite-question');
+  var panneau = document.getElementById('mpa-ai-panel'); if (panneau) panneau.classList.remove('open'); // le panneau ouvert par la question se referme
+}
+// Après la réponse : une CONFIRMATION claire (ce que ça change, comment changer d'avis), pas seulement une ligne dans la liste de MPA-AI.
+function afficherConfirmationVisite(oui) {
+  var q = document.getElementById('visite-vue-question'), c = document.getElementById('visite-vue-confirmation');
+  if (!q || !c) { fermerModale('modal-visite-question'); return; }
+  document.getElementById('visite-confirm-titre').textContent = oui ? '✅ C\'est noté : oui, il vous faut souvent aller voir le chantier' : '✅ C\'est noté : non, vos clients réservent directement';
+  document.getElementById('visite-confirm-effet').textContent = oui
+    ? 'Vos clients peuvent maintenant vous demander de venir voir le chantier : ils choisissent un créneau de visite, et vos frais de déplacement leur sont annoncés avant. Pensez à les indiquer.'
+    : 'Sur votre fiche, vos clients réservent directement un créneau, sans demander de visite. Le choix « Rendez-vous sur place » n\'apparaît plus.';
+  document.getElementById('visite-confirm-action').textContent = oui ? 'Régler mes frais de déplacement' : 'Changer ma réponse';
+  q.style.display = 'none'; c.style.display = 'block';
 }
 async function repondreQuestionVisite(oui) {
   var { error } = await sb.from('artisans').update({ proposer_visite: oui }).eq('id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
   _artisan.proposer_visite = oui;
   renderFiche();
-  fermerModale('modal-visite-question');
-  if (oui) mpaAiDire('C\'est noté : vos clients pourront demander un rendez-vous sur place. Pensez à indiquer vos frais de déplacement.', 'info', { label: 'Régler mes frais', action: 'openModifierFiche()' });
-  else mpaAiDire('C\'est noté : vos clients réserveront directement un créneau, sans visite d\'estimation. Vous pouvez changer d\'avis à tout moment dans « Mon profil ».', 'info');
+  // La question est traitée : on la retire de la liste de MPA-AI (plus de bouton « Répondre » périmé) et on la remplace par une confirmation.
+  _mpaAiFeed = _mpaAiFeed.filter(function(m) { return !(m.cta && m.cta.action === 'ouvrirQuestionVisite()'); });
+  mpaAiDire(oui ? 'C\'est noté : vos clients peuvent vous demander de venir voir le chantier. Pensez à indiquer vos frais de déplacement.'
+                : 'C\'est noté : vos clients réservent directement un créneau, sans visite. Vous pouvez changer cette réponse dans « Mon profil » → Modifier.',
+    'info', { label: oui ? 'Régler mes frais' : 'Changer ma réponse', action: 'openModifierFiche()' });
+  var panneau = document.getElementById('mpa-ai-panel'); if (panneau) panneau.classList.remove('open');
+  afficherConfirmationVisite(oui);
 }
 
 // Frais de déplacement saisis par l'artisan : « » = vide ; virgule ou point ; de 0 à 500 € ; au plus 2 décimales.
