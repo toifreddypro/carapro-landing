@@ -723,13 +723,24 @@ function majVisiteChamps() { // les frais n'ont de sens que si l'artisan propose
   if (c && bloc) bloc.style.display = c.checked ? 'block' : 'none';
 }
 // Suggestion d'après le métier (jamais imposée) : « oui » pour les métiers où il faut voir le chantier avant de chiffrer (plomberie,
-// électricité, mécanique, jardinage : taille du terrain, arbre à élaguer). Aucun autre secteur : pas de suggestion.
+// électricité, mécanique, climatisation, jardinage, maçonnerie, menuiserie, peinture) ; « non » pour ceux où le client réserve directement
+// (coiffure, esthétique, cosmétique, pâtisserie, impression). Tout autre secteur : pas de suggestion.
 function suggestionVisite(texte) {
   var s = String(texte || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[_\-]+/g, ' '); // « espaces_verts » = « espaces verts »
   if (/plomb/.test(s)) return { reponse: true, phrase: 'En plomberie, c\'est souvent le cas : nous vous suggérons « Oui ».' };
   if (/electr/.test(s)) return { reponse: true, phrase: 'En électricité, c\'est souvent le cas : nous vous suggérons « Oui ».' };
   if (/mecani|garag/.test(s)) return { reponse: true, phrase: 'En mécanique, c\'est souvent le cas : nous vous suggérons « Oui ».' };
   if (/jardin|paysag|espaces? verts?/.test(s)) return { reponse: true, phrase: 'En jardinage, c\'est souvent le cas, car il faut voir le terrain (ou l\'arbre) pour estimer le prix : nous vous suggérons « Oui ».' };
+  if (/clim/.test(s)) return { reponse: true, phrase: 'En climatisation, c\'est souvent le cas, car il faut voir l\'emplacement pour estimer le prix : nous vous suggérons « Oui ».' };
+  if (/macon/.test(s)) return { reponse: true, phrase: 'En maçonnerie, c\'est souvent le cas, car il faut voir le chantier pour estimer le prix : nous vous suggérons « Oui ».' };
+  if (/menuis/.test(s)) return { reponse: true, phrase: 'En menuiserie, c\'est souvent le cas, car il faut prendre les mesures sur place : nous vous suggérons « Oui ».' };
+  if (/peintur/.test(s)) return { reponse: true, phrase: 'En peinture, c\'est souvent le cas, car il faut voir les surfaces à peindre pour estimer le prix : nous vous suggérons « Oui ».' };
+  // Métiers où le client réserve directement (rien à aller voir avant) : on suggère « Non ».
+  if (/coiff/.test(s)) return { reponse: false, phrase: 'En coiffure, vos clients réservent en général directement : nous vous suggérons « Non ».' };
+  if (/esthet/.test(s)) return { reponse: false, phrase: 'En esthétique, vos clients réservent en général directement : nous vous suggérons « Non ».' };
+  if (/cosmet/.test(s)) return { reponse: false, phrase: 'En cosmétique, vos clients réservent en général directement : nous vous suggérons « Non ».' };
+  if (/patisser/.test(s)) return { reponse: false, phrase: 'En pâtisserie, vos clients réservent en général directement : nous vous suggérons « Non ».' };
+  if (/impress/.test(s)) return { reponse: false, phrase: 'En impression, vos clients réservent en général directement : nous vous suggérons « Non ».' };
   return { reponse: null, phrase: '' };
 }
 async function libelleSecteurArtisan() { // « code + libellé » du secteur de l'artisan (le libellé n'est pas chargé au démarrage)

@@ -543,7 +543,7 @@ async function ouvrirProfil(id) {
   div.innerHTML = '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:12px;"><div style="background:var(--panel,#fff);border-radius:14px;padding:30px;color:var(--mu);">' + T('chargement') + '</div></div>';
 
   try {
-    var res = await fetch(SUPABASE_URL + '/functions/v1/lire-artisan?id=' + id, {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/lire-artisan?id=' + encodeURIComponent(id), {
       headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON }
     });
     var data = await res.json();
@@ -1604,6 +1604,10 @@ document.addEventListener('DOMContentLoaded', async function() {
   renderHero();
   renderResults();
   chargerTemoignagesArtisans();
+  // Lien direct vers une fiche : https://caralink.app/artisans/?artisan=<identifiant> (ex. le bouton « Choisir un autre créneau »
+  // de l'email de refus). L'identifiant vient de l'adresse : on n'accepte QUE la forme exacte d'un identifiant (rien d'autre n'est envoyé).
+  var voulu = new URLSearchParams(location.search).get('artisan');
+  if (voulu && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(voulu)) ouvrirProfil(voulu);
 });
 
 // ── Témoignages — même mécanisme que sur les autres landings LearnLogic ──
