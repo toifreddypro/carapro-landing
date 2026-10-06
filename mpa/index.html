@@ -516,7 +516,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <svg fill="none" height="16" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
               Informations entreprise
             </div>
-<button class="sbtn sm" onclick="openModifierFiche()">✎ Modifier</button>
+<div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="sbtn sm" onclick="ouvrirPartageArtisan('fiche')">🔗 Partager ma fiche</button><button class="sbtn sm" onclick="openModifierFiche()">✎ Modifier</button></div>
 </div>
 <div class="fbdy">
 <div class="fr"><span class="fl">Nom / Raison sociale</span><span class="fv" id="fv-nom">—</span></div>
@@ -698,6 +698,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
 <input id="boutique-lien" readonly="" style="flex:1;min-width:220px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--inp);font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mu2);" type="text"/>
 <button class="addb" onclick="copierLienBoutique()" style="flex-shrink:0;">📋 Copier</button>
+<button class="addb" onclick="ouvrirPartageArtisan('boutique')" style="flex-shrink:0;">🔗 Partager / QR code</button>
 </div>
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
 <input id="boutique-code-promo" maxlength="30" placeholder="Code promo à afficher (ex : BIENVENUE10)" style="flex:1;min-width:200px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--inp);font-family:'Outfit',sans-serif;font-size:13px;" type="text"/>
@@ -1021,6 +1022,32 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div>
 </div>
+<!-- MODALE : Partager ma fiche / ma boutique (lien, message prêt à envoyer, QR code) -->
+<div class="modal-overlay" id="modal-partage-artisan">
+<div class="modal-box">
+<h3 id="pa-titre">🔗 Partager</h3>
+<p id="pa-intro" style="font-size:13px;line-height:1.5;margin:0 0 12px;color:var(--mu2);"></p>
+<div class="modal-field"><label>Le lien</label>
+<div style="display:flex;gap:8px;align-items:center;"><input id="pa-lien" readonly="" onclick="this.select()" type="text" style="flex:1;min-width:0;font-family:'JetBrains Mono',monospace;font-size:12px;"/><button class="addb" id="pa-copier-lien" onclick="copierTextePartageArtisan('pa-lien', 'pa-copier-lien')" style="flex-shrink:0;">📋 Copier</button></div></div>
+<div class="modal-field"><label>Un message prêt à envoyer à vos clients</label>
+<textarea id="pa-message" readonly="" rows="3" onclick="this.select()" style="width:100%;box-sizing:border-box;font-family:inherit;font-size:13px;"></textarea>
+<button class="addb" id="pa-copier-message" onclick="copierTextePartageArtisan('pa-message', 'pa-copier-message')" style="margin-top:6px;">📋 Copier le message</button></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+<button class="btn-primary" id="pa-natif" onclick="partagerNatifArtisan()" style="display:none;">📲 Partager…</button>
+<a class="addb" id="pa-whatsapp" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">💬 WhatsApp</a>
+<a class="addb" id="pa-facebook" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">📘 Facebook</a>
+<a class="addb" id="pa-email" style="text-decoration:none;">✉️ Email</a>
+</div>
+<div style="text-align:center;margin-bottom:12px;">
+<div id="pa-qr" style="display:inline-block;background:#fff;border-radius:8px;min-height:60px;min-width:60px;"></div>
+<div style="font-size:12px;color:var(--mu);margin:6px 0 8px;line-height:1.4;">QR code : à imprimer sur votre carte de visite, votre véhicule ou votre vitrine. Un client le scanne avec son téléphone et arrive directement sur ce lien.</div>
+<button class="addb" id="pa-telecharger" onclick="telechargerQRArtisan()">⬇️ Télécharger le QR code (image)</button>
+</div>
+<div id="pa-note" style="font-size:11.5px;color:var(--mu);line-height:1.5;border-top:1px solid var(--brd);padding-top:10px;"></div>
+<div class="modal-actions"><button class="btn-secondary" onclick="fermerModale('modal-partage-artisan')">Fermer</button></div>
+</div>
+</div>
+
 <!-- MODALE : Question MPA-AI — faut-il souvent aller voir le chantier avant de faire le devis ? -->
 <div class="modal-overlay" id="modal-visite-question">
 <div class="modal-box">

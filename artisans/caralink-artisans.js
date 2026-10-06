@@ -569,7 +569,7 @@ async function partagerFiche(artisanId) {
   }
   ouvrirMenuPartage(url, texte, a.nom_entreprise);
 }
-function ouvrirMenuPartage(url, texte, nom) {
+function ouvrirMenuPartage(url, texte, nom, titreMenu) {
   var div = document.getElementById('modal-partage');
   if (!div) { div = document.createElement('div'); div.id = 'modal-partage'; document.body.appendChild(div); }
   var bouton = 'display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:11px 14px;border:1px solid var(--line,#ddd);border-radius:10px;background:transparent;color:inherit;font-family:inherit;font-size:14px;cursor:pointer;text-decoration:none;';
@@ -577,7 +577,7 @@ function ouvrirMenuPartage(url, texte, nom) {
   div.innerHTML =
     '<div onclick="fermerMenuPartage(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10020;display:flex;align-items:center;justify-content:center;padding:12px;">' +
       '<div style="background:var(--panel,#fff);border-radius:14px;padding:22px;max-width:400px;width:100%;max-height:90vh;overflow-y:auto;">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><div style="font-weight:700;font-size:16px;">' + T('partage_titre') + '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><div style="font-weight:700;font-size:16px;">' + (titreMenu || T('partage_titre')) + '</div>' +
         '<button type="button" onclick="fermerMenuPartage({target:this,currentTarget:this})" aria-label="' + escHtml(T('partage_fermer')) + '" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--mu,#999);">✕</button></div>' +
         '<div id="partage-nom" style="font-size:13px;color:var(--mu2,#777);margin-bottom:12px;"></div>' +
         '<input id="partage-url" readonly onclick="this.select()" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line,#ddd);border-radius:8px;font-size:13px;margin-bottom:10px;font-family:inherit;background:transparent;color:inherit;">' +

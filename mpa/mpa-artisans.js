@@ -3123,6 +3123,79 @@ async function chargerCatalogue() {
   renderMonOffre();
 }
 
+// ── Partager sa fiche ou sa boutique : lien, message prêt à envoyer, WhatsApp / Facebook / email, QR code à imprimer ──
+// Un client qui réserve par ce lien passe par CaraLink : il compte comme client CaraLink (règle de commission de la formule).
+var _partageArtisan = null; // { quoi, url, nom, texte }
+function lienPartageArtisan(quoi) {
+  if (!_artisan) return null;
+  if (quoi === 'boutique') return _artisan.slug_catalogue ? 'https://caralink.app/artisans/catalogue.html?s=' + encodeURIComponent(_artisan.slug_catalogue) : null;
+  return 'https://caralink.app/artisans/?artisan=' + encodeURIComponent(_artisan.id);
+}
+function ouvrirPartageArtisan(quoi) {
+  var url = lienPartageArtisan(quoi);
+  if (!url) { alert('Le lien de votre boutique n\'est pas encore prêt : ouvrez d\'abord l\'onglet « Catalogue », puis réessayez.'); return; }
+  var nom = _artisan.nom_entreprise || 'mon entreprise';
+  var boutique = quoi === 'boutique';
+  var texte = boutique ? 'Découvrez ma boutique en ligne : ' + url : 'Bonjour, vous pouvez réserver un rendez-vous avec ' + nom + ' directement en ligne : ' + url;
+  _partageArtisan = { quoi: boutique ? 'boutique' : 'fiche', url: url, nom: nom, texte: texte };
+  document.getElementById('pa-titre').textContent = boutique ? '🔗 Partager ma boutique' : '🔗 Partager ma fiche';
+  document.getElementById('pa-intro').textContent = boutique ? 'Envoyez le lien de votre boutique à vos clients, ou imprimez le QR code.' : 'Envoyez le lien de votre fiche à vos clients : ils peuvent réserver un rendez-vous en ligne, ou imprimez le QR code.';
+  document.getElementById('pa-lien').value = url;
+  document.getElementById('pa-message').value = texte;
+  document.getElementById('pa-whatsapp').href = 'https://wa.me/?text=' + encodeURIComponent(texte);
+  document.getElementById('pa-facebook').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url);
+  document.getElementById('pa-email').href = 'mailto:?subject=' + encodeURIComponent(boutique ? 'Ma boutique en ligne' : nom) + '&body=' + encodeURIComponent(texte);
+  document.getElementById('pa-natif').style.display = navigator.share ? 'inline-block' : 'none';
+  document.getElementById('pa-note').textContent = boutique
+    ? 'Les achats se font en ligne via CaraLink (commission selon votre formule : voir « Mon offre »).'
+    : 'Les clients qui réservent par ce lien passent par CaraLink : ils comptent comme clients CaraLink, et leurs prestations suivent la règle de commission de votre formule.';
+  var zone = document.getElementById('pa-qr'), btn = document.getElementById('pa-telecharger');
+  zone.innerHTML = '';
+  try {
+    var img = new Image(); img.alt = 'QR code'; img.style.cssText = 'width:200px;height:200px;display:block;'; img.src = dataUrlQRArtisan(url, 300);
+    zone.appendChild(img); zone.style.padding = '10px'; btn.style.display = 'inline-block';
+  } catch (e) {
+    zone.style.padding = '0'; btn.style.display = 'none';
+    zone.innerHTML = '<div style="font-size:12.5px;color:var(--danger);padding:8px;">Le QR code n\'a pas pu être créé (connexion). Rechargez la page et réessayez.</div>';
+  }
+  ouvrirModale('modal-partage-artisan');
+}
+// PNG du QR code avec une marge blanche (indispensable pour qu'un téléphone le lise une fois imprimé). Lève une erreur si la bibliothèque est absente.
+function dataUrlQRArtisan(url, taille) {
+  if (typeof QRCode === 'undefined') throw new Error('QRCode indisponible');
+  var tmp = document.createElement('div'); tmp.style.cssText = 'position:fixed;left:-9999px;top:0;'; document.body.appendChild(tmp);
+  try {
+    new QRCode(tmp, { text: url, width: taille, height: taille, correctLevel: QRCode.CorrectLevel.M });
+    var src = tmp.querySelector('canvas'); if (!src) throw new Error('canvas absent');
+    var marge = Math.round(taille * 0.08), c = document.createElement('canvas'); c.width = c.height = taille + 2 * marge;
+    var g = c.getContext('2d'); g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(src, marge, marge);
+    return c.toDataURL('image/png');
+  } finally { document.body.removeChild(tmp); }
+}
+function telechargerQRArtisan() {
+  if (!_partageArtisan) return;
+  try {
+    var a = document.createElement('a'); a.href = dataUrlQRArtisan(_partageArtisan.url, 1000);
+    a.download = _partageArtisan.quoi === 'boutique' ? 'qr-ma-boutique.png' : 'qr-ma-fiche.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  } catch (e) { alert('Le QR code n\'a pas pu être créé. Rechargez la page et réessayez.'); }
+}
+async function copierTextePartageArtisan(idChamp, idBouton) {
+  var champ = document.getElementById(idChamp), bouton = document.getElementById(idBouton);
+  if (!champ || !bouton) return;
+  var ok = false;
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(champ.value); ok = true; } } catch (e) { /* on essaie l'autre méthode */ }
+  if (!ok) { champ.focus(); champ.select(); try { ok = document.execCommand('copy'); } catch (e) { ok = false; } }
+  var avant = bouton.textContent;
+  bouton.textContent = ok ? '✅ Copié' : 'Sélectionnez puis copiez';
+  setTimeout(function() { bouton.textContent = avant; }, 2200);
+}
+async function partagerNatifArtisan() {
+  if (!_partageArtisan || !navigator.share) return;
+  try { await navigator.share({ title: _partageArtisan.quoi === 'boutique' ? 'Ma boutique en ligne' : _partageArtisan.nom, text: _partageArtisan.texte.replace(_partageArtisan.url, '').trim(), url: _partageArtisan.url }); }
+  catch (e) { /* menu refermé par l'artisan, ou partage impossible : les boutons WhatsApp / Facebook / email restent là */ }
+}
+
 function copierLienBoutique() {
   var champ = document.getElementById('boutique-lien');
   champ.select();
