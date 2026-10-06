@@ -722,14 +722,14 @@ function majVisiteChamps() { // les frais n'ont de sens que si l'artisan propose
   var c = document.getElementById('m-visite'), bloc = document.getElementById('m-frais-bloc');
   if (c && bloc) bloc.style.display = c.checked ? 'block' : 'none';
 }
-// Suggestion d'après le métier (jamais imposée) : « oui » pour les métiers qui demandent un diagnostic, « non » pour ceux où
-// le client réserve directement. Aucun autre secteur : pas de suggestion.
+// Suggestion d'après le métier (jamais imposée) : « oui » pour les métiers où il faut voir le chantier avant de chiffrer (plomberie,
+// électricité, mécanique, jardinage : taille du terrain, arbre à élaguer). Aucun autre secteur : pas de suggestion.
 function suggestionVisite(texte) {
   var s = String(texte || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[_\-]+/g, ' '); // « espaces_verts » = « espaces verts »
   if (/plomb/.test(s)) return { reponse: true, phrase: 'En plomberie, c\'est souvent le cas : nous vous suggérons « Oui ».' };
   if (/electr/.test(s)) return { reponse: true, phrase: 'En électricité, c\'est souvent le cas : nous vous suggérons « Oui ».' };
   if (/mecani|garag/.test(s)) return { reponse: true, phrase: 'En mécanique, c\'est souvent le cas : nous vous suggérons « Oui ».' };
-  if (/jardin|paysag|espaces? verts?/.test(s)) return { reponse: false, phrase: 'En jardinage, vos clients réservent en général directement : nous vous suggérons « Non ».' };
+  if (/jardin|paysag|espaces? verts?/.test(s)) return { reponse: true, phrase: 'En jardinage, c\'est souvent le cas, car il faut voir le terrain (ou l\'arbre) pour estimer le prix : nous vous suggérons « Oui ».' };
   return { reponse: null, phrase: '' };
 }
 async function libelleSecteurArtisan() { // « code + libellé » du secteur de l'artisan (le libellé n'est pas chargé au démarrage)
@@ -768,10 +768,10 @@ function fermerQuestionVisite() {
 function afficherConfirmationVisite(oui) {
   var q = document.getElementById('visite-vue-question'), c = document.getElementById('visite-vue-confirmation');
   if (!q || !c) { fermerModale('modal-visite-question'); return; }
-  document.getElementById('visite-confirm-titre').textContent = oui ? '✅ C\'est noté : oui, il vous faut souvent aller voir le chantier' : '✅ C\'est noté : non, vos clients réservent directement';
+  document.getElementById('visite-confirm-titre').textContent = oui ? '✅ C\'est noté : oui, il vous faut souvent aller voir le chantier' : '✅ C\'est noté : vos clients réservent directement en ligne.';
   document.getElementById('visite-confirm-effet').textContent = oui
     ? 'Vos clients peuvent maintenant vous demander de venir voir le chantier : ils choisissent un créneau de visite, et vos frais de déplacement leur sont annoncés avant. Pensez à les indiquer.'
-    : 'Sur votre fiche, vos clients réservent directement un créneau, sans demander de visite. Le choix « Rendez-vous sur place » n\'apparaît plus.';
+    : 'Ils ne verront plus l\'option pour demander un rendez-vous sur place.';
   document.getElementById('visite-confirm-action').textContent = oui ? 'Régler mes frais de déplacement' : 'Changer ma réponse';
   q.style.display = 'none'; c.style.display = 'block';
 }
@@ -783,7 +783,7 @@ async function repondreQuestionVisite(oui) {
   // La question est traitée : on la retire de la liste de MPA-AI (plus de bouton « Répondre » périmé) et on la remplace par une confirmation.
   _mpaAiFeed = _mpaAiFeed.filter(function(m) { return !(m.cta && m.cta.action === 'ouvrirQuestionVisite()'); });
   mpaAiDire(oui ? 'C\'est noté : vos clients peuvent vous demander de venir voir le chantier. Pensez à indiquer vos frais de déplacement.'
-                : 'C\'est noté : vos clients réservent directement un créneau, sans visite. Vous pouvez changer cette réponse dans « Mon profil » → Modifier.',
+                : 'C\'est noté : vos clients réservent directement en ligne. Ils ne verront plus l\'option pour demander un rendez-vous sur place. Vous pouvez changer cette réponse dans « Mon profil » → Modifier.',
     'info', { label: oui ? 'Régler mes frais' : 'Changer ma réponse', action: 'openModifierFiche()' });
   var panneau = document.getElementById('mpa-ai-panel'); if (panneau) panneau.classList.remove('open');
   afficherConfirmationVisite(oui);
