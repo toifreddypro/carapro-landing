@@ -557,6 +557,56 @@ async function ouvrirProfil(id) {
     div.innerHTML = '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:12px;"><div style="background:var(--panel,#fff);border-radius:14px;padding:30px;color:var(--danger,#dc2626);">Erreur : ' + escHtml(e.message) + '</div></div>';
   }
 }
+// ── Partager la fiche d'un artisan : menu de partage du téléphone, sinon une petite fenêtre (copier le lien, WhatsApp, Facebook, email) ──
+function urlFichePartage(artisanId) { return location.origin + '/artisans/?artisan=' + encodeURIComponent(artisanId); }
+async function partagerFiche(artisanId) {
+  var a = _profilDataCourant && _profilDataCourant.artisan;
+  if (!a || a.id !== artisanId) return;
+  var url = urlFichePartage(a.id), texte = T('partage_texte_1') + a.nom_entreprise + T('partage_texte_2');
+  if (navigator.share) {
+    try { await navigator.share({ title: a.nom_entreprise, text: texte, url: url }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; /* le client a refermé le menu : rien à faire ; autre échec : on propose la fenêtre */ }
+  }
+  ouvrirMenuPartage(url, texte, a.nom_entreprise);
+}
+function ouvrirMenuPartage(url, texte, nom) {
+  var div = document.getElementById('modal-partage');
+  if (!div) { div = document.createElement('div'); div.id = 'modal-partage'; document.body.appendChild(div); }
+  var bouton = 'display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:11px 14px;border:1px solid var(--line,#ddd);border-radius:10px;background:transparent;color:inherit;font-family:inherit;font-size:14px;cursor:pointer;text-decoration:none;';
+  // Le nom de l'artisan n'est JAMAIS inséré comme du code : seulement via textContent / encodeURIComponent, après coup.
+  div.innerHTML =
+    '<div onclick="fermerMenuPartage(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10020;display:flex;align-items:center;justify-content:center;padding:12px;">' +
+      '<div style="background:var(--panel,#fff);border-radius:14px;padding:22px;max-width:400px;width:100%;max-height:90vh;overflow-y:auto;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><div style="font-weight:700;font-size:16px;">' + T('partage_titre') + '</div>' +
+        '<button type="button" onclick="fermerMenuPartage({target:this,currentTarget:this})" aria-label="' + escHtml(T('partage_fermer')) + '" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--mu,#999);">✕</button></div>' +
+        '<div id="partage-nom" style="font-size:13px;color:var(--mu2,#777);margin-bottom:12px;"></div>' +
+        '<input id="partage-url" readonly onclick="this.select()" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line,#ddd);border-radius:8px;font-size:13px;margin-bottom:10px;font-family:inherit;background:transparent;color:inherit;">' +
+        '<div style="display:flex;flex-direction:column;gap:8px;">' +
+          '<button type="button" id="partage-copier" onclick="copierLienPartage()" style="' + bouton + '">📋 ' + T('partage_copier') + '</button>' +
+          '<a id="partage-whatsapp" target="_blank" rel="noopener noreferrer" style="' + bouton + '">💬 ' + T('partage_whatsapp') + '</a>' +
+          '<a id="partage-facebook" target="_blank" rel="noopener noreferrer" style="' + bouton + '">📘 ' + T('partage_facebook') + '</a>' +
+          '<a id="partage-email" style="' + bouton + '">✉️ ' + T('partage_email') + '</a>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.getElementById('partage-nom').textContent = nom;
+  document.getElementById('partage-url').value = url;
+  document.getElementById('partage-whatsapp').href = 'https://wa.me/?text=' + encodeURIComponent(texte + ' ' + url);
+  document.getElementById('partage-facebook').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url);
+  document.getElementById('partage-email').href = 'mailto:?subject=' + encodeURIComponent(nom) + '&body=' + encodeURIComponent(texte + '\n\n' + url);
+}
+async function copierLienPartage() {
+  var champ = document.getElementById('partage-url'), bouton = document.getElementById('partage-copier');
+  if (!champ || !bouton) return;
+  var ok = false;
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(champ.value); ok = true; } } catch (e) { /* on essaie l'autre méthode */ }
+  if (!ok) { champ.focus(); champ.select(); try { ok = document.execCommand('copy'); } catch (e) { ok = false; } }
+  var avant = bouton.innerHTML;
+  bouton.textContent = ok ? T('partage_lien_copie') : T('partage_copie_manuelle');
+  setTimeout(function() { if (document.getElementById('partage-copier') === bouton) bouton.innerHTML = avant; }, 2200);
+}
+function fermerMenuPartage(e) { if (e && e.target !== e.currentTarget) return; var d = document.getElementById('modal-partage'); if (d) d.innerHTML = ''; }
+
 function fermerProfil(e) { if (e && e.target !== e.currentTarget) return; var div = document.getElementById('modal-profil'); if (div) div.innerHTML = ''; }
 
 function buildProfilHTML(data) {
@@ -625,7 +675,10 @@ function buildProfilHTML(data) {
           (a.alternance_niveau >= 2 ? '<span title="Cette entreprise s\'engage activement pour la formation locale" style="margin-top:4px;margin-left:6px;display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,158,11,.12);color:#b45309;">🟠 Tremplin des jeunes</span>' : '') +
           '</div>' +
         '</div>' +
-        '<button onclick="fermerProfil({target:this,currentTarget:this})" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--mu,#999);">✕</button>' +
+        '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;margin-left:8px;">' +
+          '<button type="button" onclick="partagerFiche(' + jsAttr(a.id) + ')" aria-label="' + escHtml(T('partage_titre')) + '" style="background:none;border:1px solid var(--line,#ddd);border-radius:20px;padding:5px 12px;font-size:13px;cursor:pointer;color:var(--mu2,#555);font-family:inherit;white-space:nowrap;">🔗 ' + T('partage_bouton') + '</button>' +
+          '<button onclick="fermerProfil({target:this,currentTarget:this})" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--mu,#999);">✕</button>' +
+        '</div>' +
       '</div>' +
       (a.bio ? '<p style="font-size:14px;line-height:1.6;margin-bottom:18px;">' + escHtml(a.bio) + '</p>' : '') +
       '<div style="font-weight:700;margin-bottom:6px;">' + T('services_titre') + '</div>' + servicesHtml +

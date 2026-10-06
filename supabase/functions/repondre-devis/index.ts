@@ -149,13 +149,23 @@ Deno.serve(async (req: Request) => {
     if (action === "refuser") {
       try {
         if (demande.client_email) {
+          // Le nom de l'artisan (pour que le client sache LEQUEL a refusé) : facultatif, un échec de lecture n'empêche ni le refus ni l'email.
+          let nomArtisan = "";
+          try {
+            const { data: ar } = await sb.from("artisans").select("nom_entreprise").eq("id", artisanId).maybeSingle();
+            nomArtisan = ar?.nom_entreprise ? String(ar.nom_entreprise).replace(/[\r\n]+/g, " ").trim() : "";
+          } catch (_) { /* sans le nom */ }
+          const chez = nomArtisan ? ` chez <strong>${escHtml(nomArtisan)}</strong>` : "";
+          // Retour direct sur la fiche de l'artisan pour choisir un autre créneau (l'annuaire ouvre la fiche avec ?artisan=).
+          const lienFiche = `https://caralink.app/artisans/?artisan=${encodeURIComponent(String(artisanId))}`;
           const html = `<div style="font-family:sans-serif;max-width:480px;">
             <h2 style="color:#6b7c96;">Créneau non disponible</h2>
-            <p>Votre demande pour le <strong>${escHtml(dateAff)} à ${escHtml(heure)}</strong> n'a malheureusement pas pu être retenue.</p>
+            <p>Votre demande de rendez-vous pour le <strong>${escHtml(dateAff)} à ${escHtml(heure)}</strong>${chez} n'a malheureusement pas pu être retenue.</p>
             ${message ? `<p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${escHtml(message)}</p>` : ""}
-            <p style="font-size:12px;color:#6b7c96;">N'hésitez pas à consulter d'autres créneaux ou d'autres artisans sur CaraLink.</p>
+            <p style="text-align:center;margin:22px 0;"><a href="${lienFiche}" style="display:inline-block;background:#B5502F;color:#ffffff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:700;">Choisir un autre créneau</a></p>
+            <p style="font-size:12px;color:#6b7c96;">Vous pouvez aussi consulter d'autres artisans sur CaraLink.</p>
           </div>`;
-          await envoyerEmail(demande.client_email, `Créneau non disponible — ${dateAff}`, html);
+          await envoyerEmail(demande.client_email, `Créneau non disponible${nomArtisan ? ` chez ${nomArtisan}` : ""} — ${dateAff}`, html);
         }
       } catch (e) { console.error("[repondre-devis] Email de refus client échoué :", e); }
 
