@@ -118,7 +118,7 @@ function emailHtmlDemande(clientNom: string, clientTel: string, clientEmail: str
     <div style="font-family:sans-serif;max-width:480px;">
       <h2 style="color:#B5502F;">📢 Nouvelle demande de devis</h2>
       ${badgeTypeIntervention(typeIntervention)}
-      <p><strong>${escHtml(clientNom)}</strong> (${escHtml(commune)}) recherche un artisan en <strong>${escHtml(secteur)}</strong>.</p>
+      <p><strong>${escHtml(clientNom)}</strong> (${escHtml(commune)}) vous contacte pour un devis en <strong>${escHtml(secteur)}</strong>.</p>
       <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${texteHtml(description)}</p>
       ${contactHtml}
       ${photosHtml}
@@ -141,6 +141,12 @@ async function geocoderAdresse(adresse: string, cp: string | null, commune: stri
     }
   } catch (e) { console.warn("[soumettre-demande-devis] Géocodage échoué :", e); }
   return null;
+}
+
+// Nom lisible d'un secteur pour les emails : son libellé, sinon son code mis en forme (« mon-secteur » → « Mon secteur »).
+function libelleDepuisCode(code: string): string {
+  const t = String(code ?? "").replace(/[-_]+/g, " ").trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
 }
 
 const euros = (n: number) => n.toFixed(2).replace(".", ",") + " €";
@@ -341,6 +347,13 @@ Deno.serve(async (req: Request) => {
       if (!secteurExiste) return json({ error: "Secteur inconnu." }, 400);
     }
 
+    // Nom lisible du secteur pour les emails (le code technique n'est pas fait pour être lu). Recherche facultative : jamais bloquante.
+    let secteurLibelle = libelleDepuisCode(secteurCode);
+    try {
+      const { data: lib } = await sb.from("secteurs").select("label_fr").eq("code", secteurCode).maybeSingle();
+      if (lib?.label_fr) secteurLibelle = String(lib.label_fr);
+    } catch (_) { /* on garde le code mis en forme */ }
+
     // ── Limite d'envois : un même téléphone ou email ne peut pas inonder les artisans ──
     // (freine les boucles de script basiques ; la vraie protection contre un robot est un contrôle anti-robot de type Turnstile)
     const depuis = new Date(Date.now() - 3600 * 1000).toISOString();
@@ -445,7 +458,7 @@ Deno.serve(async (req: Request) => {
           if (artisanVise?.user_id) {
             const { data: userData } = await sb.auth.admin.getUserById(artisanVise.user_id);
             if (userData?.user?.email) {
-              const emailHtml = emailHtmlDemande(nom, tel, email || null, contactChoisi, communeNom, description, secteurCode, nbPhotos, typeIntervention);
+              const emailHtml = emailHtmlDemande(nom, tel, email || null, contactChoisi, communeNom, description, secteurLibelle, nbPhotos, typeIntervention);
               await envoyerEmail(userData.user.email, `Nouvelle demande de devis — ${nom}`, emailHtml);
             }
           }
@@ -455,7 +468,7 @@ Deno.serve(async (req: Request) => {
           const ptClient = await geocoderAdresse("", null, communeNom);
           const { data: artisans } = await sb.from("artisans")
             .select("user_id, latitude, longitude, rayon_intervention_km").eq("secteur", secteurCode);
-          const emailOuverte = emailHtmlDemandeOuverte(communeNom, description, secteurCode, nbPhotos, typeIntervention);
+          const emailOuverte = emailHtmlDemandeOuverte(communeNom, description, secteurLibelle, nbPhotos, typeIntervention);
           const candidats: Array<{ user_id: string; km: number }> = [];
           for (const a of artisans ?? []) {
             if (!ptClient || a.latitude == null || a.longitude == null) continue; // impossible de vérifier la distance : on ne notifie pas par prudence

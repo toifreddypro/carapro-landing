@@ -1136,6 +1136,7 @@ async function ouvrirNouvelleIntervention(dateStr, creneau) {
     document.getElementById('mi-heure-fin').value = '';
   }
   document.getElementById('mi-client').value = '';
+  majVerrouClientIntervention(false);
   document.getElementById('mi-adr').value = '';
   document.getElementById('mi-cp').value = '';
   document.getElementById('mi-com').value = '';
@@ -1151,6 +1152,16 @@ async function ouvrirNouvelleIntervention(dateStr, creneau) {
   ouvrirModale('modal-intervention');
 }
 
+// Le client d'une intervention EXISTANTE ne se change pas quand il vient de l'annuaire (ni pour un client « à la main », ni pour « aucun
+// client ») : sinon la prestation sortirait de la base de la commission. La base applique la même règle (securite-prestations-client.sql).
+function majVerrouClientIntervention(existante) {
+  var sel = document.getElementById('mi-client'); if (!sel) return;
+  var c = (_clientsCache || []).find(function(x) { return x.id === sel.value; });
+  var verrou = !!existante && !!c && c.origine === 'annuaire';
+  sel.disabled = verrou;
+  var note = document.getElementById('mi-client-note'); if (note) note.style.display = verrou ? 'block' : 'none';
+}
+
 async function ouvrirIntervention(id) {
   await remplirSelectsIntervention();
   var i = _interventionsCache.find(function(x) { return x.id === id; });
@@ -1162,6 +1173,7 @@ async function ouvrirIntervention(id) {
   document.getElementById('mi-heure-debut').value = i.heure_debut ? i.heure_debut.slice(0,5) : '';
   document.getElementById('mi-heure-fin').value = i.heure_fin ? i.heure_fin.slice(0,5) : '';
   document.getElementById('mi-client').value = i.client_id || '';
+  majVerrouClientIntervention(true);
   document.getElementById('mi-adr').value = i.adresse || '';
   document.getElementById('mi-cp').value = i.code_postal || '';
   document.getElementById('mi-com').value = i.commune || '';

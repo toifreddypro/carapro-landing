@@ -1127,6 +1127,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-field"><label>Date</label><input id="mi-date" onchange="calculerCreneaux()" type="date"/></div>
 <div class="modal-field"><label>Client</label>
 <select id="mi-client" onchange="preRemplirAdresseIntervention()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;"></select>
+<div id="mi-client-note" style="display:none;font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">🔒 Ce client vient de l'annuaire CaraLink : il ne peut pas être changé sur cette intervention.</div>
 </div>
 <div class="modal-field"><label>Adresse de l'intervention</label><input id="mi-adr" oninput="calculerCreneaux()" placeholder="Peut différer de l'adresse habituelle du client" type="text"/></div>
 <div class="modal-row" style="display:flex;gap:10px;">
