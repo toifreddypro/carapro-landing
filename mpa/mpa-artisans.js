@@ -3583,7 +3583,12 @@ function renderCommandes() {
     var total = Number(c.montant_total) || 0, rembourse = Number(c.montant_rembourse) || 0;
     var ligneReglement = '';
     if (c.paiement_statut === 'paye') {
-      ligneReglement = '<div style="font-size:12.5px;color:#0f9d78;margin-bottom:8px;font-weight:600;">💳 Payée en ligne — ' + eurosFR(total) + '</div>';
+      ligneReglement = '<div style="font-size:12.5px;color:#0f9d78;margin-bottom:' + (c.frais_paiement_montant != null ? '2' : '8') + 'px;font-weight:600;">💳 Payée en ligne — ' + eurosFR(total) + '</div>';
+      // Détail de ce que CaraLink retient (commission + frais de paiement) : seulement pour les commandes payées depuis la refacturation des frais.
+      if (c.frais_paiement_montant != null && c.commission_montant != null) {
+        var retenue = Number(c.commission_montant) || 0, fraisPaiement = Number(c.frais_paiement_montant) || 0, partCommission = Math.round((retenue - fraisPaiement) * 100) / 100;
+        ligneReglement += '<div style="font-size:11.5px;color:var(--mu);margin-bottom:8px;">Retenue CaraLink : ' + eurosFR(retenue) + ' (frais de paiement ' + eurosFR(fraisPaiement) + (partCommission > 0.004 ? ' + commission ' + eurosFR(partCommission) : '') + ') · <strong>Vous recevez ' + eurosFR(Math.max(0, total - retenue)) + '</strong></div>';
+      }
     } else if (c.paiement_statut === 'partiellement_rembourse') {
       ligneReglement = '<div style="font-size:12.5px;color:#b45309;margin-bottom:8px;font-weight:600;">↩️ Remboursée en partie : ' + eurosFR(rembourse) + ' sur ' + eurosFR(total) + '</div>';
     } else if (c.paiement_statut === 'rembourse') {
@@ -3682,7 +3687,7 @@ function majApercuRemboursement() {
   var partArtisan = r.total > 0 ? (r.total - r.commission) / r.total : 1;
   var repris = Math.round(m * partArtisan * 100) / 100;
   info.textContent = 'Le client sera remboursé de ' + eurosFR(m) + '. Stripe reprendra ' + eurosFR(repris) +
-    ' sur votre solde Stripe (votre part de cette vente) ; la commission CaraLink correspondante est aussi rendue.';
+    ' sur votre solde Stripe (votre part de cette vente) ; la retenue CaraLink correspondante (commission et frais de paiement) est aussi rendue.';
 }
 
 async function confirmerRemboursement() {

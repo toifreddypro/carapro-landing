@@ -47,6 +47,11 @@ const corsHeaders = {
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const TAUX_COMMISSION = 0.07; // 7%
+// Frais de paiement REFACTURÉS à l'artisan, dès le premier euro (décidé le 06/10) : ils couvrent les frais que Stripe prélève sur CaraLink
+// (cartes européennes standard 1,5 % + 0,25 €, premium 1,9 % + 0,25 € : on prend le taux premium par prudence). Ils s'ajoutent à la
+// commission dans la retenue de CaraLink ; le prix payé par le CLIENT ne change pas, c'est la part de l'artisan qui diminue.
+const TAUX_FRAIS_PAIEMENT_MILLIEMES = 19; // 1,9 % = 19 pour mille (calcul en entiers : pas d'erreur d'arrondi)
+const FRAIS_FIXE_PAIEMENT_CENTIMES = 25;
 const SEUIL_GRATUIT_EUROS = 200; // seuil mensuel — aligné sur celui des Prestations (28/09)
 const DECALAGE_LOCAL_MS = 4 * 3600 * 1000; // Guadeloupe = UTC-4 : le « mois » de l'artisan commence à 04:00 UTC
 const MONTANT_MINIMUM_CENTIMES = 50; // Stripe refuse tout paiement en dessous de 0,50 €
@@ -68,6 +73,11 @@ function calculerCommissionAvecSeuil(
   const montantCommissionneCentimes = montantCommandeCentimes - montantSousLeSeuilCentimes;
   const commissionCentimes = Math.round(montantCommissionneCentimes * taux);
   return { commissionCentimes, montantSousLeSeuilCentimes, montantCommissionneCentimes };
+}
+
+// Frais de paiement d'une commande, en centimes : 1,9 % arrondi au centime SUPÉRIEUR (jamais de sous-recouvrement) + 0,25 €.
+function calculerFraisPaiementCentimes(montantCentimes: number): number {
+  return Math.ceil((montantCentimes * TAUX_FRAIS_PAIEMENT_MILLIEMES) / 1000) + FRAIS_FIXE_PAIEMENT_CENTIMES;
 }
 
 // CA net déjà facturé en ligne par l'artisan depuis le 1er du mois (heure de la Guadeloupe), remboursements déduits.
@@ -203,25 +213,39 @@ Deno.serve(async (req: Request) => {
       montantTotal, dejaFacture, SEUIL_GRATUIT_EUROS * 100, TAUX_COMMISSION,
     );
 
+    // Retenue totale de CaraLink = commission (au-delà de la franchise) + frais de paiement refacturés (dès le premier euro).
+    // Jamais plus que le montant payé (Stripe le refuserait) ; en pratique impossible dès 0,50 €.
+    const fraisPaiement = calculerFraisPaiementCentimes(montantTotal);
+    const retenue = Math.min(commission + fraisPaiement, montantTotal);
+
     // Clé d'idempotence : deux appels simultanés pour la même commande, le même montant et le même état précédent
     // obtiennent le MÊME paiement (jamais deux).
     const intent = await stripeCall("payment_intents", {
       amount: String(montantTotal),
       currency: "eur",
       "automatic_payment_methods[enabled]": "true",
-      "application_fee_amount": String(commission),
+      "application_fee_amount": String(retenue),
       "transfer_data[destination]": artisanInfos.stripe_connect_account_id,
       "metadata[commande_id]": commande_id,
       "metadata[artisan_id]": commande.artisan_id,
       "description": descriptionStripe,
     }, `paiement-commande_${commande_id}_${montantTotal}_${ancienId ?? "aucun"}`);
 
-    const { error: errMaj } = await sb.from("commandes_catalogue").update({
+    // « commission_montant » = la RETENUE TOTALE de CaraLink (commission + frais de paiement) : c'est ce que lisent le remboursement et son aperçu
+    // pour savoir ce que Stripe reprend à l'artisan. « frais_paiement_montant » en détaille la part « frais ».
+    const majCommande: Record<string, unknown> = {
       stripe_payment_intent_id: intent.id,
       montant_total: montantTotal / 100,
-      commission_montant: commission / 100,
+      commission_montant: retenue / 100,
+      frais_paiement_montant: fraisPaiement / 100,
       paiement_statut: "en_attente",
-    }).eq("id", commande_id);
+    };
+    let { error: errMaj } = await sb.from("commandes_catalogue").update(majCommande).eq("id", commande_id);
+    // Tolérance : tant que frais-paiement.sql n'est pas lancé, la colonne du détail n'existe pas : on enregistre sans elle (le paiement, lui, est déjà bon).
+    if (errMaj && ["42703", "PGRST204"].includes((errMaj as any).code)) {
+      delete majCommande.frais_paiement_montant;
+      ({ error: errMaj } = await sb.from("commandes_catalogue").update(majCommande).eq("id", commande_id));
+    }
     if (errMaj) {
       // Sans cette trace, un paiement réussi serait impossible à rapprocher (et à rembourser) : on annule le paiement créé.
       console.error("[creer-paiement-commande] Mise à jour de la commande impossible :", errMaj.message);
