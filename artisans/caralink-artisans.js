@@ -542,10 +542,12 @@ async function ouvrirProfil(id) {
   if (!div) { div = document.createElement('div'); div.id = 'modal-profil'; document.body.appendChild(div); }
   div.innerHTML = '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:12px;"><div style="background:var(--panel,#fff);border-radius:14px;padding:30px;color:var(--mu);">' + T('chargement') + '</div></div>';
 
+  var statutHttp = 0; // 0 = pas de réponse du tout (connexion coupée)
   try {
     var res = await fetch(SUPABASE_URL + '/functions/v1/lire-artisan?id=' + encodeURIComponent(id), {
       headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON }
     });
+    statutHttp = res.status;
     var data = await res.json();
     if (data.error) throw new Error(data.error);
 
@@ -554,8 +556,30 @@ async function ouvrirProfil(id) {
     chargerApercuDispo(data.artisan.id);
 
   } catch(e) {
-    div.innerHTML = '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:12px;"><div style="background:var(--panel,#fff);border-radius:14px;padding:30px;color:var(--danger,#dc2626);">Erreur : ' + escHtml(e.message) + '</div></div>';
+    afficherFicheIndisponible(id, statutHttp);
   }
+}
+// Fiche impossible à afficher : un message DOUX (jamais « Erreur : … » brut) et toujours une sortie (avant, l'écran d'erreur ne se fermait pas).
+//  404 / 400 : la fiche n'existe plus (désactivée, supprimée, lien ancien) → on invite à voir les autres artisans.
+//  429       : trop de consultations → réessayer dans un instant.   Autre / pas de réponse : problème de connexion → réessayer.
+function afficherFicheIndisponible(id, statut) {
+  var div = document.getElementById('modal-profil'); if (!div) return;
+  var absente = statut === 404 || statut === 400, occupee = statut === 429;
+  var icone = absente ? '🔍' : (occupee ? '⏳' : '📡');
+  var titre = absente ? T('fiche_indisponible_titre') : (occupee ? T('fiche_occupee_titre') : T('fiche_erreur_titre'));
+  var texte = absente ? T('fiche_indisponible_texte') : (occupee ? T('fiche_occupee_texte') : T('fiche_erreur_texte'));
+  var style = 'padding:11px 18px;border-radius:10px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;';
+  var principal = absente
+    ? '<button type="button" onclick="fermerProfil({target:this,currentTarget:this})" style="' + style + 'border:none;background:var(--ac,#B5502F);color:#fff;">' + T('fiche_voir_artisans') + '</button>'
+    : '<button type="button" onclick="ouvrirProfil(' + jsAttr(id) + ')" style="' + style + 'border:none;background:var(--ac,#B5502F);color:#fff;">' + T('fiche_reessayer') + '</button>' +
+      '<button type="button" onclick="fermerProfil({target:this,currentTarget:this})" style="' + style + 'border:1px solid var(--line,#ddd);background:transparent;color:inherit;">' + T('partage_fermer') + '</button>';
+  div.innerHTML = '<div onclick="fermerProfil(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:12px;">' +
+    '<div style="background:var(--panel,#fff);border-radius:16px;padding:30px 26px;max-width:380px;width:100%;text-align:center;">' +
+      '<div style="font-size:38px;margin-bottom:10px;">' + icone + '</div>' +
+      '<div style="font-family:Fraunces,serif;font-size:19px;font-weight:700;margin-bottom:8px;">' + titre + '</div>' +
+      '<div style="font-size:13.5px;line-height:1.5;color:var(--mu2,#777);margin-bottom:18px;">' + texte + '</div>' +
+      '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">' + principal + '</div>' +
+    '</div></div>';
 }
 // ── Partager la fiche d'un artisan : menu de partage du téléphone, sinon une petite fenêtre (copier le lien, WhatsApp, Facebook, email) ──
 function urlFichePartage(artisanId) { return location.origin + '/artisans/?artisan=' + encodeURIComponent(artisanId); }
