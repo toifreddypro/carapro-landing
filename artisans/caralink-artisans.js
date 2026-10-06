@@ -1005,6 +1005,14 @@ function fraisDeplacementContexte(artisanId) {
   return (a.frais_deplacement == null || !isFinite(f) || f < 0) ? 0 : f;
 }
 
+// L'artisan propose-t-il une visite d'estimation ? « Non » seulement s'il l'a indiqué dans son profil MPA. Sans réponse de sa part
+// (vide), la visite reste proposée comme avant. Sans artisan précis (demande ouverte à plusieurs artisans) : oui.
+function visitePropose(artisanId) {
+  var a = _profilDataCourant && _profilDataCourant.artisan;
+  if (!a || (artisanId && a.id !== artisanId)) return true;
+  return a.proposer_visite !== false;
+}
+
 function visiteInfoHTML(frais) {
   var ligne = frais === undefined
     ? T('visite_frais_variables')
@@ -1064,6 +1072,8 @@ function commencerVisiteDepuisDevis(artisanId) {
 function premiereInterventionHTML() {
   var ctx = window._dispoContexte;
   window._typeInterventionFrais = fraisDeplacementContexte(ctx && ctx.artisanId);
+  // L'artisan a indiqué qu'il ne propose pas de visite d'estimation : aucune question, c'est une réservation directe.
+  if (!visitePropose(ctx && ctx.artisanId)) { _typeInterventionChoisi = 'reservation'; return ''; }
   // Le client vient de choisir « Rendez-vous sur place » pour CET artisan : la réponse est déjà donnée, on affiche seulement le rappel.
   if (window._visiteDemandee && ctx && window._visiteDemandee === ctx.artisanId) {
     _typeInterventionChoisi = 'visite';
@@ -1157,7 +1167,9 @@ function choisirContactPref(pref) {
 function ouvrirModalDevis(artisanId, nomArtisan, secteurArtisan) {
   _devisContactPref = 'telephone'; // réinitialisé à chaque ouverture
   _devisPhotos = []; document.getElementById('devis-photos-preview') && (document.getElementById('devis-photos-preview').innerHTML = '');
-  _typeInterventionChoisi = null;
+  // Un artisan qui ne propose pas de visite : pas de choix à faire, c'est un renseignement (le formulaire s'ouvre directement).
+  var visiteOk = visitePropose(artisanId);
+  _typeInterventionChoisi = visiteOk ? null : 'renseignement';
   window._typeInterventionFrais = fraisDeplacementContexte(artisanId);
   // « Rendez-vous sur place » : le bouton devient « Choisir un créneau de visite » (un rendez-vous a besoin d'un créneau).
   window._onTypeInterventionChoisi = function(code) {
@@ -1180,8 +1192,8 @@ function ouvrirModalDevis(artisanId, nomArtisan, secteurArtisan) {
       '<div style="' + STYLE_BOITE_DEVIS + '">' +
         '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">' + T('devis_titre') + '</div>' +
         '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">' + (nomArtisan ? T('devis_sub_a') + ' ' + escHtml(nomArtisan) + '. ' : '') + T('devis_sub_suite') + '</div>' +
-        typeInterventionPickerHTML() +
-        '<div id="devis-champs" style="display:none;">' +
+        (visiteOk ? typeInterventionPickerHTML() : '') +
+        '<div id="devis-champs" style="display:' + (visiteOk ? 'none' : 'block') + ';">' +
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         contactPrefHTML() +

@@ -8,7 +8,8 @@
 //
 // GET ?id=X
 //
-// Frais de déplacement d'une visite sur place (réglés par l'artisan dans MPA) : affichés sur la fiche, avant la demande.
+// Frais de déplacement d'une visite sur place et réglage « proposer la visite » (tous deux réglés par l'artisan dans MPA) :
+// affichés / appliqués sur la fiche. Colonnes facultatives : si elles n'existent pas encore, la fiche s'affiche quand même.
 //
 // Sécurité : seuls les produits MIS AU CATALOGUE (en_vente) sont montrés (jamais « Mon stock ») ; l'identifiant est contrôlé ;
 // limitation par visiteur ; note moyenne et nombre d'avis calculés sur TOUS les avis (la liste n'en montre que 10) ;
@@ -24,8 +25,9 @@ const corsHeaders = {
 
 // ── Limitation par visiteur (voir securite-limites.sql). Si le limiteur lui-même tombe en panne, on laisse passer :
 //    ce sont des lectures publiques, mieux vaut un service disponible qu'un site bloqué par une panne du limiteur. ──
-const COLONNES_ARTISAN = "id, nom_entreprise, secteur, commune, bio, photo_profil_url, verifie, rayon_intervention_km, alternance_niveau, stripe_connect_statut, slug_catalogue, code_promo, frais_deplacement";
-const COLONNES_ARTISAN_SANS_FRAIS = "id, nom_entreprise, secteur, commune, bio, photo_profil_url, verifie, rayon_intervention_km, alternance_niveau, stripe_connect_statut, slug_catalogue, code_promo"; // si la colonne n'existe pas encore (devis-visite.sql pas lancé)
+const COLONNES_ARTISAN_BASE = "id, nom_entreprise, secteur, commune, bio, photo_profil_url, verifie, rayon_intervention_km, alternance_niveau, stripe_connect_statut, slug_catalogue, code_promo";
+// Du plus complet au plus simple : si une colonne facultative n'existe pas encore (SQL pas lancé), on réessaie avec moins.
+const JEUX_COLONNES_ARTISAN = [`${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite`, `${COLONNES_ARTISAN_BASE}, frais_deplacement`, COLONNES_ARTISAN_BASE];
 const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
 
@@ -66,13 +68,10 @@ Deno.serve(async (req: Request) => {
     if (!REGEX_UUID.test(id)) return json({ error: "Artisan introuvable." }, 404);
     if (await limiteAtteinte(sb, "lire-artisan:" + ipVisiteur(req), 120, 60)) return reponseTropDeRequetes(corsHeaders);
 
-    let { data: artisan, error } = await sb.from("artisans")
-      .select(COLONNES_ARTISAN)
-      .eq("id", id)
-      .eq("actif", true)
-      .maybeSingle();
-    if (error && (error as any).code === "42703") {
-      ({ data: artisan, error } = await sb.from("artisans").select(COLONNES_ARTISAN_SANS_FRAIS).eq("id", id).eq("actif", true).maybeSingle());
+    let artisan: any = null, error: any = null;
+    for (const colonnes of JEUX_COLONNES_ARTISAN) {
+      ({ data: artisan, error } = await sb.from("artisans").select(colonnes).eq("id", id).eq("actif", true).maybeSingle());
+      if (!(error && (error as any).code === "42703")) break;
     }
     if (error) throw error;
     if (!artisan) return json({ error: "Artisan introuvable." }, 404);

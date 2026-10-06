@@ -531,6 +531,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="fr"><span class="fl">Téléphone</span><span class="fv" id="fv-tel">—</span></div>
 <div class="fr"><span class="fl">E-mail</span><span class="fv" id="fv-email">—</span></div>
 <div class="fr"><span class="fl">Site web</span><span class="fv" id="fv-web">—</span></div>
+<div class="fr"><span class="fl">Visite d'estimation avant une première intervention</span><span class="fv" id="fv-visite">—</span></div>
 <div class="fr"><span class="fl">Frais de déplacement (visite sur place)</span><span class="fv" id="fv-frais">—</span></div>
 </div>
 </div>
@@ -1008,7 +1009,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-field"><label>Code postal</label><input id="m-cp" type="text"/></div>
 <div class="modal-field"><label>Commune</label><input id="m-com" type="text"/></div>
 <div class="modal-field"><label>Rayon d'intervention (km)</label><input id="m-rayon" type="number" value="15"/></div>
-<div class="modal-field"><label>Frais de déplacement pour une visite sur place (€) — facultatif</label><input id="m-frais" type="text" inputmode="decimal" placeholder="Ex. 25 — laissez vide : visite sans frais"/><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Annoncés au client avant sa demande de rendez-vous sur place, et réglés à vous directement lors de votre visite.</div></div>
+<div class="modal-field"><label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-weight:600;"><input id="m-visite" type="checkbox" style="margin-top:3px;" onchange="window._visiteTouchee = true; majVisiteChamps();"/><span>Mon activité nécessite souvent une visite d'estimation avant une première intervention</span></label><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Cochée : vos clients peuvent demander un « rendez-vous sur place » (devis après diagnostic). Décochée : ils réservent directement un créneau, sans cette étape.</div></div>
+<div class="modal-field" id="m-frais-bloc"><label>Frais de déplacement pour une visite sur place (€) — facultatif</label><input id="m-frais" type="text" inputmode="decimal" placeholder="Ex. 25 — laissez vide : visite sans frais"/><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Annoncés au client avant sa demande de rendez-vous sur place, et réglés à vous directement lors de votre visite.</div></div>
 <div class="modal-field"><label>Téléphone</label><input id="m-tel" type="text"/></div>
 <div class="modal-field"><label>E-mail</label><input id="m-email" type="text"/></div>
 <div class="modal-field"><label>Site web</label><input id="m-web" type="text"/></div>
@@ -1019,6 +1021,20 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div>
 </div>
+<!-- MODALE : Question MPA-AI — l'activité nécessite-t-elle une visite d'estimation ? -->
+<div class="modal-overlay" id="modal-visite-question">
+<div class="modal-box">
+<h3>✨ Une question rapide</h3>
+<p style="font-size:13.5px;line-height:1.5;margin:0 0 10px;">Votre activité nécessite-t-elle <strong>souvent une visite d'estimation</strong> avant une première intervention (diagnostic sur place, devis personnalisé) ?</p>
+<div id="visite-question-suggestion" style="display:none;font-size:12.5px;line-height:1.45;background:rgba(99,102,241,.08);border-radius:8px;padding:8px 10px;margin-bottom:10px;"></div>
+<div class="modal-actions" style="flex-direction:column;gap:8px;">
+<button class="btn-primary" id="visite-btn-oui" onclick="repondreQuestionVisite(true)">Oui, souvent</button>
+<button class="btn-secondary" id="visite-btn-non" onclick="repondreQuestionVisite(false)">Non, mes clients réservent directement</button>
+</div>
+<div style="font-size:11.5px;color:var(--mu);margin-top:10px;line-height:1.4;">Cela change ce que voient vos clients sur votre fiche. Vous pourrez modifier cette réponse à tout moment dans « Mon profil ».</div>
+</div>
+</div>
+
 <!-- MODALE : Ajouter un client -->
 <div class="modal-overlay" id="modal-client">
 <div class="modal-box">

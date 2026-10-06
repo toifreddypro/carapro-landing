@@ -28,6 +28,8 @@
 //    Les frais de déplacement sont lus chez l'artisan au moment de la demande puis FIGÉS sur la demande : jamais une
 //    valeur envoyée par la page ;
 //  - « reservation » : réservation directe d'un créneau (client qui connaît déjà l'artisan) — exige un créneau ;
+//  - un artisan qui a indiqué ne PAS proposer de visite (proposer_visite = false) refuse les demandes de visite ; sans réponse
+//    de sa part (vide), la visite reste proposée comme avant ;
 //  - les anciens types (urgence, installation, devis, entretien) restent acceptés : pages déjà ouvertes, anciennes demandes.
 // ═════════════════════════════════════════════════
 
@@ -313,9 +315,13 @@ Deno.serve(async (req: Request) => {
     // ── L'artisan visé et le service doivent exister (et le service lui appartenir) ──
     let artisanVise: any = null;
     if (artisanId) {
-      let { data: a, error: errArt } = await sb.from("artisans").select("id, user_id, nom_entreprise, secteur, frais_deplacement").eq("id", artisanId).maybeSingle();
-      // Tolérance : si la colonne des frais n'existe pas encore (devis-visite.sql pas lancé), on continue sans (frais = 0).
-      if (errArt && (errArt as any).code === "42703") ({ data: a, error: errArt } = await sb.from("artisans").select("id, user_id, nom_entreprise, secteur").eq("id", artisanId).maybeSingle());
+      // Tolérance : si une colonne facultative n'existe pas encore (devis-visite.sql, devis-visite-reglage.sql pas lancés), on
+      // réessaie avec moins de colonnes : jamais une panne, seulement les réglages absents ignorés.
+      let a: any = null, errArt: any = null;
+      for (const colonnes of ["id, user_id, nom_entreprise, secteur, frais_deplacement, proposer_visite", "id, user_id, nom_entreprise, secteur, frais_deplacement", "id, user_id, nom_entreprise, secteur"]) {
+        ({ data: a, error: errArt } = await sb.from("artisans").select(colonnes).eq("id", artisanId).maybeSingle());
+        if (!(errArt && (errArt as any).code === "42703")) break;
+      }
       if (errArt) throw errArt;
       if (!a) return json({ error: "Artisan introuvable." }, 404);
       artisanVise = a;
@@ -353,6 +359,12 @@ Deno.serve(async (req: Request) => {
     if (typeIntervention === "visite" && artisanId && !estUneProposionDeCreneau) return json({ error: "Choisissez un créneau pour le rendez-vous sur place." }, 400);
     if (typeIntervention === "reservation" && !estUneProposionDeCreneau) return json({ error: "Choisissez un créneau pour cette réservation." }, 400);
     if (typeIntervention === "renseignement" && (dateIntervention || heureDebut)) return json({ error: "Une demande de renseignement n'a pas de créneau." }, 400);
+
+    // Un artisan qui a indiqué ne pas proposer de visite d'estimation (réglage de son profil) la refuse aussi côté serveur :
+    // le réglage n'est pas qu'un cache-misère de l'écran. Sans réponse de sa part (vide), la visite reste proposée.
+    if (typeIntervention === "visite" && artisanVise && artisanVise.proposer_visite === false) {
+      return json({ error: "Cet artisan ne propose pas de rendez-vous sur place. Envoyez-lui un renseignement simple, ou réservez directement un créneau." }, 400);
+    }
 
     // Frais de déplacement d'une visite : lus chez l'artisan MAINTENANT, puis figés sur la demande. La page n'en envoie jamais.
     let fraisVisite: number | null = null;

@@ -326,6 +326,7 @@ async function init() {
   await initDashboard();
   renderMpaAiFeed();
   await verifierAlertesMpaAi();
+  await demanderReglageVisite(); // après les autres alertes : la question de MPA-AI est la plus visible
   await verifierNouveautes();
   renderMonOffre();
   traiterRetourAbonnement(); // sans attendre : peut patienter jusqu'à 30 s le temps que Stripe prévienne le serveur
@@ -716,6 +717,57 @@ var LABELS_TYPE_INTERVENTION = {
   devis: '💬 Devis / Renseignement',
   entretien: '🔁 Suivi / Habitué·e',
 };
+// ── Réglage « mon activité nécessite une visite d'estimation » (MPA-AI le demande, puis case dans « Mon profil ») ──
+function majVisiteChamps() { // les frais n'ont de sens que si l'artisan propose la visite
+  var c = document.getElementById('m-visite'), bloc = document.getElementById('m-frais-bloc');
+  if (c && bloc) bloc.style.display = c.checked ? 'block' : 'none';
+}
+// Suggestion d'après le métier (jamais imposée) : « oui » pour les métiers qui demandent un diagnostic, « non » pour ceux où
+// le client réserve directement. Aucun autre secteur : pas de suggestion.
+function suggestionVisite(texte) {
+  var s = String(texte || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[_\-]+/g, ' '); // « espaces_verts » = « espaces verts »
+  if (/plomb/.test(s)) return { reponse: true, phrase: 'Pour la plomberie, un diagnostic sur place est souvent nécessaire avant d\'intervenir : nous vous suggérons « Oui ».' };
+  if (/electr/.test(s)) return { reponse: true, phrase: 'Pour l\'électricité, un diagnostic sur place est souvent nécessaire avant d\'intervenir : nous vous suggérons « Oui ».' };
+  if (/mecani|garag/.test(s)) return { reponse: true, phrase: 'Pour la mécanique, un diagnostic est souvent nécessaire avant d\'intervenir : nous vous suggérons « Oui ».' };
+  if (/jardin|paysag|espaces? verts?/.test(s)) return { reponse: false, phrase: 'Pour le jardinage, les clients réservent en général directement une intervention : nous vous suggérons « Non ».' };
+  return { reponse: null, phrase: '' };
+}
+async function libelleSecteurArtisan() { // « code + libellé » du secteur de l'artisan (le libellé n'est pas chargé au démarrage)
+  var texte = String(_artisan.secteur || '');
+  try {
+    var lib = (_secteursCache || []).find(function(s) { return s.code === _artisan.secteur; });
+    if (!lib) { var r = await sb.from('secteurs').select('code, label_fr').eq('code', _artisan.secteur).maybeSingle(); lib = r && r.data; }
+    if (lib && lib.label_fr) texte += ' ' + lib.label_fr;
+  } catch (e) { /* le code suffit pour la suggestion */ }
+  return texte;
+}
+// MPA-AI pose la question tant que l'artisan n'a pas répondu (colonne présente et vide) — une fois par session.
+async function demanderReglageVisite() {
+  if (window._questionVisiteDite || !_artisan || !('proposer_visite' in _artisan) || _artisan.proposer_visite != null) return;
+  window._questionVisiteDite = true;
+  window._suggestionVisite = suggestionVisite(await libelleSecteurArtisan());
+  mpaAiDire('Une question rapide pour votre fiche publique : votre activité nécessite-t-elle souvent une visite d\'estimation avant une première intervention ?' + (window._suggestionVisite.phrase ? ' ' + window._suggestionVisite.phrase : ''),
+    'pro', { label: 'Répondre', action: 'ouvrirQuestionVisite()' });
+}
+function ouvrirQuestionVisite() {
+  var sug = window._suggestionVisite || { reponse: null, phrase: '' };
+  var zone = document.getElementById('visite-question-suggestion');
+  if (zone) { zone.style.display = sug.phrase ? 'block' : 'none'; zone.textContent = sug.phrase ? '✨ ' + sug.phrase : ''; }
+  var oui = document.getElementById('visite-btn-oui'), non = document.getElementById('visite-btn-non');
+  if (oui) oui.textContent = 'Oui, souvent' + (sug.reponse === true ? ' (suggéré)' : '');
+  if (non) non.textContent = 'Non, mes clients réservent directement' + (sug.reponse === false ? ' (suggéré)' : '');
+  ouvrirModale('modal-visite-question');
+}
+async function repondreQuestionVisite(oui) {
+  var { error } = await sb.from('artisans').update({ proposer_visite: oui }).eq('id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  _artisan.proposer_visite = oui;
+  renderFiche();
+  fermerModale('modal-visite-question');
+  if (oui) mpaAiDire('C\'est noté : vos clients pourront demander un rendez-vous sur place. Pensez à indiquer vos frais de déplacement.', 'info', { label: 'Régler mes frais', action: 'openModifierFiche()' });
+  else mpaAiDire('C\'est noté : vos clients réserveront directement un créneau, sans visite d\'estimation. Vous pouvez changer d\'avis à tout moment dans « Mon profil ».', 'info');
+}
+
 // Frais de déplacement saisis par l'artisan : « » = vide ; virgule ou point ; de 0 à 500 € ; au plus 2 décimales.
 function lireFraisDeplacement(brut) {
   var original = String(brut == null ? '' : brut).trim();
@@ -2521,6 +2573,8 @@ function renderFiche() {
   document.getElementById('fv-tel').textContent = a.telephone || '—';
   document.getElementById('fv-email').textContent = a.email || '—';
   document.getElementById('fv-web').textContent = a.site_web || '—';
+  var fvVisite = document.getElementById('fv-visite');
+  if (fvVisite) fvVisite.textContent = a.proposer_visite === false ? 'Non — vos clients réservent directement' : (a.proposer_visite === true ? 'Oui' : 'Non renseigné — proposée par défaut');
   var fvFrais = document.getElementById('fv-frais'); // (absent si la page HTML en mémoire est plus ancienne que ce code : on ne plante pas)
   if (fvFrais) {
     var fr = Number(a.frais_deplacement);
@@ -2551,6 +2605,9 @@ async function openModifierFiche() {
   document.getElementById('m-rayon').value = a.rayon_intervention_km || 15;
   var champFrais = document.getElementById('m-frais'); // (absent si la page HTML en mémoire est plus ancienne que ce code)
   if (champFrais) champFrais.value = (a.frais_deplacement != null && a.frais_deplacement !== '') ? String(a.frais_deplacement).replace('.', ',') : '';
+  // Case « visite d'estimation » : cochée = comportement réel (sans réponse, la visite est proposée par défaut).
+  var caseVisite = document.getElementById('m-visite'); window._visiteTouchee = false;
+  if (caseVisite) { caseVisite.checked = a.proposer_visite !== false; majVisiteChamps(); }
   document.getElementById('m-tel').value = a.telephone || '';
   document.getElementById('m-email').value = a.email || '';
   document.getElementById('m-web').value = a.site_web || '';
@@ -2743,8 +2800,14 @@ async function sauverFiche() {
   // Frais de déplacement d'une visite sur place : annoncés au client avant sa demande. Envoyés SEULEMENT s'ils sont renseignés
   // ou s'il y avait déjà une valeur à effacer : ainsi l'enregistrement du profil ne dépend pas de la colonne tant qu'on n'y touche pas.
   // Si le champ n'existe pas dans la page affichée (ancienne page en mémoire), on ne touche PAS aux frais : jamais d'effacement silencieux.
+  // Réglage « visite d'estimation » : envoyé seulement si la colonne existe, et si l'artisan y a touché ou avait déjà répondu
+  // (enregistrer le profil sans y toucher ne vaut JAMAIS réponse : MPA-AI continue de poser la question).
+  var caseVisite = document.getElementById('m-visite');
+  var visiteCochee = caseVisite ? caseVisite.checked : true;
+  if (caseVisite && 'proposer_visite' in _artisan && (window._visiteTouchee || _artisan.proposer_visite != null)) maj.proposer_visite = caseVisite.checked;
+  // Les frais ne concernent que les artisans qui proposent la visite : case décochée, on n'y touche pas.
   var champFrais = document.getElementById('m-frais');
-  if (champFrais) {
+  if (champFrais && visiteCochee) {
     var frais = lireFraisDeplacement(champFrais.value);
     if (!frais.ok) { alert('Les frais de déplacement doivent être un montant entre 0 et 500 € (par exemple 25 ou 25,50).'); return; }
     if (frais.valeur !== null || _artisan.frais_deplacement != null) maj.frais_deplacement = frais.valeur;
