@@ -125,6 +125,14 @@ Deno.serve(async (req: Request) => {
     // ne servirait à rien). Contrôle fait AVANT tout le reste : ni stock touché, ni email « vente manquée », ni commande créée.
     if (artisan.stripe_connect_statut !== "actif") return json({ error: "Cette boutique n'accepte pas encore les commandes en ligne." }, 409);
 
+    // Ménage (règle du 07/10) : une commande jamais payée au bout de 24 h est annulée. Elle n'a jamais été visible de l'artisan ni
+    // compté sur son stock ; on s'en occupe ici, à chaque nouvelle commande de cette boutique, sans tâche planifiée. Si le ménage
+    // échoue, ce n'est pas grave : la commande en cours n'est pas concernée.
+    const { error: errMenage } = await sb.from("commandes_catalogue").update({ statut: "annulee" })
+      .eq("artisan_id", artisan_id).eq("paiement_requis", true).eq("statut", "nouvelle")
+      .is("paiement_traite_le", null).lt("created_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString());
+    if (errMenage) console.warn("[soumettre-commande-panier] Ménage des commandes non payées échoué :", errMenage.message);
+
     // Stock insuffisant — refusé proprement, jamais une vente silencieuse de ce qu'il n'y a pas.
     // quantite_stock à null = illimité (ex : une formation), jamais vérifié. L'artisan ne voit
     // jamais cette tentative autrement (rien n'est créé) — c'est MPA-AI qui le prévient, pour
@@ -203,6 +211,7 @@ Deno.serve(async (req: Request) => {
       livraison_flexible: mode === "livraison" ? !!livraison_flexible : false,
       livraison_fenetre_jours: (mode === "livraison" && livraison_flexible) ? FENETRE_LIVRAISON_FLEXIBLE_JOURS : null,
       notes: notes?.trim() || null,
+      paiement_requis: true, // le client DOIT payer en ligne : la commande n'existe pour l'artisan qu'une fois payée (voir stripe-webhook-artisans)
     }).select().single();
     if (errIns) throw errIns;
 
@@ -215,28 +224,8 @@ Deno.serve(async (req: Request) => {
     // gte() est un filet de sécurité contre une vente concurrente improbable entre la
     // vérification plus haut et cet instant — si jamais ça arrivait, la mise à jour
     // n'a simplement aucun effet plutôt que de passer en négatif.
-    for (const a of articles as any[]) {
-      if (a.quantite_stock == null) continue;
-      const demande = quantitesDemandees.get(a.id)!;
-      await sb.from("artisans_catalogue")
-        .update({ quantite_stock: a.quantite_stock - demande })
-        .eq("id", a.id).gte("quantite_stock", demande);
-    }
-
-    if (artisan.email) {
-      const detailLignes = lignesAEnregistrer.map((l) => `<li>${l.quantite} × ${escHtml(l.nom_article)} — ${(l.prix_unitaire * l.quantite).toFixed(2)} €</li>`).join("");
-      const html = `<div style="font-family:sans-serif;max-width:480px;">
-        <h2 style="color:#B5502F;">Nouvelle commande — ${montantTotal.toFixed(2)} €</h2>
-        <p><strong>${escHtml(client_nom)}</strong> (${escHtml(client_telephone)}) commande :</p>
-        <ul>${detailLignes}</ul>
-        <p>Mode : ${mode === "livraison" ? "🚚 Livraison — " + escHtml(adresse_livraison) + (fraisLivraison > 0 ? ` (frais de livraison : ${fraisLivraison.toFixed(2)} €)` : "") : "🏠 Retrait sur place"}</p>
-        ${date_souhaitee ? `<p>Date ${livraison_flexible ? "souhaitée au plus tôt" : "souhaitée"} : ${escHtml(date_souhaitee)}${livraison_flexible ? ` (flexible, ${FENETRE_LIVRAISON_FLEXIBLE_JOURS} jours — à vous de choisir le meilleur jour)` : ""}</p>` : ""}
-        ${notes ? `<p>Précisions : ${escHtml(notes)}</p>` : ""}
-        <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Voir dans MPA Artisans →</a></p>
-      </div>`;
-      await envoyerEmail(artisan.email, `Nouvelle commande : ${resumeNom}`, html);
-    }
-
+    // Le stock n'est PAS retiré ici et l'artisan n'est PAS prévenu : tant que le client n'a pas payé, la commande n'existe pas pour lui.
+    // Au paiement réussi, stripe-webhook-artisans retire le stock (remboursement automatique s'il n'y en a plus) et envoie l'email.
     return json({ ok: true, commande_id: commande.id, montant_total: montantTotal, frais_livraison: fraisLivraison });
 
   } catch (e) {

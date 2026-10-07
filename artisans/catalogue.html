@@ -289,6 +289,8 @@ function fermerModalePanier() { document.getElementById('modal-panier').classLis
 function ouvrirModaleCommande() {
   if (!PANIER.length) return;
   fermerModalePanier();
+  // On garde une copie du formulaire INTACT (bouton actif) : l'écran de paiement le remplace, et on doit pouvoir le remettre tel quel.
+  if (document.getElementById('mc-nom')) _formCommandeHtml = document.querySelector('#modal-commande .modal-box').innerHTML;
   document.getElementById('mc-nom').value = '';
   document.getElementById('mc-tel').value = '';
   document.getElementById('mc-email').value = '';
@@ -336,16 +338,14 @@ async function confirmerCommande() {
     if (data.error) throw new Error(data.error);
 
     _dernierCommandeId = data.commande_id;
+    _panierEnAttentePaiement = PANIER.slice(); // mis de côté : rendu au client s'il renonce à payer
     PANIER = [];
     sauverPanier();
     majBadgePanier();
 
-    if (DATA.artisan.paiement_actif) {
-      await afficherEtapePaiement(data.commande_id);
-    } else {
-      document.getElementById('modal-commande').classList.remove('show');
-      alert(T('cat_commande_envoyee') + escHtml(DATA.artisan.nom_entreprise) + T('cat_va_vous_recontacter'));
-    }
+    // Règle du 07/10 : pas de commande sans paiement en ligne. Le paiement est TOUJOURS l'étape suivante (le serveur refuse
+    // d'ailleurs toute commande chez un artisan dont les paiements ne sont pas actifs).
+    await afficherEtapePaiement(data.commande_id);
   } catch (e) {
     err.textContent = e.message;
     err.style.display = 'block';
@@ -354,17 +354,30 @@ async function confirmerCommande() {
   }
 }
 
-// ── Paiement en ligne (facultatif — le client peut toujours payer plus tard avec l'artisan) ──
+// ── Paiement en ligne (obligatoire : la commande n'existe pour l'artisan qu'une fois payée) ──
+var _formCommandeHtml = null;        // le formulaire de commande d'origine, que l'écran de paiement remplace
+var _panierEnAttentePaiement = null; // le panier du client, vidé à la création de la commande, rendu s'il renonce à payer
+function restaurerFormulaireCommande() {
+  var boite = document.querySelector('#modal-commande .modal-box');
+  if (boite && _formCommandeHtml != null) { boite.innerHTML = _formCommandeHtml; if (typeof appliquerTraductionsStatiques === 'function') appliquerTraductionsStatiques(); }
+}
+function annulerPaiementCommande() {
+  document.getElementById('modal-commande').classList.remove('show');
+  restaurerFormulaireCommande(); // sans lui, le client ne pourrait plus commander avant d'avoir rechargé la page
+  if (_panierEnAttentePaiement) { PANIER = _panierEnAttentePaiement; sauverPanier(); majBadgePanier(); }
+  _panierEnAttentePaiement = null;
+  alert(T('cat_commande_non_finalisee'));
+}
 async function afficherEtapePaiement(commandeId) {
   var boite = document.querySelector('#modal-commande .modal-box');
   boite.innerHTML =
-    '<h3>' + T('cat_commande_enregistree') + '</h3>' +
-    '<p style="font-size:12.5px;color:var(--mu);margin-bottom:14px;">' + T('cat_reglez_maintenant') + '</p>' +
+    '<h3>' + T('cat_derniere_etape') + '</h3>' +
+    '<p style="font-size:12.5px;color:var(--mu);margin-bottom:14px;">' + T('cat_paiement_obligatoire_info') + '</p>' +
     '<div id="paiement-element" style="margin-bottom:14px;"></div>' +
     '<div id="paiement-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>' +
     '<div class="modal-actions">' +
       '<button class="btn-primary" id="btn-payer" disabled>' + T('cat_chargement') + '</button>' +
-      '<button class="btn-secondary" onclick="document.getElementById(\'modal-commande\').classList.remove(\'show\');alert(' + jsAttr(T('cat_commande_enregistree_alert')) + ');">' + T('cat_payer_plus_tard') + '</button>' +
+    '<button class="btn-secondary" id="btn-annuler-paiement" onclick="annulerPaiementCommande()">' + T('cat_annuler_commande') + '</button>' +
     '</div>';
 
   try {
@@ -404,6 +417,8 @@ async function confirmerPaiementCommande() {
     return;
   }
   document.getElementById('modal-commande').classList.remove('show');
+  _panierEnAttentePaiement = null;
+  restaurerFormulaireCommande();
   alert(T('cat_paiement_confirme') + escHtml(DATA.artisan.nom_entreprise) + T('cat_va_preparer_commande'));
 }
 

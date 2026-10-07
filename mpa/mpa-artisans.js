@@ -3582,12 +3582,18 @@ async function chargerLivraisons() {
   }).join('');
 }
 
+// Règle du 07/10 : une commande de la boutique n'existe pour l'artisan qu'une fois PAYÉE. Une commande créée avec « paiement_requis »
+// mais jamais payée (client qui a fermé la fenêtre, carte refusée) reste invisible : elle n'est ni listée, ni comptée dans la pastille,
+// ni annoncée par MPA-AI. Les commandes d'AVANT la règle (paiement_requis faux ou absent) restent visibles, comme avant.
+function commandeVisible(c) {
+  return c.paiement_requis !== true || ['paye', 'partiellement_rembourse', 'rembourse'].indexOf(c.paiement_statut) !== -1;
+}
 async function chargerCommandes() {
   var zone = document.getElementById('zone-commandes');
   if (!zone) return;
   var { data, error } = await sb.from('commandes_catalogue').select('*').eq('artisan_id', _artisan.id).order('created_at', { ascending: false });
   if (error) { zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>'; return; }
-  _commandesCache = data || [];
+  _commandesCache = (data || []).filter(commandeVisible);
 
   // Détail des commandes panier (plusieurs articles) — chargé en une seule requête groupée.
   _lignesCommandesCache = {};
