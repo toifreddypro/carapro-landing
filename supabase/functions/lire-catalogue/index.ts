@@ -48,6 +48,15 @@ Deno.serve(async (req: Request) => {
     if (error) throw error;
     if (!artisan) return json({ error: "Boutique introuvable." }, 404);
 
+    // Règle du 06/10 : tant que les paiements en ligne de l'artisan ne sont pas ACTIFS, sa boutique n'existe pas pour le public
+    // (même les produits déjà « en vente » sont masqués). La page affiche « Cette boutique ouvrira bientôt ».
+    if (artisan.stripe_connect_statut !== "actif") {
+      return json({
+        artisan: { id: artisan.id, nom_entreprise: artisan.nom_entreprise, secteur: artisan.secteur, commune: artisan.commune, photo_profil_url: artisan.photo_profil_url, verifie: artisan.verifie, code_promo: null, paiement_actif: false },
+        produits: [], produits_phares: [], boutique_ouverte: false,
+      });
+    }
+
     const { data: produits, error: errP } = await sb.from("artisans_catalogue")
       .select("id, nom, description, prix, url_photo, type, delai_preparation, est_phare, promo_pct, categorie, created_at")
       .eq("artisan_id", artisan.id)

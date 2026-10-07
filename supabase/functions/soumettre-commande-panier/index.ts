@@ -117,10 +117,13 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data: artisan, error: errA } = await sb.from("artisans")
-      .select("nom_entreprise, email, latitude, longitude, livraison_forfait_base, livraison_km_inclus, livraison_prix_km_supp")
+      .select("nom_entreprise, email, latitude, longitude, livraison_forfait_base, livraison_km_inclus, livraison_prix_km_supp, stripe_connect_statut")
       .eq("id", artisan_id).maybeSingle();
     if (errA) throw errA;
     if (!artisan) return json({ error: "Boutique introuvable." }, 404);
+    // Règle du 06/10 : une boutique n'accepte de commande que si les paiements en ligne de l'artisan sont ACTIFS (sinon la vente en ligne
+    // ne servirait à rien). Contrôle fait AVANT tout le reste : ni stock touché, ni email « vente manquée », ni commande créée.
+    if (artisan.stripe_connect_statut !== "actif") return json({ error: "Cette boutique n'accepte pas encore les commandes en ligne." }, 409);
 
     // Stock insuffisant — refusé proprement, jamais une vente silencieuse de ce qu'il n'y a pas.
     // quantite_stock à null = illimité (ex : une formation), jamais vérifié. L'artisan ne voit

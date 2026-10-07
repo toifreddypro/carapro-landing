@@ -604,6 +604,15 @@ async function copierLienPartage() {
 function fermerMenuPartage(e) { if (e && e.target !== e.currentTarget) return; var d = document.getElementById('modal-partage'); if (d) d.innerHTML = ''; }
 
 
+function afficherBoutiqueBientot(a) {
+  a = a || {};
+  document.getElementById('racine').innerHTML = '<div class="etat-page"><div style="font-size:42px;margin-bottom:10px;">🛍️</div><h1>' + T('cat_bientot_titre') + '</h1>' +
+    '<p><strong>' + escHtml(a.nom_entreprise || '') + '</strong>' + (a.commune ? ' — ' + escHtml(a.commune) : '') + '</p>' +
+    '<p>' + T('cat_bientot_texte') + '</p>' +
+    (a.id ? '<p style="margin-top:18px;"><a href="/artisans/?artisan=' + encodeURIComponent(a.id) + '" style="color:var(--ac,#B5502F);font-weight:700;text-decoration:none;">' + T('cat_bientot_fiche') + '</a></p>' : '') +
+  '</div>';
+}
+
 (async function init() {
   chargerPanierSession();
   majBadgePanier();
@@ -618,6 +627,8 @@ function fermerMenuPartage(e) { if (e && e.target !== e.currentTarget) return; v
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error);
+    // Boutique fermée : les paiements en ligne de l'artisan ne sont pas actifs (règle du 06/10) — rien n'est commandable.
+    if (data.boutique_ouverte === false) { afficherBoutiqueBientot(data.artisan); return; }
     DATA = data;
     render();
   } catch (e) {

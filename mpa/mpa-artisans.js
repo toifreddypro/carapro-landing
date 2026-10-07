@@ -327,6 +327,7 @@ async function init() {
   renderMpaAiFeed();
   await verifierAlertesMpaAi();
   await demanderReglageVisite(); // après les autres alertes : la question de MPA-AI est la plus visible
+  rappelerPaiementsBoutique('demarrage');
   await verifierNouveautes();
   renderMonOffre();
   traiterRetourAbonnement(); // sans attendre : peut patienter jusqu'à 30 s le temps que Stripe prévienne le serveur
@@ -2184,10 +2185,12 @@ function renderEncartStripeConnect() {
       '</div>';
   } else {
     var texte = statut === 'en_cours'
-      ? 'Activation en cours — terminez la vérification de votre compte pour recevoir des paiements en ligne.'
-      : 'Activez les paiements en ligne pour que vos clients puissent régler leurs commandes directement par carte.';
+      ? 'Activation en cours — terminez la vérification de votre compte. Tant qu\'elle n\'est pas terminée, vos produits ne peuvent pas être mis en vente.'
+      : 'Activez les paiements en ligne : c\'est nécessaire pour mettre vos produits en vente. Vos clients paient par carte et l\'argent arrive sur votre compte (environ 5 minutes — pièce d\'identité et IBAN).';
+      var nbMasques = (_catalogueCache || []).filter(function(c) { return c.en_vente !== false; }).length;
+      var avertissement = nbMasques > 0 ? '<div style="margin-top:6px;color:#b45309;font-weight:600;">⚠️ Votre boutique est masquée : vos ' + nbMasques + ' produit' + (nbMasques > 1 ? 's' : '') + ' en vente ne sont pas visibles des clients tant que les paiements ne sont pas activés.</div>' : '';
     html = '<div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.3);border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
-        '<div style="flex:1;min-width:220px;font-size:12.5px;color:var(--mu2);">💳 ' + texte + '</div>' +
+        '<div style="flex:1;min-width:220px;font-size:12.5px;color:var(--mu2);">💳 ' + texte + avertissement + '</div>' +
         '<button onclick="lancerStripeConnect(this)" style="flex-shrink:0;padding:9px 16px;border-radius:8px;border:none;background:#3b82f6;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;">' + (statut === 'en_cours' ? 'Terminer l\'activation →' : 'Activer les paiements →') + '</button>' +
       '</div>';
   }
@@ -3135,6 +3138,7 @@ async function chargerCatalogue() {
   var { data, error } = await sb.from('artisans_catalogue').select('*').eq('artisan_id', _artisan.id).order('ordre', { ascending: true });
   if (error) { zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>'; return; }
   _catalogueCache = data || [];
+  renderEncartStripeConnect(); // la carte (et l'avertissement « boutique masquée ») dépendent de la liste des produits qu'on vient de charger
 
   // Ventes par produit — jamais un compteur stocké, toujours recalculé sur les commandes réglées.
   _ventesCatalogueCache = {};
@@ -3336,11 +3340,37 @@ function renderProduitsStock() {
   }).join('');
 }
 
+// ── Règle du 06/10 : on ne met un produit en vente que si les paiements en ligne sont ACTIFS (sinon la boutique ne servirait à rien). ──
+// Créer et préparer des produits reste libre ; retirer un produit de la vente aussi. La base de données applique la même règle.
+// MPA-AI accompagne l'artisan vers l'activation des paiements dès qu'il a des produits : sans eux il ne peut rien vendre.
+// Au plus une fois par session et par occasion (au démarrage / juste après la création d'un produit).
+var _rappelsPaiements = {};
+function rappelerPaiementsBoutique(occasion) {
+  if (!_artisan || paiementsEnLigneActifs() || _rappelsPaiements[occasion]) return;
+  if (!(_catalogueCache && _catalogueCache.length)) return;
+  _rappelsPaiements[occasion] = true;
+  if (_artisan.stripe_connect_statut === 'en_cours') {
+    mpaAiDire('Votre compte de paiement n\'est pas encore vérifié. Terminez l\'activation pour pouvoir mettre vos produits en vente.', 'pro', { label: 'Terminer l\'activation →', action: 'lancerStripeConnect(null)' });
+  } else {
+    mpaAiDire((occasion === 'creation' ? 'Votre produit est prêt ! ' : 'Vous avez des produits prêts. ') + 'Pour les mettre en vente, activez d\'abord les paiements en ligne : vos clients paient par carte et l\'argent arrive sur votre compte. Cela prend environ 5 minutes — ayez votre pièce d\'identité et votre IBAN sous la main.', 'pro', { label: 'Activer les paiements →', action: 'lancerStripeConnect(null)' });
+  }
+}
+function paiementsEnLigneActifs() { return !!_artisan && _artisan.stripe_connect_statut === 'actif'; }
+function exigerPaiementsActifs() { // vrai = on peut continuer ; sinon : on explique et on propose d'activer (porte de sortie : « Annuler »)
+  if (paiementsEnLigneActifs()) return true;
+  var enCours = !!_artisan && _artisan.stripe_connect_statut === 'en_cours';
+  var oui = confirm(enCours
+    ? 'Votre compte de paiement est en cours de vérification : tant qu\'il n\'est pas validé, vous ne pouvez pas mettre de produit en vente.\n\nTerminer la vérification maintenant ?'
+    : 'Pour mettre un produit en vente, il faut d\'abord activer les paiements en ligne : vos clients paient par carte et l\'argent arrive sur votre compte. C\'est obligatoire pour vendre, et cela prend environ 5 minutes (pièce d\'identité et IBAN).\n\nActiver les paiements maintenant ?');
+  if (oui) lancerStripeConnect(null);
+  return false;
+}
 async function toggleEnVenteCatalogue(id) {
   if (!verifierAccesEcriture()) return;
   var c = _catalogueCache.find(function(x) { return x.id === id; });
   if (!c) return;
   var nouvelEtat = !(c.en_vente !== false);
+  if (nouvelEtat && !exigerPaiementsActifs()) return; // mettre en vente exige des paiements actifs ; retirer de la vente reste toujours possible
   var { error } = await sb.from('artisans_catalogue').update({ en_vente: nouvelEtat }).eq('id', id).eq('artisan_id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
   c.en_vente = nouvelEtat;
@@ -3466,6 +3496,7 @@ async function sauverCatalogue() {
     fermerModale('modal-catalogue');
     await chargerCatalogue();
     if (!_catalogueEnEdition && !estPro() && _catalogueCache.length >= LIMITE_PRODUITS_ESSENTIEL) afficherLimiteProduits(false);
+    else if (!_catalogueEnEdition) rappelerPaiementsBoutique('creation');
   } catch (e) {
     if (!traiterErreurPlan(e)) alert('Erreur : ' + e.message);
   }

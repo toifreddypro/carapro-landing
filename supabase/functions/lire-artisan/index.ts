@@ -115,6 +115,10 @@ Deno.serve(async (req: Request) => {
       }));
     }
 
+    // Règle du 06/10 : tant que les paiements en ligne de l'artisan ne sont pas ACTIFS, sa boutique n'existe pas pour le public :
+    // ni produits mis en avant, ni lien vers la boutique sur sa fiche.
+    if (artisan.stripe_connect_statut !== "actif") { produitsPhares = []; artisan.slug_catalogue = null; }
+
     const { data: avis } = await sb.from("avis_carapro")
       .select("client_nom, note, commentaire, created_at, reponse_artisan, reponse_le")
       .eq("artisan_id", id)
