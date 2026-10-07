@@ -615,17 +615,47 @@ async function chargerDemandes() {
   });
   liste.sort(function(a, b) { return new Date(b.demande.created_at) - new Date(a.demande.created_at); });
 
-  var nbNouvelles = liste.filter(function(l) { return l.type === 'ouverte' || l.reponse_statut === 'envoyee'; }).length;
-  var badge = document.getElementById('cnt-demandes');
-  if (nbNouvelles > 0) { badge.textContent = nbNouvelles; badge.style.display = 'inline-flex'; }
-  else { badge.style.display = 'none'; }
+  _demandesListe = liste;
+  renderDemandes();
+}
 
+// ── Demandes : « À traiter » / « Archivées » ──
+// Une demande est ARCHIVÉE quand l'artisan a fini avec elle : réponse marquée traitée, ou créneau déjà confirmé / refusé.
+// (Confirmer ou refuser un créneau change le statut de la DEMANDE mais pas celui de la réponse : sans cette règle, une demande déjà
+// traitée restait comptée comme « nouvelle » dans la pastille et chez MPA-AI.) Une demande ouverte non prise en charge n'est jamais archivée.
+var _vueDemandes = 'atraiter';
+var _demandesListe = [];
+function demandeArchivee(l) {
+  if (l.type !== 'privee') return false;
+  var st = l.demande && l.demande.statut;
+  return l.reponse_statut === 'traitee' || st === 'creneau_confirme' || st === 'creneau_refuse';
+}
+function basculerVueDemandes(v) { _vueDemandes = v === 'archivees' ? 'archivees' : 'atraiter'; renderDemandes(); }
+function renderDemandes() {
+  var zone = document.getElementById('zone-demandes');
+  if (!zone) return;
+  var liste = _demandesListe || [];
+  var nbArchivees = liste.filter(demandeArchivee).length;
+  var nbNouvelles = liste.length - nbArchivees;
+  var badge = document.getElementById('cnt-demandes');
+  if (badge) { if (nbNouvelles > 0) { badge.textContent = nbNouvelles; badge.style.display = 'inline-flex'; } else { badge.style.display = 'none'; } }
   if (!liste.length) {
     zone.innerHTML = '<div class="etat-vide-tbl">Aucune demande pour l\'instant.</div>';
     return;
   }
-
-  zone.innerHTML = liste.map(function(l) {
+  var archivees = _vueDemandes === 'archivees';
+  var affichees = liste.filter(function(l) { return demandeArchivee(l) === archivees; });
+  var barre = '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">' + [['atraiter', 'À traiter', nbNouvelles], ['archivees', 'Archivées', nbArchivees]].map(function(v) {
+    var actif = (v[0] === 'archivees') === archivees;
+    return '<button type="button" onclick="basculerVueDemandes(\'' + v[0] + '\')" style="padding:7px 14px;border-radius:20px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border:1px solid ' + (actif ? 'var(--ac)' : 'var(--brd)') + ';background:' + (actif ? 'var(--ac)' : 'transparent') + ';color:' + (actif ? '#fff' : 'var(--mu)') + ';">' + v[1] + ' (' + v[2] + ')</button>';
+  }).join('') + '</div>';
+  if (!affichees.length) {
+    zone.innerHTML = barre + '<div class="etat-vide-tbl">' + (archivees
+      ? 'Aucune demande archivée pour l\'instant. Une demande arrive ici quand vous la marquez traitée, ou quand vous confirmez ou refusez son créneau.'
+      : 'Aucune demande à traiter ✅' + (nbArchivees ? ' Vos demandes déjà traitées sont dans « Archivées ».' : '')) + '</div>';
+    return;
+  }
+  var htmlCartes = affichees.map(function(l) {
     var d = l.demande;
     var estCreneau = ['creneau_propose', 'creneau_confirme', 'creneau_refuse'].indexOf(d.statut) !== -1;
     var dateAff = new Date(d.created_at).toLocaleDateString('fr-FR');
@@ -706,6 +736,7 @@ async function chargerDemandes() {
         '<button onclick="creerClientDepuisDemande(' + jsAttrLocal(d.client_nom) + ',' + jsAttrLocal(d.commune) + ')" style="background:none;border:none;color:var(--ac);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;">+ Ajouter comme client habituel</button>') +
     '</div>';
   }).join('');
+  zone.innerHTML = barre + htmlCartes;
 }
 
 var LABELS_TYPE_INTERVENTION = {
