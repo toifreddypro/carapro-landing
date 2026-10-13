@@ -17,6 +17,12 @@
 //    il n'a plus besoin d'aller chercher dans les journaux. La réponse renvoyée à la page ne contient que le nom de l'étape.
 //  - (13/10) action « synchroniser » : au retour de Stripe, la page demande l'état RÉEL du compte (lu chez Stripe, jamais envoyé par la
 //    page) et la base est mise à jour tout de suite, sans dépendre du webhook (qui reste le filet de sécurité).
+//  - (14/10) NOUVEAU MODÈLE « paiements directs » : les comptes sont créés avec Stripe responsable des soldes négatifs
+//    (losses.payments = stripe), les frais Stripe payés par l'artisan lui-même (fees.payer = account), l'espace Express pour l'artisan,
+//    et le prélèvement automatique de son compte bancaire s'il passe en négatif. L'argent des ventes arrive sur le compte de l'artisan
+//    (CaraLink ne touche que sa commission). Le combo « Express + Stripe responsable » est en préversion publique chez Stripe : la
+//    création du compte utilise donc la version d'API préversion ci-dessous (les autres appels gardent la version habituelle).
+//    Garde-fou : si Stripe ne confirme pas ces réglages sur le compte créé, on s'arrête AVANT de lancer l'inscription de l'artisan.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -29,6 +35,7 @@ const corsHeaders = {
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const BASE_URL_RETOUR = "https://caralink.app/mpa"; // fixe : jamais une adresse envoyée par la page
 const ADMIN_EMAIL = "toifreddypro@gmail.com";
+const VERSION_API_PREVIEW_EXPRESS = "2026-09-30.preview"; // requise par Stripe pour « Express + Stripe responsable des pertes » (préversion publique)
 const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
 
 function json(payload: unknown, status = 200): Response {
@@ -50,8 +57,9 @@ class ErreurStripe extends Error {
   constructor(message: string, public status: number, public code?: string, public type?: string, public param?: string) { super(message); }
 }
 
-async function stripeCall(path: string, params: Record<string, string>, cleIdempotence?: string) {
+async function stripeCall(path: string, params: Record<string, string>, cleIdempotence?: string, versionApi?: string) {
   const headers: Record<string, string> = { "Authorization": `Bearer ${STRIPE_SECRET_KEY}`, "Content-Type": "application/x-www-form-urlencoded" };
+  if (versionApi) headers["Stripe-Version"] = versionApi;
   if (cleIdempotence) headers["Idempotency-Key"] = cleIdempotence;
   const res = await fetchAvecReprise(`https://api.stripe.com/v1/${path}`, {
     method: "POST",
@@ -169,14 +177,23 @@ Deno.serve(async (req: Request) => {
     if (!accountId) {
       etape = "creation_compte_stripe";
       const account = await stripeCall("accounts", {
-        type: "express",
+        // PAS de « type » : le comportement est décrit par les réglages « controller » ci-dessous.
+        "controller[losses][payments]": "stripe",            // Stripe porte la perte si un artisan ne peut pas rembourser
+        "controller[fees][payer]": "account",                // les frais Stripe (et de litige) sont payés par l'artisan
+        "controller[requirement_collection]": "stripe",      // Stripe vérifie l'identité (inscription hébergée par Stripe)
+        "controller[stripe_dashboard][type]": "express",     // l'artisan garde l'espace Express (soldes, virements, litiges)
         country: "FR",
         email: artisan.email || user.email || "",
-        "capabilities[card_payments][requested]": "true",
-        "capabilities[transfers][requested]": "true",
+        "capabilities[card_payments][requested]": "true",    // paiements directs : pas besoin de la capacité « transfers »
         "business_type": "individual",
+        "settings[payouts][debit_negative_balances]": "true", // solde négatif → Stripe prélève d'abord le compte bancaire de l'artisan
         "metadata[artisan_id]": artisan.id,
-      }, `compte-connect_${artisan.id}`); // deux appels simultanés : le MÊME compte Stripe (jamais deux)
+      }, `compte-connect-direct_${artisan.id}`, VERSION_API_PREVIEW_EXPRESS); // deux appels simultanés : le MÊME compte Stripe (jamais deux)
+      // Garde-fou : on ne lance JAMAIS l'inscription d'un artisan sur un compte dont les réglages ne sont pas ceux voulus.
+      const ctrl = account?.controller;
+      if (ctrl?.losses?.payments !== "stripe" || ctrl?.fees?.payer !== "account" || ctrl?.stripe_dashboard?.type !== "express") {
+        throw new Error("Réglages du compte Stripe inattendus : losses=" + ctrl?.losses?.payments + " fees=" + ctrl?.fees?.payer + " dashboard=" + ctrl?.stripe_dashboard?.type);
+      }
       accountId = account.id;
       etape = "enregistrement_du_compte";
       const { error: errMaj } = await sbAdmin.from("artisans").update({
