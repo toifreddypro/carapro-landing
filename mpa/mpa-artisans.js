@@ -305,6 +305,7 @@ async function init() {
     return;
   }
   _artisan = artisan;
+  await synchroniserStatutStripe(); // au retour de Stripe (ou tant que « en cours ») : lit l'état réel du compte chez Stripe
   majInfoAbonnementMpaAi();
 
   renderFiche();
@@ -2199,6 +2200,36 @@ function renderEncartStripeConnect() {
     var zone = document.getElementById(id);
     if (zone) zone.innerHTML = html;
   });
+}
+
+// Au retour du formulaire Stripe (?stripe_connect=retour), ou tant que le compte est « en cours », on demande à Stripe l'état réel du
+// compte (via le serveur) au lieu d'attendre le message automatique (webhook), qui peut tarder. Silencieux en cas d'échec : la page
+// affiche alors simplement le statut déjà enregistré. 6 secondes maximum d'attente.
+async function synchroniserStatutStripe() {
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var retour = params.get('stripe_connect') === 'retour';
+    if (!_artisan || !_artisan.stripe_connect_account_id) return;
+    if (!retour && _artisan.stripe_connect_statut !== 'en_cours') return;
+    if (retour) { // l'adresse ne doit pas rester marquée : un rechargement ne refait pas la lecture
+      params.delete('stripe_connect');
+      var qs = params.toString();
+      history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+    }
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    if (!authSession) return;
+    var ctrl = new AbortController();
+    var minuteur = setTimeout(function() { ctrl.abort(); }, 6000);
+    var res = await fetch(SUPABASE_URL + '/functions/v1/connecter-stripe-artisan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({ action: 'synchroniser' }),
+      signal: ctrl.signal,
+    });
+    clearTimeout(minuteur);
+    var data = await res.json();
+    if (data && (data.statut === 'actif' || data.statut === 'en_cours')) _artisan.stripe_connect_statut = data.statut;
+  } catch (e) { /* silencieux : on garde le statut enregistré */ }
 }
 
 async function lancerStripeConnect(btn) {

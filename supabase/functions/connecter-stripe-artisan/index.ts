@@ -15,6 +15,8 @@
 //  - le détail d'une erreur Stripe n'est jamais renvoyé à l'artisan ;
 //  - (07/10) en cas d'échec, l'ADMINISTRATEUR reçoit un email avec l'étape qui a échoué, le message exact de Stripe et un conseil —
 //    il n'a plus besoin d'aller chercher dans les journaux. La réponse renvoyée à la page ne contient que le nom de l'étape.
+//  - (13/10) action « synchroniser » : au retour de Stripe, la page demande l'état RÉEL du compte (lu chez Stripe, jamais envoyé par la
+//    page) et la base est mise à jour tout de suite, sans dépendre du webhook (qui reste le filet de sécurité).
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -56,6 +58,14 @@ async function stripeCall(path: string, params: Record<string, string>, cleIdemp
     headers,
     body: new URLSearchParams(params),
   });
+  let data: any = null;
+  try { data = await res.json(); } catch { /* réponse vide ou illisible (panne Stripe) */ }
+  if (!res.ok) throw new ErreurStripe(data?.error?.message || `Erreur Stripe (HTTP ${res.status})`, res.status, data?.error?.code, data?.error?.type, data?.error?.param);
+  return data;
+}
+
+async function stripeGet(path: string) {
+  const res = await fetchAvecReprise(`https://api.stripe.com/v1/${path}`, { method: "GET", headers: { "Authorization": `Bearer ${STRIPE_SECRET_KEY}` } });
   let data: any = null;
   try { data = await res.json(); } catch { /* réponse vide ou illisible (panne Stripe) */ }
   if (!res.ok) throw new ErreurStripe(data?.error?.message || `Erreur Stripe (HTTP ${res.status})`, res.status, data?.error?.code, data?.error?.type, data?.error?.param);
@@ -133,6 +143,27 @@ Deno.serve(async (req: Request) => {
     if (!artisan) return json({ error: "Aucun profil artisan trouvé." }, 404);
     artisanLu = artisan;
 
+    // Action « synchroniser » : l'état du compte est lu CHEZ STRIPE (la page n'envoie rien d'autre que l'action) et la base est
+    // mise à jour avec la même règle que le webhook account.updated. Pas d'alerte administrateur : ce n'est qu'une relecture.
+    const corps = await req.json().catch(() => null);
+    if (corps && typeof corps === "object" && (corps as any).action === "synchroniser") {
+      etape = "synchronisation_du_statut";
+      const { data: autorise, error: errLim } = await sbAdmin.rpc("limiter_appel", { p_cle: `sync-connect:${artisan.id}`, p_max: 20, p_fenetre_s: 60 });
+      if (!errLim && autorise === false) return json({ error: "Trop de demandes, réessayez dans un instant." }, 429);
+      if (!artisan.stripe_connect_account_id) return json({ statut: "non_demarre" });
+      const compte = await stripeGet(`accounts/${encodeURIComponent(artisan.stripe_connect_account_id)}`);
+      // Garde-fou : le compte lu doit bien appartenir à CET artisan (métadonnée posée à la création).
+      if (compte?.id !== artisan.stripe_connect_account_id || compte?.metadata?.artisan_id !== artisan.id) {
+        console.error("[connecter-stripe-artisan] compte Stripe incohérent avec l'artisan", artisan.id);
+        return json({ error: MSG_ERREUR_GENERIQUE, etape }, 500);
+      }
+      const statut = compte.charges_enabled && compte.payouts_enabled ? "actif" : "en_cours";
+      const { error: errSync } = await sbAdmin.from("artisans").update({ stripe_connect_statut: statut })
+        .eq("id", artisan.id).eq("stripe_connect_account_id", artisan.stripe_connect_account_id);
+      if (errSync) throw errSync;
+      return json({ statut });
+    }
+
     // Réutilise le compte Connect existant s'il y en a déjà un — jamais de doublon.
     let accountId = artisan.stripe_connect_account_id;
     if (!accountId) {
@@ -169,7 +200,7 @@ Deno.serve(async (req: Request) => {
 
   } catch (e) {
     console.error("[connecter-stripe-artisan] échec à l'étape", etape, e);
-    await alerterAdmin(sbAdmin, etape, e, artisanLu, utilisateur); // l'administrateur reçoit le détail par email
+    if (etape !== "synchronisation_du_statut") await alerterAdmin(sbAdmin, etape, e, artisanLu, utilisateur); // l'administrateur reçoit le détail par email
     return json({ error: MSG_ERREUR_GENERIQUE, etape }, 500); // la page ne reçoit que le nom de l'étape, jamais le détail (Stripe, base)
   }
 });
