@@ -3172,21 +3172,41 @@ async function chargerCatalogue() {
   renderEncartStripeConnect(); // la carte (et l'avertissement « boutique masquée ») dépendent de la liste des produits qu'on vient de charger
 
   // Ventes par produit — jamais un compteur stocké, toujours recalculé sur les commandes réglées.
-  _ventesCatalogueCache = {};
-  var ids = _catalogueCache.map(function(c) { return c.id; });
-  if (ids.length) {
-    var { data: commandes } = await sb.from('commandes_catalogue').select('catalogue_id, quantite')
-      .in('catalogue_id', ids).in('paiement_statut', ['paye', 'partiellement_rembourse', 'rembourse']);
-    (commandes || []).forEach(function(c) {
-      if (!c.catalogue_id) return;
-      _ventesCatalogueCache[c.catalogue_id] = (_ventesCatalogueCache[c.catalogue_id] || 0) + (c.quantite || 0);
-    });
-  }
+  _ventesCatalogueCache = await calculerVentesCatalogue(_catalogueCache.map(function(c) { return c.id; }));
 
   renderCatalogueGrille();
   renderProduitsStock();
   renderVentesProduits();
   renderMonOffre();
+}
+
+// Ventes par produit = commandes réglées d'UN article (ancien format : catalogue_id sur la commande) + lignes des commandes PANIER
+// réglées (catalogue_id sur chaque ligne). Les commandes de la boutique actuelle sont toutes des paniers : sans leurs lignes,
+// le compteur restait à 0 malgré des ventes. Les lignes sont lues par paquets de 100 commandes (adresse de requête limitée).
+var STATUTS_COMMANDE_REGLEE = ['paye', 'partiellement_rembourse', 'rembourse'];
+async function calculerVentesCatalogue(ids) {
+  var ventes = {};
+  if (!ids.length) return ventes;
+  var connus = {};
+  ids.forEach(function(id) { connus[id] = true; });
+  var { data: unArticle } = await sb.from('commandes_catalogue').select('catalogue_id, quantite')
+    .in('catalogue_id', ids).in('paiement_statut', STATUTS_COMMANDE_REGLEE);
+  (unArticle || []).forEach(function(c) {
+    if (!c.catalogue_id) return;
+    ventes[c.catalogue_id] = (ventes[c.catalogue_id] || 0) + (c.quantite || 0);
+  });
+  var { data: paniers } = await sb.from('commandes_catalogue').select('id')
+    .eq('artisan_id', _artisan.id).is('catalogue_id', null).in('paiement_statut', STATUTS_COMMANDE_REGLEE);
+  var idsPaniers = (paniers || []).map(function(c) { return c.id; });
+  for (var i = 0; i < idsPaniers.length; i += 100) {
+    var { data: lignes } = await sb.from('commandes_catalogue_lignes').select('catalogue_id, quantite')
+      .in('commande_id', idsPaniers.slice(i, i + 100));
+    (lignes || []).forEach(function(l) {
+      if (!l.catalogue_id || !connus[l.catalogue_id]) return;
+      ventes[l.catalogue_id] = (ventes[l.catalogue_id] || 0) + (l.quantite || 0);
+    });
+  }
+  return ventes;
 }
 
 // ── Partager sa fiche ou sa boutique : lien, message prêt à envoyer, WhatsApp / Facebook / email, QR code à imprimer ──
