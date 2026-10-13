@@ -3691,6 +3691,8 @@ function renderCommandes() {
       ? '🚚 Livraison — ' + escHtml(c.adresse_livraison || '') + ' ' + escHtml(c.code_postal_livraison || '') + ' ' + escHtml(c.commune_livraison || '')
       : '🏠 Retrait sur place';
     var dateTxt = c.date_souhaitee ? new Date(c.date_souhaitee).toLocaleDateString('fr-FR') : '—';
+    var dateCommandeTxt = dateHeureGuadeloupe(c.created_at);
+    var datePaiementTxt = (c.paiement_statut && c.paiement_statut !== 'en_attente' && c.paiement_statut !== 'echoue') ? dateHeureGuadeloupe(c.paiement_traite_le) : '';
     var boutonSuivant = CYCLE_STATUT_COMMANDE[c.statut]
       ? '<button onclick="avancerStatutCommande(\'' + c.id + '\')" style="padding:6px 14px;border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;font-weight:700;cursor:pointer;margin-right:6px;">→ ' + LABELS_STATUT_COMMANDE[CYCLE_STATUT_COMMANDE[c.statut]] + '</button>'
       : '';
@@ -3744,6 +3746,7 @@ function renderCommandes() {
         enTeteCommande +
         '<span style="font-size:11px;font-weight:700;color:var(--mu2);flex-shrink:0;margin-left:10px;">' + (LABELS_STATUT_COMMANDE[c.statut] || escHtml(c.statut)) + '</span>' +
       '</div>' +
+      '<div style="font-size:12px;color:var(--mu);margin-bottom:3px;">🕒 Commandée le ' + dateCommandeTxt + (datePaiementTxt && datePaiementTxt !== dateCommandeTxt ? ' · payée le ' + datePaiementTxt : '') + '</div>' +
       '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:3px;">' + modeTxt + '</div>' +
       '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:3px;">📅 Souhaitée le ' + dateTxt + '</div>' +
       '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;">👤 ' + escHtml(c.client_nom) + ' — ' + escHtml(c.client_telephone) + '</div>' +
@@ -3769,6 +3772,16 @@ async function avancerStatutCommande(id) {
 //  même si l'essai est terminé.)
 var _remboursementEnCours = null;
 var _rbStockTouche = false; // vrai dès que l'artisan a lui-même coché/décoché « Remettre en stock » : on ne le change plus à sa place
+
+// Date + heure à l'heure de la Guadeloupe (UTC-4, pas d'heure d'été), quel que soit le fuseau de l'appareil. Renvoie '—' si la date est absente ou invalide.
+function dateHeureGuadeloupe(iso) {
+  if (!iso) return '—';
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  var opts = { timeZone: 'America/Guadeloupe' };
+  return d.toLocaleDateString('fr-FR', Object.assign({ day: 'numeric', month: 'long', year: 'numeric' }, opts)) + ' à ' +
+         d.toLocaleTimeString('fr-FR', Object.assign({ hour: '2-digit', minute: '2-digit' }, opts)).replace(':', 'h');
+}
 
 function eurosFR(n) {
   return (Number(n) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
