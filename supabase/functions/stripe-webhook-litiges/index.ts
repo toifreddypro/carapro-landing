@@ -15,6 +15,13 @@
 // — la récupération auprès de l'artisan reste une action manuelle, volontaire,
 // jamais automatique (voir admin-recuperer-litige.ts).
 //
+// (14/10) PAIEMENTS DIRECTS : les nouvelles ventes se paient SUR LE COMPTE STRIPE DE L'ARTISAN. Leurs litiges arrivent donc par un point
+// de terminaison « comptes connectés » (secret STRIPE_WEBHOOK_SECRET_LITIGES_CONNECT, événement porteur de « event.account »). Dans ce cas :
+//  - c'est l'ARTISAN qui répond au litige depuis son espace Stripe, et Stripe (pas CaraLink) porte la perte si son solde ne suffit pas :
+//    l'artisan est prévenu par email, et l'administrateur reçoit seulement une information (rien à avancer, rien à répondre à sa place) ;
+//  - le litige n'est enregistré que si le compte de l'événement est bien celui de l'artisan de la commande.
+//  Les litiges de l'ancien modèle (sans event.account) gardent exactement le comportement d'origine.
+//
 // Événements écoutés :
 // - charge.dispute.created : nouveau litige, jamais vu avant -> enregistrement + email
 // - charge.dispute.updated : évolution (ex. passage en "besoin de réponse urgente")
@@ -32,6 +39,8 @@ const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET_LITIGES") ?? "
 // Secret temporaire, pour vérifier le branchement via `stripe trigger` (mode test) sans jamais
 // toucher au vrai secret live — à retirer (variable d'environnement) une fois la vérification faite.
 const STRIPE_WEBHOOK_SECRET_TEST = Deno.env.get("STRIPE_WEBHOOK_SECRET_LITIGES_TEST") ?? "";
+// Secret du point de terminaison « comptes connectés » (litiges des paiements directs).
+const STRIPE_WEBHOOK_SECRET_CONNECT = Deno.env.get("STRIPE_WEBHOOK_SECRET_LITIGES_CONNECT") ?? "";
 const EMAIL_ADMIN = "toifreddypro@gmail.com";
 
 function json(payload: unknown, status = 200): Response {
@@ -94,6 +103,9 @@ Deno.serve(async (req: Request) => {
   if (!signatureValide && STRIPE_WEBHOOK_SECRET_TEST) {
     signatureValide = await verifierSignatureStripe(payloadBrut, enTeteSignature, STRIPE_WEBHOOK_SECRET_TEST);
   }
+  if (!signatureValide && STRIPE_WEBHOOK_SECRET_CONNECT) {
+    signatureValide = await verifierSignatureStripe(payloadBrut, enTeteSignature, STRIPE_WEBHOOK_SECRET_CONNECT);
+  }
   if (!signatureValide) {
     console.error("[stripe-webhook-litiges] Signature Stripe invalide — requête rejetée.");
     return json({ error: "Signature invalide." }, 400);
@@ -108,15 +120,26 @@ Deno.serve(async (req: Request) => {
 
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
+  // Litige d'un paiement direct : l'événement vient du compte Stripe de l'artisan.
+  const compteEvenement: string | null = typeof event.account === "string" && event.account ? event.account : null;
+
   try {
     if (event.type === "charge.dispute.created") {
       const dispute = event.data.object;
 
       // Relier au bon artisan via la commande associée au payment_intent de ce litige.
       const { data: commande } = await sb.from("commandes_catalogue")
-        .select("id, artisan_id, artisans(nom_entreprise, email)")
+        .select("id, artisan_id, artisans(nom_entreprise, email, stripe_connect_account_id)")
         .eq("stripe_payment_intent_id", dispute.payment_intent)
         .maybeSingle();
+
+      // Un compte Stripe ne peut déclarer un litige que sur les commandes de SON artisan.
+      if (compteEvenement && (commande as any)?.artisans?.stripe_connect_account_id !== compteEvenement) {
+        console.error("[stripe-webhook-litiges] Litige venant d'un compte sans commande correspondante :", compteEvenement, dispute.id);
+        await envoyerEmail(EMAIL_ADMIN, "⚠️ Litige Stripe d'un compte non rattaché à une commande",
+          `<div style="font-family:sans-serif;max-width:520px;"><p>Litige ${escHtml(dispute.id)} (${(dispute.amount / 100).toFixed(2)} €) reçu du compte ${escHtml(compteEvenement)}, sans commande correspondante chez CaraLink. Rien n'a été enregistré : vérifiez dans le Dashboard Stripe.</p></div>`);
+        return json({ received: true });
+      }
 
       const { error: errIns } = await sb.from("litiges_stripe").insert({
         commande_id: commande?.id ?? null,
@@ -130,12 +153,30 @@ Deno.serve(async (req: Request) => {
         statut: dispute.status,
         date_echeance_reponse: dispute.evidence_details?.due_by ? new Date(dispute.evidence_details.due_by * 1000).toISOString() : null,
       });
-      if (errIns) throw errIns;
+      if (errIns && (errIns as any).code !== "23505") throw errIns; // 23505 : litige déjà enregistré (événement rejoué) — pas une erreur
 
       const artisanInfos = (commande as any)?.artisans;
       const dateLimite = dispute.evidence_details?.due_by
         ? new Date(dispute.evidence_details.due_by * 1000).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
         : "non précisée";
+      if (compteEvenement) {
+        // PAIEMENT DIRECT : c'est l'artisan qui répond, Stripe porte la perte éventuelle. L'artisan est prévenu ; l'administrateur est seulement informé.
+        const art = (commande as any)?.artisans;
+        const htmlArtisan = `<div style="font-family:sans-serif;max-width:520px;">
+          <h2 style="color:#B3261E;">⚠️ Litige ouvert sur une de vos ventes — ${(dispute.amount / 100).toFixed(2)} €</h2>
+          <p>Le client (ou sa banque) conteste un paiement reçu sur votre compte Stripe. <strong>C'est à vous de répondre</strong>, depuis votre espace Stripe, avant le <strong>${dateLimite}</strong> : sans réponse, le litige est perdu et le montant est repris sur votre solde Stripe (des frais de litige s'y ajoutent).</p>
+          <p><strong>Motif indiqué par la banque :</strong> ${escHtml(dispute.reason)}</p>
+          <p>Joignez les preuves utiles (commande, échanges avec le client, preuve de retrait ou de livraison).</p>
+          <p style="margin-top:16px;"><a href="https://connect.stripe.com/express_login" style="color:#B5502F;font-weight:700;">Ouvrir mon espace Stripe →</a></p>
+          <p style="margin-top:12px;color:#666;font-size:12.5px;">Besoin d'aide ? Répondez à cet email.</p>
+        </div>`;
+        if (art?.email) await envoyerEmail(art.email, `⚠️ Litige sur une de vos ventes (${(dispute.amount / 100).toFixed(2)} €) — réponse avant le ${dateLimite}`, htmlArtisan);
+        await envoyerEmail(EMAIL_ADMIN, `ℹ️ Litige chez ${art?.nom_entreprise ?? "un artisan"} (${(dispute.amount / 100).toFixed(2)} €) — à lui de répondre`,
+          `<div style="font-family:sans-serif;max-width:520px;"><p><strong>${escHtml(art?.nom_entreprise ?? "Artisan non identifié")}</strong> a un litige de <strong>${(dispute.amount / 100).toFixed(2)} €</strong> (motif : ${escHtml(dispute.reason)}), à répondre avant le ${dateLimite}.</p>
+          <p>Paiement direct : l'artisan a été prévenu par email et répond lui-même ; Stripe porte la perte si son solde ne suffit pas. <strong>Rien à avancer ni à répondre de ta part</strong> ; pense simplement à vérifier qu'il agit.</p></div>`);
+        return json({ received: true });
+      }
+
       const html = `<div style="font-family:sans-serif;max-width:520px;">
         <h2 style="color:#B3261E;">⚠️ Nouveau litige Stripe — ${(dispute.amount / 100).toFixed(2)} €</h2>
         <p><strong>Artisan :</strong> ${escHtml(artisanInfos?.nom_entreprise ?? "non identifié")}</p>

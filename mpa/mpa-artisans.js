@@ -3709,6 +3709,11 @@ function renderCommandes() {
       if (c.frais_paiement_montant != null && c.commission_montant != null) {
         var retenue = Number(c.commission_montant) || 0, fraisPaiement = Number(c.frais_paiement_montant) || 0, partCommission = Math.round((retenue - fraisPaiement) * 100) / 100;
         ligneReglement += '<div style="font-size:11.5px;color:var(--mu);margin-bottom:8px;">Retenue CaraLink : ' + eurosFR(retenue) + ' (frais de paiement ' + eurosFR(fraisPaiement) + (partCommission > 0.004 ? ' + commission ' + eurosFR(partCommission) : '') + ') · <strong>Vous recevez ' + eurosFR(Math.max(0, total - retenue)) + '</strong></div>';
+      } else if (c.commission_montant != null) {
+        // Paiement direct (depuis le 14/10) : l'argent arrive sur VOTRE compte Stripe, qui en prélève lui-même ses frais ; CaraLink ne retient que sa commission (0 sous la franchise mensuelle).
+        var commissionDirecte = Number(c.commission_montant) || 0;
+        ligneReglement += '<div style="font-size:11.5px;color:var(--mu);margin-bottom:8px;">Encaissé sur votre compte Stripe (frais Stripe prélevés par Stripe) · ' +
+          (commissionDirecte > 0.004 ? 'Commission CaraLink : ' + eurosFR(commissionDirecte) : 'Aucune commission CaraLink') + '</div>';
       }
     } else if (c.paiement_statut === 'partiellement_rembourse') {
       ligneReglement = '<div style="font-size:12.5px;color:#b45309;margin-bottom:8px;font-weight:600;">↩️ Remboursée en partie : ' + eurosFR(rembourse) + ' sur ' + eurosFR(total) + '</div>';
@@ -3832,7 +3837,8 @@ function majApercuRemboursement() {
   if (ligneStock) ligneStock.style.display = (m > 0 && r.deja === 0 && Math.abs(m - r.restant) < 0.005) ? 'flex' : 'none';
   if (!(m > 0)) { info.textContent = ''; return; }
   info.textContent = 'Le client sera remboursé de ' + eurosFR(m) + ' et en sera prévenu par email s\'il a donné son adresse. Stripe reprendra ' + eurosFR(m) +
-    ' sur votre solde Stripe. Les frais de paiement de cette vente ne sont pas restitués par Stripe : ils restent à votre charge.';
+    ' sur votre solde Stripe. Les frais de paiement de cette vente ne sont pas restitués par Stripe : ils restent à votre charge. ' +
+    'Si votre solde ne suffit pas, il passe en négatif : le remboursement du client n\'est pas bloqué, mais Stripe pourra prélever la différence sur votre compte bancaire.';
 }
 
 async function confirmerRemboursement() {
@@ -3862,7 +3868,9 @@ async function confirmerRemboursement() {
     _remboursementEnCours = null;
     await chargerCommandes();
     if (data.remis_en_stock) await chargerCatalogue(); // le stock affiché doit refléter la remise en stock
-    alert('✅ Remboursement de ' + eurosFR(data.montant_rembourse) + ' effectué. Le client le verra sous quelques jours ouvrés, selon sa banque.' + (data.remis_en_stock ? '\nLes articles ont été remis en stock.' : ''));
+    alert((data.en_attente
+      ? '⏳ Remboursement de ' + eurosFR(data.montant_rembourse) + ' enregistré, mais Stripe le met en attente : votre solde Stripe ne le couvre pas encore. Il partira dès que le solde le permet (vous pouvez aussi alimenter votre solde depuis votre espace Stripe).'
+      : '✅ Remboursement de ' + eurosFR(data.montant_rembourse) + ' effectué. Le client le verra sous quelques jours ouvrés, selon sa banque.') + (data.remis_en_stock ? '\nLes articles ont été remis en stock.' : ''));
   } catch (e) {
     err.textContent = e.message;
     err.style.display = 'block';
