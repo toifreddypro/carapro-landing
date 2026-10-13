@@ -248,9 +248,11 @@ async function compteCorrespond(artisanId: string, compteEvenement: string | nul
 }
 
 // Paramètres d'un remboursement : sans « reverse_transfer » sur un paiement direct (rien à reprendre, l'argent est chez l'artisan).
-function paramsRemboursement(base: Record<string, string>, compteEvenement: string | null): URLSearchParams {
+// Paiement direct : la commission de CaraLink est rendue avec le remboursement (sans commission, il n'y a rien à rendre : Stripe l'ignore).
+function paramsRemboursement(base: Record<string, string>, compteEvenement: string | null, commissionCentimes = 0): URLSearchParams {
   const p = new URLSearchParams(base);
   if (!compteEvenement) p.set("reverse_transfer", "true");
+  else if (commissionCentimes > 0) p.set("refund_application_fee", "true");
   return p;
 }
 
@@ -322,7 +324,7 @@ async function gererRuptureApresPaiement(commande: any, lignes: any[], artisan: 
     "metadata[commande_id]": commande.id,
     "metadata[demande_par]": "automatique",
     "metadata[motif]": "rupture_de_stock",
-  }, compteEvenement), `rupture-stock-${commande.id}`, compteEvenement);
+  }, compteEvenement, Math.round(Number(commande.commission_montant || 0) * 100)), `rupture-stock-${commande.id}`, compteEvenement);
 
   if (rembourse.ok) {
     if (artisan?.email) {
@@ -383,7 +385,7 @@ async function traiterPaiementReussi(intent: any, compteEvenement: string | null
     const r = await stripeApi("POST", "refunds", paramsRemboursement({
       payment_intent: intent.id, reason: "duplicate",
       "metadata[commande_id]": commandeId, "metadata[demande_par]": "automatique", "metadata[motif]": "paiement_en_double",
-    }, compteEvenement), `doublon-paiement-${intent.id}`, compteEvenement);
+    }, compteEvenement, Number(intent.application_fee_amount || 0)), `doublon-paiement-${intent.id}`, compteEvenement);
     await alerterAdmin(r.ok ? "Paiement en double remboursé" : "Paiement en double À REMBOURSER", [
       `La commande ${commandeId} a été payée deux fois (${commande.stripe_payment_intent_id} puis ${intent.id}).`,
       r.ok ? `Le second paiement (${intent.id}) a été remboursé automatiquement.` : `Le remboursement automatique de ${intent.id} a échoué (erreur ${r.status}) : remboursez-le dans le Dashboard Stripe.`,

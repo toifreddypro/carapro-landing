@@ -9,7 +9,9 @@
 //   • l'admin (toifreddypro@gmail.com), sur n'importe quelle commande
 //
 // (14/10) DEUX MODÈLES de paiement coexistent, détectés commande par commande (le paiement est cherché sur le compte de l'artisan) :
-//   • PAIEMENT DIRECT (nouveau) : le paiement vit sur le compte Stripe de l'artisan. Le remboursement part de SON solde ; Stripe porte
+//   • PAIEMENT DIRECT (nouveau) : la COMMISSION de CaraLink (s'il y en a une, au-delà de la franchise mensuelle) est RENDUE au prorata du
+//     remboursement (décision du 14/10, refund_application_fee) ; les frais Stripe, eux, ne sont jamais rendus (à la charge de l'artisan).
+//     Le paiement vit sur le compte Stripe de l'artisan. Le remboursement part de SON solde ; Stripe porte
 //     la perte s'il ne peut pas couvrir (compte « Stripe responsable des pertes »). CaraLink n'avance JAMAIS rien : plus de garde-fou
 //     de solde bloquant. Si le solde est insuffisant, Stripe peut laisser le remboursement « en attente » : la réponse le signale.
 //   • ANCIEN MODÈLE « destination charge » (commandes d'avant le 14/10) : comportement d'origine ci-dessous, inchangé.
@@ -250,6 +252,8 @@ Deno.serve(async (req: Request) => {
     });
     if (motif) params.set("metadata[motif]", motif);
     if (!paiementDirect) params.set("reverse_transfer", "true"); // ancien modèle : reprendre sa part à l'artisan
+    // Paiement direct : CaraLink rend sa commission au prorata du remboursement (sans commission, il n'y a rien à rendre).
+    if (paiementDirect && Number(commande.commission_montant || 0) > 0) params.set("refund_application_fee", "true");
 
     const entetesStripe: Record<string, string> = {
       "Authorization": `Bearer ${STRIPE_SECRET_KEY}`,
