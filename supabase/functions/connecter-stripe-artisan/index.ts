@@ -184,11 +184,12 @@ Deno.serve(async (req: Request) => {
         "controller[stripe_dashboard][type]": "express",     // l'artisan garde l'espace Express (soldes, virements, litiges)
         country: "FR",
         email: artisan.email || user.email || "",
-        "capabilities[card_payments][requested]": "true",    // paiements directs : pas besoin de la capacité « transfers »
+        "capabilities[card_payments][requested]": "true",
+        "capabilities[transfers][requested]": "true",        // exigée par Stripe avec l'espace Express (« card_payments » seul est refusé, constaté le 14/10)
         "business_type": "individual",
         "settings[payouts][debit_negative_balances]": "true", // solde négatif → Stripe prélève d'abord le compte bancaire de l'artisan
         "metadata[artisan_id]": artisan.id,
-      }, `compte-connect-direct_${artisan.id}`, VERSION_API_PREVIEW_EXPRESS); // deux appels simultanés : le MÊME compte Stripe (jamais deux)
+      }, `compte-connect-direct2_${artisan.id}`, VERSION_API_PREVIEW_EXPRESS); // deux appels simultanés : le MÊME compte Stripe (jamais deux)
       // Garde-fou : on ne lance JAMAIS l'inscription d'un artisan sur un compte dont les réglages ne sont pas ceux voulus.
       const ctrl = account?.controller;
       if (ctrl?.losses?.payments !== "stripe" || ctrl?.fees?.payer !== "account" || ctrl?.stripe_dashboard?.type !== "express") {
