@@ -158,6 +158,7 @@ const STRIPE_PUBLIC_KEY = 'pk_live_51TWxxBJPTOXXy1ykTYLysvDCbnnJUXzqbc164Wif38u1
 let DATA = null;
 let PANIER = []; // [{ catalogue_id, nom, prix, quantite }] — prix déjà remisé si applicable
 let _stripeClient = null;
+let _stripeCompte = null; // compte Stripe de l'artisan pour lequel _stripeClient a été créé
 let _stripeElements = null;
 let _dernierCommandeId = null;
 
@@ -389,7 +390,11 @@ async function afficherEtapePaiement(commandeId) {
     var data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    if (!_stripeClient) _stripeClient = Stripe(STRIPE_PUBLIC_KEY);
+    // Paiement direct : le formulaire de carte s'affiche SUR le compte Stripe de l'artisan (stripe_account renvoyé par le serveur).
+    if (!_stripeClient || _stripeCompte !== (data.stripe_account || null)) {
+      _stripeCompte = data.stripe_account || null;
+      _stripeClient = _stripeCompte ? Stripe(STRIPE_PUBLIC_KEY, { stripeAccount: _stripeCompte }) : Stripe(STRIPE_PUBLIC_KEY);
+    }
     _stripeElements = _stripeClient.elements({ clientSecret: data.client_secret });
     _stripeElements.create('payment').mount('#paiement-element');
 

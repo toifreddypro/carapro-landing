@@ -3,10 +3,10 @@
 // Propriété : TOI Freddy
 //
 // Crée un Payment Intent Stripe pour une commande du catalogue, en
-// "destination charge" : le client paie CaraLink Artisans, les frais
-// de traitement Stripe sont prélevés sur NOTRE part (pas celle de
-// l'artisan), notre commission est retenue automatiquement, et le
-// reste part directement sur le compte Stripe de l'artisan.
+// « paiement direct » (direct charge, 14/10) : le paiement est créé SUR LE COMPTE STRIPE DE L'ARTISAN, qui est le vendeur.
+// Les frais Stripe sont payés par l'artisan lui-même, CaraLink ne prélève que sa commission (« application fee », 0 sous la
+// franchise mensuelle), et Stripe — pas CaraLink — porte la perte si l'artisan ne peut pas rembourser (compte créé avec
+// losses.payments = stripe, voir connecter-stripe-artisan). Les « frais de paiement refacturés » n'existent donc plus.
 //
 // Taux de commission à ajuster ici — décidé à 7% le 25/09, à revoir
 // une fois qu'il y a du vrai volume pour voir comment ça se comporte.
@@ -47,11 +47,6 @@ const corsHeaders = {
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const TAUX_COMMISSION = 0.07; // 7%
-// Frais de paiement REFACTURÉS à l'artisan, dès le premier euro (décidé le 06/10) : ils couvrent les frais que Stripe prélève sur CaraLink
-// (cartes européennes standard 1,5 % + 0,25 €, premium 1,9 % + 0,25 € : on prend le taux premium par prudence). Ils s'ajoutent à la
-// commission dans la retenue de CaraLink ; le prix payé par le CLIENT ne change pas, c'est la part de l'artisan qui diminue.
-const TAUX_FRAIS_PAIEMENT_MILLIEMES = 19; // 1,9 % = 19 pour mille (calcul en entiers : pas d'erreur d'arrondi)
-const FRAIS_FIXE_PAIEMENT_CENTIMES = 25;
 const SEUIL_GRATUIT_EUROS = 200; // seuil mensuel — aligné sur celui des Prestations (28/09)
 const DECALAGE_LOCAL_MS = 4 * 3600 * 1000; // Guadeloupe = UTC-4 : le « mois » de l'artisan commence à 04:00 UTC
 const MONTANT_MINIMUM_CENTIMES = 50; // Stripe refuse tout paiement en dessous de 0,50 €
@@ -73,11 +68,6 @@ function calculerCommissionAvecSeuil(
   const montantCommissionneCentimes = montantCommandeCentimes - montantSousLeSeuilCentimes;
   const commissionCentimes = Math.round(montantCommissionneCentimes * taux);
   return { commissionCentimes, montantSousLeSeuilCentimes, montantCommissionneCentimes };
-}
-
-// Frais de paiement d'une commande, en centimes : 1,9 % arrondi au centime SUPÉRIEUR (jamais de sous-recouvrement) + 0,25 €.
-function calculerFraisPaiementCentimes(montantCentimes: number): number {
-  return Math.ceil((montantCentimes * TAUX_FRAIS_PAIEMENT_MILLIEMES) / 1000) + FRAIS_FIXE_PAIEMENT_CENTIMES;
 }
 
 // CA net déjà facturé en ligne par l'artisan depuis le 1er du mois (heure de la Guadeloupe), remboursements déduits.
@@ -115,17 +105,21 @@ async function fetchAvecReprise(url: string, init: RequestInit): Promise<Respons
   return res;
 }
 
-async function stripeCall(path: string, params: Record<string, string>, cleIdempotence?: string) {
+// `compteConnecte` : agir SUR le compte Stripe de l'artisan (paiements directs) — en-tête « Stripe-Account ».
+async function stripeCall(path: string, params: Record<string, string>, cleIdempotence?: string, compteConnecte?: string) {
   const headers: Record<string, string> = { "Authorization": `Bearer ${STRIPE_SECRET_KEY}`, "Content-Type": "application/x-www-form-urlencoded" };
   if (cleIdempotence) headers["Idempotency-Key"] = cleIdempotence;
+  if (compteConnecte) headers["Stripe-Account"] = compteConnecte;
   const res = await fetchAvecReprise(`https://api.stripe.com/v1/${path}`, { method: "POST", headers, body: new URLSearchParams(params) });
   const data = await res.json();
   if (!res.ok) { const e: any = new Error(data?.error?.message || "Erreur Stripe"); e.stripeCode = data?.error?.code || data?.error?.type; throw e; }
   return data;
 }
 
-async function stripeGet(path: string) {
-  const res = await fetch(`https://api.stripe.com/v1/${path}`, { headers: { "Authorization": `Bearer ${STRIPE_SECRET_KEY}` } });
+async function stripeGet(path: string, compteConnecte?: string) {
+  const headers: Record<string, string> = { "Authorization": `Bearer ${STRIPE_SECRET_KEY}` };
+  if (compteConnecte) headers["Stripe-Account"] = compteConnecte;
+  const res = await fetch(`https://api.stripe.com/v1/${path}`, { headers });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, data };
 }
@@ -156,6 +150,15 @@ Deno.serve(async (req: Request) => {
     const articleInfos = (commande as any).artisans_catalogue;
     if (!artisanInfos?.stripe_connect_account_id || artisanInfos.stripe_connect_statut !== "actif") {
       return json({ error: "Cet artisan n'a pas encore activé les paiements en ligne — le paiement se fait directement avec lui pour l'instant." }, 400);
+    }
+
+    const compteArtisan: string = artisanInfos.stripe_connect_account_id;
+    // Garde-fou : seuls les comptes créés avec « Stripe porte les pertes » (voie paiements directs) peuvent encaisser. Un ancien compte
+    // (créé avant le 14/10, CaraLink responsable) doit refaire son activation — sinon la perte retomberait sur CaraLink.
+    const compteStripe = await stripeGet(`accounts/${encodeURIComponent(compteArtisan)}`);
+    if (!compteStripe.ok || compteStripe.data?.controller?.losses?.payments !== "stripe" || compteStripe.data?.controller?.fees?.payer !== "account") {
+      console.error("[creer-paiement-commande] compte de l'artisan non conforme au modèle paiements directs", commande.artisan_id);
+      return json({ error: "Cet artisan doit réactiver ses paiements en ligne — le paiement se fait directement avec lui pour l'instant." }, 400);
     }
 
     const fraisLivraisonCentimes = Math.round((Number((commande as any).frais_livraison) || 0) * 100);
@@ -194,16 +197,17 @@ Deno.serve(async (req: Request) => {
     // ── Un seul paiement actif par commande ──
     const ancienId = commande.stripe_payment_intent_id as string | null;
     if (ancienId) {
-      const ancien = await stripeGet(`payment_intents/${encodeURIComponent(ancienId)}`);
+      // Les paiements directs vivent sur le compte de l'artisan ; un ancien paiement de l'ancien modèle (sur CaraLink) est introuvable ici : on l'ignore.
+      const ancien = await stripeGet(`payment_intents/${encodeURIComponent(ancienId)}`, compteArtisan);
       if (ancien.ok) {
         const st = ancien.data?.status;
         if (st === "succeeded") return json({ error: "Cette commande est déjà payée." }, 400);
         if (st === "processing") return json({ error: "Un paiement est déjà en cours pour cette commande. Patientez quelques instants." }, 409);
         if (["requires_payment_method", "requires_confirmation", "requires_action"].includes(st)) {
           // Même montant : on RÉUTILISE le paiement ouvert (recharger la page ne crée pas un second paiement).
-          if (ancien.data.amount === montantTotal && ancien.data.client_secret) return json({ client_secret: ancien.data.client_secret });
+          if (ancien.data.amount === montantTotal && ancien.data.client_secret) return json({ client_secret: ancien.data.client_secret, stripe_account: compteArtisan });
           // Montant différent (prix ou frais modifiés depuis) : l'ancien paiement est périmé, on l'annule.
-          try { await stripeCall(`payment_intents/${encodeURIComponent(ancienId)}/cancel`, {}); } catch (e) { console.error("[creer-paiement-commande] Annulation de l'ancien paiement impossible :", e); }
+          try { await stripeCall(`payment_intents/${encodeURIComponent(ancienId)}/cancel`, {}, undefined, compteArtisan); } catch (e) { console.error("[creer-paiement-commande] Annulation de l'ancien paiement impossible :", e); }
         }
       }
     }
@@ -213,47 +217,43 @@ Deno.serve(async (req: Request) => {
       montantTotal, dejaFacture, SEUIL_GRATUIT_EUROS * 100, TAUX_COMMISSION,
     );
 
-    // Retenue totale de CaraLink = commission (au-delà de la franchise) + frais de paiement refacturés (dès le premier euro).
-    // Jamais plus que le montant payé (Stripe le refuserait) ; en pratique impossible dès 0,50 €.
-    const fraisPaiement = calculerFraisPaiementCentimes(montantTotal);
-    const retenue = Math.min(commission + fraisPaiement, montantTotal);
+    // Paiement direct : CaraLink ne prélève QUE sa commission (0 sous la franchise). Les frais Stripe sont à la charge de l'artisan.
+    // Jamais plus que le montant payé (Stripe le refuserait) ; en pratique impossible avec 7 %.
+    const retenue = Math.min(commission, montantTotal);
 
     // Clé d'idempotence : deux appels simultanés pour la même commande, le même montant et le même état précédent
     // obtiennent le MÊME paiement (jamais deux).
-    const intent = await stripeCall("payment_intents", {
+    const paramsIntent: Record<string, string> = {
       amount: String(montantTotal),
       currency: "eur",
       "automatic_payment_methods[enabled]": "true",
-      "application_fee_amount": String(retenue),
-      "transfer_data[destination]": artisanInfos.stripe_connect_account_id,
       "metadata[commande_id]": commande_id,
       "metadata[artisan_id]": commande.artisan_id,
       "description": descriptionStripe,
-    }, `paiement-commande_${commande_id}_${montantTotal}_${ancienId ?? "aucun"}`);
+    };
+    if (retenue > 0) paramsIntent["application_fee_amount"] = String(retenue);
+    const intent = await stripeCall("payment_intents", paramsIntent,
+      `paiement-direct_${commande_id}_${montantTotal}_${ancienId ?? "aucun"}`, compteArtisan);
 
-    // « commission_montant » = la RETENUE TOTALE de CaraLink (commission + frais de paiement) : c'est ce que lisent le remboursement et son aperçu
-    // pour savoir ce que Stripe reprend à l'artisan. « frais_paiement_montant » en détaille la part « frais ».
+    // « commission_montant » = la commission de CaraLink (0 sous la franchise). « frais_paiement_montant » reste VIDE : les frais Stripe sont
+    // désormais prélevés par Stripe directement chez l'artisan (la valeur vide sert aussi à reconnaître les commandes du nouveau modèle).
     const majCommande: Record<string, unknown> = {
       stripe_payment_intent_id: intent.id,
       montant_total: montantTotal / 100,
       commission_montant: retenue / 100,
-      frais_paiement_montant: fraisPaiement / 100,
+      frais_paiement_montant: null,
       paiement_statut: "en_attente",
     };
-    let { error: errMaj } = await sb.from("commandes_catalogue").update(majCommande).eq("id", commande_id);
-    // Tolérance : tant que frais-paiement.sql n'est pas lancé, la colonne du détail n'existe pas : on enregistre sans elle (le paiement, lui, est déjà bon).
-    if (errMaj && ["42703", "PGRST204"].includes((errMaj as any).code)) {
-      delete majCommande.frais_paiement_montant;
-      ({ error: errMaj } = await sb.from("commandes_catalogue").update(majCommande).eq("id", commande_id));
-    }
+    const { error: errMaj } = await sb.from("commandes_catalogue").update(majCommande).eq("id", commande_id);
     if (errMaj) {
       // Sans cette trace, un paiement réussi serait impossible à rapprocher (et à rembourser) : on annule le paiement créé.
       console.error("[creer-paiement-commande] Mise à jour de la commande impossible :", errMaj.message);
-      try { await stripeCall(`payment_intents/${encodeURIComponent(intent.id)}/cancel`, {}); } catch (e) { console.error("[creer-paiement-commande] Annulation impossible :", e); }
+      try { await stripeCall(`payment_intents/${encodeURIComponent(intent.id)}/cancel`, {}, undefined, compteArtisan); } catch (e) { console.error("[creer-paiement-commande] Annulation impossible :", e); }
       throw new Error("Mise à jour de la commande impossible.");
     }
 
-    return json({ client_secret: intent.client_secret });
+    // « stripe_account » : la page en a besoin pour afficher le formulaire de carte SUR le compte de l'artisan (identifiant public, pas un secret).
+    return json({ client_secret: intent.client_secret, stripe_account: compteArtisan });
 
   } catch (e) {
     console.error("[creer-paiement-commande]", e);
