@@ -8,14 +8,19 @@
 //   • l'artisan propriétaire de la commande (depuis MPA Artisans)
 //   • l'admin (toifreddypro@gmail.com), sur n'importe quelle commande
 //
-// Comment l'argent circule (paiement = "destination charge", commission 7 %) :
+// Comment l'argent circule (paiement = "destination charge") :
 //   • le client récupère le montant remboursé ;
-//   • Stripe REPREND à l'artisan sa part proportionnelle (reverse_transfer) ;
-//   • CaraLink rend donc sa commission sur la partie remboursée, et ne
-//     récupère PAS les frais de traitement Stripe (jamais restitués par Stripe).
-//   → on n'utilise volontairement PAS refund_application_fee : avec ce montage,
-//     la commission est déjà rendue via la reprise proportionnelle, et l'activer
-//     redonnerait en plus de l'argent à l'artisan.
+//   • Stripe REPREND à l'artisan le montant remboursé (reverse_transfer) ;
+//   • la retenue CaraLink (frais de paiement + éventuelle commission) n'est PAS rendue : Stripe ne restitue jamais ses frais,
+//     et la retenue sert justement à les couvrir. Décision du 13/10 : c'est l'artisan qui les supporte (un remboursement
+//     vient de sa gestion : stock, indisponibilité…), CaraLink n'y gagne ni n'y perd rien. On n'utilise donc PAS
+//     refund_application_fee. L'artisan en est prévenu dans la fenêtre de remboursement et par email.
+//   • conséquence : au plus la retenue de la commande peut manquer sur le solde de l'artisan ; Stripe la déduit de ses
+//     prochaines ventes (le garde-fou ci-dessous tolère exactement cet écart).
+//
+// (13/10) Après un remboursement réussi : un email au CLIENT (s'il a donné son adresse) et un à l'ARTISAN, et, sur
+// demande (remettre_en_stock) pour un remboursement TOTAL, les articles retournent en stock. Ces suites ne se font qu'une
+// fois : seule la requête qui met réellement la commande à jour les déclenche (jamais un double clic).
 //
 // Sécurités :
 //   • vérification du solde Stripe de l'artisan AVANT de rembourser (Stripe ne
@@ -113,6 +118,57 @@ async function fetchAvecReprise(url: string, init: RequestInit): Promise<Respons
   return res;
 }
 
+function escHtml(s: unknown): string {
+  return String(s ?? "").replace(/[&<>"']/g, (m) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }) as Record<string, string>)[m]);
+}
+
+async function envoyerEmail(to: string, subject: string, html: string, replyTo?: string) {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) { console.warn("[rembourser-commande] RESEND_API_KEY absente — email non envoyé."); return; }
+  try {
+    const corps: Record<string, unknown> = { from: "CaraLink Artisans <notifications@learnlogicstudio.com>", to: [to], subject, html };
+    if (replyTo) corps.reply_to = replyTo;
+    const res = await fetch("https://api.resend.com/emails", { method: "POST", headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify(corps) });
+    if (!res.ok) console.error("[rembourser-commande] Échec envoi Resend :", await res.text());
+  } catch (e) { console.error("[rembourser-commande] Erreur envoi email :", e); }
+}
+
+// Remet (delta > 0) du stock sans écraser une vente simultanée : l'écriture ne réussit que si le stock lu n'a pas changé.
+async function remettreEnStock(sb: any, articleId: string, quantite: number): Promise<"ok" | "illimite" | "introuvable"> {
+  for (let essai = 0; essai < 5; essai++) {
+    const { data: article, error } = await sb.from("artisans_catalogue").select("id, quantite_stock").eq("id", articleId).maybeSingle();
+    if (error) throw error;
+    if (!article) return "introuvable";
+    if (article.quantite_stock == null) return "illimite"; // stock non suivi : rien à remettre
+    const { data: maj, error: errMaj } = await sb.from("artisans_catalogue").update({ quantite_stock: article.quantite_stock + quantite })
+      .eq("id", articleId).eq("quantite_stock", article.quantite_stock).select("id");
+    if (errMaj) throw errMaj;
+    if (maj && maj.length) return "ok";
+  }
+  throw new Error(`Stock de ${articleId} : trop de conflits d'écriture`);
+}
+
+function emailClientRemboursement(entreprise: string, article: string, montantCents: number, total: boolean, motif: string): string {
+  return `<div style="font-family:sans-serif;max-width:480px;">
+    <h2 style="color:#B5502F;">Votre commande a été ${total ? "remboursée" : "remboursée en partie"}</h2>
+    <p><strong>${escHtml(entreprise)}</strong> vous a remboursé <strong>${euros(montantCents)}</strong> pour « ${escHtml(article)} ».</p>
+    ${motif ? `<p>Motif indiqué : ${escHtml(motif)}</p>` : ""}
+    <p>L'argent est renvoyé sur la carte utilisée pour le paiement. Selon votre banque, il apparaît sous quelques jours ouvrés.</p>
+    <p style="color:#888;font-size:12px;margin-top:18px;">Une question ? Répondez simplement à cet email : il arrive directement chez ${escHtml(entreprise)}.</p>
+  </div>`;
+}
+
+function emailArtisanRemboursement(d: { article: string; client: string; montantCents: number; total: boolean; reprisCents: number; motif: string; stock: string }): string {
+  return `<div style="font-family:sans-serif;max-width:480px;">
+    <h2 style="color:#B5502F;">Remboursement effectué — ${escHtml(d.article)}</h2>
+    <p><strong>${euros(d.montantCents)}</strong> ont été remboursés à <strong>${escHtml(d.client)}</strong> (${d.total ? "remboursement total" : "remboursement partiel"}).</p>
+    ${d.motif ? `<p>Motif : ${escHtml(d.motif)}</p>` : ""}
+    <p>Stripe a repris <strong>${euros(d.reprisCents)}</strong> sur votre solde. Les frais de paiement de la vente ne sont pas restitués par Stripe : ils restent à votre charge.</p>
+    ${d.stock ? `<p>${escHtml(d.stock)}</p>` : ""}
+    <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Voir dans MPA Artisans →</a></p>
+  </div>`;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
@@ -136,7 +192,7 @@ Deno.serve(async (req: Request) => {
 
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: commande, error: errC } = await sb.from("commandes_catalogue")
-      .select("id, nom_article, statut, paiement_statut, stripe_payment_intent_id, montant_total, commission_montant, montant_rembourse, artisans(user_id, stripe_connect_account_id)")
+      .select("id, nom_article, statut, paiement_statut, stripe_payment_intent_id, montant_total, commission_montant, montant_rembourse, catalogue_id, quantite, client_nom, client_email, artisans(user_id, stripe_connect_account_id, email, nom_entreprise)")
       .eq("id", body.commande_id).maybeSingle();
     if (errC) throw errC;
     if (!commande) return json({ error: "Commande introuvable." }, 404);
@@ -216,6 +272,39 @@ Deno.serve(async (req: Request) => {
         .eq("id", commande.id).in("statut", ["nouvelle", "confirmee", "prete"]);
     }
 
+    // ── Suites du remboursement (une seule fois : seule la requête qui a VRAIMENT mis la commande à jour les déclenche) ──
+    // Jamais bloquantes : le client est déjà remboursé, une panne ici ne doit pas faire croire à un échec.
+    let remisEnStock = false;
+    if (!errMaj && majFaite && majFaite.length > 0) {
+      const total = calc.statut === "rembourse";
+      try {
+        // Remise en stock : uniquement sur demande, pour un remboursement TOTAL fait en une fois (jamais après un remboursement partiel :
+        // on ne sait pas quels articles ont été rendus).
+        if (body.remettre_en_stock === true && total && calc.dejaCents === 0) {
+          const { data: lignes, error: errL } = await sb.from("commandes_catalogue_lignes").select("catalogue_id, quantite").eq("commande_id", commande.id);
+          if (errL) throw errL;
+          const parArticle = new Map<string, number>();
+          for (const l of (lignes && lignes.length ? lignes : [{ catalogue_id: (commande as any).catalogue_id, quantite: (commande as any).quantite }])) {
+            if (!l.catalogue_id || !(Number(l.quantite) > 0)) continue;
+            parArticle.set(l.catalogue_id, (parArticle.get(l.catalogue_id) || 0) + Number(l.quantite));
+          }
+          for (const [articleId, q] of parArticle) {
+            if ((await remettreEnStock(sb, articleId, q)) === "ok") remisEnStock = true;
+          }
+        }
+      } catch (e) { console.error("[rembourser-commande] Remise en stock impossible :", e); }
+
+      try {
+        const entreprise = artisan?.nom_entreprise || "L'artisan";
+        const clientEmail = typeof (commande as any).client_email === "string" ? (commande as any).client_email.trim() : "";
+        if (clientEmail) await envoyerEmail(clientEmail, `Votre commande a été ${total ? "remboursée" : "remboursée en partie"} — ${entreprise}`,
+          emailClientRemboursement(entreprise, commande.nom_article, calc.montantCents, total, motif), artisan?.email || undefined);
+        if (artisan?.email) await envoyerEmail(artisan.email, `Remboursement effectué : ${commande.nom_article}`,
+          emailArtisanRemboursement({ article: commande.nom_article, client: (commande as any).client_nom || "le client", montantCents: calc.montantCents, total,
+            reprisCents: calc.montantCents, motif, stock: remisEnStock ? "Les articles ont été remis en stock." : "" }));
+      } catch (e) { console.error("[rembourser-commande] Emails de remboursement non envoyés :", e); }
+    }
+
     return json({
       ok: true,
       refund_id: refund.id,
@@ -223,6 +312,7 @@ Deno.serve(async (req: Request) => {
       montant_rembourse: calc.montantCents / 100,
       total_rembourse: calc.nouveauTotalCents / 100,
       repris_artisan: calc.reprisArtisanCents / 100,
+      remis_en_stock: remisEnStock,
     });
 
   } catch (e) {

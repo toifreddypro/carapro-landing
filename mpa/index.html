@@ -957,8 +957,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 <div class="modal-field">
 <label>Motif (facultatif)</label>
-<input id="rb-motif" maxlength="200" placeholder="Ex : commande annulée, article indisponible" type="text"/>
+<input id="rb-motif" maxlength="200" oninput="majStockSelonMotif()" placeholder="Ex : commande annulée, article indisponible" type="text"/>
 </div>
+<label id="rb-stock-ligne" style="display:none;align-items:flex-start;gap:8px;font-size:12.5px;margin-bottom:10px;cursor:pointer;line-height:1.4;"><input id="rb-stock" onchange="_rbStockTouche=true" style="margin-top:2px;" type="checkbox"/><span>Remettre les articles en stock <span style="color:var(--mu);">(si le stock du produit est suivi)</span></span></label>
 <p id="rb-info" style="font-size:12px;color:var(--mu);margin-bottom:10px;line-height:1.5;"></p>
 <div id="rb-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>
 <div class="modal-actions">

@@ -3768,6 +3768,7 @@ async function avancerStatutCommande(id) {
 // (volontairement SANS verifierAccesEcriture : rembourser un client doit toujours rester possible,
 //  même si l'essai est terminé.)
 var _remboursementEnCours = null;
+var _rbStockTouche = false; // vrai dès que l'artisan a lui-même coché/décoché « Remettre en stock » : on ne le change plus à sa place
 
 function eurosFR(n) {
   return (Number(n) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
@@ -3781,7 +3782,7 @@ function ouvrirRemboursement(id) {
   var restant = Math.round((total - deja) * 100) / 100;
   if (restant <= 0) { alert('Cette commande est déjà remboursée en totalité.'); return; }
 
-  _remboursementEnCours = { id: id, total: total, restant: restant, commission: Number(c.commission_montant) || 0 };
+  _remboursementEnCours = { id: id, total: total, restant: restant, deja: deja, commission: Number(c.commission_montant) || 0 };
   document.getElementById('rb-resume').innerHTML =
     '<strong>' + escHtml(c.nom_article) + '</strong> × ' + c.quantite + ' — ' + escHtml(c.client_nom) + '<br>' +
     'Payé : ' + eurosFR(total) + (deja ? ' · déjà remboursé : ' + eurosFR(deja) : '') +
@@ -3790,6 +3791,8 @@ function ouvrirRemboursement(id) {
   champ.value = restant.toFixed(2);
   champ.max = restant;
   document.getElementById('rb-motif').value = '';
+  _rbStockTouche = false;
+  document.getElementById('rb-stock').checked = true;
   document.getElementById('rb-err').style.display = 'none';
   var btn = document.getElementById('btn-rb-confirmer');
   btn.disabled = false; btn.textContent = 'Confirmer le remboursement';
@@ -3797,16 +3800,26 @@ function ouvrirRemboursement(id) {
   ouvrirModale('modal-remboursement');
 }
 
+// Un produit « indisponible / en rupture » ne revient pas en stock : tant que l'artisan n'a pas lui-même touché la case, elle suit le motif.
+function motifSansRetourStock(motif) {
+  return /indisponible|rupture|plus de stock|épuisé|epuise|plus en stock/i.test(motif || '');
+}
+function majStockSelonMotif() {
+  if (_rbStockTouche) return;
+  document.getElementById('rb-stock').checked = !motifSansRetourStock(document.getElementById('rb-motif').value);
+}
+
 function majApercuRemboursement() {
   var r = _remboursementEnCours;
   var info = document.getElementById('rb-info');
   if (!r || !info) return;
   var m = parseFloat(document.getElementById('rb-montant').value);
+  // « Remettre en stock » : seulement pour un remboursement TOTAL d'une commande encore intacte.
+  var ligneStock = document.getElementById('rb-stock-ligne');
+  if (ligneStock) ligneStock.style.display = (m > 0 && r.deja === 0 && Math.abs(m - r.restant) < 0.005) ? 'flex' : 'none';
   if (!(m > 0)) { info.textContent = ''; return; }
-  var partArtisan = r.total > 0 ? (r.total - r.commission) / r.total : 1;
-  var repris = Math.round(m * partArtisan * 100) / 100;
-  info.textContent = 'Le client sera remboursé de ' + eurosFR(m) + '. Stripe reprendra ' + eurosFR(repris) +
-    ' sur votre solde Stripe (votre part de cette vente) ; la retenue CaraLink correspondante (commission et frais de paiement) est aussi rendue.';
+  info.textContent = 'Le client sera remboursé de ' + eurosFR(m) + ' et en sera prévenu par email s\'il a donné son adresse. Stripe reprendra ' + eurosFR(m) +
+    ' sur votre solde Stripe. Les frais de paiement de cette vente ne sont pas restitués par Stripe : ils restent à votre charge.';
 }
 
 async function confirmerRemboursement() {
@@ -3827,14 +3840,16 @@ async function confirmerRemboursement() {
     var res = await fetch(SUPABASE_URL + '/functions/v1/rembourser-commande', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
-      body: JSON.stringify({ commande_id: r.id, montant: m, motif: document.getElementById('rb-motif').value.trim() }),
+      body: JSON.stringify({ commande_id: r.id, montant: m, motif: document.getElementById('rb-motif').value.trim(),
+        remettre_en_stock: r.deja === 0 && Math.abs(m - r.restant) < 0.005 && document.getElementById('rb-stock').checked }),
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error);
     fermerModale('modal-remboursement');
     _remboursementEnCours = null;
     await chargerCommandes();
-    alert('✅ Remboursement de ' + eurosFR(data.montant_rembourse) + ' effectué. Le client le verra sous quelques jours ouvrés, selon sa banque.');
+    if (data.remis_en_stock) await chargerCatalogue(); // le stock affiché doit refléter la remise en stock
+    alert('✅ Remboursement de ' + eurosFR(data.montant_rembourse) + ' effectué. Le client le verra sous quelques jours ouvrés, selon sa banque.' + (data.remis_en_stock ? '\nLes articles ont été remis en stock.' : ''));
   } catch (e) {
     err.textContent = e.message;
     err.style.display = 'block';
