@@ -29,6 +29,14 @@
 //    seule fois) que le stock est retiré et que l'artisan est prévenu. Si le dernier exemplaire a été pris entre-temps, le client
 //    est remboursé automatiquement.
 // 7. DOUBLE ABONNEMENT : si un artisan a déjà un abonnement Pro en cours, le second est annulé et l'administrateur est prévenu.
+//
+// ── Révision du 14/10/2026 : PAIEMENTS DIRECTS ──────────────
+// Les paiements des commandes se font désormais SUR LE COMPTE STRIPE DE L'ARTISAN (direct charges). Leurs événements
+// (payment_intent.*, charge.refunded) arrivent par le webhook « Connect » et portent « event.account » = le compte de l'artisan.
+//  - les remboursements automatiques (rupture de stock, paiement en double) se font sur ce compte (en-tête Stripe-Account), sans
+//    « reverse_transfer » (il n'y a plus de transfert à reprendre) ;
+//  - un événement venant d'un compte Stripe n'est pris en compte que si ce compte est bien celui de l'artisan de la commande ;
+//  - les anciennes commandes (paiement sur CaraLink, sans event.account) continuent d'être traitées comme avant.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -94,8 +102,9 @@ async function verifierSignatureMultiple(payload: string, sigHeader: string): Pr
 
 // ── Appels Stripe et emails ─────────────────────────────────
 
-async function stripeApi(methode: string, chemin: string, corps?: URLSearchParams, cleIdempotence?: string) {
+async function stripeApi(methode: string, chemin: string, corps?: URLSearchParams, cleIdempotence?: string, compteConnecte?: string | null) {
   const entetes: Record<string, string> = { "Authorization": `Bearer ${Deno.env.get("STRIPE_SECRET_KEY") ?? ""}` };
+  if (compteConnecte) entetes["Stripe-Account"] = compteConnecte; // agir sur le compte de l'artisan (paiements directs)
   if (corps) entetes["Content-Type"] = "application/x-www-form-urlencoded";
   if (cleIdempotence) entetes["Idempotency-Key"] = cleIdempotence;
   const init: RequestInit = { method: methode, headers: entetes, body: corps };
@@ -226,7 +235,24 @@ async function appliquerAbonnement(sub: any) {
   lever(errPlan, "Maj plan artisan");
 }
 
-// ── Paiement d'une commande du catalogue (destination charge) ──
+// ── Paiement d'une commande du catalogue ──
+
+// Paiements directs : l'événement vient du compte Stripe de l'artisan (« event.account »). On ne le prend en compte que si ce compte
+// est bien celui de l'artisan de la commande (un compte ne peut jamais faire bouger la commande d'un autre).
+// Sans « event.account » (ancien modèle, paiement sur CaraLink) : comportement d'avant.
+async function compteCorrespond(artisanId: string, compteEvenement: string | null): Promise<boolean> {
+  if (!compteEvenement) return true;
+  const { data, error } = await sbAdmin.from("artisans").select("stripe_connect_account_id").eq("id", artisanId).maybeSingle();
+  lever(error, "Lecture du compte Stripe de l'artisan");
+  return data?.stripe_connect_account_id === compteEvenement;
+}
+
+// Paramètres d'un remboursement : sans « reverse_transfer » sur un paiement direct (rien à reprendre, l'argent est chez l'artisan).
+function paramsRemboursement(base: Record<string, string>, compteEvenement: string | null): URLSearchParams {
+  const p = new URLSearchParams(base);
+  if (!compteEvenement) p.set("reverse_transfer", "true");
+  return p;
+}
 
 // Retire du stock (ou le remet si delta > 0) sans jamais passer sous zéro, même si deux paiements arrivent en même temps :
 // l'écriture ne réussit que si le stock lu n'a pas changé entre-temps, sinon on relit et on recommence.
@@ -287,17 +313,16 @@ function emailNouvelleCommande(commande: any, lignes: any[]): string {
 }
 
 // Le client a payé mais le dernier exemplaire a été pris pendant ce temps : remboursement intégral automatique.
-// Même montage que rembourser-commande : Stripe reprend à l'artisan sa part (reverse_transfer), CaraLink rend sa commission.
-async function gererRuptureApresPaiement(commande: any, lignes: any[], artisan: any, manquants: string[], intent: any) {
+// Même montage que rembourser-commande : le remboursement part du compte de l'artisan (paiement direct) ; les frais Stripe ne sont pas rendus.
+async function gererRuptureApresPaiement(commande: any, lignes: any[], artisan: any, manquants: string[], intent: any, compteEvenement: string | null) {
   const resume = commande.nom_article || "votre commande";
-  const rembourse = await stripeApi("POST", "refunds", new URLSearchParams({
+  const rembourse = await stripeApi("POST", "refunds", paramsRemboursement({
     payment_intent: intent.id,
-    reverse_transfer: "true",
     reason: "requested_by_customer",
     "metadata[commande_id]": commande.id,
     "metadata[demande_par]": "automatique",
     "metadata[motif]": "rupture_de_stock",
-  }), `rupture-stock-${commande.id}`);
+  }, compteEvenement), `rupture-stock-${commande.id}`, compteEvenement);
 
   if (rembourse.ok) {
     if (artisan?.email) {
@@ -339,21 +364,26 @@ async function gererRuptureApresPaiement(commande: any, lignes: any[], artisan: 
   ]);
 }
 
-async function traiterPaiementReussi(intent: any) {
+async function traiterPaiementReussi(intent: any, compteEvenement: string | null) {
   const commandeId = intent.metadata?.commande_id;
   if (!commandeId) return;
   const { data: commande, error } = await sbAdmin.from("commandes_catalogue").select("*").eq("id", commandeId).maybeSingle();
   lever(error, "Lecture de la commande");
   if (!commande) { console.error("[stripe-webhook-artisans] Paiement reçu pour une commande introuvable :", commandeId); return; }
+  if (!(await compteCorrespond(commande.artisan_id, compteEvenement))) {
+    console.error("[stripe-webhook-artisans] Paiement venant d'un compte Stripe qui n'est pas celui de l'artisan de la commande :", commandeId, compteEvenement);
+    await alerterAdmin("Paiement ignoré : compte Stripe incohérent", [`Commande ${commandeId} : le paiement ${intent.id} vient du compte ${compteEvenement}, qui n'est pas celui de l'artisan de la commande. Rien n'a été modifié.`]);
+    return;
+  }
 
   const dejaPayee = STATUTS_PAYES.includes(commande.paiement_statut);
 
   // Deux paiements réussis pour la même commande (deux onglets, deux cartes) : le premier compte, le second est remboursé.
   if (dejaPayee && commande.stripe_payment_intent_id && commande.stripe_payment_intent_id !== intent.id) {
-    const r = await stripeApi("POST", "refunds", new URLSearchParams({
-      payment_intent: intent.id, reverse_transfer: "true", reason: "duplicate",
+    const r = await stripeApi("POST", "refunds", paramsRemboursement({
+      payment_intent: intent.id, reason: "duplicate",
       "metadata[commande_id]": commandeId, "metadata[demande_par]": "automatique", "metadata[motif]": "paiement_en_double",
-    }), `doublon-paiement-${intent.id}`);
+    }, compteEvenement), `doublon-paiement-${intent.id}`, compteEvenement);
     await alerterAdmin(r.ok ? "Paiement en double remboursé" : "Paiement en double À REMBOURSER", [
       `La commande ${commandeId} a été payée deux fois (${commande.stripe_payment_intent_id} puis ${intent.id}).`,
       r.ok ? `Le second paiement (${intent.id}) a été remboursé automatiquement.` : `Le remboursement automatique de ${intent.id} a échoué (erreur ${r.status}) : remboursez-le dans le Dashboard Stripe.`,
@@ -399,7 +429,7 @@ async function traiterPaiementReussi(intent: any) {
     lever(errArtisan, "Lecture de l'artisan");
 
     const stock = await decompterStock(lignes || []);
-    if (!stock.ok) { await gererRuptureApresPaiement(commande, lignes || [], artisan, stock.manquants, intent); return; }
+    if (!stock.ok) { await gererRuptureApresPaiement(commande, lignes || [], artisan, stock.manquants, intent, compteEvenement); return; }
 
     if (artisan?.email) await envoyerEmail(artisan.email, `Nouvelle commande : ${commande.nom_article}`, emailNouvelleCommande(commande, lignes || []));
   } catch (e) {
@@ -411,9 +441,14 @@ async function traiterPaiementReussi(intent: any) {
   }
 }
 
-async function traiterPaiementEchoue(intent: any) {
+async function traiterPaiementEchoue(intent: any, compteEvenement: string | null) {
   const commandeId = intent.metadata?.commande_id;
   if (!commandeId) return;
+  if (compteEvenement) {
+    const { data: c, error: errC } = await sbAdmin.from("commandes_catalogue").select("artisan_id").eq("id", commandeId).maybeSingle();
+    lever(errC, "Lecture de la commande (échec de paiement)");
+    if (!c || !(await compteCorrespond(c.artisan_id, compteEvenement))) return;
+  }
   // Un échec n'écrase JAMAIS un paiement réussi ou remboursé (Stripe ne garantit pas l'ordre des événements).
   const { error } = await sbAdmin.from("commandes_catalogue").update({ paiement_statut: "echoue" }).eq("id", commandeId)
     .or("paiement_statut.is.null,paiement_statut.not.in.(paye,rembourse,partiellement_rembourse)");
@@ -423,11 +458,17 @@ async function traiterPaiementEchoue(intent: any) {
 // ── Remboursement d'une commande (depuis MPA, l'admin, ou directement dans le dashboard Stripe) ──
 // On prend les montants de Stripe comme source de vérité : le traitement est idempotent
 // (recevoir deux fois le même événement donne le même résultat).
-async function traiterRemboursement(charge: any) {
+async function traiterRemboursement(charge: any, compteEvenement: string | null) {
   const intentId = charge.payment_intent;
   const rembourse = Number(charge.amount_refunded || 0);
   const total = Number(charge.amount || 0);
   if (!intentId || !(rembourse > 0)) return;
+  if (compteEvenement) {
+    // Remboursement fait sur le compte d'un artisan (par MPA, ou par l'artisan lui-même dans son espace Stripe) : la commande doit être la sienne.
+    const { data: c, error: errC } = await sbAdmin.from("commandes_catalogue").select("artisan_id").eq("stripe_payment_intent_id", intentId).maybeSingle();
+    lever(errC, "Lecture de la commande (remboursement)");
+    if (!c || !(await compteCorrespond(c.artisan_id, compteEvenement))) return;
+  }
   const integral = total > 0 && rembourse >= total;
   const { error } = await sbAdmin.from("commandes_catalogue").update({
     paiement_statut: integral ? "rembourse" : "partiellement_rembourse",
@@ -480,9 +521,10 @@ Deno.serve(async (req: Request) => {
     const event = JSON.parse(payload);
 
     if (event.type.startsWith("customer.subscription.")) await appliquerAbonnement(event.data.object);
-    if (event.type === "payment_intent.succeeded") await traiterPaiementReussi(event.data.object);
-    if (event.type === "payment_intent.payment_failed") await traiterPaiementEchoue(event.data.object);
-    if (event.type === "charge.refunded") await traiterRemboursement(event.data.object);
+    const compteEvenement: string | null = typeof event.account === "string" && event.account ? event.account : null; // présent pour les paiements directs
+    if (event.type === "payment_intent.succeeded") await traiterPaiementReussi(event.data.object, compteEvenement);
+    if (event.type === "payment_intent.payment_failed") await traiterPaiementEchoue(event.data.object, compteEvenement);
+    if (event.type === "charge.refunded") await traiterRemboursement(event.data.object, compteEvenement);
     if (event.type === "setup_intent.succeeded") await traiterCarteEnregistree(event.data.object);
     if (event.type === "account.updated") await traiterCompteConnect(event.data.object);
 

@@ -8,7 +8,13 @@
 //   • l'artisan propriétaire de la commande (depuis MPA Artisans)
 //   • l'admin (toifreddypro@gmail.com), sur n'importe quelle commande
 //
-// Comment l'argent circule (paiement = "destination charge") :
+// (14/10) DEUX MODÈLES de paiement coexistent, détectés commande par commande (le paiement est cherché sur le compte de l'artisan) :
+//   • PAIEMENT DIRECT (nouveau) : le paiement vit sur le compte Stripe de l'artisan. Le remboursement part de SON solde ; Stripe porte
+//     la perte s'il ne peut pas couvrir (compte « Stripe responsable des pertes »). CaraLink n'avance JAMAIS rien : plus de garde-fou
+//     de solde bloquant. Si le solde est insuffisant, Stripe peut laisser le remboursement « en attente » : la réponse le signale.
+//   • ANCIEN MODÈLE « destination charge » (commandes d'avant le 14/10) : comportement d'origine ci-dessous, inchangé.
+//
+// Comment l'argent circule (ANCIEN modèle, paiement = "destination charge") :
 //   • le client récupère le montant remboursé ;
 //   • Stripe REPREND à l'artisan le montant remboursé (reverse_transfer) ;
 //   • la retenue CaraLink (frais de paiement + éventuelle commission) n'est PAS rendue : Stripe ne restitue jamais ses frais,
@@ -208,11 +214,22 @@ Deno.serve(async (req: Request) => {
 
     const calc = calculerRemboursement(commande, montantDemande);
 
-    // ── Garde-fou : l'artisan doit avoir de quoi couvrir la reprise ──
+    // ── Quel modèle ? Le paiement est-il sur le compte de l'artisan (paiement direct) ou sur CaraLink (ancien modèle) ? ──
+    if (!artisan?.stripe_connect_account_id) throw new ErreurMetier("Compte Stripe de l'artisan introuvable.", 500);
+    const compteArtisan: string = artisan.stripe_connect_account_id;
+    const resPaiement = await fetch(`https://api.stripe.com/v1/payment_intents/${encodeURIComponent(commande.stripe_payment_intent_id)}`, {
+      headers: { "Authorization": `Bearer ${STRIPE_SECRET_KEY}`, "Stripe-Account": compteArtisan },
+    });
+    const donneesPaiement = await resPaiement.json().catch(() => ({}));
+    let paiementDirect: boolean;
+    if (resPaiement.ok) paiementDirect = true;
+    else if (donneesPaiement?.error?.code === "resource_missing") paiementDirect = false; // introuvable chez l'artisan : ancien modèle
+    else throw new ErreurMetier("Impossible de vérifier ce paiement pour le moment. Réessayez dans un instant.", 502);
+
+    // ── Garde-fou (ANCIEN modèle seulement) : l'artisan doit avoir de quoi couvrir la reprise ──
     // (l'admin peut forcer : c'est alors CaraLink qui assume la différence)
     const forcer = estAdmin && body.forcer === true;
-    if (!forcer) {
-      if (!artisan?.stripe_connect_account_id) throw new ErreurMetier("Compte Stripe de l'artisan introuvable.", 500);
+    if (!paiementDirect && !forcer) {
       const solde = await soldeArtisanCents(artisan.stripe_connect_account_id);
       if (solde < calc.reprisArtisanCents) {
         throw new ErreurMetier(
@@ -227,23 +244,21 @@ Deno.serve(async (req: Request) => {
     const params = new URLSearchParams({
       payment_intent: commande.stripe_payment_intent_id,
       amount: String(calc.montantCents),
-      reverse_transfer: "true",
       reason: "requested_by_customer",
       "metadata[commande_id]": commande.id,
       "metadata[demande_par]": user.email || user.id,
     });
     if (motif) params.set("metadata[motif]", motif);
+    if (!paiementDirect) params.set("reverse_transfer", "true"); // ancien modèle : reprendre sa part à l'artisan
 
-    const res = await fetchAvecReprise("https://api.stripe.com/v1/refunds", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${STRIPE_SECRET_KEY}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-        // Même commande + même état = même clé : un double clic ne rembourse jamais deux fois.
-        "Idempotency-Key": `rbk_${commande.id}_${calc.dejaCents}_${calc.montantCents}`,
-      },
-      body: params,
-    });
+    const entetesStripe: Record<string, string> = {
+      "Authorization": `Bearer ${STRIPE_SECRET_KEY}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+      // Même commande + même état = même clé : un double clic ne rembourse jamais deux fois.
+      "Idempotency-Key": `rbk_${commande.id}_${calc.dejaCents}_${calc.montantCents}`,
+    };
+    if (paiementDirect) entetesStripe["Stripe-Account"] = compteArtisan; // le remboursement part du compte de l'artisan
+    const res = await fetchAvecReprise("https://api.stripe.com/v1/refunds", { method: "POST", headers: entetesStripe, body: params });
     const refund = await res.json();
     if (!res.ok) {
       console.error("[rembourser-commande] Stripe a refusé le remboursement :", refund?.error?.message);
@@ -311,7 +326,9 @@ Deno.serve(async (req: Request) => {
       statut: calc.statut,
       montant_rembourse: calc.montantCents / 100,
       total_rembourse: calc.nouveauTotalCents / 100,
-      repris_artisan: calc.reprisArtisanCents / 100,
+      repris_artisan: (paiementDirect ? calc.montantCents : calc.reprisArtisanCents) / 100,
+      // Paiement direct : si le solde de l'artisan ne couvre pas encore le remboursement, Stripe peut le laisser « en attente ».
+      en_attente: paiementDirect && (refund.status === "pending" || refund.status === "requires_action"),
       remis_en_stock: remisEnStock,
     });
 
