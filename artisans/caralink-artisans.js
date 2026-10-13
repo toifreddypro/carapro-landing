@@ -671,7 +671,7 @@ function buildProfilHTML(data) {
               '<span style="font-size:13.5px;font-weight:700;color:var(--ac,#B5502F);">' + (prixRemise != null ? prixRemise : p.prix) + ' €</span>' +
               (prixRemise != null ? ' <span style="font-size:11px;color:var(--mu,#999);text-decoration:line-through;">' + p.prix + ' €</span>' : '') +
             '</div>' : '') +
-            '<button onclick="ouvrirModalCommande(' + jsAttr(p.id) + ',' + jsAttr(p.nom) + ',' + (data.artisan.stripe_connect_statut === 'actif') + ')" style="width:100%;margin-top:6px;padding:6px;border-radius:6px;border:1px solid var(--ac,#B5502F);background:transparent;color:var(--ac,#B5502F);font-size:11px;font-weight:700;cursor:pointer;">Commander</button>' +
+            (data.artisan.slug_catalogue ? '<a href="catalogue.html?s=' + encodeURIComponent(data.artisan.slug_catalogue) + '" target="_blank" rel="noopener" style="display:block;box-sizing:border-box;text-align:center;width:100%;margin-top:6px;padding:6px;border-radius:6px;border:1px solid var(--ac,#B5502F);background:transparent;color:var(--ac,#B5502F);font-size:11px;font-weight:700;text-decoration:none;">Commander</a>' : '') +
           '</div>';
         }).join('') +
       '</div>' +
