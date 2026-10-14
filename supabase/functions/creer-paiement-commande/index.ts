@@ -138,7 +138,7 @@ Deno.serve(async (req: Request) => {
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { data: commande, error: errC } = await sb.from("commandes_catalogue")
-      .select("id, artisan_id, catalogue_id, nom_article, quantite, paiement_statut, statut, stripe_payment_intent_id, frais_livraison, artisans(stripe_connect_account_id, stripe_connect_statut, nom_entreprise), artisans_catalogue(prix)")
+      .select("id, artisan_id, catalogue_id, nom_article, quantite, paiement_statut, statut, stripe_payment_intent_id, frais_livraison, artisans(stripe_connect_account_id, stripe_connect_statut, nom_entreprise, boutique_en_pause), artisans_catalogue(prix)")
       .eq("id", commande_id).maybeSingle();
     if (errC) throw errC;
     if (!commande) return json({ error: "Commande introuvable." }, 404);
@@ -148,6 +148,8 @@ Deno.serve(async (req: Request) => {
 
     const artisanInfos = (commande as any).artisans;
     const articleInfos = (commande as any).artisans_catalogue;
+    // Boutique mise en pause depuis la commande : on ne prend plus de paiement (la commande non payée sera annulée par le ménage de 24 h).
+    if (artisanInfos?.boutique_en_pause === true) return json({ error: "Cette boutique est momentanément fermée : le paiement n'est plus possible pour le moment." }, 409);
     if (!artisanInfos?.stripe_connect_account_id || artisanInfos.stripe_connect_statut !== "actif") {
       return json({ error: "Cet artisan n'a pas encore activé les paiements en ligne — le paiement se fait directement avec lui pour l'instant." }, 400);
     }

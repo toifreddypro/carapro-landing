@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) => {
     if (!slug) return json({ error: "Lien manquant." }, 400);
 
     const { data: artisan, error } = await sb.from("artisans")
-      .select("id, nom_entreprise, secteur, commune, photo_profil_url, verifie, code_promo, stripe_connect_statut")
+      .select("id, nom_entreprise, secteur, commune, photo_profil_url, verifie, code_promo, stripe_connect_statut, boutique_en_pause")
       .eq("slug_catalogue", slug)
       .eq("actif", true)
       .maybeSingle();
@@ -54,6 +54,14 @@ Deno.serve(async (req: Request) => {
       return json({
         artisan: { id: artisan.id, nom_entreprise: artisan.nom_entreprise, secteur: artisan.secteur, commune: artisan.commune, photo_profil_url: artisan.photo_profil_url, verifie: artisan.verifie, code_promo: null, paiement_actif: false },
         produits: [], produits_phares: [], boutique_ouverte: false,
+      });
+    }
+
+    // Boutique mise en pause par l'artisan : aucun produit n'est montré, la page affiche « momentanément fermée ».
+    if (artisan.boutique_en_pause === true) {
+      return json({
+        artisan: { id: artisan.id, nom_entreprise: artisan.nom_entreprise, secteur: artisan.secteur, commune: artisan.commune, photo_profil_url: artisan.photo_profil_url, verifie: artisan.verifie, code_promo: null, paiement_actif: true },
+        produits: [], produits_phares: [], boutique_ouverte: false, boutique_en_pause: true,
       });
     }
 

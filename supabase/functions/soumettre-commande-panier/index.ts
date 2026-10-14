@@ -117,13 +117,15 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data: artisan, error: errA } = await sb.from("artisans")
-      .select("nom_entreprise, email, latitude, longitude, livraison_forfait_base, livraison_km_inclus, livraison_prix_km_supp, stripe_connect_statut")
+      .select("nom_entreprise, email, latitude, longitude, livraison_forfait_base, livraison_km_inclus, livraison_prix_km_supp, stripe_connect_statut, boutique_en_pause")
       .eq("id", artisan_id).maybeSingle();
     if (errA) throw errA;
     if (!artisan) return json({ error: "Boutique introuvable." }, 404);
     // Règle du 06/10 : une boutique n'accepte de commande que si les paiements en ligne de l'artisan sont ACTIFS (sinon la vente en ligne
     // ne servirait à rien). Contrôle fait AVANT tout le reste : ni stock touché, ni email « vente manquée », ni commande créée.
     if (artisan.stripe_connect_statut !== "actif") return json({ error: "Cette boutique n'accepte pas encore les commandes en ligne." }, 409);
+    // Boutique mise en pause par l'artisan : aucune nouvelle commande, même si le client avait gardé la page ouverte.
+    if (artisan.boutique_en_pause === true) return json({ error: "Cette boutique est momentanément fermée. Revenez plus tard." }, 409);
 
     // Ménage (règle du 07/10) : une commande jamais payée au bout de 24 h est annulée. Elle n'a jamais été visible de l'artisan ni
     // compté sur son stock ; on s'en occupe ici, à chaque nouvelle commande de cette boutique, sans tâche planifiée. Si le ménage

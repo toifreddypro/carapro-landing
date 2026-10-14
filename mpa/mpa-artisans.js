@@ -3181,6 +3181,7 @@ async function chargerCatalogue() {
   if (champLien) champLien.value = _artisan.slug_catalogue ? 'https://caralink.app/artisans/catalogue.html?s=' + _artisan.slug_catalogue : '—';
   var champPromo = document.getElementById('boutique-code-promo');
   if (champPromo) champPromo.value = _artisan.code_promo || '';
+  afficherPauseBoutique();
 
   var { data, error } = await sb.from('artisans_catalogue').select('*').eq('artisan_id', _artisan.id).order('ordre', { ascending: true });
   if (error) { zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>'; return; }
@@ -3303,6 +3304,38 @@ function copierLienBoutique() {
   champ.select();
   if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(champ.value); } else { document.execCommand('copy'); }
   alert('Lien copié !');
+}
+
+// ── Boutique en pause : fermer / rouvrir sa boutique en ligne d'un clic ──
+function afficherPauseBoutique() {
+  var zone = document.getElementById('boutique-pause-zone');
+  if (!zone) return;
+  var pause = _artisan.boutique_en_pause === true;
+  zone.style.borderColor = pause ? 'rgba(217,119,6,.5)' : 'var(--brd)';
+  zone.innerHTML =
+    '<div style="font-size:13px;line-height:1.45;">' +
+      (pause
+        ? '<strong>⏸️ Boutique en pause</strong><br><span style="color:var(--mu);">Vos clients voient « boutique momentanément fermée » et ne peuvent plus commander ni payer.</span>'
+        : '<strong>🟢 Boutique ouverte</strong><br><span style="color:var(--mu);">Besoin d\'une pause (vacances, rupture générale…) ? Fermez-la en un clic, sans rien supprimer.</span>') +
+    '</div>' +
+    '<button class="addb" id="btn-pause-boutique" onclick="basculerPauseBoutique()" style="flex-shrink:0;">' + (pause ? '▶️ Rouvrir ma boutique' : '⏸️ Mettre en pause') + '</button>';
+}
+
+async function basculerPauseBoutique() {
+  var pause = _artisan.boutique_en_pause === true;
+  if (!pause && !confirm('Mettre votre boutique en pause ?\n\nVos clients ne pourront plus commander ni payer tant que vous ne l\'aurez pas rouverte. Les commandes déjà payées ne sont pas touchées.')) return;
+  var btn = document.getElementById('btn-pause-boutique');
+  if (btn) { btn.disabled = true; btn.textContent = 'Un instant…'; }
+  var { error } = await sb.from('artisans').update({ boutique_en_pause: !pause }).eq('id', _artisan.id);
+  if (error) {
+    alert('Erreur : ' + error.message);
+  } else {
+    _artisan.boutique_en_pause = !pause;
+    mpaAiDire(_artisan.boutique_en_pause
+      ? '⏸️ Votre boutique est en pause : plus aucune commande possible. Pensez à la rouvrir quand vous êtes prêt !'
+      : '🟢 Votre boutique est rouverte : vos clients peuvent de nouveau commander.', _artisan.boutique_en_pause ? 'warning' : 'success');
+  }
+  afficherPauseBoutique();
 }
 
 async function sauverCodePromo() {
