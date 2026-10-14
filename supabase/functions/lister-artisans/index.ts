@@ -5,6 +5,7 @@
 // aux échanges après mise en relation via un devis. Champs vitrine
 // uniquement (nom, secteur, commune, bio, photo, vérification).
 //
+// Après le 1er novembre 2026 : seuls les artisans avec Stripe actif sont listés.
 // GET ?secteur=X&commune=Y&q=texte
 // ═══════════════════════════════════════════════════════════
 
@@ -14,6 +15,8 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+const FIN_PERIODE_GRACE = "2026-11-01";
 
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
@@ -41,6 +44,11 @@ Deno.serve(async (req: Request) => {
       .eq("actif", true)
       .order("verifie", { ascending: false }) // les profils vérifiés remontent naturellement
       .order("created_at", { ascending: false });
+
+    // Après la période de grâce (1er novembre 2026), seuls les artisans dont les paiements en ligne (Stripe) sont actifs apparaissent
+    // dans l'annuaire : sans paiement en ligne, ils ne peuvent pas recevoir de réservation. Le filtre est fait côté serveur.
+    const aujourdhui = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10); // date en Guadeloupe (UTC-4)
+    if (aujourdhui > FIN_PERIODE_GRACE) requete = requete.eq("stripe_connect_statut", "actif");
 
     if (secteur) requete = requete.eq("secteur", secteur);
     if (commune) requete = requete.ilike("commune", "%" + commune + "%");
