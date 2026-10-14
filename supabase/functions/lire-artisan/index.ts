@@ -8,6 +8,7 @@
 //
 // GET ?id=X
 //
+// Frais de réservation et délai d'annulation gratuite (15/10/2026) : la fiche annonce ce que le client paiera en ligne en réservant.
 // Frais de déplacement d'une visite sur place et réglage « proposer la visite » (tous deux réglés par l'artisan dans MPA) :
 // affichés / appliqués sur la fiche. Colonnes facultatives : si elles n'existent pas encore, la fiche s'affiche quand même.
 //
@@ -27,7 +28,7 @@ const corsHeaders = {
 //    ce sont des lectures publiques, mieux vaut un service disponible qu'un site bloqué par une panne du limiteur. ──
 const COLONNES_ARTISAN_BASE = "id, nom_entreprise, secteur, commune, bio, photo_profil_url, verifie, rayon_intervention_km, alternance_niveau, stripe_connect_statut, slug_catalogue, code_promo, boutique_en_pause";
 // Du plus complet au plus simple : si une colonne facultative n'existe pas encore (SQL pas lancé), on réessaie avec moins.
-const JEUX_COLONNES_ARTISAN = [`${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite`, `${COLONNES_ARTISAN_BASE}, frais_deplacement`, COLONNES_ARTISAN_BASE];
+const JEUX_COLONNES_ARTISAN = [`${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite`, `${COLONNES_ARTISAN_BASE}, frais_deplacement`, COLONNES_ARTISAN_BASE];
 const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
 
@@ -75,6 +76,8 @@ Deno.serve(async (req: Request) => {
     }
     if (error) throw error;
     if (!artisan) return json({ error: "Artisan introuvable." }, 404);
+    // Règle du 15/10/2026 : un artisan sans paiements en ligne actifs n'est plus visible (deux semaines de grâce, jusqu'au 1er/11/2026).
+    if (artisan.stripe_connect_statut !== "actif" && new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10) > "2026-11-01") return json({ error: "Artisan introuvable." }, 404);
 
     const { data: services } = await sb.from("artisans_services")
       .select("id, nom_service, description, prix_indicatif, unite, duree_estimee_min")

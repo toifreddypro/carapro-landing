@@ -39,6 +39,15 @@
 //  - les anciennes commandes (paiement sur CaraLink, sans event.account) continuent d'être traitées comme avant.
 // ═══════════════════════════════════════════════════════════
 
+// ── Révision du 15/10/2026 : PAIEMENTS DE PRESTATIONS ───────
+// Les frais de réservation / de déplacement payés à la réservation, et les paiements demandés après la visite (« Demander un paiement »),
+// sont des paiements directs sur le compte de l'artisan, repérés par « metadata.paiement_prestation_id » (table paiements_prestations).
+//  - payé : la ligne passe à « paye » (une seule fois) ; pour une réservation, la demande est alors « libérée » chez l'artisan
+//    (fonction liberer-reservation, rejouable : si elle échoue, on répond une erreur et Stripe réessaie) ;
+//  - payé APRÈS une annulation ou une expiration : remboursé automatiquement ;
+//  - payé en double (deux cartes) : le second est remboursé ;
+//  - remboursements (faits ici, depuis MPA ou dans le Dashboard Stripe) : la ligne est mise à jour d'après les montants de Stripe.
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET_ARTISANS");
@@ -470,6 +479,113 @@ async function traiterPaiementReussi(intent: any, compteEvenement: string | null
   }
 }
 
+// ── Paiements de prestations (frais de réservation, solde après visite) ──
+
+async function libererReservation(paiementId: string) {
+  const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/liberer-reservation`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ paiement_id: paiementId }),
+  });
+  if (!res.ok) throw new Error(`liberer-reservation a répondu ${res.status}`); // Stripe réessaiera (la libération est rejouable sans effet double)
+}
+
+async function traiterPaiementPrestation(intent: any, compteEvenement: string | null) {
+  const id = intent.metadata?.paiement_prestation_id;
+  if (!id) return;
+  const { data: p, error } = await sbAdmin.from("paiements_prestations").select("*").eq("id", id).maybeSingle();
+  lever(error, "Lecture du paiement de prestation");
+  if (!p) { console.error("[stripe-webhook-artisans] Paiement reçu pour une prestation introuvable :", id); return; }
+  if (!(await compteCorrespond(p.artisan_id, compteEvenement))) {
+    await alerterAdmin("Paiement de prestation ignoré : compte Stripe incohérent", [`Paiement ${id} : l'événement ${intent.id} vient du compte ${compteEvenement}, qui n'est pas celui de l'artisan. Rien n'a été modifié.`]);
+    return;
+  }
+  const compte = compteEvenement || p.stripe_account;
+  const dejaPaye = STATUTS_PAYES.includes(p.statut);
+
+  // Autre carte, autre paiement pour la même ligne : le premier compte, le second est remboursé.
+  if (dejaPaye && p.stripe_payment_intent_id && p.stripe_payment_intent_id !== intent.id) {
+    const r = await stripeApi("POST", "refunds", paramsRemboursement({
+      payment_intent: intent.id, reason: "duplicate",
+      "metadata[paiement_prestation_id]": id, "metadata[demande_par]": "automatique", "metadata[motif]": "paiement_en_double",
+    }, compte, Number(intent.application_fee_amount || 0)), `doublon-prestation-${intent.id}`, compte);
+    await alerterAdmin(r.ok ? "Paiement de prestation en double remboursé" : "Paiement de prestation en double À REMBOURSER", [
+      `Le paiement ${id} a été réglé deux fois (${p.stripe_payment_intent_id} puis ${intent.id}).`,
+      r.ok ? "Le second a été remboursé automatiquement." : `Le remboursement automatique a échoué (erreur ${r.status}) : remboursez ${intent.id} dans le Dashboard Stripe.`,
+    ]);
+    return;
+  }
+
+  // Payé alors que la demande était déjà annulée ou expirée : on rembourse tout de suite, rien n'est dû.
+  if (["annule", "expire"].includes(p.statut)) {
+    const r = await stripeApi("POST", "refunds", paramsRemboursement({
+      payment_intent: intent.id, reason: "requested_by_customer",
+      "metadata[paiement_prestation_id]": id, "metadata[demande_par]": "automatique", "metadata[motif]": "paiement_apres_annulation",
+    }, compte, Number(intent.application_fee_amount || 0)), `tardif-prestation-${intent.id}`, compte);
+    if (!r.ok) {
+      await alerterAdmin("Paiement de prestation tardif À REMBOURSER", [`Le client a payé ${id} (${intent.id}) après l'annulation ou l'expiration, et le remboursement automatique a échoué (erreur ${r.status}). Remboursez-le dans le Dashboard Stripe.`]);
+      throw new Error("Remboursement du paiement tardif refusé"); // Stripe réessaiera
+    }
+    const { error: errT } = await sbAdmin.from("paiements_prestations").update({
+      statut: "rembourse", montant_rembourse: p.montant, rembourse_le: new Date().toISOString(), paye_le: new Date().toISOString(),
+      stripe_payment_intent_id: intent.id, stripe_account: compte, motif_remboursement: "Paiement reçu après l'annulation ou l'expiration de la demande",
+      updated_at: new Date().toISOString(),
+    }).eq("id", id).in("statut", ["annule", "expire"]);
+    lever(errT, "Maj du paiement tardif");
+    if (p.client_email) await envoyerEmail(p.client_email, "Votre paiement a été remboursé", `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#B5502F;">Votre paiement a été remboursé</h2><p>Bonjour ${escHtml(p.client_nom || "")}, votre demande avait déjà été annulée ou avait expiré au moment de votre paiement. Il vous est <strong>remboursé intégralement</strong> ; il apparaîtra sur votre carte sous quelques jours.</p></div>`);
+    return;
+  }
+
+  // Normal : « en attente » → « payé » (une seule livraison de l'événement obtient la réclamation).
+  if (p.statut === "en_attente") {
+    const { data: reclame, error: errR } = await sbAdmin.from("paiements_prestations").update({
+      statut: "paye", paye_le: new Date().toISOString(), stripe_payment_intent_id: intent.id, stripe_account: compte, updated_at: new Date().toISOString(),
+    }).eq("id", id).eq("statut", "en_attente").select("id");
+    lever(errR, "Prise en compte du paiement de prestation");
+    if (reclame && reclame.length) {
+      const attendu = Math.round(Number(p.montant) * 100);
+      if (intent.amount_received != null && Number(intent.amount_received) !== attendu) {
+        await alerterAdmin("Montant de prestation payé différent", [`Paiement ${id} : ${attendu / 100} € attendus, ${Number(intent.amount_received) / 100} € encaissés.`]);
+      }
+      if (p.type === "solde") {
+        try {
+          if (p.intervention_id) {
+            await sbAdmin.from("mpa_artisans_interventions").update({ statut: "payee", date_paiement: new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10) })
+              .eq("id", p.intervention_id).eq("statut", "terminee");
+          }
+          const { data: art } = await sbAdmin.from("artisans").select("email, nom_entreprise").eq("id", p.artisan_id).maybeSingle();
+          if (art?.email) {
+            await envoyerEmail(art.email, `💶 Paiement reçu — ${Number(p.montant).toFixed(2).replace(".", ",")} € de ${p.client_nom || "votre client"}`,
+              `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#16a34a;">💶 Paiement reçu</h2><p><strong>${escHtml(p.client_nom || "Votre client")}</strong> vient de régler <strong>${Number(p.montant).toFixed(2).replace(".", ",")} €</strong>${p.description ? ` (${escHtml(p.description)})` : ""} en ligne.</p><p style="font-size:13px;color:#475569;">L'argent arrive sur votre compte Stripe, selon vos paramètres de virement.</p><p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Voir dans MPA Artisans →</a></p></div>`);
+          }
+        } catch (e) { console.error("[stripe-webhook-artisans] Suites du paiement de solde incomplètes :", e); }
+        return;
+      }
+    }
+  }
+
+  // Réservation payée : la demande devient visible de l'artisan (rejouable ; sans effet si déjà fait).
+  if (p.type === "reservation") await libererReservation(id);
+}
+
+async function traiterRemboursementPrestation(charge: any, compteEvenement: string | null) {
+  const intentId = charge.payment_intent;
+  const rembourse = Number(charge.amount_refunded || 0);
+  const total = Number(charge.amount || 0);
+  if (!intentId || !(rembourse > 0)) return;
+  const { data: p, error } = await sbAdmin.from("paiements_prestations").select("id, artisan_id, montant, montant_rembourse, statut").eq("stripe_payment_intent_id", intentId).maybeSingle();
+  lever(error, "Lecture du paiement de prestation (remboursement)");
+  if (!p || !(await compteCorrespond(p.artisan_id, compteEvenement))) return;
+  const integral = total > 0 && rembourse >= total;
+  // Stripe est la source de vérité ; on n'écrit que si ça change quelque chose (idempotent).
+  if (Math.round(Number(p.montant_rembourse || 0) * 100) === rembourse && (integral ? p.statut === "rembourse" : p.statut === "partiellement_rembourse")) return;
+  const { error: errM } = await sbAdmin.from("paiements_prestations").update({
+    statut: integral ? "rembourse" : "partiellement_rembourse", montant_rembourse: rembourse / 100,
+    rembourse_le: new Date().toISOString(), updated_at: new Date().toISOString(),
+  }).eq("id", p.id);
+  lever(errM, "Maj remboursement de prestation");
+}
+
 async function traiterPaiementEchoue(intent: any, compteEvenement: string | null) {
   const commandeId = intent.metadata?.commande_id;
   if (!commandeId) return;
@@ -551,9 +667,15 @@ Deno.serve(async (req: Request) => {
 
     if (event.type.startsWith("customer.subscription.")) await appliquerAbonnement(event.data.object);
     const compteEvenement: string | null = typeof event.account === "string" && event.account ? event.account : null; // présent pour les paiements directs
-    if (event.type === "payment_intent.succeeded") await traiterPaiementReussi(event.data.object, compteEvenement);
+    if (event.type === "payment_intent.succeeded") {
+      await traiterPaiementReussi(event.data.object, compteEvenement);
+      await traiterPaiementPrestation(event.data.object, compteEvenement);
+    }
     if (event.type === "payment_intent.payment_failed") await traiterPaiementEchoue(event.data.object, compteEvenement);
-    if (event.type === "charge.refunded") await traiterRemboursement(event.data.object, compteEvenement);
+    if (event.type === "charge.refunded") {
+      await traiterRemboursement(event.data.object, compteEvenement);
+      await traiterRemboursementPrestation(event.data.object, compteEvenement);
+    }
     if (event.type === "setup_intent.succeeded") await traiterCarteEnregistree(event.data.object);
     if (event.type === "account.updated") await traiterCompteConnect(event.data.object);
 

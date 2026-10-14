@@ -31,6 +31,16 @@
 //  - un artisan qui a indiqué ne PAS proposer de visite (proposer_visite = false) refuse les demandes de visite ; sans réponse
 //    de sa part (vide), la visite reste proposée comme avant ;
 //  - les anciens types (urgence, installation, devis, entretien) restent acceptés : pages déjà ouvertes, anciennes demandes.
+//
+// ── Révision du 15/10/2026 : PAIEMENT EN LIGNE À LA RÉSERVATION ──
+//  - une demande de créneau (visite ou réservation) adressée à un artisan qui a activé ses paiements Stripe se PAIE en ligne
+//    AVANT d'arriver chez l'artisan : frais de déplacement (visite) ou frais de réservation (réservation), montants lus chez
+//    l'artisan et figés ici, jamais envoyés par la page ;
+//  - tant que le client n'a pas payé, l'artisan ne voit RIEN (pas de ligne devis_reponses, pas d'email) : c'est le webhook Stripe
+//    qui « libère » la demande (fonction liberer-reservation). La réponse indique alors { paiement_requis, paiement_token } et la page
+//    envoie le client vers la page de paiement ;
+//  - l'email du client devient obligatoire quand un paiement est demandé (reçu, lien d'annulation, remboursement) ;
+//  - un artisan sans paiements actifs ne peut plus recevoir de réservation après FIN_PERIODE_GRACE (avant : ancien fonctionnement).
 // ═════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -47,6 +57,11 @@ const TYPES_INTERVENTION_VALIDES = ["renseignement", "visite", "reservation", "u
 const FRAIS_DEPLACEMENT_MAX = 500; // plafond de sécurité (la base impose aussi 0 à 500)
 const LIMITE_DEMANDES_PAR_HEURE = 10;
 const MAX_ARTISANS_NOTIFIES = 15;
+const PAGE_PAIEMENT = "https://caralink.app/artisans/payer-prestation.html";
+// Jusqu'à cette date (incluse), un artisan sans paiements Stripe actifs reçoit encore des réservations (sans paiement en ligne).
+// Après, il n'en reçoit plus (et disparaît de l'annuaire). Deux semaines de grâce pour activer Stripe.
+const FIN_PERIODE_GRACE = "2026-11-01";
+const MONTANT_PAIEMENT_MINIMUM = 0.5;
 const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const REGEX_EMAIL = /^[^\s@<>"'()\[\]\\,;:]+@[^\s@<>"'()\[\]\\,;:]+\.[^\s@<>"'()\[\]\\,;:]+$/;
 const REGEX_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -324,7 +339,10 @@ Deno.serve(async (req: Request) => {
       // Tolérance : si une colonne facultative n'existe pas encore (devis-visite.sql, devis-visite-reglage.sql pas lancés), on
       // réessaie avec moins de colonnes : jamais une panne, seulement les réglages absents ignorés.
       let a: any = null, errArt: any = null;
-      for (const colonnes of ["id, user_id, nom_entreprise, secteur, frais_deplacement, proposer_visite", "id, user_id, nom_entreprise, secteur, frais_deplacement", "id, user_id, nom_entreprise, secteur"]) {
+      for (const colonnes of [
+        "id, user_id, nom_entreprise, secteur, frais_deplacement, proposer_visite, stripe_connect_account_id, stripe_connect_statut, frais_reservation, annulation_gratuite_heures",
+        "id, user_id, nom_entreprise, secteur, frais_deplacement, proposer_visite, stripe_connect_account_id, stripe_connect_statut",
+        "id, user_id, nom_entreprise, secteur, frais_deplacement, proposer_visite", "id, user_id, nom_entreprise, secteur, frais_deplacement", "id, user_id, nom_entreprise, secteur"]) {
         ({ data: a, error: errArt } = await sb.from("artisans").select(colonnes).eq("id", artisanId).maybeSingle());
         if (!(errArt && (errArt as any).code === "42703")) break;
       }
@@ -389,6 +407,26 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Adresse d'intervention manquante." }, 400);
     }
 
+    // ── Paiement en ligne à la réservation ──
+    const paiementsActifs = !!(artisanVise && artisanVise.stripe_connect_account_id && artisanVise.stripe_connect_statut === "actif");
+    const aujourdhuiLocal = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+    if (estUneProposionDeCreneau && !paiementsActifs && aujourdhuiLocal > FIN_PERIODE_GRACE) {
+      return json({ error: "Cet artisan n'accepte pas encore les réservations en ligne. Essayez un autre artisan, ou envoyez-lui un simple renseignement." }, 409);
+    }
+    let montantAPayer = 0;
+    if (estUneProposionDeCreneau && paiementsActifs) {
+      if (typeIntervention === "visite") montantAPayer = fraisVisite ?? 0;
+      else if (typeIntervention === "reservation") {
+        const f = Number(artisanVise.frais_reservation);
+        montantAPayer = Number.isFinite(f) && f > 0 ? Math.min(f, FRAIS_DEPLACEMENT_MAX) : 0;
+      }
+      if (montantAPayer < MONTANT_PAIEMENT_MINIMUM) montantAPayer = 0;
+    }
+    const paiementRequis = montantAPayer > 0;
+    if (paiementRequis && !email) {
+      return json({ error: "Une adresse email est nécessaire pour payer en ligne (vous y recevrez votre reçu et le lien pour annuler).", code: "email_requis" }, 400);
+    }
+
     // Coordonnées : reçues du client (vérification préalable), sinon géocodées ici
     // (cas de la demande sur-mesure, qui ne passe pas par la vérification de dispo)
     let lat = latClient;
@@ -419,7 +457,24 @@ Deno.serve(async (req: Request) => {
     }
     if (error) throw error;
 
-    if (artisanId) {
+    // Paiement demandé : on garde la trace du paiement à faire. L'artisan ne voit rien tant que ce paiement n'est pas encaissé.
+    let paiementToken: string | null = null;
+    if (paiementRequis) {
+      const { data: pai, error: errPai } = await sb.from("paiements_prestations").insert({
+        artisan_id: artisanId, type: "reservation", demande_id: demande.id,
+        client_nom: nom, client_email: email, client_telephone: tel, description: description.slice(0, 500),
+        montant: montantAPayer, statut: "en_attente",
+        annulation_gratuite_heures: Number.isFinite(Number(artisanVise.annulation_gratuite_heures)) ? Number(artisanVise.annulation_gratuite_heures) : 24,
+      }).select("token").single();
+      if (errPai) {
+        // Sans trace du paiement, on ne laisse pas une demande fantôme : elle est retirée et la panne remonte.
+        try { await sb.from("demandes_devis").delete().eq("id", demande.id); } catch (_) { /* rien de plus à faire */ }
+        throw errPai;
+      }
+      paiementToken = pai.token;
+    }
+
+    if (artisanId && !paiementRequis) {
       const { error: errRep } = await sb.from("devis_reponses").insert({
         demande_id: demande.id,
         artisan_id: artisanId,
@@ -439,6 +494,14 @@ Deno.serve(async (req: Request) => {
       }
     } catch (photoErr) {
       console.error("[soumettre-demande-devis] Téléversement des photos échoué (demande créée quand même) :", photoErr);
+    }
+
+    // Paiement requis : ni email ni apparition chez l'artisan pour l'instant — le webhook Stripe s'en charge une fois le paiement encaissé.
+    if (paiementRequis) {
+      return json({
+        success: true, demande_id: demande.id, paiement_requis: true, paiement_token: paiementToken,
+        montant: montantAPayer, page_paiement: `${PAGE_PAIEMENT}?token=${paiementToken}`,
+      });
     }
 
     // ── Notification email — jamais bloquante pour la demande elle-même ──

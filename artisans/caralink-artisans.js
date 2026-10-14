@@ -16,6 +16,115 @@
 const SUPABASE_URL  = 'https://uzgboxfxpxazhysusewv.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
 
+// ── Textes ajoutés le 15/10/2026 (paiement en ligne à la réservation) + filet de sécurité pour les textes de la fiche ──
+// Fusion « seulement si absent » : un texte déjà présent dans tr-artisans.js n'est JAMAIS écrasé, un texte manquant s'affiche
+// quand même (plutôt que son nom technique). Ainsi cette version marche quelle que soit la version de tr-artisans.js en ligne.
+(function () {
+  if (typeof AT_TR === 'undefined') return;
+  var ajouts = {
+    fr: {
+      visite_frais_enligne: 'Frais de déplacement à régler en ligne pour réserver :',
+      visite_mention_enligne: "Réglés maintenant, en ligne. Vous êtes remboursé(e) intégralement si l'artisan refuse ou ne peut pas venir.",
+      reservation_frais_enligne: 'Frais de réservation à régler en ligne :',
+      reservation_mention_enligne: "Réglés maintenant, en ligne. Vous êtes remboursé(e) intégralement si l'artisan refuse ou annule.",
+      annul_grat_1: 'Annulation gratuite jusqu’à ', annul_grat_2: ' h avant le rendez-vous.',
+      annul_aucune: "Pas d'annulation gratuite : ces frais restent acquis à l'artisan si vous annulez.",
+      err_email_paiement: "Une adresse email est nécessaire pour payer en ligne (votre reçu et le lien d'annulation y sont envoyés).",
+      ph_email_paiement: 'Email (obligatoire — pour payer en ligne et recevoir votre reçu)',
+      redirection_paiement: 'Redirection vers le paiement sécurisé…',
+      fiche_indisponible_titre: 'Fiche indisponible', fiche_occupee_titre: 'Trop de visites en ce moment', fiche_erreur_titre: 'Une erreur est survenue',
+      fiche_indisponible_texte: "Cet artisan n'est plus visible sur CaraLink ou le lien est incorrect.",
+      fiche_occupee_texte: 'Beaucoup de personnes consultent les fiches en ce moment. Réessayez dans une minute.',
+      fiche_erreur_texte: "La fiche n'a pas pu être chargée. Vérifiez votre connexion et réessayez.",
+      fiche_voir_artisans: 'Voir les artisans', fiche_reessayer: 'Réessayer',
+      partage_titre: 'Partager cette fiche', partage_fermer: 'Fermer', partage_texte_1: 'Découvrez ', partage_texte_2: ' sur CaraLink Artisans',
+      partage_copier: 'Copier le lien', partage_whatsapp: 'WhatsApp', partage_facebook: 'Facebook', partage_email: 'Email',
+      partage_lien_copie: 'Lien copié ✓', partage_copie_manuelle: 'Copiez le lien ci-dessus', partage_bouton: 'Partager',
+      type_visite: 'Rendez-vous sur place', type_renseignement: 'Renseignement simple',
+      type_renseignement_desc: 'Posez une question ou demandez un avis, sans rendez-vous ni déplacement.',
+      type_visite_desc: "L'artisan se déplace pour estimer votre chantier et vous remettre un devis.",
+      err_premiere_requise: 'Merci d’indiquer si c’est votre première intervention avec cet artisan.',
+      err_type_requis: 'Merci de choisir la nature de votre demande.',
+      visite_frais_variables: 'Les frais de déplacement dépendent de chaque artisan.',
+      visite_frais: 'Frais de déplacement :', visite_sans_frais: 'Visite sans frais de déplacement.',
+      visite_mention: "Le devis définitif des travaux vous est remis par l'artisan après sa visite.",
+      visite_pas_de_creneaux: 'Choisissez un créneau dans les disponibilités de cet artisan.',
+      premiere_titre: 'Première intervention avec cet artisan ?',
+      premiere_texte: "Pour un nouveau chantier, l'artisan doit d'abord se déplacer pour l'estimer.",
+      premiere_oui: "Oui, c'est la première fois (devis / rendez-vous sur place)", premiere_non: "Non, je connais déjà cet artisan (réservation directe)",
+      visite_choisir_creneau: 'Choisir un créneau de visite',
+    },
+    en: {
+      visite_frais_enligne: 'Call-out fee to pay online to book:',
+      visite_mention_enligne: 'Paid now, online. You are fully refunded if the craftsman declines or cannot come.',
+      reservation_frais_enligne: 'Booking fee to pay online:',
+      reservation_mention_enligne: 'Paid now, online. You are fully refunded if the craftsman declines or cancels.',
+      annul_grat_1: 'Free cancellation up to ', annul_grat_2: ' h before the appointment.',
+      annul_aucune: 'No free cancellation: this fee is kept by the craftsman if you cancel.',
+      err_email_paiement: 'An email address is required to pay online (your receipt and cancellation link are sent there).',
+      ph_email_paiement: 'Email (required — to pay online and receive your receipt)',
+      redirection_paiement: 'Redirecting to secure payment…',
+      fiche_indisponible_titre: 'Profile unavailable', fiche_occupee_titre: 'Too many visits right now', fiche_erreur_titre: 'Something went wrong',
+      fiche_indisponible_texte: 'This craftsman is no longer visible on CaraLink or the link is incorrect.',
+      fiche_occupee_texte: 'Many people are viewing profiles right now. Please try again in a minute.',
+      fiche_erreur_texte: 'The profile could not be loaded. Check your connection and try again.',
+      fiche_voir_artisans: 'See craftsmen', fiche_reessayer: 'Try again',
+      partage_titre: 'Share this profile', partage_fermer: 'Close', partage_texte_1: 'Discover ', partage_texte_2: ' on CaraLink Artisans',
+      partage_copier: 'Copy link', partage_whatsapp: 'WhatsApp', partage_facebook: 'Facebook', partage_email: 'Email',
+      partage_lien_copie: 'Link copied ✓', partage_copie_manuelle: 'Copy the link above', partage_bouton: 'Share',
+      type_visite: 'On-site appointment', type_renseignement: 'Simple enquiry',
+      type_renseignement_desc: 'Ask a question or get advice, with no appointment or visit.',
+      type_visite_desc: 'The craftsman visits to assess your job and gives you a quote.',
+      err_premiere_requise: 'Please tell us whether this is your first job with this craftsman.',
+      err_type_requis: 'Please choose the nature of your request.',
+      visite_frais_variables: 'Call-out fees depend on each craftsman.',
+      visite_frais: 'Call-out fee:', visite_sans_frais: 'Visit with no call-out fee.',
+      visite_mention: 'The final quote for the work is given by the craftsman after the visit.',
+      visite_pas_de_creneaux: "Choose a slot in this craftsman's availability.",
+      premiere_titre: 'First job with this craftsman?',
+      premiere_texte: 'For a new job, the craftsman first needs to visit to assess it.',
+      premiere_oui: "Yes, it's the first time (quote / on-site appointment)", premiere_non: 'No, I already know this craftsman (direct booking)',
+      visite_choisir_creneau: 'Choose a visit slot',
+    },
+    es: {
+      visite_frais_enligne: 'Gastos de desplazamiento a pagar en línea para reservar:',
+      visite_mention_enligne: 'Se pagan ahora, en línea. Se le reembolsa íntegramente si el profesional rechaza o no puede ir.',
+      reservation_frais_enligne: 'Gastos de reserva a pagar en línea:',
+      reservation_mention_enligne: 'Se pagan ahora, en línea. Se le reembolsa íntegramente si el profesional rechaza o cancela.',
+      annul_grat_1: 'Cancelación gratuita hasta ', annul_grat_2: ' h antes de la cita.',
+      annul_aucune: 'Sin cancelación gratuita: estos gastos quedan para el profesional si usted cancela.',
+      err_email_paiement: 'Se necesita un correo electrónico para pagar en línea (allí se envían su recibo y el enlace de cancelación).',
+      ph_email_paiement: 'Email (obligatorio — para pagar en línea y recibir su recibo)',
+      redirection_paiement: 'Redirigiendo al pago seguro…',
+      fiche_indisponible_titre: 'Ficha no disponible', fiche_occupee_titre: 'Demasiadas visitas ahora', fiche_erreur_titre: 'Ha ocurrido un error',
+      fiche_indisponible_texte: 'Este profesional ya no es visible en CaraLink o el enlace es incorrecto.',
+      fiche_occupee_texte: 'Mucha gente está consultando fichas ahora. Inténtelo de nuevo en un minuto.',
+      fiche_erreur_texte: 'No se pudo cargar la ficha. Compruebe su conexión e inténtelo de nuevo.',
+      fiche_voir_artisans: 'Ver profesionales', fiche_reessayer: 'Reintentar',
+      partage_titre: 'Compartir esta ficha', partage_fermer: 'Cerrar', partage_texte_1: 'Descubra ', partage_texte_2: ' en CaraLink Artisans',
+      partage_copier: 'Copiar enlace', partage_whatsapp: 'WhatsApp', partage_facebook: 'Facebook', partage_email: 'Email',
+      partage_lien_copie: 'Enlace copiado ✓', partage_copie_manuelle: 'Copie el enlace de arriba', partage_bouton: 'Compartir',
+      type_visite: 'Cita en el lugar', type_renseignement: 'Consulta sencilla',
+      type_renseignement_desc: 'Haga una pregunta o pida una opinión, sin cita ni desplazamiento.',
+      type_visite_desc: 'El profesional se desplaza para evaluar su obra y entregarle un presupuesto.',
+      err_premiere_requise: 'Indique si es su primera intervención con este profesional.',
+      err_type_requis: 'Elija la naturaleza de su solicitud.',
+      visite_frais_variables: 'Los gastos de desplazamiento dependen de cada profesional.',
+      visite_frais: 'Gastos de desplazamiento:', visite_sans_frais: 'Visita sin gastos de desplazamiento.',
+      visite_mention: 'El presupuesto definitivo de la obra se entrega tras la visita.',
+      visite_pas_de_creneaux: 'Elija un hueco en la disponibilidad de este profesional.',
+      premiere_titre: '¿Primera intervención con este profesional?',
+      premiere_texte: 'Para una obra nueva, el profesional debe desplazarse primero para evaluarla.',
+      premiere_oui: 'Sí, es la primera vez (presupuesto / cita en el lugar)', premiere_non: 'No, ya conozco a este profesional (reserva directa)',
+      visite_choisir_creneau: 'Elegir un hueco de visita',
+    },
+  };
+  ['fr', 'en', 'es'].forEach(function (l) {
+    if (!AT_TR[l]) return;
+    Object.keys(ajouts[l]).forEach(function (k) { if (!AT_TR[l][k]) AT_TR[l][k] = ajouts[l][k]; });
+  });
+})();
+
 // Encode une valeur de façon sûre pour l'insérer dans un attribut onclick="...(ICI)" —
 // gère absolument tous les caractères spéciaux (apostrophes, guillemets, retours à la
 // ligne...), contrairement à un simple remplacement d'apostrophes qui casse facilement.
@@ -860,6 +969,27 @@ function choisirCreneauPublic(dateStr, heureDebut) {
   ouvrirModalCreneau();
 }
 
+// Cet artisan encaisse-t-il en ligne pour au moins un des deux types de rendez-vous ? (alors l'email est demandé d'emblée)
+function paiementPossibleSurCreneau() {
+  var ctx = window._dispoContexte;
+  var id = ctx && ctx.artisanId;
+  return montantPaiementEnLigne('visite', id) > 0 || montantPaiementEnLigne('reservation', id) > 0;
+}
+// Vérifie l'email avant l'envoi quand cette demande se paie en ligne ; retourne le message d'erreur, ou '' si tout va bien.
+function erreurEmailPaiement(email) {
+  var ctx = window._dispoContexte;
+  return (!email && montantPaiementEnLigne(_typeInterventionChoisi, ctx && ctx.artisanId) > 0) ? T('err_email_paiement') : '';
+}
+// Si le serveur demande un paiement, on envoie le client vers la page de paiement sécurisée (jamais ailleurs que chez nous).
+function suivrePaiementSiRequis(data, err, btn) {
+  if (!data || !data.paiement_requis) return false;
+  var url = String(data.page_paiement || '');
+  if (url.indexOf('https://caralink.app/artisans/payer-prestation.html?token=') !== 0) return false;
+  if (btn) { btn.disabled = true; btn.textContent = T('redirection_paiement'); }
+  window.location.href = url;
+  return true;
+}
+
 function ouvrirModalCreneau() {
   var ctx = window._dispoContexte;
   if (!ctx) return;
@@ -875,7 +1005,7 @@ function ouvrirModalCreneau() {
         '<div style="font-size:12.5px;color:var(--mu2,#777);margin-bottom:16px;text-transform:capitalize;">' + dateAff + ' à ' + ctx.heureDebut + ' — ' + escHtml(ctx.adresse) + '</div>' +
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
-        '<input id="devis-email" type="email" placeholder="' + T('ph_email_optionnel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        '<input id="devis-email" type="email" placeholder="' + (paiementPossibleSurCreneau() ? T('ph_email_paiement') : T('ph_email_optionnel')) + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         premiereInterventionHTML() +
         '<textarea id="devis-message" rows="3" placeholder="' + T('ph_precisions') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         photosPickerHTML() +
@@ -920,6 +1050,8 @@ async function envoyerCreneauDevis() {
 
   if (!nom || !tel) { err.textContent = T('err_champs'); err.style.display = 'block'; return; }
   if (_typeInterventionChoisi !== 'visite' && _typeInterventionChoisi !== 'reservation') { err.textContent = T('err_premiere_requise'); err.style.display = 'block'; return; }
+  var errMail = erreurEmailPaiement(email);
+  if (errMail) { err.textContent = errMail; err.style.display = 'block'; return; }
   btn.disabled = true; btn.textContent = T('btn_envoi_cours');
 
   try {
@@ -937,6 +1069,7 @@ async function envoyerCreneauDevis() {
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error);
+    if (suivrePaiementSiRequis(data, err, btn)) return;
 
     afficherConfirmationDemande(_profilDataCourant && _profilDataCourant.artisan && _profilDataCourant.artisan.nom_entreprise, !!email);
   } catch (e) {
@@ -966,7 +1099,7 @@ function ouvrirModalSurMesure() {
         '</div>' +
         '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
-        '<input id="devis-email" type="email" placeholder="' + T('ph_email_optionnel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        '<input id="devis-email" type="email" placeholder="' + (paiementPossibleSurCreneau() ? T('ph_email_paiement') : T('ph_email_optionnel')) + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         premiereInterventionHTML() +
         '<textarea id="devis-message" rows="3" placeholder="' + T('ph_pourquoi') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         photosPickerHTML() +
@@ -993,6 +1126,8 @@ async function envoyerSurMesureDevis() {
 
   if (!dateVal || !heureVal || !nom || !tel) { err.textContent = T('err_champs'); err.style.display = 'block'; return; }
   if (_typeInterventionChoisi !== 'visite' && _typeInterventionChoisi !== 'reservation') { err.textContent = T('err_premiere_requise'); err.style.display = 'block'; return; }
+  var errMail = erreurEmailPaiement(email);
+  if (errMail) { err.textContent = errMail; err.style.display = 'block'; return; }
   btn.disabled = true; btn.textContent = T('btn_envoi_cours');
 
   var heureFin = minVersHeurePublic(heureVersMinPublic(heureVal) + (ctx.duree || 60));
@@ -1013,6 +1148,7 @@ async function envoyerSurMesureDevis() {
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error);
+    if (suivrePaiementSiRequis(data, err, btn)) return;
 
     afficherConfirmationDemande(_profilDataCourant && _profilDataCourant.artisan && _profilDataCourant.artisan.nom_entreprise, !!email);
   } catch (e) {
@@ -1090,7 +1226,48 @@ function visitePropose(artisanId) {
   return a.proposer_visite !== false;
 }
 
+// ── Paiement en ligne à la réservation (15/10/2026) ──
+// L'artisan dont la fiche est ouverte, SEULEMENT s'il a activé ses paiements en ligne (sinon : ancien fonctionnement, rien à payer ici).
+function artisanPaiementsActifs(artisanId) {
+  var a = _profilDataCourant && _profilDataCourant.artisan;
+  if (!a || (artisanId && a.id !== artisanId)) return null;
+  return a.stripe_connect_statut === 'actif' ? a : null;
+}
+// Montant que le client paiera en ligne pour ce type de demande (0 = rien). Seulement un affichage : le serveur recalcule tout.
+function montantPaiementEnLigne(type, artisanId) {
+  var a = artisanPaiementsActifs(artisanId);
+  if (!a) return 0;
+  var m = type === 'visite' ? Number(a.frais_deplacement) : (type === 'reservation' ? Number(a.frais_reservation) : 0);
+  return isFinite(m) && m >= 0.5 ? m : 0;
+}
+function politiqueAnnulationHTML(a) {
+  var h = Number(a && a.annulation_gratuite_heures);
+  if (!isFinite(h)) h = 24;
+  return h > 0 ? T('annul_grat_1') + h + T('annul_grat_2') : T('annul_aucune');
+}
+function reservationInfoHTML() {
+  var ctx = window._dispoContexte;
+  var a = artisanPaiementsActifs(ctx && ctx.artisanId);
+  var m = montantPaiementEnLigne('reservation', ctx && ctx.artisanId);
+  if (!a || !m) return '';
+  return '<div style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;border-radius:9px;padding:10px 12px;font-size:12.5px;line-height:1.45;margin-top:8px;">' +
+    '<div style="font-weight:600;">' + T('reservation_frais_enligne') + ' <strong>' + formaterEurosPublic(m) + '</strong></div>' +
+    '<div style="margin-top:4px;">' + T('reservation_mention_enligne') + '</div>' +
+    '<div style="margin-top:4px;">' + politiqueAnnulationHTML(a) + '</div>' +
+  '</div>';
+}
+
 function visiteInfoHTML(frais) {
+  var ctxV = window._dispoContexte;
+  var aActif = artisanPaiementsActifs(ctxV && ctxV.artisanId);
+  if (aActif && frais !== undefined && frais >= 0.5) {
+    return '<div style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;border-radius:9px;padding:10px 12px;font-size:12.5px;line-height:1.45;margin-top:8px;">' +
+      '<div style="font-weight:600;">' + T('visite_frais_enligne') + ' <strong>' + formaterEurosPublic(frais) + '</strong></div>' +
+      '<div style="margin-top:4px;">' + T('visite_mention_enligne') + '</div>' +
+      '<div style="margin-top:4px;">' + politiqueAnnulationHTML(aActif) + '</div>' +
+      '<div style="margin-top:4px;">' + T('visite_mention') + '</div>' +
+    '</div>';
+  }
   var ligne = frais === undefined
     ? T('visite_frais_variables')
     : (frais > 0 ? T('visite_frais') + ' <strong>' + formaterEurosPublic(frais) + '</strong>' : T('visite_sans_frais'));
@@ -1150,7 +1327,7 @@ function premiereInterventionHTML() {
   var ctx = window._dispoContexte;
   window._typeInterventionFrais = fraisDeplacementContexte(ctx && ctx.artisanId);
   // L'artisan a indiqué qu'il ne propose pas de visite d'estimation : aucune question, c'est une réservation directe.
-  if (!visitePropose(ctx && ctx.artisanId)) { _typeInterventionChoisi = 'reservation'; return ''; }
+  if (!visitePropose(ctx && ctx.artisanId)) { _typeInterventionChoisi = 'reservation'; return reservationInfoHTML() ? '<div style="margin-bottom:10px;">' + reservationInfoHTML() + '</div>' : ''; }
   // Le client vient de choisir « Rendez-vous sur place » pour CET artisan : la réponse est déjà donnée, on affiche seulement le rappel.
   if (window._visiteDemandee && ctx && window._visiteDemandee === ctx.artisanId) {
     _typeInterventionChoisi = 'visite';
@@ -1171,7 +1348,7 @@ function premiereInterventionHTML() {
 function choisirPremiereIntervention(code) {
   _typeInterventionChoisi = code; // 'visite' (devis / rendez-vous sur place) ou 'reservation' (réservation directe)
   var info = document.getElementById('premiere-interv-info');
-  if (info) info.innerHTML = code === 'visite' ? visiteInfoHTML(window._typeInterventionFrais) : '';
+  if (info) info.innerHTML = code === 'visite' ? visiteInfoHTML(window._typeInterventionFrais) : (code === 'reservation' ? reservationInfoHTML() : '');
 }
 
 function photosPickerHTML() {

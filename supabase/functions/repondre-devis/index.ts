@@ -20,6 +20,10 @@
 // Si "refuser" :
 //   - marque la demande comme refusée, et envoie un email au client avec le message éventuel
 //
+// Paiement en ligne (15/10/2026) : si le client a payé ses frais de réservation / de déplacement, un REFUS les lui rembourse
+// automatiquement et intégralement (fonction rembourser-prestation) ; une CONFIRMATION relie le paiement à l'intervention créée.
+// Si le remboursement automatique échoue, le refus est quand même enregistré : le ménage automatique (maintenance-reservations) réessaie.
+//
 // Sécurité :
 //  - le jeton (UUID aléatoire) fait office de preuve d'identité pour CETTE demande uniquement ;
 //  - la demande est "réclamée" de façon atomique AVANT toute écriture : un double-clic ou deux envois
@@ -53,6 +57,27 @@ function escHtml(s: unknown): string {
   return String(s ?? "").replace(/[&<>"']/g, (m) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }) as Record<string, string>)[m]);
 }
 function telHref(tel: string): string { return String(tel ?? "").replace(/[^0-9+]/g, ""); }
+
+// Paiement en ligne rattaché à la demande (frais de réservation / de déplacement payés), s'il y en a un d'encaissé.
+async function paiementDeLaDemande(sb: any, demandeId: string): Promise<any | null> {
+  try {
+    const { data } = await sb.from("paiements_prestations").select("id, montant, statut, token")
+      .eq("demande_id", demandeId).eq("type", "reservation").in("statut", ["paye", "partiellement_rembourse", "rembourse"]).limit(1);
+    return data && data.length ? data[0] : null;
+  } catch (e) { console.error("[repondre-devis] Lecture du paiement échouée :", e); return null; }
+}
+
+async function rembourserAutomatiquement(paiementId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/rembourser-prestation`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ paiement_id: paiementId, annule_par: "refus", motif: "Rendez-vous refusé par l'artisan" }),
+    });
+    if (!res.ok) console.error("[repondre-devis] Remboursement automatique refusé :", res.status, await res.text());
+    return res.ok;
+  } catch (e) { console.error("[repondre-devis] Remboursement automatique échoué :", e); return false; }
+}
 
 async function envoyerEmail(to: string, subject: string, html: string) {
   const apiKey = Deno.env.get("RESEND_API_KEY");
@@ -147,6 +172,8 @@ Deno.serve(async (req: Request) => {
     };
 
     if (action === "refuser") {
+      const paiement = await paiementDeLaDemande(sb, demande.id);
+      const rembourse = paiement && paiement.statut === "paye" ? await rembourserAutomatiquement(paiement.id) : false;
       try {
         if (demande.client_email) {
           // Le nom de l'artisan (pour que le client sache LEQUEL a refusé) : facultatif, un échec de lecture n'empêche ni le refus ni l'email.
@@ -162,6 +189,7 @@ Deno.serve(async (req: Request) => {
             <h2 style="color:#6b7c96;">Créneau non disponible</h2>
             <p>Votre demande de rendez-vous pour le <strong>${escHtml(dateAff)} à ${escHtml(heure)}</strong>${chez} n'a malheureusement pas pu être retenue.</p>
             ${message ? `<p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${escHtml(message)}</p>` : ""}
+            ${paiement ? `<p style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:8px;">💶 Les <strong>${escHtml(Number(paiement.montant).toFixed(2).replace(".", ","))} €</strong> que vous avez réglés en ligne vous sont <strong>remboursés intégralement</strong>${rembourse ? "" : " (le remboursement est en cours de traitement)"}. Ils apparaîtront sur votre carte sous quelques jours.</p>` : ""}
             <p style="text-align:center;margin:22px 0;"><a href="${lienFiche}" style="display:inline-block;background:#B5502F;color:#ffffff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:700;">Choisir un autre créneau</a></p>
             <p style="font-size:12px;color:#6b7c96;">Vous pouvez aussi consulter d'autres artisans sur CaraLink.</p>
           </div>`;
@@ -169,7 +197,7 @@ Deno.serve(async (req: Request) => {
         }
       } catch (e) { console.error("[repondre-devis] Email de refus client échoué :", e); }
 
-      return json({ ok: true, resultat: "refuse", client_notifie: !!demande.client_email });
+      return json({ ok: true, resultat: "refuse", client_notifie: !!demande.client_email, client_rembourse: !!paiement });
     }
 
     // ── action === "confirmer" ──
@@ -195,11 +223,14 @@ Deno.serve(async (req: Request) => {
       // 2) Intervention créée directement dans le planning
       // Une visite d'estimation est signalée dans le planning, avec ses frais de déplacement : l'artisan sait pourquoi il y va.
       const fraisVisite = Number(demande.frais_deplacement);
+      const payePre = await paiementDeLaDemande(sb, demande.id);
+      const montantPayePre = payePre ? Number(payePre.montant).toFixed(2).replace(".", ",") : "";
       const prefixeVisite = demande.type_intervention === "visite"
-        ? `🚗 Visite d'estimation${fraisVisite > 0 ? ` — frais de déplacement : ${fraisVisite.toFixed(2).replace(".", ",")} €` : " (sans frais de déplacement)"}. `
-        : "";
+        ? `🚗 Visite d'estimation${payePre ? ` — frais de déplacement de ${montantPayePre} € PAYÉS EN LIGNE (rien à encaisser)` : (fraisVisite > 0 ? ` — frais de déplacement : ${fraisVisite.toFixed(2).replace(".", ",")} €` : " (sans frais de déplacement)")}. `
+        : (payePre ? `💶 Frais de réservation de ${montantPayePre} € PAYÉS EN LIGNE. ` : "");
       const notesIntervention = prefixeVisite + (message ? `${demande.description_besoin} (Note de l'artisan à la confirmation : ${message})` : demande.description_besoin);
-      const { error: errInter } = await sb.from("mpa_artisans_interventions").insert({
+      const { data: interCreee, error: errInter } = await sb.from("mpa_artisans_interventions").insert({
+        demande_id: demande.id, // relie l'intervention à la demande (et donc au paiement en ligne éventuel)
         artisan_id: artisanId,
         client_id: client.id,
         service_id: demande.service_id || null,
@@ -214,8 +245,10 @@ Deno.serve(async (req: Request) => {
         longitude: demande.longitude,
         notes: notesIntervention,
         statut: "planifiee",
-      });
+      }).select("id").single();
       if (errInter) throw errInter;
+      try { await sb.from("paiements_prestations").update({ intervention_id: interCreee.id, updated_at: new Date().toISOString() }).eq("demande_id", demande.id); }
+      catch (e) { console.error("[repondre-devis] Lien paiement/intervention non enregistré :", e); }
     } catch (e) {
       // Une étape a échoué : on défait ce qui a été créé, pour qu'un nouvel essai reparte propre.
       if (clientId) { try { await sb.from("mpa_artisans_clients").delete().eq("id", clientId); } catch (e2) { console.error("[repondre-devis] Nettoyage du client échoué :", e2); } }
@@ -225,15 +258,16 @@ Deno.serve(async (req: Request) => {
 
     // 3) Email de confirmation au client, avec le message éventuel — jamais bloquant
     try {
+      const paiementConf = await paiementDeLaDemande(sb, demande.id);
       if (demande.client_email) {
         const fraisConfirmes = Number(demande.frais_deplacement);
         const visiteHtml = demande.type_intervention === "visite"
-          ? `<p style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:10px 14px;border-radius:8px;">🚗 Visite d'estimation sur place${fraisConfirmes > 0 ? ` — frais de déplacement : <strong>${escHtml(fraisConfirmes.toFixed(2).replace(".", ","))} €</strong>, à régler à l'artisan lors de sa visite` : " (sans frais de déplacement)"}. Le devis définitif des travaux vous sera remis par l'artisan après sa visite.</p>`
+          ? `<p style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:10px 14px;border-radius:8px;">🚗 Visite d'estimation sur place${paiementConf ? ` — frais de déplacement de <strong>${escHtml(Number(paiementConf.montant).toFixed(2).replace(".", ","))} €</strong> déjà réglés en ligne` : (fraisConfirmes > 0 ? ` — frais de déplacement : <strong>${escHtml(fraisConfirmes.toFixed(2).replace(".", ","))} €</strong>, à régler à l'artisan lors de sa visite` : " (sans frais de déplacement)")}. Le devis définitif des travaux vous sera remis par l'artisan après sa visite.</p>`
           : "";
         const html = `<div style="font-family:sans-serif;max-width:480px;">
           <h2 style="color:#16a34a;">✅ Rendez-vous confirmé</h2>
           <p>Votre intervention du <strong>${escHtml(dateAff)} à ${escHtml(heure)}</strong> est confirmée${artisanInfos?.nom_entreprise ? ` avec <strong>${escHtml(artisanInfos.nom_entreprise)}</strong>` : ""}.</p>
-          ${visiteHtml}${message ? `<p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${escHtml(message)}</p>` : ""}
+          ${visiteHtml}${paiementConf && demande.type_intervention !== "visite" ? `<p style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:8px;">💶 Vos frais de réservation de <strong>${escHtml(Number(paiementConf.montant).toFixed(2).replace(".", ","))} €</strong> sont réglés.</p>` : ""}${paiementConf ? `<p style="text-align:center;margin:18px 0;"><a href="https://caralink.app/artisans/annuler-reservation.html?token=${encodeURIComponent(paiementConf.token)}" style="display:inline-block;background:#f1f5f9;color:#475569;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700;">Annuler mon rendez-vous</a></p>` : ""}${message ? `<p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${escHtml(message)}</p>` : ""}
           ${artisanInfos?.telephone ? `<p style="font-size:12.5px;color:#6b7c96;">En cas d'empêchement, vous pouvez contacter directement l'artisan au <a href="tel:${escHtml(telHref(artisanInfos.telephone))}">${escHtml(artisanInfos.telephone)}</a>.</p>` : ""}
           <p style="font-size:12px;color:#6b7c96;">À bientôt !</p>
         </div>`;

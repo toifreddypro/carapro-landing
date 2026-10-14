@@ -185,6 +185,10 @@ Deno.serve(async (req: Request) => {
     const { data: artisanPublic, error: errArt } = await sb.from("artisans").select("id, slug_catalogue, code_promo, stripe_connect_statut, boutique_en_pause").eq("id", artisan_id).eq("actif", true).maybeSingle();
     if (errArt) throw errArt;
     if (!artisanPublic) return json({ error: "Artisan introuvable." }, 404);
+    // Règle du 15/10/2026 : sans paiements en ligne actifs, plus de réservation de créneau (deux semaines de grâce, jusqu'au 1er/11/2026).
+    if (mode === "creneaux" && artisanPublic.stripe_connect_statut !== "actif" && new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10) > "2026-11-01") {
+      return json({ error: "Cet artisan n'accepte pas encore les réservations en ligne." }, 409);
+    }
 
     // Aperçu de vignette : noms des services (pastilles), même si l'artisan n'a pas encore d'horaires.
     let services: string[] = [];

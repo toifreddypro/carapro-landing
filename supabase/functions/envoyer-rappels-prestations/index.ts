@@ -149,6 +149,15 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Ménage quotidien des réservations payées en ligne (paiements non réglés, artisan sans réponse → remboursement…) :
+    // même déclenchement, même secret. Jamais bloquant pour les rappels.
+    try {
+      if (CRON_SECRET) {
+        const m = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/maintenance-reservations`, { method: "POST", headers: { "X-Cron-Secret": CRON_SECRET, "Content-Type": "application/json" }, body: "{}" });
+        if (!m.ok) console.error("[envoyer-rappels-prestations] maintenance-reservations a répondu", m.status);
+      }
+    } catch (e) { console.error("[envoyer-rappels-prestations] maintenance-reservations injoignable :", e); }
+
     return json({ ok: true, date: dateCible, traites: resultats.length, resultats });
 
   } catch (e) {

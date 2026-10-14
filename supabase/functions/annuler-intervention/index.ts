@@ -12,8 +12,10 @@
 //  - l'artisan ne peut agir que sur SES interventions, et seulement tant qu'elles sont « Planifiée » ou « En cours » ;
 //  - le changement de statut est conditionnel (jamais deux annulations, donc jamais deux emails au client pour la même intervention) ;
 //  - tout ce qui entre dans l'email (noms, message, date proposée, téléphone) est échappé ;
-//  - aucun argent n'est touché ici : réserver un créneau ne se paie pas en ligne (les frais de déplacement d'une visite se règlent sur place). Seule une commande de la boutique est payée d'avance : si l'intervention est la livraison
-//    d'une commande de la boutique, la réponse le signale pour que l'artisan rembourse la commande depuis « Mes ventes ».
+//  - paiement en ligne (15/10/2026) : si le client a payé des frais de réservation / de déplacement pour ce rendez-vous, ils lui sont
+//    REMBOURSÉS AUTOMATIQUEMENT et intégralement (fonction rembourser-prestation) — l'artisan ne peut pas honorer, le client ne paie rien ;
+//  - si l'intervention est la livraison d'une commande de la boutique, la réponse le signale pour que l'artisan rembourse la commande
+//    depuis « Mes ventes ».
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -102,6 +104,22 @@ Deno.serve(async (req: Request) => {
       .eq("intervention_id", intervention_id).not("statut", "in", "(annulee,terminee)").limit(1);
     const commandeLiee = !!(commandes && commandes.length);
 
+    // Paiements en ligne liés à ce rendez-vous (frais de réservation, solde) : remboursés automatiquement et intégralement.
+    let montantRembourse = 0, remboursementEchoue = false;
+    try {
+      const { data: payes } = await sb.from("paiements_prestations").select("id, montant, montant_rembourse")
+        .eq("intervention_id", intervention_id).in("statut", ["paye", "partiellement_rembourse"]);
+      for (const pay of payes || []) {
+        const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/rembourser-prestation`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ paiement_id: pay.id, annule_par: "artisan", motif: "Rendez-vous annulé par l'artisan" }),
+        });
+        if (res.ok) montantRembourse += Number(pay.montant) - Number(pay.montant_rembourse || 0); else { remboursementEchoue = true; console.error("[annuler-intervention] Remboursement refusé :", res.status, await res.text()); }
+      }
+    } catch (e) { remboursementEchoue = true; console.error("[annuler-intervention] Remboursement échoué :", e); }
+    const aRembourse = montantRembourse > 0 || remboursementEchoue;
+
     const client = (inter as any).mpa_artisans_clients;
     const service = (inter as any).artisans_services;
     let clientPrevenu = false;
@@ -114,13 +132,13 @@ Deno.serve(async (req: Request) => {
         ${message ? `<p style="padding:10px 14px;background:#f6f9fe;border-radius:8px;">${escHtml(message).replace(/\n/g, "<br>")}</p>` : ""}
         ${nouvelleDate ? `<p>Nouvelle date proposée : <strong>${escHtml(nouvelleDate)}</strong>. Merci de confirmer directement avec l'artisan.</p>` : "<p>L'artisan vous recontactera pour convenir d'une nouvelle date.</p>"}
         ${artisan.telephone ? `<p>Pour le joindre : <strong>${escHtml(artisan.telephone)}</strong></p>` : ""}
-        ${commandeLiee ? "" : '<p style="font-size:12px;color:#6b7c96;">Aucun paiement n\'est dû pour ce rendez-vous annulé.</p>'}
+        ${aRembourse ? `<p style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:8px;">💶 Les sommes que vous avez réglées en ligne pour ce rendez-vous vous sont <strong>remboursées intégralement</strong>${remboursementEchoue ? " (remboursement en cours de traitement)" : ` (${escHtml(montantRembourse.toFixed(2).replace(".", ","))} €)`}. Elles apparaîtront sur votre carte sous quelques jours.</p>` : (commandeLiee ? "" : '<p style="font-size:12px;color:#6b7c96;">Aucun paiement n\'est dû pour ce rendez-vous annulé.</p>')}
       </div>`;
       const nomSujet = String(artisan.nom_entreprise || "votre artisan").replace(/[\u0000-\u001f\u007f]+/g, " ").trim().slice(0, 80);
       clientPrevenu = await envoyerEmail(client.email, `Rendez-vous annulé — ${nomSujet}`, html);
     }
 
-    return json({ ok: true, client_prevenu: clientPrevenu, client_sans_email: !client?.email, commande_liee: commandeLiee });
+    return json({ ok: true, client_rembourse: montantRembourse, remboursement_echoue: remboursementEchoue, client_prevenu: clientPrevenu, client_sans_email: !client?.email, commande_liee: commandeLiee });
   } catch (e) {
     console.error("[annuler-intervention]", e);
     return json({ error: MSG_ERREUR_GENERIQUE }, 500);

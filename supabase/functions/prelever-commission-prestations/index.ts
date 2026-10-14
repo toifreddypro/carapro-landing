@@ -13,6 +13,13 @@
 // 7% de la part au-dessus du seuil sur la carte enregistrée — hors session,
 // donc en son absence.
 //
+// ── Révision du 15/10/2026 : PRESTATIONS PAYÉES EN LIGNE ──
+// Les frais de réservation / de déplacement et les paiements demandés après la visite (table paiements_prestations) portent déjà leur
+// commission au moment du paiement (« application fee », mêmes 7 % au-dessus de 200 € par mois). Pour ne JAMAIS commissionner deux fois :
+//  - le CA de chaque intervention est diminué de ce qui a été payé en ligne pour elle ;
+//  - le CA payé en ligne du mois est ajouté à la base (un seul seuil de 200 € pour tout le canal prestations) ;
+//  - la commission déjà prélevée en ligne ce mois-là est déduite de la commission due.
+//
 // Un mois déjà traité (même artisan, même mois) n'est JAMAIS retraité —
 // contrainte unique en base, filet de sécurité en plus de la vérification
 // applicative. Chaque artisan est indépendant : l'échec de l'un (carte
@@ -94,17 +101,42 @@ function bornesMoisPrecedent(): { debut: string; finExclusive: string; moisISO: 
   return { debut: debut.toISOString().slice(0, 10), finExclusive: finExclusive.toISOString().slice(0, 10), moisISO: debut.toISOString().slice(0, 10) };
 }
 
-async function caPrestationsAnnuaireDuMois(sb: any, artisanId: string, debut: string, finExclusive: string): Promise<number> {
+// CA des prestations du mois : ce qui reste à encaisser HORS ligne (prix de l'intervention moins ce qui a été payé en ligne pour elle) +
+// ce qui a été payé en ligne ce mois-ci, et la commission déjà prélevée à ce titre. Montants en centimes.
+async function caPrestationsAnnuaireDuMois(sb: any, artisanId: string, debut: string, finExclusive: string): Promise<{ total: number; commissionDejaPrelevee: number }> {
+  const DECALAGE = "T04:00:00Z"; // le mois d'un artisan commence à minuit heure de la Guadeloupe (UTC-4), comme au moment du paiement
+  const net = (m: any, r: any) => Math.round(Math.max(0, Number(m || 0) - Number(r || 0)) * 100);
+  let enLigne = 0, commissionDejaPrelevee = 0;
+  const payeParIntervention = new Map<string, number>();
+  try {
+    const { data: pays, error: errPay } = await sb.from("paiements_prestations")
+      .select("intervention_id, montant, montant_rembourse, commission_montant, paye_le")
+      .eq("artisan_id", artisanId).in("statut", ["paye", "partiellement_rembourse", "rembourse"]);
+    if (errPay) throw errPay;
+    for (const p of pays || []) {
+      const n = net(p.montant, p.montant_rembourse);
+      if (p.intervention_id) payeParIntervention.set(p.intervention_id, (payeParIntervention.get(p.intervention_id) || 0) + n);
+      const paye = p.paye_le ? String(p.paye_le) : "";
+      if (paye >= debut + DECALAGE && paye < finExclusive + DECALAGE) {
+        enLigne += n;
+        const brut = Math.round(Number(p.montant || 0) * 100);
+        commissionDejaPrelevee += brut > 0 ? Math.round(Math.round(Number(p.commission_montant || 0) * 100) * n / brut) : 0;
+      }
+    }
+  } catch (e) {
+    // Table pas encore créée (SQL du 15/10 pas lancé) : aucun paiement en ligne, le calcul d'avant s'applique tel quel.
+    console.warn("[prelever-commission-prestations] paiements_prestations illisible :", (e as any)?.message);
+  }
   const { data, error } = await sb.from("mpa_artisans_interventions")
-    .select("prix, mpa_artisans_clients!inner(origine)")
+    .select("id, prix, mpa_artisans_clients!inner(origine)")
     .eq("artisan_id", artisanId)
     .eq("mpa_artisans_clients.origine", "annuaire")
     .in("statut", ["terminee", "payee"])
     .gte("date_intervention", debut)
     .lt("date_intervention", finExclusive);
   if (error) throw error;
-  const totalCentimes = (data || []).reduce((s: number, i: any) => s + Math.max(0, Math.round((Number(i.prix) || 0) * 100)), 0); // un prix négatif ne fait jamais baisser la base
-  return totalCentimes;
+  const horsLigne = (data || []).reduce((s: number, i: any) => s + Math.max(0, Math.max(0, Math.round((Number(i.prix) || 0) * 100)) - (payeParIntervention.get(i.id) || 0)), 0); // un prix négatif ne fait jamais baisser la base
+  return { total: horsLigne + enLigne, commissionDejaPrelevee };
 }
 
 // Stripe répond 409 quand une requête portant la MÊME clé d'idempotence est encore en cours (double-clic, deux lancements qui
@@ -151,8 +183,11 @@ async function traiterUnArtisan(sb: any, artisan: any, debut: string, finExclusi
     .select("id").eq("artisan_id", artisan.id).eq("mois", moisISO).maybeSingle();
   if (dejaFait) return { artisan_id: artisan.id, nom, statut: "deja_traite" };
 
-  const caTotalCentimes = await caPrestationsAnnuaireDuMois(sb, artisan.id, debut, finExclusive);
-  const { commissionCentimes, montantCommissionneCentimes } = calculerCommissionAvecSeuil(caTotalCentimes, SEUIL_GRATUIT_EUROS * 100, TAUX_COMMISSION);
+  const ca = await caPrestationsAnnuaireDuMois(sb, artisan.id, debut, finExclusive);
+  const caTotalCentimes = ca.total;
+  const calcul = calculerCommissionAvecSeuil(caTotalCentimes, SEUIL_GRATUIT_EUROS * 100, TAUX_COMMISSION);
+  const montantCommissionneCentimes = calcul.montantCommissionneCentimes;
+  const commissionCentimes = Math.max(0, calcul.commissionCentimes - ca.commissionDejaPrelevee); // déjà prélevée en ligne au moment des paiements
 
   const ligneBase = {
     artisan_id: artisan.id, mois: moisISO,
