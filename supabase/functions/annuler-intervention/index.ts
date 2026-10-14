@@ -12,7 +12,7 @@
 //  - l'artisan ne peut agir que sur SES interventions, et seulement tant qu'elles sont « Planifiée » ou « En cours » ;
 //  - le changement de statut est conditionnel (jamais deux annulations, donc jamais deux emails au client pour la même intervention) ;
 //  - tout ce qui entre dans l'email (noms, message, date proposée, téléphone) est échappé ;
-//  - aucun argent n'est touché ici : une prestation n'est jamais payée d'avance par CaraLink. Si l'intervention est la livraison
+//  - aucun argent n'est touché ici : réserver un créneau ne se paie pas en ligne (les frais de déplacement d'une visite se règlent sur place). Seule une commande de la boutique est payée d'avance : si l'intervention est la livraison
 //    d'une commande de la boutique, la réponse le signale pour que l'artisan rembourse la commande depuis « Mes ventes ».
 // ═══════════════════════════════════════════════════════════
 
@@ -114,7 +114,7 @@ Deno.serve(async (req: Request) => {
         ${message ? `<p style="padding:10px 14px;background:#f6f9fe;border-radius:8px;">${escHtml(message).replace(/\n/g, "<br>")}</p>` : ""}
         ${nouvelleDate ? `<p>Nouvelle date proposée : <strong>${escHtml(nouvelleDate)}</strong>. Merci de confirmer directement avec l'artisan.</p>` : "<p>L'artisan vous recontactera pour convenir d'une nouvelle date.</p>"}
         ${artisan.telephone ? `<p>Pour le joindre : <strong>${escHtml(artisan.telephone)}</strong></p>` : ""}
-        <p style="font-size:12px;color:#6b7c96;">Aucun paiement n'est dû pour ce rendez-vous annulé.</p>
+        ${commandeLiee ? "" : '<p style="font-size:12px;color:#6b7c96;">Aucun paiement n\'est dû pour ce rendez-vous annulé.</p>'}
       </div>`;
       const nomSujet = String(artisan.nom_entreprise || "votre artisan").replace(/[\u0000-\u001f\u007f]+/g, " ").trim().slice(0, 80);
       clientPrevenu = await envoyerEmail(client.email, `Rendez-vous annulé — ${nomSujet}`, html);
