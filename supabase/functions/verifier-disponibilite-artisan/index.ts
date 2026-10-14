@@ -182,7 +182,7 @@ Deno.serve(async (req: Request) => {
     if (await limiteAtteinte(sb, `dispo-${mode}:` + ipVisiteur(req), mode === "creneaux" ? 30 : 300, 60)) return reponseTropDeRequetes(corsHeaders);
 
     // L'artisan doit exister ET être actif : jamais les horaires ni le code promo d'un artisan désactivé.
-    const { data: artisanPublic, error: errArt } = await sb.from("artisans").select("id, slug_catalogue, code_promo, stripe_connect_statut").eq("id", artisan_id).eq("actif", true).maybeSingle();
+    const { data: artisanPublic, error: errArt } = await sb.from("artisans").select("id, slug_catalogue, code_promo, stripe_connect_statut, boutique_en_pause").eq("id", artisan_id).eq("actif", true).maybeSingle();
     if (errArt) throw errArt;
     if (!artisanPublic) return json({ error: "Artisan introuvable." }, 404);
 
@@ -223,6 +223,8 @@ Deno.serve(async (req: Request) => {
 
     // Règle du 06/10 : sans paiements en ligne ACTIFS, pas de boutique visible : ni produits phares, ni lien, ni code promo sur les cartes.
     if (artisanPublic.stripe_connect_statut !== "actif") { produitsPhares = []; slugCatalogue = null; codePromo = null; }
+    // Boutique mise en pause par l'artisan : rien n'est mis en avant tant qu'elle est fermée.
+    if (artisanPublic.boutique_en_pause === true) { produitsPhares = []; slugCatalogue = null; codePromo = null; }
 
     const { data: horaires, error: errH } = await sb.from("artisans_horaires")
       .select("*").eq("artisan_id", artisan_id).order("heure_debut", { ascending: true });

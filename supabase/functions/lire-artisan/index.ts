@@ -25,7 +25,7 @@ const corsHeaders = {
 
 // ── Limitation par visiteur (voir securite-limites.sql). Si le limiteur lui-même tombe en panne, on laisse passer :
 //    ce sont des lectures publiques, mieux vaut un service disponible qu'un site bloqué par une panne du limiteur. ──
-const COLONNES_ARTISAN_BASE = "id, nom_entreprise, secteur, commune, bio, photo_profil_url, verifie, rayon_intervention_km, alternance_niveau, stripe_connect_statut, slug_catalogue, code_promo";
+const COLONNES_ARTISAN_BASE = "id, nom_entreprise, secteur, commune, bio, photo_profil_url, verifie, rayon_intervention_km, alternance_niveau, stripe_connect_statut, slug_catalogue, code_promo, boutique_en_pause";
 // Du plus complet au plus simple : si une colonne facultative n'existe pas encore (SQL pas lancé), on réessaie avec moins.
 const JEUX_COLONNES_ARTISAN = [`${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite`, `${COLONNES_ARTISAN_BASE}, frais_deplacement`, COLONNES_ARTISAN_BASE];
 const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -118,6 +118,8 @@ Deno.serve(async (req: Request) => {
     // Règle du 06/10 : tant que les paiements en ligne de l'artisan ne sont pas ACTIFS, sa boutique n'existe pas pour le public :
     // ni produits mis en avant, ni lien vers la boutique sur sa fiche.
     if (artisan.stripe_connect_statut !== "actif") { produitsPhares = []; artisan.slug_catalogue = null; }
+    // Boutique mise en pause par l'artisan : même effet, rien n'est mis en avant tant qu'elle est fermée.
+    if (artisan.boutique_en_pause === true) { produitsPhares = []; artisan.slug_catalogue = null; artisan.code_promo = null; }
 
     const { data: avis } = await sb.from("avis_carapro")
       .select("client_nom, note, commentaire, created_at, reponse_artisan, reponse_le")
