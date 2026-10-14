@@ -53,19 +53,24 @@ function json(payload: unknown, status = 200): Response {
   });
 }
 
-async function verifierSiret(siret: string): Promise<{ valide: boolean; nomOfficiel: string | null }> {
+// Résultat : "actif" (reconnu et en activité), "inactif" (reconnu mais cessé), "introuvable" (le registre répond, ce SIRET n'existe pas),
+// "indisponible" (registre injoignable : on ne tranche pas, revue humaine).
+async function verifierSiret(siret: string): Promise<{ etat: "actif" | "inactif" | "introuvable" | "indisponible"; nomOfficiel: string | null }> {
   try {
     // Le SIRET a déjà été contrôlé (14 chiffres) : il est de plus encodé, jamais collé tel quel dans l'adresse.
-    const res = await fetch(`https://recherche-entreprises.api.gouv.fr/search?q=siret:${encodeURIComponent(siret)}`, { signal: AbortSignal.timeout(5000) });
-    if (!res.ok) return { valide: false, nomOfficiel: null };
+    const res = await fetch(`https://recherche-entreprises.api.gouv.fr/search?q=${encodeURIComponent(siret)}`, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return { etat: "indisponible", nomOfficiel: null };
     const data = await res.json();
-    const resultats = data.results || [];
-    if (!resultats.length) return { valide: false, nomOfficiel: null };
-    const premier = resultats[0];
-    return { valide: true, nomOfficiel: premier.nom_complet || premier.nom_raison_sociale || null };
+    for (const r of (data.results || [])) {
+      const etab = [...(r.matching_etablissements || []), r.siege].find((e: any) => e && e.siret === siret);
+      if (!etab) continue;
+      const actif = (etab.etat_administratif ?? r.etat_administratif) === "A";
+      return { etat: actif ? "actif" : "inactif", nomOfficiel: r.nom_complet || r.nom_raison_sociale || null };
+    }
+    return { etat: "introuvable", nomOfficiel: null };
   } catch (e) {
     console.error("[verifierSiret]", e);
-    return { valide: false, nomOfficiel: null };
+    return { etat: "indisponible", nomOfficiel: null };
   }
 }
 
@@ -167,14 +172,15 @@ Deno.serve(async (req: Request) => {
     const { data: dejaExistant } = await sbAdmin.from("artisans").select("id").eq("user_id", userId).maybeSingle();
     if (dejaExistant) return json({ error: "Un profil existe déjà pour ce compte." }, 409);
 
-    // Vérification SIRET — jamais bloquante pour l'inscription elle-même,
-    // juste consignée pour la modération humaine ensuite.
+    // Vérification SIRET — jamais bloquante pour l'inscription elle-même.
+    // SIRET reconnu et actif au registre officiel : badge "Vérifié" attribué automatiquement.
+    // Sinon (introuvable, cessé, registre injoignable) : revue humaine depuis le panneau admin.
     let siretValide = false;
     let statutVerif = "non_demande";
     if (siretPropre) {
       const resultat = await verifierSiret(siretPropre);
-      siretValide = resultat.valide;
-      statutVerif = "en_attente"; // toujours une revue humaine du document avant le vrai badge "vérifié"
+      siretValide = resultat.etat === "actif";
+      statutVerif = siretValide ? "verifie" : "en_attente";
     }
 
     // Le fichier déclaré existe-t-il vraiment ? (sinon : le profil est créé sans pièce, jamais une référence dans le vide)
@@ -188,7 +194,7 @@ Deno.serve(async (req: Request) => {
       user_id: userId, email: userData.user.email ?? null, // l'email du compte de connexion : les notifications (commandes, prélèvement…) partent de là
       nom_entreprise: nom, secteur: secteurCode, commune: communeNom, telephone: tel,
       bio: bioTxt || null, rayon_intervention_km: rayon,
-      siret: siretPropre || null, verifie: false, verification_statut: statutVerif,
+      siret: siretPropre || null, verifie: siretValide, verification_statut: statutVerif,
       actif: true,
     }).select().single();
     if (error) {
@@ -211,7 +217,7 @@ Deno.serve(async (req: Request) => {
       siret_reconnu: siretValide,
       document_enregistre: documentEnregistre,
       message: siretPropre
-        ? "Profil créé. Votre document sera vérifié sous 24-48h."
+        ? (siretValide ? "Profil créé. Votre SIRET est reconnu : badge « Vérifié » attribué." : "Profil créé. Votre SIRET sera vérifié sous 24-48h.")
         : "Profil créé. Ajoutez votre SIRET et votre assurance dès que possible pour obtenir le badge vérifié.",
     });
 

@@ -334,6 +334,22 @@ async function init() {
   traiterRetourAbonnement(); // sans attendre : peut patienter jusqu'à 30 s le temps que Stripe prévienne le serveur
 }
 
+// Met en forme la description : une ligne par idée, « Libellé : texte » avec le libellé en gras.
+// Si l'annonce a été écrite d'un seul bloc, on la découpe avant chaque « Libellé : » et avant 💡.
+function formaterDescriptionNouveaute(desc) {
+  var txt = String(desc || '').trim();
+  if (txt.indexOf('\n') === -1) {
+    txt = txt.replace(/([.!?]) +(?=[A-ZÀ-Ý][^.!?:\n]{2,40} : )/g, '$1\n').replace(/ *(?=💡)/g, '\n');
+  }
+  return txt.split(/\n+/).map(function(l) { return l.trim(); }).filter(Boolean).map(function(l) {
+    var m = l.match(/^([^:\n]{2,40}) : (.+)$/);
+    var corps = m ? '<strong style="color:var(--tx,#111);">' + escHtml(m[1]) + '</strong> — ' + escHtml(m[2]) : escHtml(l);
+    var astuce = l.indexOf('💡') === 0;
+    return '<div style="font-size:13.5px;line-height:1.55;color:var(--mu2);margin:0 0 8px;' +
+      (astuce ? 'background:rgba(181,80,47,.08);border-radius:8px;padding:8px 10px;' : '') + '">' + corps + '</div>';
+  }).join('');
+}
+
 // ── Quoi de neuf — annonces publiées depuis l'admin, montrées une fois par artisan ──
 async function verifierNouveautes() {
   var depuis = _artisan.derniere_nouveaute_vue || '1970-01-01T00:00:00Z';
@@ -343,8 +359,8 @@ async function verifierNouveautes() {
 
   document.getElementById('nouveautes-liste').innerHTML = items.map(function(n) {
     return '<div style="padding:12px 0;border-bottom:1px solid var(--brd);">' +
-      '<div style="font-weight:700;font-size:14px;margin-bottom:4px;">✨ ' + escHtml(n.titre) + '</div>' +
-      '<div style="font-size:13px;color:var(--mu2);">' + escHtml(n.description) + '</div>' +
+      '<div style="font-weight:700;font-size:15px;margin-bottom:8px;">✨ ' + escHtml(n.titre) + '</div>' +
+      formaterDescriptionNouveaute(n.description) +
     '</div>';
   }).join('');
   document.getElementById('modal-nouveautes').classList.add('show');
