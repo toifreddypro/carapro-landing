@@ -48,6 +48,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);min-he
 .access-denied h1{font-size:22px;margin-bottom:10px;}
 .loader{text-align:center;padding:40px;color:var(--mu);}
 .note{font-size:12px;color:var(--mu);padding:12px 18px;border-top:1px solid var(--brd);}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;border-bottom:1px solid var(--brd);padding-bottom:0;}
+.tab{padding:10px 16px;border:none;background:transparent;font-family:'Outfit',sans-serif;font-size:13.5px;font-weight:600;color:var(--mu);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;}
+.tab:hover{color:var(--tx);}
+.tab.on{color:var(--ac);border-bottom-color:var(--ac);}
+.liste-barre{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 18px;border-bottom:1px solid var(--brd);background:var(--p2);}
+.liste-barre input{padding:7px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;min-width:240px;}
+.pager{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--mu);}
+.pager button{padding:5px 11px;border-radius:7px;border:1px solid var(--b2);background:var(--panel);cursor:pointer;font-size:12.5px;font-weight:600;}
+.pager button:disabled{opacity:.4;cursor:default;}
 </style>
 </head>
 <body>
@@ -206,11 +215,13 @@ async function init() {
   }
   _session = data.session;
   document.getElementById('wrap').innerHTML =
+    '<div class="tabs" id="onglets"></div>' +
     '<div id="zone-secteurs"></div>' +
     '<div id="zone-nouveautes"></div>' +
     '<div id="zone-avis-produit"></div>' +
     '<div id="zone-prelevement-prestations"></div>' +
     '<div id="zone-artisans"></div>';
+  construireOnglets();
   await chargerSecteurs();
   await chargerNouveautes();
   await chargerAvisProduit();
@@ -461,6 +472,71 @@ async function supprimerCompte(userId, nom) {
   } catch(e) {
     alert('Erreur : ' + e.message);
   }
+}
+
+(function() {
+  var cs = chargerSecteurs, ca = chargerArtisans;
+  chargerSecteurs = async function() { await cs(); activerListe('zone-secteurs'); };
+  chargerArtisans = async function() { await ca(); activerListe('zone-artisans'); };
+})();
+
+// ── Onglets : une seule section visible à la fois ──
+var ONGLETS = [
+  ['artisans', '👷 Artisans', 'zone-artisans'],
+  ['secteurs', '🏷️ Secteurs', 'zone-secteurs'],
+  ['nouveautes', '📣 Quoi de neuf', 'zone-nouveautes'],
+  ['avis', '⭐ Avis produit', 'zone-avis-produit'],
+  ['prelevement', '💳 Prélèvements', 'zone-prelevement-prestations'],
+];
+function construireOnglets() {
+  var actif = 'artisans';
+  try { var m = localStorage.getItem('admin_onglet'); if (ONGLETS.some(function(o) { return o[0] === m; })) actif = m; } catch (e) {}
+  document.getElementById('onglets').innerHTML = ONGLETS.map(function(o) {
+    return '<button class="tab" id="tab-' + o[0] + '" onclick="choisirOnglet(\'' + o[0] + '\')">' + o[1] + '</button>';
+  }).join('');
+  choisirOnglet(actif);
+}
+function choisirOnglet(code) {
+  ONGLETS.forEach(function(o) {
+    document.getElementById(o[2]).style.display = o[0] === code ? '' : 'none';
+    document.getElementById('tab-' + o[0]).classList.toggle('on', o[0] === code);
+  });
+  try { localStorage.setItem('admin_onglet', code); } catch (e) {}
+}
+
+// ── Recherche + pagination d'une liste (secteurs, artisans) ──
+var TAILLE_PAGE = 20;
+var _etatListes = {};
+function activerListe(zoneId) {
+  var zone = document.getElementById(zoneId);
+  var tbody = zone && zone.querySelector('tbody');
+  if (!tbody) return;
+  var etat = _etatListes[zoneId] = _etatListes[zoneId] || { q: '', page: 0 };
+  var corps = zone.querySelector('.dcbdy');
+  var barre = document.createElement('div');
+  barre.className = 'liste-barre';
+  barre.innerHTML = '<input type="search" placeholder="🔎 Rechercher…" value="' + escHtml(etat.q) + '"><div class="pager"></div>';
+  corps.parentNode.insertBefore(barre, corps);
+  var champ = barre.querySelector('input'), pager = barre.querySelector('.pager');
+  function appliquer() {
+    var q = etat.q.toLowerCase().trim();
+    var lignes = Array.prototype.slice.call(tbody.rows);
+    var visibles = lignes.filter(function(tr) { return !q || tr.textContent.toLowerCase().indexOf(q) !== -1; });
+    var pages = Math.max(1, Math.ceil(visibles.length / TAILLE_PAGE));
+    if (etat.page >= pages) etat.page = pages - 1;
+    lignes.forEach(function(tr) { tr.style.display = 'none'; });
+    visibles.slice(etat.page * TAILLE_PAGE, (etat.page + 1) * TAILLE_PAGE).forEach(function(tr) { tr.style.display = ''; });
+    pager.innerHTML = '<span>' + visibles.length + ' résultat' + (visibles.length > 1 ? 's' : '') + '</span>' +
+      (pages > 1 ? '<button ' + (etat.page === 0 ? 'disabled' : '') + ' data-d="-1">←</button><span>Page ' + (etat.page + 1) + ' / ' + pages + '</span><button ' + (etat.page >= pages - 1 ? 'disabled' : '') + ' data-d="1">→</button>' : '');
+  }
+  champ.addEventListener('input', function() { etat.q = champ.value; etat.page = 0; appliquer(); });
+  pager.addEventListener('click', function(e) {
+    var d = e.target && e.target.getAttribute && e.target.getAttribute('data-d');
+    if (d) { etat.page += parseInt(d, 10); appliquer(); }
+  });
+  appliquer();
+  // le contrôle SIRET se complète après coup : on relance le filtre une fois terminé
+  zone._reappliquer = appliquer;
 }
 
 init();
