@@ -214,7 +214,7 @@ function formatReel(b: Uint8Array): { mime: string; ext: string } | null {
   return null;
 }
 
-// Décode et téléverse jusqu'à 4 photos (data URLs base64) envoyées par le client, retourne leurs URLs publiques.
+// Décode et téléverse jusqu'à 4 photos (data URLs base64) envoyées par le client, retourne leurs CHEMINS dans l'espace privé (jamais d'URL publique).
 // Jamais bloquant : une photo refusée ou qui échoue est simplement ignorée, la demande reste valide sans elle.
 async function uploaderPhotos(sb: any, demandeId: string, photosBase64: unknown): Promise<string[]> {
   if (!Array.isArray(photosBase64)) return [];
@@ -233,8 +233,7 @@ async function uploaderPhotos(sb: any, demandeId: string, photosBase64: unknown)
       const path = `${demandeId}/${i}.${format.ext}`;
       const { error } = await sb.storage.from(BUCKET_PHOTOS).upload(path, bytes, { contentType: format.mime, upsert: true });
       if (error) { console.error("[soumettre-demande-devis] upload photo échoué:", error); continue; }
-      const { data: pub } = sb.storage.from(BUCKET_PHOTOS).getPublicUrl(path);
-      if (pub?.publicUrl) urls.push(pub.publicUrl);
+      urls.push(path); // le CHEMIN seulement : l'espace est privé, l'artisan reçoit un lien temporaire signé à l'affichage
     } catch (e) {
       console.error("[soumettre-demande-devis] erreur traitement photo:", e);
     }

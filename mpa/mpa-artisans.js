@@ -644,9 +644,39 @@ async function chargerDemandes() {
     }
   } catch (ePay) { console.warn('Paiements des demandes non chargés :', ePay); }
 
+  // Photos jointes : l'espace de stockage est PRIVÉ, on demande des liens temporaires signés (valables 1 h) pour ce que cet artisan a le droit de voir.
+  await signerPhotosDemandes(liste);
+
   _demandesListe = liste;
   renderDemandes();
 }
+
+// Les photos d'une demande sont rangées dans l'espace privé « devis-photos ». La colonne contient un chemin (« id-demande/0.jpg ») ;
+// les demandes plus anciennes contiennent encore l'ancienne adresse publique complète : on en extrait le chemin.
+var _photosSignees = {};
+function cheminPhotoDevis(v) {
+  var s = String(v || '');
+  var i = s.indexOf('/devis-photos/');
+  if (i !== -1) s = s.slice(i + '/devis-photos/'.length);
+  return s.split('?')[0];
+}
+async function signerPhotosDemandes(liste) {
+  try {
+    var chemins = [];
+    (liste || []).forEach(function(l) {
+      ((l.demande && l.demande.photos) || []).forEach(function(v) {
+        var c = cheminPhotoDevis(v);
+        if (c && chemins.indexOf(c) === -1) chemins.push(c);
+      });
+    });
+    _photosSignees = {};
+    if (!chemins.length) return;
+    var { data, error } = await sb.storage.from('devis-photos').createSignedUrls(chemins, 3600);
+    if (error) { console.warn('Photos des demandes non chargées :', error.message); return; }
+    (data || []).forEach(function(x) { if (x && x.path && x.signedUrl) _photosSignees[x.path] = x.signedUrl; });
+  } catch (e) { console.warn('Photos des demandes non chargées :', e); }
+}
+function urlPhotoDevis(v) { return _photosSignees[cheminPhotoDevis(v)] || ''; }
 
 // ── Demandes : « À traiter » / « Archivées » ──
 // Une demande est ARCHIVÉE quand l'artisan a fini avec elle : réponse marquée traitée, ou créneau déjà confirmé / refusé.
@@ -756,7 +786,9 @@ function renderDemandes() {
       '<div style="font-size:13px;margin-bottom:10px;">' + escHtml(d.description_besoin) + '</div>' +
       ((d.photos && d.photos.length) ?
         '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' +
-          d.photos.map(function(url) {
+          d.photos.map(function(v) {
+            var url = urlPhotoDevis(v);
+            if (!url) return '';
             return '<a href="' + escHtml(url) + '" target="_blank" rel="noopener"><img src="' + escHtml(url) + '" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--brd);"></a>';
           }).join('') +
         '</div>' : '') +

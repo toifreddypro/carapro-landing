@@ -23,6 +23,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
   if (typeof AT_TR === 'undefined') return;
   var ajouts = {
     fr: {
+      photos_securite: '🔒 Vos photos sont sécurisées : elles ne sont accessibles qu\'à vous et à l\'artisan consulté pour établir votre devis.',
       visite_frais_enligne: 'Frais de déplacement à régler en ligne pour réserver :',
       visite_mention_enligne: "Réglés maintenant, en ligne. Vous êtes remboursé(e) intégralement si l'artisan refuse ou ne peut pas venir.",
       reservation_frais_enligne: 'Frais de réservation à régler en ligne :',
@@ -55,6 +56,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       visite_choisir_creneau: 'Choisir un créneau de visite',
     },
     en: {
+      photos_securite: '🔒 Your photos are secure: only you and the craftsman consulted for your quote can access them.',
       visite_frais_enligne: 'Call-out fee to pay online to book:',
       visite_mention_enligne: 'Paid now, online. You are fully refunded if the craftsman declines or cannot come.',
       reservation_frais_enligne: 'Booking fee to pay online:',
@@ -87,6 +89,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       visite_choisir_creneau: 'Choose a visit slot',
     },
     es: {
+      photos_securite: '🔒 Tus fotos están protegidas: solo tú y el artesano consultado para tu presupuesto podéis acceder a ellas.',
       visite_frais_enligne: 'Gastos de desplazamiento a pagar en línea para reservar:',
       visite_mention_enligne: 'Se pagan ahora, en línea. Se le reembolsa íntegramente si el profesional rechaza o no puede ir.',
       reservation_frais_enligne: 'Gastos de reserva a pagar en línea:',
@@ -1356,6 +1359,7 @@ function photosPickerHTML() {
       '<div style="font-size:11.5px;font-weight:600;color:var(--mu2,#777);margin-bottom:6px;">' + T('photos_titre') + '</div>' +
       '<input type="file" id="devis-photos-input" accept="image/*" multiple style="display:none;" onchange="ajouterPhotosDevis(this.files)">' +
       '<button type="button" onclick="document.getElementById(\'devis-photos-input\').click()" style="width:100%;padding:9px;border-radius:8px;border:1.5px dashed var(--line,#ddd);background:transparent;color:var(--mu2,#777);font-size:12.5px;font-weight:600;cursor:pointer;">' + T('photos_btn') + '</button>' +
+      '<div style="font-size:11.5px;color:var(--mu2,#777);margin-top:6px;line-height:1.4;">' + T('photos_securite') + '</div>' +
       '<div id="devis-photos-preview" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"></div>' +
     '</div>';
 }
@@ -1765,61 +1769,133 @@ async function envoyerDemandeDevis(artisanId, secteurArtisan) {
 // alignant sur le vrai nom utilisé par CaraLink Formation
 // (ouvrirModalLegal), avec du contenu propre à Artisans.
 // ════════════════════════════════════════
+var LEGAL_VERSION_ARTISANS = '14 octobre 2026';
 var LEGAL_CONTENT_ARTISANS = {
   mentions: {
     fr: { titre: 'Mentions légales', contenu:
-      '<h3>Éditeur du site</h3><p>Le site <strong>CaraLink Artisans</strong> est édité par LearnLogic Studio (SIRET 832 640 858 000 29), 971 Guadeloupe, France.</p>' +
+      '<h3>Éditeur du site</h3><p>Le site <strong>CaraLink Artisans</strong> est édité par LearnLogic Studio (SIRET 832 640 858 000 29), entreprise individuelle, 971 Guadeloupe, France. Directeur de la publication : le représentant légal de LearnLogic Studio.</p>' +
       '<h3>Contact</h3><p><a href="mailto:contact@learnlogicstudio.com">contact@learnlogicstudio.com</a></p>' +
-      '<h3>Hébergement</h3><p>Le site est hébergé par Vercel Inc. La base de données est hébergée par Supabase Inc.</p>' },
+      '<h3>Hébergement et prestataires techniques</h3><p>Le site est hébergé par Vercel Inc. La base de données et les fichiers sont hébergés par Supabase Inc. Les paiements en ligne sont assurés par Stripe. Les emails sont envoyés par Resend.</p>' +
+      '<h3>Propriété intellectuelle</h3><p>Les textes, logos, images et le code du site appartiennent à LearnLogic Studio ou à leurs auteurs. Toute reproduction sans autorisation est interdite. Les photos et descriptions publiées par un artisan restent sa propriété.</p>' },
     en: { titre: 'Legal notice', contenu:
-      '<h3>Publisher</h3><p>The <strong>CaraLink Artisans</strong> website is published by LearnLogic Studio (SIRET 832 640 858 000 29), 971 Guadeloupe, France.</p>' +
+      '<h3>Publisher</h3><p>The <strong>CaraLink Artisans</strong> website is published by LearnLogic Studio (SIRET 832 640 858 000 29), sole proprietorship, 971 Guadeloupe, France. Publication director: the legal representative of LearnLogic Studio.</p>' +
       '<h3>Contact</h3><p><a href="mailto:contact@learnlogicstudio.com">contact@learnlogicstudio.com</a></p>' +
-      '<h3>Hosting</h3><p>The site is hosted by Vercel Inc. The database is hosted by Supabase Inc.</p>' },
+      '<h3>Hosting and technical providers</h3><p>The site is hosted by Vercel Inc. The database and files are hosted by Supabase Inc. Online payments are handled by Stripe. Emails are sent by Resend.</p>' +
+      '<h3>Intellectual property</h3><p>The texts, logos, images and code of the site belong to LearnLogic Studio or their authors. Any reproduction without permission is prohibited. Photos and descriptions published by a craftsman remain his or her property.</p>' },
     es: { titre: 'Aviso legal', contenu:
-      '<h3>Editor</h3><p>El sitio <strong>CaraLink Artisans</strong> está editado por LearnLogic Studio (SIRET 832 640 858 000 29), 971 Guadalupe, Francia.</p>' +
+      '<h3>Editor</h3><p>El sitio <strong>CaraLink Artisans</strong> está editado por LearnLogic Studio (SIRET 832 640 858 000 29), empresa individual, 971 Guadalupe, Francia. Director de la publicación: el representante legal de LearnLogic Studio.</p>' +
       '<h3>Contacto</h3><p><a href="mailto:contact@learnlogicstudio.com">contact@learnlogicstudio.com</a></p>' +
-      '<h3>Alojamiento</h3><p>El sitio está alojado por Vercel Inc. La base de datos está alojada por Supabase Inc.</p>' },
+      '<h3>Alojamiento y proveedores técnicos</h3><p>El sitio está alojado por Vercel Inc. La base de datos y los archivos están alojados por Supabase Inc. Los pagos en línea los gestiona Stripe. Los correos los envía Resend.</p>' +
+      '<h3>Propiedad intelectual</h3><p>Los textos, logotipos, imágenes y el código del sitio pertenecen a LearnLogic Studio o a sus autores. Queda prohibida toda reproducción sin autorización. Las fotos y descripciones publicadas por un artesano siguen siendo de su propiedad.</p>' },
   },
   cgu: {
     fr: { titre: 'Conditions générales d\'utilisation', contenu:
-      '<p>Les présentes CGU définissent les conditions d\'accès et d\'utilisation de CaraLink Artisans, l\'annuaire de mise en relation entre clients et artisans, édité par LearnLogic Studio (SIRET 832 640 858 000 29).</p>' +
-      '<h3>Gratuité</h3><p>L\'annuaire, la recherche et la demande de devis sont entièrement gratuits.</p>' +
-      '<h3>Responsabilité</h3><p>CaraLink Artisans met en relation clients et artisans mais n\'est pas partie au contrat conclu entre eux. La plateforme ne garantit pas la qualité des prestations réalisées par les artisans référencés.</p>' +
-      '<h3>Vérification des artisans</h3><p>Le SIRET est vérifié automatiquement auprès du registre officiel des entreprises. Les documents d\'assurance sont examinés manuellement mais leur validité continue reste de la responsabilité de l\'artisan.</p>' },
+      '<p><em>Version du ' + LEGAL_VERSION_ARTISANS + '.</em> Les présentes conditions définissent l\'accès et l\'utilisation de CaraLink Artisans, l\'annuaire de mise en relation entre clients et artisans, édité par LearnLogic Studio (SIRET 832 640 858 000 29). En utilisant le site, vous les acceptez.</p>' +
+      '<h3>Rôle de la plateforme</h3><p>CaraLink Artisans met en relation des clients et des artisans. Le contrat de prestation est conclu entre le client et l\'artisan : la plateforme n\'en est pas partie, ne fixe pas les prix, ne réalise pas les travaux et ne garantit pas la qualité des prestations.</p>' +
+      '<h2 style="font-size:15px;margin:22px 0 4px;">Pour les clients</h2>' +
+      '<h3>Ce qui est gratuit</h3><p>Consulter l\'annuaire, rechercher un artisan et demander un renseignement ou un devis sont gratuits. Le prix des travaux est fixé par l\'artisan, dans son devis.</p>' +
+      '<h3>Frais de déplacement ou de réservation</h3><p>Certains artisans demandent, pour réserver une visite ou un créneau, des frais de déplacement ou de réservation, payés en ligne avant que l\'artisan voie votre demande. Le montant et les conditions d\'annulation sont affichés avant tout paiement, et vous les acceptez en cochant deux cases. Le paiement se fait par carte via Stripe, directement à l\'artisan. CaraLink n\'a pas accès à votre numéro de carte.</p>' +
+      '<h3>Annulation et remboursement</h3><p>L\'artisan fixe un délai d\'annulation gratuite (par exemple 24 h avant le rendez-vous). Si vous annulez avant que l\'artisan ait confirmé, ou dans ce délai, vous êtes remboursé intégralement. Passé ce délai, les frais restent acquis à l\'artisan. Si l\'artisan refuse, annule, ne peut pas honorer le rendez-vous ou ne répond pas dans les 48 heures, vous êtes remboursé intégralement et automatiquement, sur la carte utilisée (le remboursement apparaît en quelques jours). Pour annuler, utilisez le lien reçu par email : conservez-le.</p>' +
+      '<h3>Droit de rétractation</h3><p>Vous disposez en principe de 14 jours pour vous rétracter d\'un contrat conclu à distance. Si vous demandez que la prestation commence avant la fin de ce délai (case à cocher avant le paiement), vous ne pouvez plus vous rétracter une fois la prestation pleinement exécutée ; si vous vous rétractez avant, vous payez un montant proportionnel à ce qui a été fourni.</p>' +
+      '<h2 style="font-size:15px;margin:22px 0 4px;">Pour les artisans</h2>' +
+      '<h3>Votre fiche</h3><p>Vous garantissez l\'exactitude de vos informations (identité, SIRET, zone d\'intervention, tarifs) et la validité de vos assurances (responsabilité civile professionnelle, décennale si votre métier l\'exige). Vous vous engagez à honorer les rendez-vous que vous confirmez.</p>' +
+      '<h3>Offres</h3><p>L\'offre Essentiel est gratuite. L\'offre Pro coûte 9,90 € par mois, avec 14 jours d\'essai sans carte, et se résilie à tout moment depuis votre espace.</p>' +
+      '<h3>Paiement en ligne obligatoire</h3><p>À partir du 1er novembre 2026, un artisan doit avoir activé les paiements en ligne (compte Stripe) pour recevoir des réservations et apparaître dans l\'annuaire. Les paiements des clients vont directement sur votre compte Stripe.</p>' +
+      '<h3>Commission et frais</h3><p>CaraLink prélève une commission de 7 % sur les paiements encaissés en ligne au-delà de 200 € par mois, pour les clients venus par CaraLink : annuaire, lien de fiche partagé, QR code, recommandation d\'un autre client. Cette règle s\'applique sans limite de durée à ces clients, même s\'ils reviennent plus tard. Les clients que vous ajoutez vous-même à la main dans MPA Artisans ne sont pas commissionnés. Les frais de paiement de Stripe sont à votre charge. Pour la boutique, une retenue de 1,9 % + 0,25 € par commande s\'ajoute à la commission. La commission est retenue au paiement ou prélevée une fois par mois sur la carte que vous avez enregistrée.</p>' +
+      '<h3>Remboursements</h3><p>Quand un client est remboursé, la commission correspondante vous est rendue. Les frais de Stripe, que Stripe ne restitue pas, restent à votre charge.</p>' +
+      '<h3>Interdiction de contournement</h3><p>Vous vous interdisez d\'utiliser CaraLink uniquement pour obtenir des contacts puis d\'encaisser hors plateforme afin d\'éviter la commission.</p>' +
+      '<h3>Suspension et suppression</h3><p>En cas de manquement à ces conditions, CaraLink peut suspendre ou supprimer un compte. Vous pouvez supprimer votre compte depuis MPA Artisans, sauf si une commission est due ou si une commande payée n\'est pas livrée.</p>' +
+      '<h2 style="font-size:15px;margin:22px 0 4px;">Pour tous</h2>' +
+      '<h3>Avis</h3><p>Les avis sont laissés par des clients qui ont été en relation avec l\'artisan via CaraLink, grâce à un lien personnel. Ils ne sont pas rémunérés. L\'artisan peut y répondre. Pour signaler un avis manifestement abusif, écrivez à contact@learnlogicstudio.com.</p>' +
+      '<h3>Vérification des artisans</h3><p>Le SIRET est vérifié automatiquement auprès du registre officiel des entreprises ; cela prouve l\'existence de l\'entreprise, pas la qualité de son travail. Les documents d\'assurance sont examinés manuellement, mais leur validité continue reste de la responsabilité de l\'artisan.</p>' +
+      '<h3>Responsabilité</h3><p>CaraLink Artisans ne peut être tenu responsable des dommages liés à une prestation réalisée par un artisan, ni d\'une indisponibilité temporaire du site.</p>' +
+      '<h3>Droit applicable et réclamations</h3><p>Ces conditions sont régies par le droit français. Pour toute réclamation, écrivez à contact@learnlogicstudio.com. Les consommateurs peuvent recourir gratuitement à un médiateur de la consommation : ses coordonnées vous sont communiquées sur demande.</p>' },
     en: { titre: 'Terms of Service', contenu:
-      '<p>These Terms of Service define the conditions of access to and use of CaraLink Artisans, the directory connecting clients and craftsmen, published by LearnLogic Studio (SIRET 832 640 858 000 29).</p>' +
-      '<h3>Free of charge</h3><p>The directory, search and quote requests are entirely free.</p>' +
-      '<h3>Liability</h3><p>CaraLink Artisans connects clients and craftsmen but is not a party to the contract between them. The platform does not guarantee the quality of work performed by listed craftsmen.</p>' +
-      '<h3>Craftsman verification</h3><p>SIRET is automatically verified against the official business register. Insurance documents are manually reviewed, but their continued validity remains the craftsman\'s responsibility.</p>' },
+      '<p><em>Version of 14 October 2026.</em> These terms define access to and use of CaraLink Artisans, the directory connecting clients and craftsmen, published by LearnLogic Studio (SIRET 832 640 858 000 29). By using the site you accept them.</p>' +
+      '<h3>Role of the platform</h3><p>CaraLink Artisans connects clients and craftsmen. The service contract is made between the client and the craftsman: the platform is not a party to it, does not set prices, does not perform the work and does not guarantee the quality of the services.</p>' +
+      '<h2 style="font-size:15px;margin:22px 0 4px;">For clients</h2>' +
+      '<h3>What is free</h3><p>Browsing the directory, searching for a craftsman and asking for information or a quote are free. The price of the work is set by the craftsman in his or her quote.</p>' +
+      '<h3>Call-out or booking fees</h3><p>Some craftsmen ask, to book a visit or a time slot, for call-out or booking fees, paid online before the craftsman sees your request. The amount and the cancellation conditions are shown before any payment, and you accept them by ticking two boxes. Payment is made by card through Stripe, directly to the craftsman. CaraLink has no access to your card number.</p>' +
+      '<h3>Cancellation and refund</h3><p>The craftsman sets a free-cancellation period (for example 24 h before the appointment). If you cancel before the craftsman has confirmed, or within that period, you are fully refunded. After that period the fees remain with the craftsman. If the craftsman refuses, cancels, cannot honour the appointment or does not reply within 48 hours, you are fully and automatically refunded on the card used (the refund shows up within a few days). To cancel, use the link received by email: keep it.</p>' +
+      '<h3>Right of withdrawal</h3><p>You normally have 14 days to withdraw from a distance contract. If you ask for the service to start before the end of that period (tick-box before payment), you can no longer withdraw once the service has been fully performed; if you withdraw earlier, you pay a proportionate amount for what was provided.</p>' +
+      '<h2 style="font-size:15px;margin:22px 0 4px;">For craftsmen</h2>' +
+      '<h3>Your profile</h3><p>You guarantee that your information (identity, SIRET, service area, prices) is accurate and that your insurance is valid (professional liability, and ten-year cover if your trade requires it). You undertake to honour the appointments you confirm.</p>' +
+      '<h3>Plans</h3><p>The Essential plan is free. The Pro plan costs €9.90 per month, with a 14-day trial without a card, and can be cancelled at any time from your account.</p>' +
+      '<h3>Online payment required</h3><p>From 1 November 2026, a craftsman must have activated online payments (Stripe account) to receive bookings and appear in the directory. Client payments go directly to your Stripe account.</p>' +
+      '<h3>Commission and fees</h3><p>CaraLink takes a 7% commission on payments collected online above €200 per month, for clients who came through CaraLink: directory, shared profile link, QR code, recommendation by another client. This rule applies with no time limit to those clients, even if they come back later. Clients you add yourself by hand in MPA Artisans are not subject to commission. Stripe\'s payment fees are borne by you. For the shop, a 1.9% + €0.25 deduction per order is added to the commission. The commission is deducted at payment or charged once a month to the card you registered.</p>' +
+      '<h3>Refunds</h3><p>When a client is refunded, the matching commission is returned to you. Stripe\'s fees, which Stripe does not return, remain your responsibility.</p>' +
+      '<h3>No circumvention</h3><p>You agree not to use CaraLink only to obtain contacts and then collect payment outside the platform in order to avoid the commission.</p>' +
+      '<h3>Suspension and deletion</h3><p>In case of breach of these terms, CaraLink may suspend or delete an account. You can delete your account from MPA Artisans, unless a commission is due or a paid order has not been delivered.</p>' +
+      '<h2 style="font-size:15px;margin:22px 0 4px;">For everyone</h2>' +
+      '<h3>Reviews</h3><p>Reviews are left by clients who were in contact with the craftsman through CaraLink, using a personal link. They are not paid for. The craftsman may reply. To report a clearly abusive review, write to contact@learnlogicstudio.com.</p>' +
+      '<h3>Craftsman verification</h3><p>The SIRET is checked automatically against the official business register; this proves the business exists, not the quality of its work. Insurance documents are manually reviewed, but their continued validity remains the craftsman\'s responsibility.</p>' +
+      '<h3>Liability</h3><p>CaraLink Artisans cannot be held liable for damage related to a service performed by a craftsman, nor for temporary unavailability of the site.</p>' +
+      '<h3>Governing law and complaints</h3><p>These terms are governed by French law. For any complaint, write to contact@learnlogicstudio.com. Consumers may use a consumer mediator free of charge: contact details are provided on request.</p>' },
     es: { titre: 'Condiciones generales de uso', contenu:
-      '<p>Las presentes CGU definen las condiciones de acceso y uso de CaraLink Artisans, el directorio que conecta clientes y artesanos, editado por LearnLogic Studio (SIRET 832 640 858 000 29).</p>' +
-      '<h3>Gratuidad</h3><p>El directorio, la búsqueda y las solicitudes de presupuesto son completamente gratuitos.</p>' +
-      '<h3>Responsabilidad</h3><p>CaraLink Artisans conecta clientes y artesanos, pero no es parte del contrato entre ellos. La plataforma no garantiza la calidad de los trabajos realizados por los artesanos listados.</p>' +
-      '<h3>Verificación de artesanos</h3><p>El SIRET se verifica automáticamente en el registro oficial de empresas. Los documentos de seguro se revisan manualmente, pero su validez continua sigue siendo responsabilidad del artesano.</p>' },
+      '<p><em>Versión del 14 de octubre de 2026.</em> Estas condiciones definen el acceso y el uso de CaraLink Artisans, el directorio que conecta clientes y artesanos, editado por LearnLogic Studio (SIRET 832 640 858 000 29). Al usar el sitio las aceptas.</p>' +
+      '<h3>Papel de la plataforma</h3><p>CaraLink Artisans conecta clientes y artesanos. El contrato de servicio se celebra entre el cliente y el artesano: la plataforma no es parte, no fija los precios, no realiza los trabajos y no garantiza la calidad de los servicios.</p>' +
+      '<h2 style="font-size:15px;margin:22px 0 4px;">Para los clientes</h2>' +
+      '<h3>Qué es gratuito</h3><p>Consultar el directorio, buscar un artesano y pedir información o un presupuesto es gratuito. El precio de los trabajos lo fija el artesano en su presupuesto.</p>' +
+      '<h3>Gastos de desplazamiento o de reserva</h3><p>Algunos artesanos piden, para reservar una visita o un hueco, gastos de desplazamiento o de reserva, pagados en línea antes de que el artesano vea tu solicitud. El importe y las condiciones de cancelación se muestran antes de pagar, y los aceptas marcando dos casillas. El pago se hace con tarjeta a través de Stripe, directamente al artesano. CaraLink no tiene acceso al número de tu tarjeta.</p>' +
+      '<h3>Cancelación y reembolso</h3><p>El artesano fija un plazo de cancelación gratuita (por ejemplo 24 h antes de la cita). Si cancelas antes de que el artesano confirme, o dentro de ese plazo, se te reembolsa íntegramente. Pasado el plazo, los gastos quedan para el artesano. Si el artesano rechaza, cancela, no puede acudir o no responde en 48 horas, se te reembolsa íntegra y automáticamente en la tarjeta utilizada (el reembolso aparece en unos días). Para cancelar usa el enlace recibido por correo: guárdalo.</p>' +
+      '<h3>Derecho de desistimiento</h3><p>En principio dispones de 14 días para desistir de un contrato a distancia. Si pides que el servicio comience antes del final de ese plazo (casilla antes del pago), ya no podrás desistir una vez el servicio esté plenamente ejecutado; si desistes antes, pagas un importe proporcional a lo prestado.</p>' +
+      '<h2 style="font-size:15px;margin:22px 0 4px;">Para los artesanos</h2>' +
+      '<h3>Tu ficha</h3><p>Garantizas que tus datos (identidad, SIRET, zona de actuación, tarifas) son exactos y que tus seguros están vigentes (responsabilidad civil profesional y, si tu oficio lo exige, decenal). Te comprometes a cumplir las citas que confirmes.</p>' +
+      '<h3>Planes</h3><p>El plan Esencial es gratuito. El plan Pro cuesta 9,90 € al mes, con 14 días de prueba sin tarjeta, y se cancela en cualquier momento desde tu espacio.</p>' +
+      '<h3>Pago en línea obligatorio</h3><p>A partir del 1 de noviembre de 2026, un artesano debe haber activado los pagos en línea (cuenta Stripe) para recibir reservas y aparecer en el directorio. Los pagos de los clientes van directamente a tu cuenta Stripe.</p>' +
+      '<h3>Comisión y gastos</h3><p>CaraLink cobra una comisión del 7 % sobre los pagos cobrados en línea por encima de 200 € al mes, por los clientes llegados a través de CaraLink: directorio, enlace de ficha compartido, código QR, recomendación de otro cliente. Esta regla se aplica sin límite de tiempo a esos clientes, aunque vuelvan más tarde. Los clientes que añades tú mismo a mano en MPA Artisans no generan comisión. Los gastos de pago de Stripe corren por tu cuenta. En la tienda se suma a la comisión una retención del 1,9 % + 0,25 € por pedido. La comisión se retiene en el pago o se cobra una vez al mes en la tarjeta que registraste.</p>' +
+      '<h3>Reembolsos</h3><p>Cuando se reembolsa a un cliente, se te devuelve la comisión correspondiente. Los gastos de Stripe, que Stripe no devuelve, siguen a tu cargo.</p>' +
+      '<h3>Prohibición de elusión</h3><p>Te comprometes a no usar CaraLink solo para obtener contactos y cobrar después fuera de la plataforma para evitar la comisión.</p>' +
+      '<h3>Suspensión y eliminación</h3><p>En caso de incumplimiento de estas condiciones, CaraLink puede suspender o eliminar una cuenta. Puedes eliminar tu cuenta desde MPA Artisans, salvo que se deba una comisión o haya un pedido pagado sin entregar.</p>' +
+      '<h2 style="font-size:15px;margin:22px 0 4px;">Para todos</h2>' +
+      '<h3>Opiniones</h3><p>Las opiniones las dejan clientes que estuvieron en contacto con el artesano a través de CaraLink, mediante un enlace personal. No son remuneradas. El artesano puede responder. Para señalar una opinión claramente abusiva, escribe a contact@learnlogicstudio.com.</p>' +
+      '<h3>Verificación de artesanos</h3><p>El SIRET se verifica automáticamente en el registro oficial de empresas; eso prueba que la empresa existe, no la calidad de su trabajo. Los documentos de seguro se revisan manualmente, pero su validez continua sigue siendo responsabilidad del artesano.</p>' +
+      '<h3>Responsabilidad</h3><p>CaraLink Artisans no puede ser considerado responsable de los daños relacionados con un servicio realizado por un artesano, ni de una indisponibilidad temporal del sitio.</p>' +
+      '<h3>Derecho aplicable y reclamaciones</h3><p>Estas condiciones se rigen por el derecho francés. Para cualquier reclamación, escribe a contact@learnlogicstudio.com. Los consumidores pueden acudir gratuitamente a un mediador de consumo: sus datos se facilitan previa solicitud.</p>' },
   },
   privacy: {
     fr: { titre: 'Confidentialité', contenu:
-      '<p>Vos données sont hébergées sur une infrastructure sécurisée, avec des règles d\'accès strictes — chaque utilisateur n\'accède qu\'à ses propres données.</p>' +
-      '<p>Votre téléphone et votre email ne sont jamais affichés publiquement — ils ne sont partagés qu\'au moment d\'une demande de devis.</p>' +
-      '<p>CaraLink Artisans ne vend jamais vos données à des tiers.</p>' },
+      '<p><em>Version du ' + LEGAL_VERSION_ARTISANS + '.</em> Le responsable du traitement de vos données est LearnLogic Studio (SIRET 832 640 858 000 29), contact : <a href="mailto:contact@learnlogicstudio.com">contact@learnlogicstudio.com</a>.</p>' +
+      '<h3>Les données que nous collectons</h3><p><strong>Clients :</strong> nom, téléphone, email (obligatoire pour une réservation payée), commune ou adresse d\'intervention, description du besoin, photos jointes, montant et date des paiements. Votre numéro de carte est géré par Stripe : nous n\'y avons pas accès.</p><p><strong>Artisans :</strong> identité, coordonnées, adresse, SIRET, documents d\'assurance, services, tarifs, photos, ainsi que les données de gestion saisies dans MPA Artisans (clients, interventions, factures).</p>' +
+      '<h3>Pourquoi, et sur quelle base</h3><p>Pour mettre en relation clients et artisans, traiter les demandes, les réservations, les paiements et les remboursements, envoyer les emails liés à votre demande, gérer les comptes artisans, prélever la commission, prévenir la fraude et respecter nos obligations légales. Ces traitements reposent sur l\'exécution du service que vous demandez, nos obligations légales et notre intérêt légitime à sécuriser la plateforme.</p>' +
+      '<h3>Qui y accède</h3><p>Votre téléphone et votre email ne sont jamais affichés publiquement. Ils sont transmis à l\'artisan concerné par votre demande, après paiement des frais de réservation ou lorsque l\'artisan prend la demande en charge. Nous ne vendons jamais vos données.</p><p>Nous faisons appel à des prestataires techniques : Vercel (hébergement du site), Supabase (base de données et fichiers), Stripe (paiements), Resend (emails), Cloudflare (protection anti-robot) et des services de cartographie (calcul de trajets à partir d\'adresses). Certains sont situés hors de l\'Union européenne ; les transferts sont encadrés par les garanties prévues par la réglementation.</p>' +
+      '<h3>Confidentialité des photos de chantier</h3><p>Les photos transmises lors d\'une demande de devis ou d\'intervention sont stockées dans un espace privé. Elles sont strictement réservées à l\'évaluation technique de la prestation : seuls l\'artisan concerné et vous y avez accès, par des liens temporaires, et elles ne sont jamais rendues publiques.</p>' +
+      '<h3>Durée de conservation</h3><p>Vos données sont conservées le temps nécessaire au service, puis supprimées ou anonymisées, sauf obligation légale de les garder (par exemple les justificatifs de paiement et de comptabilité). À la suppression d\'un compte artisan, les données sont effacées et une archive comptable minimale est conservée.</p>' +
+      '<h3>Vos droits</h3><p>Vous pouvez demander l\'accès, la rectification, l\'effacement de vos données, vous opposer à un traitement, en demander la limitation ou la portabilité, en écrivant à <a href="mailto:contact@learnlogicstudio.com">contact@learnlogicstudio.com</a>. Vous pouvez aussi saisir la CNIL (cnil.fr).</p>' },
     en: { titre: 'Privacy', contenu:
-      '<p>Your data is hosted on secure infrastructure, with strict access rules — each user only accesses their own data.</p>' +
-      '<p>Your phone number and email are never shown publicly — they are only shared when a quote is requested.</p>' +
-      '<p>CaraLink Artisans never sells your data to third parties.</p>' },
+      '<p><em>Version of 14 October 2026.</em> The controller of your data is LearnLogic Studio (SIRET 832 640 858 000 29), contact: <a href="mailto:contact@learnlogicstudio.com">contact@learnlogicstudio.com</a>.</p>' +
+      '<h3>Data we collect</h3><p><strong>Clients:</strong> name, phone, email (required for a paid booking), town or service address, description of the need, attached photos, amount and date of payments. Your card number is handled by Stripe: we have no access to it.</p><p><strong>Craftsmen:</strong> identity, contact details, address, SIRET, insurance documents, services, prices, photos, and the management data entered in MPA Artisans (clients, jobs, invoices).</p>' +
+      '<h3>Why, and on what basis</h3><p>To connect clients and craftsmen, process requests, bookings, payments and refunds, send emails related to your request, manage craftsman accounts, collect the commission, prevent fraud and meet our legal obligations. These processing operations rely on performing the service you request, our legal obligations and our legitimate interest in securing the platform.</p>' +
+      '<h3>Who has access</h3><p>Your phone number and email are never shown publicly. They are passed to the craftsman concerned by your request, after payment of the booking fee or when the craftsman takes the request on. We never sell your data.</p><p>We use technical providers: Vercel (site hosting), Supabase (database and files), Stripe (payments), Resend (emails), Cloudflare (anti-bot protection) and mapping services (route calculation from addresses). Some are located outside the European Union; transfers are covered by the safeguards required by regulation.</p>' +
+      '<h3>Confidentiality of job-site photos</h3><p>Photos sent with a quote or job request are stored in a private space. They are strictly reserved for the technical assessment of the job: only the craftsman concerned and you can access them, through temporary links, and they are never made public.</p>' +
+      '<h3>Retention</h3><p>Your data is kept as long as needed for the service, then deleted or anonymised, unless the law requires keeping it (for example payment and accounting records). When a craftsman account is deleted, data is erased and a minimal accounting archive is kept.</p>' +
+      '<h3>Your rights</h3><p>You may request access to, correction or erasure of your data, object to processing, or ask for restriction or portability, by writing to <a href="mailto:contact@learnlogicstudio.com">contact@learnlogicstudio.com</a>. You may also contact the French data protection authority (cnil.fr).</p>' },
     es: { titre: 'Privacidad', contenu:
-      '<p>Tus datos están alojados en una infraestructura segura, con normas de acceso estrictas — cada usuario solo accede a sus propios datos.</p>' +
-      '<p>Tu teléfono y correo electrónico nunca se muestran públicamente — solo se comparten en el momento de una solicitud de presupuesto.</p>' +
-      '<p>CaraLink Artisans nunca vende tus datos a terceros.</p>' },
+      '<p><em>Versión del 14 de octubre de 2026.</em> El responsable del tratamiento de tus datos es LearnLogic Studio (SIRET 832 640 858 000 29), contacto: <a href="mailto:contact@learnlogicstudio.com">contact@learnlogicstudio.com</a>.</p>' +
+      '<h3>Datos que recogemos</h3><p><strong>Clientes:</strong> nombre, teléfono, correo (obligatorio para una reserva de pago), localidad o dirección de intervención, descripción de la necesidad, fotos adjuntas, importe y fecha de los pagos. El número de tu tarjeta lo gestiona Stripe: no tenemos acceso.</p><p><strong>Artesanos:</strong> identidad, datos de contacto, dirección, SIRET, documentos de seguro, servicios, tarifas, fotos y los datos de gestión introducidos en MPA Artisans (clientes, intervenciones, facturas).</p>' +
+      '<h3>Para qué y con qué base</h3><p>Para conectar clientes y artesanos, tramitar solicitudes, reservas, pagos y reembolsos, enviar los correos relacionados con tu solicitud, gestionar las cuentas de artesanos, cobrar la comisión, prevenir el fraude y cumplir nuestras obligaciones legales. Estos tratamientos se basan en la ejecución del servicio que solicitas, nuestras obligaciones legales y nuestro interés legítimo en proteger la plataforma.</p>' +
+      '<h3>Quién accede</h3><p>Tu teléfono y tu correo nunca se muestran públicamente. Se transmiten al artesano afectado por tu solicitud, tras el pago de los gastos de reserva o cuando el artesano acepta la solicitud. Nunca vendemos tus datos.</p><p>Recurrimos a proveedores técnicos: Vercel (alojamiento del sitio), Supabase (base de datos y archivos), Stripe (pagos), Resend (correos), Cloudflare (protección antirrobots) y servicios de cartografía (cálculo de trayectos a partir de direcciones). Algunos están fuera de la Unión Europea; las transferencias están cubiertas por las garantías que exige la normativa.</p>' +
+      '<h3>Confidencialidad de las fotos de obra</h3><p>Las fotos enviadas con una solicitud de presupuesto o de intervención se guardan en un espacio privado. Están estrictamente reservadas a la evaluación técnica del trabajo: solo el artesano afectado y tú tenéis acceso, mediante enlaces temporales, y nunca se hacen públicas.</p>' +
+      '<h3>Conservación</h3><p>Tus datos se conservan el tiempo necesario para el servicio y después se eliminan o anonimizan, salvo obligación legal de conservarlos (por ejemplo justificantes de pago y contabilidad). Al eliminar una cuenta de artesano se borran los datos y se conserva un archivo contable mínimo.</p>' +
+      '<h3>Tus derechos</h3><p>Puedes solicitar el acceso, la rectificación o la supresión de tus datos, oponerte a un tratamiento, pedir su limitación o portabilidad, escribiendo a <a href="mailto:contact@learnlogicstudio.com">contact@learnlogicstudio.com</a>. También puedes acudir a la autoridad francesa de protección de datos (cnil.fr).</p>' },
   },
   cookies: {
     fr: { titre: 'Cookies', contenu:
-      '<p>Ce site utilise uniquement des cookies techniques nécessaires à son fonctionnement (préférence de langue, session de connexion). Aucun cookie publicitaire ou de tracking tiers.</p>' },
+      '<p>Ce site utilise uniquement des cookies et un stockage techniques nécessaires à son fonctionnement : préférence de langue, session de connexion, protection anti-robot (Cloudflare) sur certains formulaires, et sécurité du paiement (Stripe) sur la page de paiement. Aucun cookie publicitaire ni de suivi à des fins commerciales.</p>' },
     en: { titre: 'Cookies', contenu:
-      '<p>This site only uses technical cookies necessary for its operation (language preference, login session). No advertising or third-party tracking cookies.</p>' },
+      '<p>This site only uses technical cookies and storage necessary for its operation: language preference, login session, anti-bot protection (Cloudflare) on some forms, and payment security (Stripe) on the payment page. No advertising cookies and no tracking for commercial purposes.</p>' },
     es: { titre: 'Cookies', contenu:
-      '<p>Este sitio solo utiliza cookies técnicas necesarias para su funcionamiento (preferencia de idioma, sesión de conexión). Sin cookies publicitarias ni de seguimiento de terceros.</p>' },
+      '<p>Este sitio solo utiliza cookies y almacenamiento técnicos necesarios para su funcionamiento: preferencia de idioma, sesión de conexión, protección antirrobots (Cloudflare) en algunos formularios y seguridad del pago (Stripe) en la página de pago. Sin cookies publicitarias ni seguimiento con fines comerciales.</p>' },
   },
 };
+
+// Lien direct vers un texte légal (ex. depuis la page d'inscription) : ?legal=cgu | privacy | mentions | cookies
+document.addEventListener('DOMContentLoaded', function () {
+  try {
+    var l = new URLSearchParams(window.location.search).get('legal');
+    if (l && LEGAL_CONTENT_ARTISANS[l]) ouvrirModalLegal(l);
+  } catch (e) {}
+});
 
 function ouvrirModalLegal(type) {
   var existing = document.getElementById('modal-legal');
