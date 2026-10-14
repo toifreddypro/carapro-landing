@@ -33,6 +33,33 @@
   @media(max-width:760px){.grille{grid-template-columns:repeat(2,1fr);}}
   @media(max-width:480px){.grille{grid-template-columns:1fr;}}
 
+  /* Modes d'affichage (choix du visiteur, mémorisé) : petites icônes (par défaut), grandes icônes (= la grille d'origine), liste */
+  .grille.vue-petites{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+  .vue-petites .carte-produit{border-radius:11px;}
+  .vue-petites .carte-corps{padding:9px 10px 11px;gap:3px;}
+  .vue-petites .produit-nom{font-size:13px;line-height:1.25;}
+  .vue-petites .produit-desc{display:none;}
+  .vue-petites .prix-ligne{margin-top:2px;gap:6px;}
+  .vue-petites .prix-actuel{font-size:15px;}
+  .vue-petites .prix-barre{font-size:11.5px;}
+  .vue-petites .btn-commander{padding:7px;font-size:12px;margin-top:5px;border-radius:8px;}
+  .vue-petites .photo-vide{font-size:28px;}
+  .vue-petites .badge-remise,.vue-petites .badge-phare,.vue-petites .badge-nouveaute{top:6px;font-size:10px;padding:3px 7px;}
+  .vue-petites .badge-remise{right:6px;} .vue-petites .badge-phare,.vue-petites .badge-nouveaute{left:6px;}
+  .vue-petites .delai-sur-commande{font-size:10.5px;}
+  .grille.vue-liste{grid-template-columns:1fr;gap:10px;}
+  .vue-liste .carte-produit{flex-direction:row;align-items:stretch;border-radius:11px;}
+  .vue-liste .photo-wrap{width:96px;aspect-ratio:1;flex-shrink:0;}
+  .vue-liste .photo-vide{font-size:30px;}
+  .vue-liste .carte-corps{padding:10px 14px;gap:3px;justify-content:center;}
+  .vue-liste .produit-desc{flex:0 0 auto;-webkit-line-clamp:1;font-size:12px;}
+  .vue-liste .btn-commander{width:auto;align-self:flex-start;padding:7px 16px;font-size:12.5px;margin-top:5px;}
+  .vue-liste .badge-remise,.vue-liste .badge-phare,.vue-liste .badge-nouveaute{top:5px;font-size:9.5px;padding:2px 6px;}
+  .vue-liste .badge-remise{right:5px;} .vue-liste .badge-phare,.vue-liste .badge-nouveaute{left:5px;}
+  .btn-vue{width:34px;height:32px;border:1px solid var(--brd);background:transparent;color:var(--tx);cursor:pointer;font-size:15px;line-height:1;padding:0;}
+  .btn-vue:first-child{border-radius:8px 0 0 8px;} .btn-vue:last-child{border-radius:0 8px 8px 0;} .btn-vue + .btn-vue{border-left:none;}
+  .btn-vue.actif{background:var(--ac);border-color:var(--ac);color:#fff;}
+
   .carte-produit{background:var(--panel);border:1px solid var(--brd);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;}
   .photo-wrap{position:relative;aspect-ratio:1;background:var(--inp);overflow:hidden;min-height:0;flex-shrink:0;}
   .photo-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
@@ -503,6 +530,20 @@ function render() {
 // ── Filtre par catégorie + tri par prix — tout se passe côté client, sans recharger ──
 var _filtreCategorie = null; // null = toutes les catégories
 var _triActif = 'pertinence'; // 'pertinence' | 'prix_asc' | 'prix_desc'
+// Mode d'affichage de la grille, mémorisé dans le navigateur du visiteur (sans effet si le navigateur refuse le stockage).
+var _vueGrille = 'petites'; // 'petites' | 'grandes' | 'liste'
+try { var _vueMemo = localStorage.getItem('cat_vue'); if (_vueMemo === 'petites' || _vueMemo === 'grandes' || _vueMemo === 'liste') _vueGrille = _vueMemo; } catch (e) { /* stockage indisponible : on garde la valeur par défaut */ }
+var LIBELLES_VUE = {
+  fr: { petites: 'Petites icônes', grandes: 'Grandes icônes', liste: 'Liste' },
+  en: { petites: 'Small icons', grandes: 'Large icons', liste: 'List' },
+  es: { petites: 'Iconos pequeños', grandes: 'Iconos grandes', liste: 'Lista' },
+};
+function changerVue(v) {
+  _vueGrille = v;
+  try { localStorage.setItem('cat_vue', v); } catch (e) { /* sans importance */ }
+  renderBarreFiltres();
+  rerenderGrillePrincipale();
+}
 
 function categoriesDisponibles() {
   var vues = {};
@@ -524,10 +565,15 @@ function renderBarreFiltres() {
       '<option value="prix_asc"' + (_triActif === 'prix_asc' ? ' selected' : '') + '>' + T('cat_tri_prix_asc') + '</option>' +
       '<option value="prix_desc"' + (_triActif === 'prix_desc' ? ' selected' : '') + '>' + T('cat_tri_prix_desc') + '</option>' +
     '</select>';
+  var lib = LIBELLES_VUE[AT_LANG] || LIBELLES_VUE.fr;
+  var boutonVue = function(v, glyphe) {
+    return '<button class="btn-vue' + (_vueGrille === v ? ' actif' : '') + '" onclick="changerVue(' + jsAttr(v) + ')" title="' + escHtml(lib[v]) + '" aria-label="' + escHtml(lib[v]) + '" aria-pressed="' + (_vueGrille === v) + '">' + glyphe + '</button>';
+  };
+  var selecteurVue = '<div style="display:flex;">' + boutonVue('petites', '⊞') + boutonVue('grandes', '▢') + boutonVue('liste', '☰') + '</div>';
   zone.innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + (cats.length ? pastilleTous + pastillesCat : '') + '</div>' +
-      selectTri +
+      '<div style="display:flex;align-items:center;gap:10px;">' + selecteurVue + selectTri + '</div>' +
     '</div>';
 }
 
@@ -560,6 +606,7 @@ function rerenderGrillePrincipale() {
   }
 
   var grille = document.getElementById('grille-principale');
+  grille.className = 'grille' + (_vueGrille === 'petites' ? ' vue-petites' : (_vueGrille === 'liste' ? ' vue-liste' : ''));
   grille.innerHTML = liste.length
     ? liste.map(carteProduit).join('')
     : '<p style="grid-column:1/-1;color:var(--mu);padding:30px 0;text-align:center;">' + T('cat_aucun_produit_categorie') + '</p>';

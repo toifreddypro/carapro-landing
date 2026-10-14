@@ -4333,12 +4333,19 @@ async function enregistrerMouvementFourniture(id, type) {
   var f = _fournituresCache.find(function(x) { return x.id === id; });
   if (!f) return;
 
-  var quantiteStr = prompt((type === 'achat' ? 'Quantité achetée' : 'Quantité utilisée') + ' (' + f.unite + ') :', '1');
-  if (quantiteStr === null) return;
-  var quantite = parseFloat(quantiteStr);
-  if (!quantite || quantite <= 0) { alert('Indiquez une quantité valide.'); return; }
+  // Stock ACTUEL relu à l'instant (un autre appareil a pu le modifier depuis le dernier chargement) : on l'affiche avant de demander la quantité,
+  // pour qu'on ne se trompe pas de produit ni de quantité.
+  var { data: stockFrais } = await sb.from('artisans_fournitures').select('quantite').eq('id', id).eq('artisan_id', _artisan.id).maybeSingle();
+  if (stockFrais && stockFrais.quantite != null) f.quantite = Number(stockFrais.quantite);
+  var quantiteAvant = f.quantite;
 
-  var nouvelleQuantite = type === 'achat' ? f.quantite + quantite : f.quantite - quantite;
+  var quantiteStr = prompt('📦 ' + f.nom + '\nStock actuel : ' + quantiteAvant + ' ' + f.unite + '\n\n' + (type === 'achat' ? 'Quantité achetée' : 'Quantité utilisée') + ' (' + f.unite + ') :', '1');
+  if (quantiteStr === null) return;
+  var quantite = parseFloat(String(quantiteStr).replace(',', '.'));
+  if (!quantite || quantite <= 0) { alert('Indiquez une quantité valide.'); return; }
+  if (type !== 'achat' && quantite > quantiteAvant && !confirm('Attention : vous indiquez ' + quantite + ' ' + f.unite + ' utilisé(s), mais il n\'en reste que ' + quantiteAvant + ' en stock.\n\nContinuer ? Le stock passera à 0.')) return;
+
+  var nouvelleQuantite = type === 'achat' ? quantiteAvant + quantite : quantiteAvant - quantite;
   if (nouvelleQuantite < 0) nouvelleQuantite = 0;
 
   var { error: errMaj } = await sb.from('artisans_fournitures').update({ quantite: nouvelleQuantite, updated_at: new Date().toISOString() }).eq('id', id).eq('artisan_id', _artisan.id);
@@ -4347,6 +4354,9 @@ async function enregistrerMouvementFourniture(id, type) {
   await sb.from('artisans_fournitures_mouvements').insert({
     fourniture_id: id, artisan_id: _artisan.id, type: type, quantite: quantite,
   });
+
+  // Rappel du résultat : de combien à combien (visible dans le fil de MPA AI).
+  mpaAiDire('📦 ' + escHtml(f.nom) + ' : ' + quantiteAvant + ' → ' + nouvelleQuantite + ' ' + escHtml(f.unite) + (type === 'achat' ? ' (achat)' : ' (utilisation)'), 'info');
 
   // Alerte de stock bas — le vrai cœur de cette fonctionnalité : prévenir avant la pénurie.
   if (f.seuil_alerte != null && nouvelleQuantite <= f.seuil_alerte) {
