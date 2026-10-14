@@ -3195,6 +3195,23 @@ async function chargerCatalogue() {
   renderProduitsStock();
   renderVentesProduits();
   renderMonOffre();
+  alerterStocksBas();
+}
+
+// MPA-AI : rappelle les produits dont le stock a atteint le seuil d'alerte choisi par l'artisan.
+// Un même état (mêmes produits, mêmes quantités) n'est annoncé qu'une fois par session, pas à chaque rechargement du catalogue.
+function alerterStocksBas() {
+  var bas = _catalogueCache.filter(function(c) {
+    return c.quantite_stock != null && c.seuil_alerte != null && c.quantite_stock <= c.seuil_alerte;
+  });
+  if (!bas.length) return;
+  var signature = bas.map(function(c) { return c.id + ':' + c.quantite_stock; }).join('|');
+  try { if (sessionStorage.getItem('alerte_stock_vue') === signature) return; sessionStorage.setItem('alerte_stock_vue', signature); } catch (e) {}
+  var lignes = bas.map(function(c) {
+    return c.quantite_stock <= 0 ? '🚫 ' + escHtml(c.nom) + ' : épuisé' : '🔔 ' + escHtml(c.nom) + ' : ' + c.quantite_stock + ' restant' + (c.quantite_stock > 1 ? 's' : '') + ' (seuil ' + c.seuil_alerte + ')';
+  });
+  var epuise = bas.some(function(c) { return c.quantite_stock <= 0; });
+  mpaAiDire('<strong>Stock à surveiller :</strong><br>' + lignes.join('<br>') + '<br><br>Pensez à réapprovisionner pour ne pas manquer de ventes.', epuise ? 'important' : 'warning');
 }
 
 // Ventes par produit = commandes réglées d'UN article (ancien format : catalogue_id sur la commande) + lignes des commandes PANIER
@@ -3420,6 +3437,7 @@ function renderProduitsStock() {
     var enVente = c.en_vente !== false;
     var stockTexte = c.quantite_stock == null ? 'Illimité' : c.quantite_stock + ' en stock';
     var stockBas = c.quantite_stock != null && c.quantite_stock <= 0;
+    var stockAlerte = !stockBas && c.quantite_stock != null && c.seuil_alerte != null && c.quantite_stock <= c.seuil_alerte;
     var photo = c.url_photo
       ? '<img src="' + escHtml(c.url_photo) + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px 8px 0 0;">'
       : '<div style="width:100%;aspect-ratio:1;background:var(--p2);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:24px;">📦</div>';
@@ -3432,7 +3450,7 @@ function renderProduitsStock() {
           '<button onclick="ouvrirModifierCatalogue(\'' + c.id + '\')" title="Modifier cet article" style="flex-shrink:0;background:none;border:1px solid var(--brd);border-radius:6px;width:22px;height:22px;cursor:pointer;font-size:11px;color:var(--mu2);">✎</button>' +
         '</div>' +
         (c.prix != null ? '<div style="font-size:13px;color:var(--ac);font-weight:700;margin-bottom:4px;">' + c.prix + ' €</div>' : '') +
-        '<div style="font-size:11.5px;color:' + (stockBas ? 'var(--danger)' : 'var(--mu2)') + ';font-weight:' + (stockBas ? '700' : '400') + ';">' + (stockBas ? '⚠️ ' : '') + stockTexte + '</div>' +
+        '<div style="font-size:11.5px;color:' + (stockBas ? 'var(--danger)' : stockAlerte ? '#b45309' : 'var(--mu2)') + ';font-weight:' + (stockBas || stockAlerte ? '700' : '400') + ';">' + (stockBas ? '⚠️ ' : stockAlerte ? '🔔 Stock bas : ' : '') + stockTexte + '</div>' +
         '<span style="display:inline-block;margin-top:6px;padding:2px 8px;border-radius:6px;font-size:10.5px;font-weight:700;' + (enVente ? 'background:rgba(15,157,120,.1);color:#0f9d78;' : 'background:var(--p2);color:var(--mu);') + '">' + (enVente ? '✅ En vente' : 'Pas en vente') + '</span>' +
         '<button onclick="toggleEnVenteCatalogue(\'' + c.id + '\')" style="display:block;width:100%;margin-top:8px;padding:6px;border-radius:7px;border:1px solid ' + (enVente ? 'var(--brd)' : 'var(--ac)') + ';background:transparent;color:' + (enVente ? 'var(--mu2)' : 'var(--ac)') + ';font-size:11.5px;font-weight:700;cursor:pointer;">' + (enVente ? 'Retirer de la vente' : 'Mettre en vente') + '</button>' +
       '</div>' +
@@ -3532,6 +3550,7 @@ function openAjouterCatalogue() {
   document.getElementById('cat-delai').value = '';
   document.getElementById('cat-delai-wrap').style.display = 'none';
   document.getElementById('cat-stock').value = '';
+  document.getElementById('cat-seuil').value = '';
   document.getElementById('cat-photo-input').value = '';
   ouvrirModale('modal-catalogue');
 }
@@ -3550,6 +3569,7 @@ function ouvrirModifierCatalogue(id) {
   document.getElementById('cat-delai').value = c.delai_preparation || '';
   document.getElementById('cat-delai-wrap').style.display = c.type === 'sur_commande' ? 'block' : 'none';
   document.getElementById('cat-stock').value = c.quantite_stock != null ? c.quantite_stock : '';
+  document.getElementById('cat-seuil').value = c.seuil_alerte != null ? c.seuil_alerte : '';
   document.getElementById('cat-photo-input').value = '';
   ouvrirModale('modal-catalogue');
 }
@@ -3580,6 +3600,8 @@ async function sauverCatalogue() {
       type: document.getElementById('cat-type').value,
       delai_preparation: document.getElementById('cat-delai').value.trim() || null,
       quantite_stock: document.getElementById('cat-stock').value !== '' ? parseInt(document.getElementById('cat-stock').value, 10) : null,
+      // Un seuil n'a de sens que si le stock est suivi (pas illimité).
+      seuil_alerte: (document.getElementById('cat-stock').value !== '' && document.getElementById('cat-seuil').value !== '' && parseInt(document.getElementById('cat-seuil').value, 10) >= 0) ? parseInt(document.getElementById('cat-seuil').value, 10) : null,
     };
     if (urlPhoto) champs.url_photo = urlPhoto; // garde la photo existante si aucune nouvelle n'est choisie
 

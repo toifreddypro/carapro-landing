@@ -1148,6 +1148,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <input id="cat-stock" min="0" placeholder="Laisser vide si illimité (ex : une formation)" step="1" type="number"/>
 <div style="font-size:11px;color:var(--mu);margin-top:4px;">Vide = toujours disponible, sans limite. Un nombre = suivi réel, mis à jour automatiquement à chaque vente.</div>
 </div>
+<div class="modal-field" id="cat-seuil-wrap">
+<label>🔔 Seuil d'alerte (facultatif)</label>
+<input id="cat-seuil" min="0" placeholder="Ex : 5" step="1" type="number"/>
+<div style="font-size:11px;color:var(--mu);margin-top:4px;">MPA AI vous prévient (message + email) quand le stock descend à ce nombre ou moins. Utile seulement si vous suivez un stock réel.</div>
+</div>
 <div class="modal-field">
 <label>Photo</label>
 <input accept="image/*" id="cat-photo-input" type="file"/>

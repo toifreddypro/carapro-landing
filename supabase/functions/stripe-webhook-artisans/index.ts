@@ -258,9 +258,9 @@ function paramsRemboursement(base: Record<string, string>, compteEvenement: stri
 
 // Retire du stock (ou le remet si delta > 0) sans jamais passer sous zéro, même si deux paiements arrivent en même temps :
 // l'écriture ne réussit que si le stock lu n'a pas changé entre-temps, sinon on relit et on recommence.
-async function ajusterStock(articleId: string, delta: number): Promise<"ok" | "illimite" | "insuffisant"> {
+async function ajusterStock(articleId: string, delta: number, alertes?: any[]): Promise<"ok" | "illimite" | "insuffisant"> {
   for (let essai = 0; essai < 5; essai++) {
-    const { data: article, error } = await sbAdmin.from("artisans_catalogue").select("id, quantite_stock").eq("id", articleId).maybeSingle();
+    const { data: article, error } = await sbAdmin.from("artisans_catalogue").select("id, nom, artisan_id, quantite_stock, seuil_alerte").eq("id", articleId).maybeSingle();
     lever(error, "Lecture du stock");
     if (!article) return "ok"; // produit supprimé entre-temps : rien à décompter
     if (article.quantite_stock == null) return "illimite"; // stock non suivi (ex : une formation)
@@ -269,7 +269,14 @@ async function ajusterStock(articleId: string, delta: number): Promise<"ok" | "i
     const { data: maj, error: errMaj } = await sbAdmin.from("artisans_catalogue").update({ quantite_stock: nouveau })
       .eq("id", articleId).eq("quantite_stock", article.quantite_stock).select("id");
     lever(errMaj, "Maj du stock");
-    if (maj && maj.length) return "ok";
+    if (maj && maj.length) {
+      // Le stock vient de franchir le seuil d'alerte de l'artisan (de « au-dessus » à « au niveau ou en dessous ») : on le note,
+      // l'email part seulement quand la commande entière est validée (voir decompterStock), jamais sur un stock remis ensuite.
+      if (alertes && delta < 0 && article.seuil_alerte != null && article.quantite_stock > article.seuil_alerte && nouveau <= article.seuil_alerte) {
+        alertes.push({ nom: article.nom, artisan_id: article.artisan_id, stock: nouveau, seuil: article.seuil_alerte });
+      }
+      return "ok";
+    }
   }
   throw new Error(`Stock de ${articleId} : trop de conflits d'écriture`);
 }
@@ -283,15 +290,35 @@ async function decompterStock(lignes: any[]): Promise<{ ok: boolean; manquants: 
     parArticle.set(l.catalogue_id, { quantite: (deja?.quantite || 0) + Number(l.quantite || 0), nom: l.nom_article });
   }
   const retires: Array<[string, number]> = [];
+  const alertes: any[] = [];
   for (const [id, { quantite, nom }] of parArticle) {
-    const r = await ajusterStock(id, -quantite);
+    const r = await ajusterStock(id, -quantite, alertes);
     if (r === "insuffisant") {
       for (const [idRetire, q] of retires) await ajusterStock(idRetire, q);
       return { ok: false, manquants: [nom] };
     }
     if (r === "ok") retires.push([id, quantite]);
   }
+  await envoyerAlertesStock(alertes);
   return { ok: true, manquants: [] };
+}
+
+// MPA-AI prévient l'artisan par email quand un produit atteint son seuil d'alerte. Un échec d'envoi ne bloque jamais la commande.
+async function envoyerAlertesStock(alertes: any[]) {
+  for (const a of alertes) {
+    try {
+      const { data: artisan } = await sbAdmin.from("artisans").select("email").eq("id", a.artisan_id).maybeSingle();
+      if (!artisan?.email) continue;
+      const vide = a.stock <= 0;
+      const sujet = vide ? `✨ MPA AI — "${a.nom}" est épuisé` : `✨ MPA AI — stock bas : "${a.nom}"`;
+      const html = `<div style="font-family:sans-serif;max-width:520px;"><h3 style="color:#B5502F;">${vide ? "🚫" : "⚠️"} ${escHtml(a.nom)}</h3>
+        <p>${vide ? `Votre produit <strong>${escHtml(a.nom)}</strong> est <strong>épuisé</strong>.` : `Il ne reste que <strong>${a.stock}</strong> exemplaire${a.stock > 1 ? "s" : ""} de <strong>${escHtml(a.nom)}</strong> (votre seuil d'alerte : ${a.seuil}).`}</p>
+        <p>Pensez à réapprovisionner pour ne pas manquer de ventes. Vous pouvez mettre à jour le stock dans MPA, onglet Mes produits.</p></div>`;
+      await envoyerEmail(artisan.email, sujet, html);
+    } catch (e) {
+      console.error("[stripe-webhook-artisans] Alerte de stock non envoyée :", e);
+    }
+  }
 }
 
 function emailNouvelleCommande(commande: any, lignes: any[]): string {
