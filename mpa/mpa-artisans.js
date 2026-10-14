@@ -329,6 +329,7 @@ async function init() {
   await verifierAlertesMpaAi();
   await demanderReglageVisite(); // après les autres alertes : la question de MPA-AI est la plus visible
   rappelerPaiementsBoutique('demarrage');
+  rappelerStripeReservations();
   await verifierNouveautes();
   renderMonOffre();
   traiterRetourAbonnement(); // sans attendre : peut patienter jusqu'à 30 s le temps que Stripe prévienne le serveur
@@ -633,6 +634,16 @@ async function chargerDemandes() {
   });
   liste.sort(function(a, b) { return new Date(b.demande.created_at) - new Date(a.demande.created_at); });
 
+  // Paiements en ligne rattachés à ces demandes (frais de réservation / de déplacement déjà réglés) — facultatif : jamais bloquant.
+  window._paiementsDemandes = {};
+  try {
+    var idsD = liste.map(function(l) { return l.demande.id; });
+    if (idsD.length) {
+      var { data: pays } = await sb.from('paiements_prestations').select('demande_id, montant, statut').eq('artisan_id', _artisan.id).eq('type', 'reservation').in('demande_id', idsD);
+      (pays || []).forEach(function(x) { window._paiementsDemandes[x.demande_id] = x; });
+    }
+  } catch (ePay) { console.warn('Paiements des demandes non chargés :', ePay); }
+
   _demandesListe = liste;
   renderDemandes();
 }
@@ -861,6 +872,13 @@ function lireFraisDeplacement(brut) {
 }
 // Rappel sur la carte d'une demande de visite : les frais annoncés au client (figés au moment de sa demande).
 function ligneVisiteMPA(d) {
+  var pay = d && window._paiementsDemandes && window._paiementsDemandes[d.id];
+  if (pay && ['paye', 'partiellement_rembourse', 'rembourse'].indexOf(pay.statut) !== -1) {
+    var m = Number(pay.montant).toFixed(2).replace('.', ',');
+    var nature = d.type_intervention === 'visite' ? 'frais de déplacement' : 'frais de réservation';
+    var suite = pay.statut === 'rembourse' ? 'Ils ont été remboursés au client.' : (d.statut === 'creneau_propose' ? 'Si vous refusez ou ne répondez pas sous 48 h, il est remboursé automatiquement.' : 'Ils sont à vous (net des frais Stripe).');
+    return '<div style="font-size:12px;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:6px 10px;margin-bottom:8px;">💶 Le client a déjà payé <strong>' + m + ' €</strong> de ' + nature + ' en ligne. ' + suite + (d.type_intervention === 'visite' ? ' Le devis définitif des travaux est à remettre après la visite.' : '') + '</div>';
+  }
   if (!d || d.type_intervention !== 'visite') return '';
   var f = Number(d.frais_deplacement);
   var texte = d.frais_deplacement == null
@@ -1231,6 +1249,7 @@ async function ouvrirNouvelleIntervention(dateStr, creneau) {
   document.getElementById('mi-date-paiement-wrap').style.display = 'none';
   document.getElementById('mi-delete-wrap').style.display = 'none';
   document.getElementById('mi-impossible-wrap').style.display = 'none';
+  var zonePaiement = document.getElementById('mi-paiement-wrap'); if (zonePaiement) { zonePaiement.style.display = 'none'; zonePaiement.innerHTML = ''; }
   ouvrirModale('modal-intervention');
 }
 
@@ -1269,8 +1288,130 @@ async function ouvrirIntervention(id) {
   document.getElementById('mi-delete-wrap').style.display = 'block';
   document.getElementById('mi-impossible-wrap').style.display = ['planifiee', 'en_cours'].indexOf(i.statut || 'planifiee') !== -1 ? 'block' : 'none';
   renderZoneAvisIntervention(i);
+  chargerPaiementsIntervention(i);
   ouvrirModale('modal-intervention');
   calculerCreneaux();
+}
+
+// ════════════════════════════════════════
+//  PAIEMENTS EN LIGNE D'UNE INTERVENTION (15/10/2026)
+//  Frais de réservation / de déplacement payés à la réservation, et paiements demandés après la visite (« Demander un paiement »).
+// ════════════════════════════════════════
+var _paiementsIntervention = [];
+function eurosMPA(n) { return Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
+
+async function chargerPaiementsIntervention(i) {
+  var zone = document.getElementById('mi-paiement-wrap');
+  if (!zone) return;
+  _paiementsIntervention = [];
+  if (!i || i.statut === 'annulee') { zone.style.display = 'none'; zone.innerHTML = ''; return; }
+  zone.style.display = 'block';
+  zone.innerHTML = '<div style="font-size:12px;color:var(--mu);">Chargement des paiements…</div>';
+  try {
+    var { data, error } = await sb.from('paiements_prestations').select('*').eq('artisan_id', _artisan.id).eq('intervention_id', i.id)
+      .not('statut', 'in', '(annule,expire)').order('created_at', { ascending: true });
+    if (error) throw error;
+    _paiementsIntervention = data || [];
+  } catch (e) { zone.style.display = 'none'; return; } // table pas encore créée (SQL pas lancé) : rien à afficher
+  renderPaiementsIntervention(i);
+}
+
+function renderPaiementsIntervention(i) {
+  var zone = document.getElementById('mi-paiement-wrap');
+  if (!zone) return;
+  var libelleStatut = { en_attente: '⏳ en attente de paiement', paye: '✅ payé', partiellement_rembourse: '↩️ remboursé en partie', rembourse: '↩️ remboursé' };
+  var lignes = _paiementsIntervention.map(function(p) {
+    var nom = p.type === 'reservation' ? 'Frais payés à la réservation' : 'Paiement demandé';
+    var datePaye = p.paye_le ? ' le ' + new Date(p.paye_le).toLocaleDateString('fr-FR') : '';
+    var actions = '';
+    if (['paye', 'partiellement_rembourse'].indexOf(p.statut) !== -1) actions = ' <button type="button" onclick="rembourserPaiementPrestation(\'' + p.id + '\')" style="background:none;border:none;color:var(--danger);font-size:12px;cursor:pointer;text-decoration:underline;">Rembourser</button>';
+    if (p.statut === 'en_attente') actions = ' <button type="button" onclick="copierLienPaiementPrestation(\'' + p.token + '\')" style="background:none;border:none;color:var(--ac);font-size:12px;cursor:pointer;text-decoration:underline;">Copier le lien</button>';
+    var reste = Number(p.montant_rembourse) > 0 ? ' (remboursé : ' + eurosMPA(p.montant_rembourse) + ')' : '';
+    return '<div style="font-size:12.5px;margin-bottom:6px;">💶 ' + nom + ' : <strong>' + eurosMPA(p.montant) + '</strong> — ' + (libelleStatut[p.statut] || escHtml(p.statut)) + datePaye + reste + actions + '</div>';
+  }).join('');
+  var peutDemander = paiementsEnLigneActifs() && ['annulee'].indexOf(i.statut) === -1;
+  zone.innerHTML = (lignes || '') +
+    (peutDemander
+      ? '<div style="text-align:center;margin-top:6px;"><button type="button" onclick="ouvrirDemandePaiement()" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--ac);background:var(--ac);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">💶 Demander un paiement</button><div style="font-size:11px;color:var(--mu);margin-top:5px;">Envoie à votre client un lien de paiement par carte pour le montant de votre devis.</div></div>'
+      : (lignes ? '' : '<div style="font-size:11.5px;color:var(--mu);text-align:center;">Activez vos paiements en ligne (Mon profil) pour pouvoir demander un paiement à vos clients.</div>'));
+}
+
+function copierLienPaiementPrestation(token) {
+  var lien = 'https://caralink.app/artisans/payer-prestation.html?token=' + encodeURIComponent(token);
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(lien).then(function() { mpaAiDire('🔗 Lien de paiement copié : vous pouvez le coller dans un SMS ou un message WhatsApp.', 'info'); }, function() { prompt('Copiez ce lien :', lien); });
+  else prompt('Copiez ce lien :', lien);
+}
+
+function ouvrirDemandePaiement() {
+  var i = _interventionsCache.find(function(x) { return x.id === _interventionEnCours; });
+  if (!i) return;
+  var client = i.mpa_artisans_clients || {};
+  var dateAff = new Date(i.date_intervention + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  document.getElementById('dp-resume').textContent = (client.nom || 'Client') + ' — ' + dateAff;
+  document.getElementById('dp-montant').value = i.prix ? String(i.prix).replace('.', ',') : '';
+  document.getElementById('dp-description').value = '';
+  document.getElementById('dp-email').value = client.email || '';
+  var dejaPaye = _paiementsIntervention.filter(function(p) { return ['paye', 'partiellement_rembourse'].indexOf(p.statut) !== -1; }).reduce(function(s, p) { return s + Number(p.montant) - Number(p.montant_rembourse || 0); }, 0);
+  document.getElementById('dp-note').innerHTML = (dejaPaye > 0 ? '💡 Ce client a déjà payé <strong>' + eurosMPA(dejaPaye) + '</strong> en ligne (frais de réservation / de déplacement) : déduisez-le du montant si vous le souhaitez.<br>' : '') +
+    '✉️ Le client reçoit un email avec le lien de paiement (valable 14 jours). Vous pouvez aussi copier le lien ensuite et l\'envoyer vous-même.';
+  document.getElementById('btn-dp').disabled = false;
+  document.getElementById('btn-dp').textContent = 'Envoyer la demande de paiement';
+  fermerModale('modal-intervention');
+  ouvrirModale('modal-demander-paiement');
+}
+
+async function confirmerDemandePaiement() {
+  var i = _interventionsCache.find(function(x) { return x.id === _interventionEnCours; });
+  if (!i) return;
+  var brut = document.getElementById('dp-montant').value.replace(/\s/g, '').replace('€', '').replace(',', '.');
+  var montant = Number(brut);
+  if (!/^\d+(\.\d{1,2})?$/.test(brut) || !isFinite(montant) || montant < 0.5 || montant > 10000) { alert('Indiquez un montant valide (de 0,50 € à 10 000 €), par exemple 180 ou 180,50.'); return; }
+  var btn = document.getElementById('btn-dp');
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/demander-paiement-prestation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({ intervention_id: i.id, montant: montant, description: document.getElementById('dp-description').value, client_email: document.getElementById('dp-email').value.trim() }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    fermerModale('modal-demander-paiement');
+    if (data.email_envoye) mpaAiDire('💶 Demande de paiement de ' + eurosMPA(montant) + ' envoyée à votre client par email. Vous serez prévenu dès qu\'il aura payé.', 'info');
+    else {
+      mpaAiDire('💶 Demande de paiement créée (' + eurosMPA(montant) + '), mais ' + (data.sans_email ? 'ce client n\'a pas d\'email' : 'l\'email n\'a pas pu partir') + ' : copiez le lien et envoyez-le lui vous-même.', 'warning');
+      try { await navigator.clipboard.writeText(data.lien); } catch (_) { prompt('Copiez ce lien et envoyez-le à votre client :', data.lien); }
+    }
+    await ouvrirIntervention(i.id);
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+    btn.disabled = false; btn.textContent = 'Envoyer la demande de paiement';
+  }
+}
+
+async function rembourserPaiementPrestation(paiementId) {
+  var p = _paiementsIntervention.find(function(x) { return x.id === paiementId; });
+  if (!p) return;
+  var reste = Number(p.montant) - Number(p.montant_rembourse || 0);
+  var saisie = prompt('Montant à rembourser à votre client (maximum ' + eurosMPA(reste) + ') :', String(reste.toFixed(2)).replace('.', ','));
+  if (saisie === null) return;
+  var montant = Number(String(saisie).replace(/\s/g, '').replace('€', '').replace(',', '.'));
+  if (!isFinite(montant) || montant <= 0 || montant > reste + 0.001) { alert('Montant invalide (entre 0,01 € et ' + eurosMPA(reste) + ').'); return; }
+  if (!confirm('Rembourser ' + eurosMPA(montant) + ' à votre client ? Cette action est définitive.')) return;
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/rembourser-prestation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({ paiement_id: paiementId, montant: montant, motif: 'Remboursement demandé par l\'artisan' }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    mpaAiDire('↩️ ' + eurosMPA(data.rembourse) + ' remboursés à votre client. Il en est prévenu par email.', 'info');
+    var i = _interventionsCache.find(function(x) { return x.id === _interventionEnCours; });
+    if (i) await chargerPaiementsIntervention(i);
+  } catch (e) { alert('Erreur : ' + e.message); }
 }
 
 // ── « Impossible d'honorer » : annule l'intervention et prévient le client par email ──
@@ -1287,6 +1428,8 @@ function ouvrirImpossibleHonorer() {
   document.getElementById('imp-note').innerHTML = client.email
     ? '✉️ Un email sera envoyé à <strong>' + escHtml(client.email) + '</strong>.'
     : '⚠️ Ce client n\'a pas d\'adresse email : <strong>prévenez-le vous-même</strong>' + (client.telephone ? ' au ' + escHtml(client.telephone) : '') + '.';
+  var payesEnLigne = (_paiementsIntervention || []).filter(function(p) { return ['paye', 'partiellement_rembourse'].indexOf(p.statut) !== -1; }).reduce(function(t, p) { return t + Number(p.montant) - Number(p.montant_rembourse || 0); }, 0);
+  if (payesEnLigne > 0) document.getElementById('imp-note').innerHTML += '<br>💶 Les <strong>' + eurosMPA(payesEnLigne) + '</strong> déjà payés en ligne par ce client lui seront <strong>remboursés automatiquement</strong>.';
   document.getElementById('btn-impossible').disabled = false;
   document.getElementById('btn-impossible').textContent = 'Annuler et prévenir mon client';
   fermerModale('modal-intervention');
@@ -2761,6 +2904,17 @@ function renderFiche() {
       : (fr > 0 ? fr.toFixed(2).replace('.', ',') + ' €' : '0,00 € — visite sans frais');
   }
 
+  var fvResa = document.getElementById('fv-frais-resa');
+  if (fvResa) {
+    var fresa = Number(a.frais_reservation);
+    fvResa.textContent = (a.frais_reservation == null || !isFinite(fresa) || fresa <= 0) ? 'Aucun' : fresa.toFixed(2).replace('.', ',') + ' €';
+  }
+  var fvAnnul = document.getElementById('fv-annul');
+  if (fvAnnul) {
+    var hAnnul = a.annulation_gratuite_heures == null ? 24 : Number(a.annulation_gratuite_heures);
+    fvAnnul.textContent = hAnnul > 0 ? 'Jusqu\'à ' + (hAnnul >= 48 && hAnnul % 24 === 0 ? (hAnnul / 24) + ' jours' : hAnnul + ' h') + ' avant le rendez-vous' : 'Jamais (frais acquis dès la confirmation)';
+  }
+
   document.getElementById('cfg-cotis').value = a.cotisation_sociale_pct ?? 22;
   document.getElementById('cfg-tva').value = a.tva_config || 'Non assujetti';
 }
@@ -2784,6 +2938,10 @@ async function openModifierFiche() {
   document.getElementById('m-rayon').value = a.rayon_intervention_km || 15;
   var champFrais = document.getElementById('m-frais'); // (absent si la page HTML en mémoire est plus ancienne que ce code)
   if (champFrais) champFrais.value = (a.frais_deplacement != null && a.frais_deplacement !== '') ? String(a.frais_deplacement).replace('.', ',') : '';
+  var champResa = document.getElementById('m-frais-resa');
+  if (champResa) champResa.value = (a.frais_reservation != null && a.frais_reservation !== '' && Number(a.frais_reservation) > 0) ? String(a.frais_reservation).replace('.', ',') : '';
+  var champAnnul = document.getElementById('m-annul-heures');
+  if (champAnnul) champAnnul.value = String(a.annulation_gratuite_heures == null ? 24 : a.annulation_gratuite_heures);
   // Case « visite d'estimation » : cochée = comportement réel (sans réponse, la visite est proposée par défaut).
   var caseVisite = document.getElementById('m-visite'); window._visiteTouchee = false;
   if (caseVisite) { caseVisite.checked = a.proposer_visite !== false; majVisiteChamps(); }
@@ -2991,6 +3149,19 @@ async function sauverFiche() {
     if (!frais.ok) { alert('Les frais de déplacement doivent être un montant entre 0 et 500 € (par exemple 25 ou 25,50).'); return; }
     if (frais.valeur !== null || _artisan.frais_deplacement != null) maj.frais_deplacement = frais.valeur;
   }
+  // Frais de réservation (payés en ligne) et délai d'annulation gratuite. Envoyés seulement si les colonnes existent (SQL lancé) :
+  // jamais d'effacement silencieux si la page affichée est plus ancienne.
+  var champResa = document.getElementById('m-frais-resa');
+  if (champResa && 'frais_reservation' in _artisan) {
+    var resa = lireFraisDeplacement(champResa.value);
+    if (!resa.ok || (resa.valeur !== null && resa.valeur > 0 && resa.valeur < 1)) { alert('Les frais de réservation doivent être un montant entre 1 et 500 € (par exemple 10 ou 12,50), ou rester vides.'); return; }
+    if (resa.valeur !== null || _artisan.frais_reservation != null) maj.frais_reservation = resa.valeur;
+    if (resa.valeur !== null && resa.valeur > 0 && !paiementsEnLigneActifs()) {
+      if (!confirm('Ces frais sont payés en ligne : ils ne s\'appliqueront qu\'une fois vos paiements en ligne activés (Stripe).\n\nEnregistrer quand même ?')) return;
+    }
+  }
+  var champAnnul = document.getElementById('m-annul-heures');
+  if (champAnnul && 'annulation_gratuite_heures' in _artisan) maj.annulation_gratuite_heures = parseInt(champAnnul.value, 10) || 0;
   // Géocodage de l'adresse pro — sert de point de départ pour le calcul des trajets (Smart Dispatch)
   if (maj.adresse) {
     var pt = await geocoderAdresse(maj.adresse, maj.code_postal, maj.commune);
@@ -3525,6 +3696,21 @@ function rappelerPaiementsBoutique(occasion) {
     mpaAiDire('Votre compte de paiement n\'est pas encore vérifié. Terminez l\'activation pour pouvoir mettre vos produits en vente.', 'pro', { label: 'Terminer l\'activation →', action: 'lancerStripeConnect(null)' });
   } else {
     mpaAiDire((occasion === 'creation' ? 'Votre produit est prêt ! ' : 'Vous avez des produits prêts. ') + 'Pour les mettre en vente, activez d\'abord les paiements en ligne : vos clients paient par carte et l\'argent arrive sur votre compte. Cela prend environ 5 minutes — ayez votre pièce d\'identité et votre IBAN sous la main.', 'pro', { label: 'Activer les paiements →', action: 'lancerStripeConnect(null)' });
+  }
+}
+// Réservations payées en ligne (15/10/2026) : sans paiements en ligne actifs, un artisan ne peut plus recevoir de réservation ni apparaître
+// dans l'annuaire, après une période de grâce. MPA-AI le rappelle, une fois par session, avec la date limite.
+var FIN_PERIODE_GRACE_PAIEMENTS = '2026-11-01';
+function rappelerStripeReservations() {
+  if (!_artisan || paiementsEnLigneActifs() || _rappelsPaiements['reservations']) return;
+  _rappelsPaiements['reservations'] = true;
+  var aujourdhui = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+  var enCours = _artisan.stripe_connect_statut === 'en_cours';
+  var action = { label: enCours ? 'Terminer l\'activation →' : 'Activer mes paiements →', action: 'lancerStripeConnect(null)' };
+  if (aujourdhui > FIN_PERIODE_GRACE_PAIEMENTS) {
+    mpaAiDire('⚠️ Vos paiements en ligne ne sont pas activés : vous n\'apparaissez plus dans l\'annuaire et vos clients ne peuvent plus réserver chez vous. Activez-les (environ 5 minutes) pour revenir immédiatement.', 'important', action);
+  } else {
+    mpaAiDire('💶 Nouveau : vos clients paient désormais leurs frais de réservation / de déplacement EN LIGNE, ce qui vous protège des rendez-vous non honorés. Pour continuer à recevoir des réservations et apparaître dans l\'annuaire, activez vos paiements en ligne <strong>avant le 1er novembre 2026</strong> (environ 5 minutes).', 'important', action);
   }
 }
 function paiementsEnLigneActifs() { return !!_artisan && _artisan.stripe_connect_statut === 'actif'; }

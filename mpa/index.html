@@ -533,6 +533,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="fr"><span class="fl">Site web</span><span class="fv" id="fv-web">—</span></div>
 <div class="fr"><span class="fl">Aller voir le chantier avant le devis</span><span class="fv" id="fv-visite">—</span></div>
 <div class="fr"><span class="fl">Frais de déplacement (visite sur place)</span><span class="fv" id="fv-frais">—</span></div>
+<div class="fr"><span class="fl">Frais de réservation d'un créneau</span><span class="fv" id="fv-frais-resa">—</span></div>
+<div class="fr"><span class="fl">Annulation gratuite par le client</span><span class="fv" id="fv-annul">—</span></div>
 </div>
 </div>
 </div>
@@ -1013,7 +1015,18 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-field"><label>Commune</label><input id="m-com" type="text"/></div>
 <div class="modal-field"><label>Rayon d'intervention (km)</label><input id="m-rayon" type="number" value="15"/></div>
 <div class="modal-field"><label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-weight:600;"><input id="m-visite" type="checkbox" style="margin-top:3px;" onchange="window._visiteTouchee = true; majVisiteChamps();"/><span>Il me faut souvent aller voir le chantier avant de faire mon devis</span></label><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Cochée : vos clients peuvent vous demander de venir voir le chantier (un créneau de visite, avec vos frais de déplacement). Décochée : ils réservent directement un créneau, sans visite.</div></div>
-<div class="modal-field" id="m-frais-bloc"><label>Frais de déplacement pour une visite sur place (€) — facultatif</label><input id="m-frais" type="text" inputmode="decimal" placeholder="Ex. 25 — laissez vide : visite sans frais"/><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Annoncés au client avant sa demande de rendez-vous sur place, et réglés à vous directement lors de votre visite.</div></div>
+<div class="modal-field" id="m-frais-bloc"><label>Frais de déplacement pour une visite sur place (€) — facultatif</label><input id="m-frais" type="text" inputmode="decimal" placeholder="Ex. 25 — laissez vide : visite sans frais"/><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Annoncés au client, puis payés par lui EN LIGNE au moment où il demande le rendez-vous (vous ne voyez sa demande qu'une fois payée). Remboursés automatiquement s'il annule dans votre délai gratuit, ou si vous refusez ou annulez. Nécessite vos paiements en ligne activés.</div></div>
+<div class="modal-field" id="m-resa-bloc"><label>Frais de réservation d'un créneau (€) — facultatif</label><input id="m-frais-resa" type="text" inputmode="decimal" placeholder="Ex. 10 — laissez vide : aucun frais"/><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Payés EN LIGNE par un client qui réserve directement un créneau (de 1 à 500 €). Ils protègent votre temps : un client qui ne vient pas ne vous fait plus perdre de chiffre d'affaires. Remboursés automatiquement si vous refusez, annulez, ou ne répondez pas sous 48 h. Nécessite vos paiements en ligne activés.</div></div>
+<div class="modal-field" id="m-annul-bloc"><label>Annulation gratuite par le client</label><select id="m-annul-heures" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
+<option value="0">Jamais — les frais restent acquis dès la confirmation</option>
+<option value="2">Jusqu'à 2 h avant le rendez-vous</option>
+<option value="6">Jusqu'à 6 h avant le rendez-vous</option>
+<option value="12">Jusqu'à 12 h avant le rendez-vous</option>
+<option value="24">Jusqu'à 24 h avant le rendez-vous</option>
+<option value="48">Jusqu'à 48 h avant le rendez-vous</option>
+<option value="72">Jusqu'à 72 h avant le rendez-vous</option>
+<option value="168">Jusqu'à 7 jours avant le rendez-vous</option>
+</select><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Au-delà de ce délai, un client qui annule perd ses frais (vous gardez votre dû). Avant confirmation de votre part, il est toujours remboursé.</div></div>
 <div class="modal-field"><label>Téléphone</label><input id="m-tel" type="text"/></div>
 <div class="modal-field"><label>E-mail</label><input id="m-email" type="text"/></div>
 <div class="modal-field"><label>Site web</label><input id="m-web" type="text"/></div>
@@ -1189,6 +1202,21 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div>
 </div>
+<div class="modal-overlay" id="modal-demander-paiement">
+<div class="modal-box">
+<h3>💶 Demander un paiement</h3>
+<p id="dp-resume" style="font-size:13px;color:var(--mu2);margin:6px 0 12px;"></p>
+<div class="modal-field"><label>Montant à payer (€)</label><input id="dp-montant" type="text" inputmode="decimal" placeholder="Ex. 180 ou 180,50"/>
+<div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Saisissez le montant de votre devis / de votre facture. Si le client a déjà payé des frais en ligne, tenez-en compte.</div></div>
+<div class="modal-field"><label>Pour quoi ? (facultatif — visible par le client)</label><input id="dp-description" maxlength="300" placeholder="Ex : Remplacement du chauffe-eau" type="text"/></div>
+<div class="modal-field" id="dp-email-wrap"><label>Email du client</label><input id="dp-email" type="email" placeholder="client@exemple.com"/></div>
+<div id="dp-note" style="font-size:12px;color:var(--mu);line-height:1.5;margin-bottom:6px;"></div>
+<div class="modal-actions">
+<button class="btn-primary" id="btn-dp" onclick="confirmerDemandePaiement()">Envoyer la demande de paiement</button>
+<button class="btn-secondary" onclick="fermerModale('modal-demander-paiement')">Retour</button>
+</div>
+</div>
+</div>
 <div class="modal-overlay" id="modal-intervention">
 <div class="modal-box">
 <h3 id="mi-titre">Nouvelle intervention</h3>
@@ -1244,6 +1272,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <button class="btn-primary" onclick="sauverIntervention()">Enregistrer</button>
 <button class="btn-secondary" onclick="fermerModale('modal-intervention')">Annuler</button>
 </div>
+<div id="mi-paiement-wrap" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--brd);"></div>
 <div id="mi-avis-wrap" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--brd);text-align:center;"></div>
 <div id="mi-impossible-wrap" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--brd);text-align:center;">
 <button onclick="ouvrirImpossibleHonorer()" style="padding:9px 18px;border-radius:8px;border:1.5px solid #b45309;background:transparent;color:#b45309;font-size:13px;font-weight:700;cursor:pointer;">🚫 Impossible d'honorer ce rendez-vous</button>
