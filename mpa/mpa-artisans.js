@@ -416,7 +416,7 @@ async function chargerInterventions() {
   var finStr = finMois.toISOString().slice(0, 10);
 
   var { data, error } = await sb.from('mpa_artisans_interventions')
-    .select('*, mpa_artisans_clients(nom), artisans_services(nom_service)')
+    .select('*, mpa_artisans_clients(nom, email, telephone), artisans_services(nom_service)')
     .eq('artisan_id', _artisan.id)
     .gte('date_intervention', debutStr)
     .lte('date_intervention', finStr);
@@ -1230,6 +1230,7 @@ async function ouvrirNouvelleIntervention(dateStr, creneau) {
   document.getElementById('mi-date-paiement').value = '';
   document.getElementById('mi-date-paiement-wrap').style.display = 'none';
   document.getElementById('mi-delete-wrap').style.display = 'none';
+  document.getElementById('mi-impossible-wrap').style.display = 'none';
   ouvrirModale('modal-intervention');
 }
 
@@ -1266,9 +1267,62 @@ async function ouvrirIntervention(id) {
   document.getElementById('mi-date-paiement').value = i.date_paiement || '';
   toggleDatePaiement();
   document.getElementById('mi-delete-wrap').style.display = 'block';
+  document.getElementById('mi-impossible-wrap').style.display = ['planifiee', 'en_cours'].indexOf(i.statut || 'planifiee') !== -1 ? 'block' : 'none';
   renderZoneAvisIntervention(i);
   ouvrirModale('modal-intervention');
   calculerCreneaux();
+}
+
+// ── « Impossible d'honorer » : annule l'intervention et prévient le client par email ──
+function ouvrirImpossibleHonorer() {
+  var i = _interventionsCache.find(function(x) { return x.id === _interventionEnCours; });
+  if (!i) return;
+  var client = i.mpa_artisans_clients || {};
+  var service = i.artisans_services ? i.artisans_services.nom_service : '';
+  var dateAff = new Date(i.date_intervention + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  document.getElementById('imp-resume').textContent = (client.nom || 'Client') + ' — ' + dateAff + (i.heure_debut ? ' à ' + i.heure_debut.slice(0, 5) : '') + (service ? ' — ' + service : '');
+  document.getElementById('imp-motif').value = 'imprevu';
+  document.getElementById('imp-message').value = '';
+  document.getElementById('imp-date').value = '';
+  document.getElementById('imp-note').innerHTML = client.email
+    ? '✉️ Un email sera envoyé à <strong>' + escHtml(client.email) + '</strong>.'
+    : '⚠️ Ce client n\'a pas d\'adresse email : <strong>prévenez-le vous-même</strong>' + (client.telephone ? ' au ' + escHtml(client.telephone) : '') + '.';
+  document.getElementById('btn-impossible').disabled = false;
+  document.getElementById('btn-impossible').textContent = 'Annuler et prévenir mon client';
+  fermerModale('modal-intervention');
+  ouvrirModale('modal-impossible');
+}
+
+async function confirmerImpossibleHonorer() {
+  if (!verifierAccesEcriture()) return;
+  var id = _interventionEnCours;
+  var btn = document.getElementById('btn-impossible');
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/annuler-intervention', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({
+        intervention_id: id,
+        motif: document.getElementById('imp-motif').value,
+        message: document.getElementById('imp-message').value,
+        nouvelle_date: document.getElementById('imp-date').value,
+      }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    fermerModale('modal-impossible');
+    await chargerInterventions();
+    var msg = data.client_prevenu
+      ? '🚫 Rendez-vous annulé. Votre client a été prévenu par email.'
+      : '🚫 Rendez-vous annulé. ' + (data.client_sans_email ? 'Ce client n\'a pas d\'email : pensez à le prévenir directement.' : 'L\'email n\'a pas pu partir : prévenez votre client directement.');
+    mpaAiDire(msg, data.client_prevenu ? 'info' : 'warning');
+    if (data.commande_liee) mpaAiDire('📦 Cette intervention était la livraison d\'une commande de votre boutique. Si vous ne pouvez pas la livrer, pensez à rembourser la commande depuis Mes ventes.', 'important');
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+    btn.disabled = false; btn.textContent = 'Annuler et prévenir mon client';
+  }
 }
 
 function renderZoneAvisIntervention(i) {

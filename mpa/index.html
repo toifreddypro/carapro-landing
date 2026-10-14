@@ -1166,6 +1166,29 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div>
 <!-- MODALE : Intervention -->
+<div class="modal-overlay" id="modal-impossible">
+<div class="modal-box">
+<h3>🚫 Impossible d'honorer ce rendez-vous</h3>
+<p id="imp-resume" style="font-size:13px;color:var(--mu2);margin:6px 0 12px;"></p>
+<div class="modal-field"><label>Motif</label>
+<select id="imp-motif" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
+<option value="imprevu">Imprévu de dernière minute</option>
+<option value="maladie">Problème de santé</option>
+<option value="meteo">Météo défavorable</option>
+<option value="materiel">Matériel / approvisionnement</option>
+<option value="autre">Autre empêchement</option>
+</select></div>
+<div class="modal-field"><label>Message pour votre client (facultatif)</label>
+<textarea id="imp-message" maxlength="500" rows="3" placeholder="Ex : Toutes mes excuses, je vous rappelle dès demain pour convenir d'un autre jour." style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;resize:vertical;"></textarea></div>
+<div class="modal-field"><label>Nouvelle date proposée (facultatif)</label>
+<input id="imp-date" maxlength="100" placeholder="Ex : jeudi 22 octobre, le matin" type="text"/></div>
+<div id="imp-note" style="font-size:12px;color:var(--mu);line-height:1.5;margin-bottom:6px;"></div>
+<div class="modal-actions">
+<button class="btn-primary" id="btn-impossible" onclick="confirmerImpossibleHonorer()">Annuler et prévenir mon client</button>
+<button class="btn-secondary" onclick="fermerModale('modal-impossible')">Retour</button>
+</div>
+</div>
+</div>
 <div class="modal-overlay" id="modal-intervention">
 <div class="modal-box">
 <h3 id="mi-titre">Nouvelle intervention</h3>
@@ -1222,6 +1245,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <button class="btn-secondary" onclick="fermerModale('modal-intervention')">Annuler</button>
 </div>
 <div id="mi-avis-wrap" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--brd);text-align:center;"></div>
+<div id="mi-impossible-wrap" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--brd);text-align:center;">
+<button onclick="ouvrirImpossibleHonorer()" style="padding:9px 18px;border-radius:8px;border:1.5px solid #b45309;background:transparent;color:#b45309;font-size:13px;font-weight:700;cursor:pointer;">🚫 Impossible d'honorer ce rendez-vous</button>
+<div style="font-size:11px;color:var(--mu);margin-top:5px;">Annule l'intervention et prévient votre client par email.</div>
+</div>
 <div id="mi-delete-wrap" style="display:none;margin-top:10px;text-align:center;">
 <button onclick="supprimerIntervention()" style="background:none;border:none;color:var(--danger);font-size:12.5px;cursor:pointer;text-decoration:underline;">Supprimer cette intervention</button>
 </div>
