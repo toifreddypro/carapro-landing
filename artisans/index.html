@@ -24,7 +24,7 @@
   <link rel="icon" href="/favicon.ico">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CaraLink Artisans — Trouvez un artisan disponible</title>
-  <meta name="description" content="Trouvez un artisan de confiance près de chez vous — SIRET vérifié, avis authentiques, devis gratuit.">
+  <meta name="description" content="Trouvez un artisan de confiance près de chez vous — SIRET vérifié, avis authentiques, demande de devis gratuite.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:wght@500;600;700;800&family=Inter:wght@600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -1009,6 +1009,35 @@ body.theme-light footer { background:#fbfcfe; }
   <main id="main-results"></main>
   <div id="overlay-profil" style="display:none;"></div>
   <div id="overlay-resa"   style="display:none;"></div>
+  <section class="offres-section" id="offres-section">
+    <style>
+      .offres-section{max-width:1080px;margin:0 auto;padding:72px 20px 24px;}
+      .offres-eyebrow{text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ac);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;}
+      .offres-titre{text-align:center;color:var(--tx);font-family:'Bricolage Grotesque',sans-serif;font-size:28px;font-weight:800;line-height:1.2;margin:0 auto 12px;max-width:640px;}
+      .offres-sous{text-align:center;color:var(--mu);font-size:15px;line-height:1.55;max-width:600px;margin:0 auto 36px;}
+      .offres-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+      .offre-card{background:var(--panel);border:1px solid var(--brd);border-radius:16px;padding:24px 22px;display:flex;flex-direction:column;gap:8px;}
+      .offre-card.pro{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac) inset;}
+      .offre-titre{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--mu);}
+      .offre-prix{font-family:'Bricolage Grotesque',sans-serif;font-size:30px;font-weight:800;color:var(--tx);}
+      .offre-texte{color:var(--mu);font-size:14px;line-height:1.55;}
+      .offres-cta-wrap{text-align:center;margin-top:28px;}
+      .offres-cta{display:inline-block;background:var(--ac);color:#fff;font-weight:700;font-size:15px;padding:13px 28px;border-radius:12px;text-decoration:none;}
+      .offres-cta:hover{opacity:.9;}
+      .offres-note{text-align:center;color:var(--mu2);font-size:12px;margin-top:14px;}
+      @media(max-width:760px){.offres-grid{grid-template-columns:1fr;}.offres-titre{font-size:23px;}}
+    </style>
+    <div class="offres-eyebrow" data-i18n="offres_eyebrow">Pour les artisans</div>
+    <h2 class="offres-titre" data-i18n="offres_titre">Soyez visible, soyez payé, gérez tout au même endroit.</h2>
+    <p class="offres-sous" data-i18n="offres_sous">CaraLink Artisans vous apporte des clients. MPA Artisans vous aide à gérer votre activité : planning, facturation, comptabilité, boutique.</p>
+    <div class="offres-grid">
+      <div class="offre-card"><div class="offre-titre" data-i18n="offre1_titre">Essentiel</div><div class="offre-prix" data-i18n="offre1_prix">Gratuit</div><div class="offre-texte" data-i18n="offre1_texte">Votre fiche dans l'annuaire, le planning, la boutique (15 produits), les paiements en ligne et la comptabilité.</div></div>
+      <div class="offre-card pro"><div class="offre-titre" data-i18n="offre2_titre">Pro</div><div class="offre-prix" data-i18n="offre2_prix">9,90 € / mois</div><div class="offre-texte" data-i18n="offre2_texte">Tout l'Essentiel, plus un catalogue sans limite, la gestion des fournitures avec scan et l'alerte de journée chargée. 14 jours d'essai, sans carte.</div></div>
+      <div class="offre-card"><div class="offre-titre" data-i18n="offre3_titre">Notre commission</div><div class="offre-prix" data-i18n="offre3_prix">7 %</div><div class="offre-texte" data-i18n="offre3_texte">Seulement au-delà de 200 € encaissés en ligne par mois, sur les clients venus par CaraLink. En dessous, vous ne payez rien.</div></div>
+    </div>
+    <div class="offres-cta-wrap"><a class="offres-cta" href="/artisans/inscription.html" data-i18n="offres_cta">Devenir artisan</a></div>
+    <p class="offres-note" data-i18n="offres_note">Les frais du service de paiement Stripe sont à la charge de l'artisan.</p>
+  </section>
   <section class="testimonial-section" id="testimonials-section">
     <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ac);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;">Les avis</div>
     <h2 style="text-align:center;color:var(--tx);font-family:'Bricolage Grotesque',sans-serif;font-size:28px;font-weight:800;margin-bottom:48px;">Ils nous font confiance</h2>
@@ -1103,13 +1132,10 @@ body.theme-light footer { background:#fbfcfe; }
 
         <div class="faq-item" data-q="recevoir demande devis notification client">
           <div class="faq-q" onclick="toggleFAQItem(this)">
-            <span data-i18n="faq3_q">Comment je reçois les demandes de devis ?</span>
+            <span data-i18n="faq3_q">Comment je reçois les demandes de clients ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq3_a">
-            <p>Quand un client demande un devis depuis votre profil, sa demande apparaît directement associée à votre compte — nom, téléphone, commune, et description du besoin.</p>
-            <div class="faq-tip">💡 Un client peut aussi poster une demande générale, visible par tous les artisans de son secteur et de sa zone.</div>
-          </div>
+          <div class="faq-a" data-i18n="faq3_a"><p>Une simple demande de renseignement arrive directement dans votre espace MPA Artisans et par email. Pour une visite ou une réservation, le client règle d'abord les frais en ligne : vous ne voyez sa demande qu'après le paiement.</p><p style="margin-top:8px;">Vous recevez son nom, son téléphone, sa commune, sa description et ses photos. Un client peut aussi poster une demande générale, visible par les artisans de son secteur : ses coordonnées apparaissent quand vous cliquez sur « Prendre en charge ».</p><div class="faq-tip">💡 Si vous refusez ou ne pouvez pas venir, le client est remboursé automatiquement.</div></div>
         </div>
 
         <div class="faq-item" data-q="ajouter services tarifs photos chantier vitrine">
@@ -1121,6 +1147,46 @@ body.theme-light footer { background:#fbfcfe; }
             <p>Oui, c'est ce qui compose votre vitrine, visible par tous les clients qui consultent votre profil — vos services avec un tarif indicatif, et des photos de vos réalisations.</p>
             <div class="faq-tip">💡 Un profil complet, avec de vraies photos, inspire davantage confiance qu'un profil minimal.</div>
           </div>
+        </div>
+
+        <div class="faq-item" data-q="paiement frais commission pro abonnement 7 200 coût prix artisan">
+          <div class="faq-q" onclick="toggleFAQItem(this)">
+            <span data-i18n="faq14_q">Combien ça coûte aux artisans ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-a" data-i18n="faq14_a"><p>L'inscription et l'offre <strong>Essentiel</strong> sont gratuites : fiche dans l'annuaire, planning, boutique (15 produits), paiements en ligne, comptabilité. L'offre <strong>Pro</strong> coûte 9,90 € par mois, avec 14 jours d'essai sans carte.</p><p style="margin-top:8px;">CaraLink prend <strong>7 %</strong> des paiements encaissés en ligne <strong>au-delà de 200 € par mois</strong>, sur les clients venus par CaraLink. En dessous de 200 €, rien. Les frais du service de paiement Stripe sont à votre charge.</p><div class="faq-tip">💡 Les clients que vous ajoutez vous-même à la main dans MPA Artisans ne sont jamais commissionnés.</div></div>
+        </div>
+
+        <div class="faq-item" data-q="paiement en ligne stripe activer obligatoire novembre réservation annuaire">
+          <div class="faq-q" onclick="toggleFAQItem(this)">
+            <span data-i18n="faq15_q">Pourquoi activer les paiements en ligne ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-a" data-i18n="faq15_a"><p>Pour recevoir des réservations. Le client paie à la réservation : vous savez qu'il viendra, et l'argent arrive directement sur votre compte Stripe.</p><p style="margin-top:8px;"><strong>À partir du 1er novembre 2026</strong>, il faut avoir activé les paiements en ligne pour recevoir des réservations et apparaître dans l'annuaire. Vous activez cela depuis MPA Artisans, et MPA-AI vous guide pas à pas.</p><div class="faq-tip">💡 Stripe vous demande quelques informations d'identité et un compte bancaire pour vous verser l'argent.</div></div>
+        </div>
+
+        <div class="faq-item" data-q="partager fiche lien qr code whatsapp facebook">
+          <div class="faq-q" onclick="toggleFAQItem(this)">
+            <span data-i18n="faq16_q">Comment partager ma fiche (lien, QR code) ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-a" data-i18n="faq16_a"><p>Dans MPA Artisans, ouvrez <strong>Mon profil</strong> puis <strong>Partager ma fiche</strong> : vous obtenez un lien, un message prêt à envoyer (WhatsApp, Facebook, email) et un QR code à imprimer. Sur la fiche publique, un bouton <strong>Partager</strong> fait la même chose.</p><div class="faq-tip">💡 Les clients qui arrivent par votre lien passent par CaraLink : ils comptent comme clients CaraLink pour la commission.</div></div>
+        </div>
+
+        <div class="faq-item" data-q="boutique vendre produits catalogue panier commande stock">
+          <div class="faq-q" onclick="toggleFAQItem(this)">
+            <span data-i18n="faq17_q">Puis-je vendre mes produits en ligne ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-a" data-i18n="faq17_a"><p>Oui. Dans MPA Artisans, créez vos produits dans <strong>Mon stock</strong>, puis mettez-les en vente. Vos clients ont une boutique avec un panier et paient par carte. Il faut avoir activé les paiements en ligne. Vous suivez les commandes, la livraison et les remboursements depuis MPA.</p><div class="faq-tip">💡 Sur la boutique, CaraLink retient sa commission (au-delà de 200 € par mois) plus 1,9 % + 0,25 € de frais de paiement par commande.</div></div>
+        </div>
+
+        <div class="faq-item" data-q="demander paiement après visite facture devis montant lien">
+          <div class="faq-q" onclick="toggleFAQItem(this)">
+            <span data-i18n="faq18_q">Comment me faire payer après une visite ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-a" data-i18n="faq18_a"><p>Dans MPA Artisans, ouvrez l'intervention et cliquez sur <strong>Demander un paiement</strong>. Saisissez le montant de votre devis ou de votre facture : le client reçoit un lien de paiement par email, valable 14 jours. Vous pouvez aussi copier le lien et l'envoyer par SMS ou WhatsApp.</p><div class="faq-tip">💡 Si le client a déjà payé des frais en ligne, il en est informé. Le paiement va directement sur votre compte Stripe.</div></div>
         </div>
 
       </div>
@@ -1147,15 +1213,10 @@ body.theme-light footer { background:#fbfcfe; }
 
         <div class="faq-item" data-q="demander devis contacter artisan gratuit">
           <div class="faq-q" onclick="toggleFAQItem(this)">
-            <span data-i18n="faq6_q">Comment demander un devis ?</span>
+            <span data-i18n="faq6_q">Comment demander un devis ou réserver ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq6_a">
-            <div class="faq-step"><span class="faq-num">1</span>Sur le profil d'un artisan, cliquez sur <strong>Demander un devis</strong></div>
-            <div class="faq-step"><span class="faq-num">2</span>Indiquez votre nom, votre téléphone, votre commune et votre besoin</div>
-            <div class="faq-step"><span class="faq-num">3</span>Envoyez — aucun compte à créer, aucun mot de passe</div>
-            <div class="faq-tip">💡 L'artisan reçoit votre demande directement et vous recontacte par téléphone.</div>
-          </div>
+          <div class="faq-a" data-i18n="faq6_a"><div class="faq-step"><span class="faq-num">1</span>Sur le profil d'un artisan, cliquez sur <strong>Demander un devis</strong></div><div class="faq-step"><span class="faq-num">2</span>Choisissez : un simple renseignement, un rendez-vous sur place, ou une réservation directe si vous connaissez déjà l'artisan</div><div class="faq-step"><span class="faq-num">3</span>Indiquez votre nom, votre téléphone, votre email, votre commune et votre besoin (vous pouvez joindre des photos)</div><div class="faq-step"><span class="faq-num">4</span>Si l'artisan demande des frais de déplacement ou de réservation, vous les réglez en ligne par carte avant l'envoi</div><div class="faq-tip">💡 Aucun compte à créer. Un simple renseignement est gratuit.</div></div>
         </div>
 
         <div class="faq-item" data-q="badge vérifié confiance sécurité signification">
@@ -1167,6 +1228,14 @@ body.theme-light footer { background:#fbfcfe; }
             <p>Un artisan vérifié a un SIRET actif reconnu par le registre officiel des entreprises. Le badge ne constitue pas une garantie sur son assurance : n'hésitez pas à la lui demander.</p>
             <div class="faq-tip">💡 Un artisan non encore vérifié n'est pas nécessairement suspect — il peut simplement être en cours de constitution de son dossier.</div>
           </div>
+        </div>
+
+        <div class="faq-item" data-q="frais déplacement réservation annuler annulation remboursement rembourser prix">
+          <div class="faq-q" onclick="toggleFAQItem(this)">
+            <span data-i18n="faq13_q">Combien coûte une visite ou une réservation, et puis-je annuler ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-a" data-i18n="faq13_a"><p>Chaque artisan fixe ses frais de déplacement (pour une visite) ou de réservation. Le montant est affiché sur sa fiche et avant le paiement. Vous payez en ligne par carte, directement à l'artisan.</p><p style="margin-top:8px;">L'artisan indique une durée d'<strong>annulation gratuite</strong> (souvent 24 h avant le rendez-vous) : si vous annulez dans ce délai, vous êtes remboursé en entier. Si l'artisan refuse, annule ou ne répond pas sous 48 h, vous êtes remboursé automatiquement, sans rien faire. Pour annuler, utilisez le lien reçu par email.</p><div class="faq-tip">💡 Le remboursement apparaît sur votre carte en quelques jours.</div></div>
         </div>
 
       </div>
@@ -1183,10 +1252,7 @@ body.theme-light footer { background:#fbfcfe; }
             <span data-i18n="faq8_q">C'est vraiment gratuit ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq8_a">
-            <p>Oui. L'annuaire, la recherche et la demande de devis sont entièrement gratuits, aussi bien pour les clients que pour les artisans.</p>
-            <div class="faq-tip">💡 Aucune carte bancaire n'est demandée à l'inscription.</div>
-          </div>
+          <div class="faq-a" data-i18n="faq8_a"><p><strong>Pour les clients :</strong> oui. Consulter l'annuaire, chercher un artisan et demander un renseignement ou un devis sont gratuits. Certains artisans demandent des frais de déplacement ou de réservation pour une visite ou un créneau : le montant est affiché avant de payer.</p><p style="margin-top:8px;"><strong>Pour les artisans :</strong> l'inscription est gratuite. L'offre Pro coûte 9,90 € par mois. CaraLink prend une commission de 7 % seulement au-delà de 200 € encaissés en ligne par mois.</p><div class="faq-tip">💡 Aucune carte bancaire n'est demandée à l'inscription.</div></div>
         </div>
 
         <div class="faq-item" data-q="réservation créneau calendrier disponibilité">
@@ -1194,9 +1260,7 @@ body.theme-light footer { background:#fbfcfe; }
             <span data-i18n="faq9_q">Peut-on réserver un créneau directement en ligne ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq9_a">
-            <p>Pas encore — aujourd'hui, tout passe par la demande de devis, et c'est l'artisan qui vous recontacte pour convenir d'un rendez-vous. La réservation de créneau en ligne est prévue pour une prochaine version.</p>
-          </div>
+          <div class="faq-a" data-i18n="faq9_a"><p>Oui, chez les artisans qui ont renseigné leurs disponibilités : vous choisissez un créneau calculé selon les trajets de l'artisan. L'artisan le confirme sous 48 h, sinon vos frais sont remboursés automatiquement.</p><p style="margin-top:8px;">Chez les autres, vous faites une demande de devis ou de rendez-vous sur place, et l'artisan vous répond.</p></div>
         </div>
 
       </div>
@@ -1213,11 +1277,7 @@ body.theme-light footer { background:#fbfcfe; }
             <span data-i18n="faq10_q">Mes données sont-elles confidentielles ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq10_a">
-            <p>Oui. Vos données sont hébergées sur une infrastructure sécurisée, avec des règles d'accès strictes — chaque utilisateur n'accède qu'à ses propres données.</p>
-            <p style="margin-top:8px;">Votre téléphone et votre email ne sont jamais affichés publiquement — ils ne sont partagés qu'au moment d'une demande de devis.</p>
-            <div class="faq-tip">💡 CaraLink Artisans ne vend jamais vos données à des tiers.</div>
-          </div>
+          <div class="faq-a" data-i18n="faq10_a"><p>Oui. Vos données sont hébergées sur une infrastructure sécurisée, avec des règles d'accès strictes.</p><p style="margin-top:8px;">Votre téléphone et votre email ne sont jamais affichés publiquement : ils sont transmis seulement à l'artisan concerné par votre demande.</p><p style="margin-top:8px;">Les photos que vous joignez sont stockées dans un espace privé : seul cet artisan peut les voir, et uniquement pour évaluer le travail.</p><div class="faq-tip">💡 CaraLink Artisans ne vend jamais vos données à des tiers.</div></div>
         </div>
 
         <div class="faq-item" data-q="mot de passe oublié réinitialiser connexion email">
