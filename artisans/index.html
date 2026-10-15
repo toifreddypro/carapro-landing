@@ -1009,35 +1009,6 @@ body.theme-light footer { background:#fbfcfe; }
   <main id="main-results"></main>
   <div id="overlay-profil" style="display:none;"></div>
   <div id="overlay-resa"   style="display:none;"></div>
-  <section class="offres-section" id="offres-section">
-    <style>
-      .offres-section{max-width:1080px;margin:0 auto;padding:72px 20px 24px;}
-      .offres-eyebrow{text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ac);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;}
-      .offres-titre{text-align:center;color:var(--tx);font-family:'Bricolage Grotesque',sans-serif;font-size:28px;font-weight:800;line-height:1.2;margin:0 auto 12px;max-width:640px;}
-      .offres-sous{text-align:center;color:var(--mu);font-size:15px;line-height:1.55;max-width:600px;margin:0 auto 36px;}
-      .offres-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
-      .offre-card{background:var(--panel);border:1px solid var(--brd);border-radius:16px;padding:24px 22px;display:flex;flex-direction:column;gap:8px;}
-      .offre-card.pro{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac) inset;}
-      .offre-titre{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--mu);}
-      .offre-prix{font-family:'Bricolage Grotesque',sans-serif;font-size:30px;font-weight:800;color:var(--tx);}
-      .offre-texte{color:var(--mu);font-size:14px;line-height:1.55;}
-      .offres-cta-wrap{text-align:center;margin-top:28px;}
-      .offres-cta{display:inline-block;background:var(--ac);color:#fff;font-weight:700;font-size:15px;padding:13px 28px;border-radius:12px;text-decoration:none;}
-      .offres-cta:hover{opacity:.9;}
-      .offres-note{text-align:center;color:var(--mu2);font-size:12px;margin-top:14px;}
-      @media(max-width:760px){.offres-grid{grid-template-columns:1fr;}.offres-titre{font-size:23px;}}
-    </style>
-    <div class="offres-eyebrow" data-i18n="offres_eyebrow">Pour les artisans</div>
-    <h2 class="offres-titre" data-i18n="offres_titre">Soyez visible, soyez payé, gérez tout au même endroit.</h2>
-    <p class="offres-sous" data-i18n="offres_sous">CaraLink Artisans vous apporte des clients. MPA Artisans vous aide à gérer votre activité : planning, facturation, comptabilité, boutique.</p>
-    <div class="offres-grid">
-      <div class="offre-card"><div class="offre-titre" data-i18n="offre1_titre">Essentiel</div><div class="offre-prix" data-i18n="offre1_prix">Gratuit</div><div class="offre-texte" data-i18n="offre1_texte">Votre fiche dans l'annuaire, le planning, la boutique (15 produits), les paiements en ligne et la comptabilité.</div></div>
-      <div class="offre-card pro"><div class="offre-titre" data-i18n="offre2_titre">Pro</div><div class="offre-prix" data-i18n="offre2_prix">9,90 € / mois</div><div class="offre-texte" data-i18n="offre2_texte">Tout l'Essentiel, plus un catalogue sans limite, la gestion des fournitures avec scan et l'alerte de journée chargée. 14 jours d'essai, sans carte.</div></div>
-      <div class="offre-card"><div class="offre-titre" data-i18n="offre3_titre">Notre commission</div><div class="offre-prix" data-i18n="offre3_prix">7 %</div><div class="offre-texte" data-i18n="offre3_texte">Seulement au-delà de 200 € encaissés en ligne par mois, sur les clients venus par CaraLink. En dessous, vous ne payez rien.</div></div>
-    </div>
-    <div class="offres-cta-wrap"><a class="offres-cta" href="/artisans/inscription.html" data-i18n="offres_cta">Devenir artisan</a></div>
-    <p class="offres-note" data-i18n="offres_note">Les frais du service de paiement Stripe sont à la charge de l'artisan.</p>
-  </section>
   <section class="testimonial-section" id="testimonials-section">
     <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ac);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;">Les avis</div>
     <h2 style="text-align:center;color:var(--tx);font-family:'Bricolage Grotesque',sans-serif;font-size:28px;font-weight:800;margin-bottom:48px;">Ils nous font confiance</h2>
@@ -1154,7 +1125,7 @@ body.theme-light footer { background:#fbfcfe; }
             <span data-i18n="faq14_q">Combien ça coûte aux artisans ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq14_a"><p>L'inscription et l'offre <strong>Essentiel</strong> sont gratuites : fiche dans l'annuaire, planning, boutique (15 produits), paiements en ligne, comptabilité. L'offre <strong>Pro</strong> coûte 9,90 € par mois, avec 14 jours d'essai sans carte.</p><p style="margin-top:8px;">CaraLink prend <strong>7 %</strong> des paiements encaissés en ligne <strong>au-delà de 200 € par mois</strong>, sur les clients venus par CaraLink. En dessous de 200 €, rien. Les frais du service de paiement Stripe sont à votre charge.</p><div class="faq-tip">💡 Les clients que vous ajoutez vous-même à la main dans MPA Artisans ne sont jamais commissionnés.</div></div>
+          <div class="faq-a" data-i18n="faq14_a"><p>L'inscription et l'offre <strong>Essentiel</strong> sont gratuites : fiche dans l'annuaire, planning, boutique (15 produits), paiements en ligne, comptabilité. L'offre <strong>Pro</strong> coûte 9,90 € par mois, avec 14 jours d'essai sans carte.</p><p style="margin-top:8px;">CaraLink prend <strong>7 %</strong> des paiements encaissés en ligne <strong>uniquement sur la part au-delà de 200 € par mois</strong> (pas sur les 200 premiers euros), sur les clients venus par CaraLink. Exemple : 300 € encaissés dans le mois, 7 % de 100 € = 7 €. En dessous de 200 €, rien. Les frais du service de paiement Stripe sont à votre charge.</p><div class="faq-tip">💡 Les clients que vous ajoutez vous-même à la main dans MPA Artisans ne sont jamais commissionnés.</div></div>
         </div>
 
         <div class="faq-item" data-q="paiement en ligne stripe activer obligatoire novembre réservation annuaire">
