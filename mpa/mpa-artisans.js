@@ -2930,6 +2930,8 @@ function proposerPassagePro(raison) {
     ? '🔒 Le détail du chiffre d\'affaires par client fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Le récapitulatif par mois (interventions, ventes, livraisons) reste gratuit.' + texteEssai()
     : raison === 'facture_rapide'
     ? '🧾 La facture en 1 clic (depuis une intervention ou une commande de la boutique) fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Le panier de facturation classique reste gratuit.' + texteEssai()
+    : raison === 'agenda'
+    ? '📅 Retrouver votre planning dans Google Agenda, Apple Calendrier ou Outlook, mis à jour tout seul, fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
     : raison === 'facture_email'
     ? '✉️ L\'envoi de vos factures par email, directement à vos clients, fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Imprimer une facture reste gratuit.' + texteEssai()
     : raison === 'retard'
@@ -3942,6 +3944,46 @@ function lienPartageArtisan(quoi) {
   if (quoi === 'boutique') return _artisan.slug_catalogue ? 'https://caralink.app/artisans/catalogue.html?s=' + encodeURIComponent(_artisan.slug_catalogue) : null;
   return 'https://caralink.app/artisans/?artisan=' + encodeURIComponent(_artisan.id);
 }
+// ════════════════════════════════════════
+//  PLANNING DANS L'AGENDA DU TÉLÉPHONE (Pro) — abonnement par lien (.ics), servi par la fonction planning-ics.
+//  L'artisan colle le lien UNE fois dans Google Agenda / Apple Calendrier / Outlook ; l'agenda se met ensuite à jour tout seul.
+//  Le lien contient un code secret (artisans.calendrier_code), régénérable : l'ancien lien cesse alors de fonctionner.
+// ════════════════════════════════════════
+function nouveauCodeAgenda() {
+  var octets = new Uint8Array(30);
+  crypto.getRandomValues(octets);
+  var bin = ''; octets.forEach(function(o) { bin += String.fromCharCode(o); });
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); // 40 caractères
+}
+function lienAgenda() {
+  return _artisan && _artisan.calendrier_code ? SUPABASE_URL + '/functions/v1/planning-ics?t=' + _artisan.calendrier_code : '';
+}
+async function ouvrirAgendaSync() {
+  if (!exigerPro('agenda')) return;
+  if (!('calendrier_code' in _artisan)) { alert('Cette fonction n\'est pas encore activée sur votre compte. Réessayez un peu plus tard.'); return; }
+  if (!_artisan.calendrier_code) {
+    var code = nouveauCodeAgenda();
+    var { error } = await sb.from('artisans').update({ calendrier_code: code }).eq('id', _artisan.id);
+    if (error) { alert('Erreur : ' + error.message); return; }
+    _artisan.calendrier_code = code;
+  }
+  afficherAgendaSync();
+  ouvrirModale('modal-agenda');
+}
+function afficherAgendaSync() {
+  var lien = lienAgenda();
+  document.getElementById('ag-lien').value = lien;
+  document.getElementById('ag-apple').href = lien.replace(/^https:/, 'webcal:');
+}
+async function regenererLienAgenda() {
+  if (!confirm('Générer un nouveau lien ? L\'ancien cessera de fonctionner : vous devrez coller le nouveau dans votre agenda.')) return;
+  var code = nouveauCodeAgenda();
+  var { error } = await sb.from('artisans').update({ calendrier_code: code }).eq('id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  _artisan.calendrier_code = code;
+  afficherAgendaSync();
+}
+
 function ouvrirPartageArtisan(quoi) {
   var url = lienPartageArtisan(quoi);
   if (!url) { alert('Le lien de votre boutique n\'est pas encore prêt : ouvrez d\'abord l\'onglet « Catalogue », puis réessayez.'); return; }
