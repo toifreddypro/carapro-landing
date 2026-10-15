@@ -2,9 +2,18 @@
 // CaraLink Artisans — Edge Function : prelever-commission-prestations
 // Propriété : TOI Freddy
 //
-// À lancer une fois par mois (manuellement par l'admin pour l'instant, un
-// vrai déclenchement automatique — Supabase Cron — pourra être branché
-// une fois que ça tourne bien en pratique).
+// Lancée automatiquement une fois par mois par Supabase Cron (tâche « prelevement-mensuel-prestations »,
+// secret X-Cron-Secret). Le bouton de l'Admin sert à simuler ou à relancer à la main.
+//
+// ── Révision du 15/10/2026 (2) : MOIS ÉCHOUÉ = RETENTÉ ──
+// Avant, un mois « échoué » (aucune carte, carte refusée) n'était JAMAIS retenté, même une fois la carte enregistrée : la commission
+// restait due sans jamais être perçue. Désormais :
+//  - un mois « échoué » est retenté (la ligne est mise à jour, pas dupliquée) ;
+//  - dès qu'une carte est enregistrée, le webhook Stripe relance les mois échoués de cet artisan ({ reprise_artisan_id }) ;
+//  - chaque lancement mensuel retente aussi, sans écrire à l'artisan, les anciens mois échoués des artisans qui ont une carte ;
+//  - l'admin reçoit un email récapitulatif dès qu'un prélèvement échoue.
+// Tant qu'une commission est « échouée », la base refuse à l'artisan de planifier à la main une nouvelle intervention « annuaire »
+// (voir commission-carte.sql).
 //
 // Pour chaque artisan ayant enregistré une carte : calcule le CA "Terminée
 // ou Payée" du MOIS PRÉCÉDENT sur les seuls clients "annuaire" (jamais les
@@ -176,12 +185,14 @@ async function carteEnregistree(customerId: string): Promise<string | null> {
   return cartes[0].id;
 }
 
-async function traiterUnArtisan(sb: any, artisan: any, debut: string, finExclusive: string, moisISO: string, simuler: boolean) {
+async function traiterUnArtisan(sb: any, artisan: any, debut: string, finExclusive: string, moisISO: string, simuler: boolean, silencieux = false) {
   const nom = artisan.nom_entreprise;
   // Filet de sécurité applicatif — la contrainte unique en base est le vrai garde-fou.
   const { data: dejaFait } = await sb.from("prelevements_prestations")
-    .select("id").eq("artisan_id", artisan.id).eq("mois", moisISO).maybeSingle();
-  if (dejaFait) return { artisan_id: artisan.id, nom, statut: "deja_traite" };
+    .select("id, statut").eq("artisan_id", artisan.id).eq("mois", moisISO).maybeSingle();
+  // Un mois « échoué » est retenté ; tout autre état est définitif.
+  const reprise = !!dejaFait && dejaFait.statut === "echoue";
+  if (dejaFait && !reprise) return { artisan_id: artisan.id, nom, statut: "deja_traite" };
 
   const ca = await caPrestationsAnnuaireDuMois(sb, artisan.id, debut, finExclusive);
   const caTotalCentimes = ca.total;
@@ -199,7 +210,10 @@ async function traiterUnArtisan(sb: any, artisan: any, debut: string, finExclusi
   // Enregistre le résultat du mois. Une ligne déjà présente (deux lancements simultanés) n'est pas une erreur :
   // l'autre lancement a fait le travail. Toute autre panne est remontée, jamais ignorée.
   const enregistrer = async (ligne: Record<string, unknown>): Promise<"ok" | "deja" | "echec"> => {
-    const { error } = await sb.from("prelevements_prestations").insert(ligne);
+    // Reprise d'un mois échoué : on met à jour la ligne existante (seulement si elle est toujours « échouée »), on n'en crée pas une seconde.
+    const { error } = reprise
+      ? await sb.from("prelevements_prestations").update({ ...ligne, erreur: (ligne as any).erreur ?? null }).eq("id", dejaFait!.id).eq("statut", "echoue")
+      : await sb.from("prelevements_prestations").insert(ligne);
     if (!error) return "ok";
     if ((error as any).code === "23505") return "deja";
     console.error("[prelever-commission-prestations] Enregistrement impossible :", error.message, JSON.stringify(ligne));
@@ -223,13 +237,13 @@ async function traiterUnArtisan(sb: any, artisan: any, debut: string, finExclusi
   if (!carte) {
     if (simuler) return { artisan_id: artisan.id, nom, statut: "carte_manquante", commission: commissionCentimes / 100 };
     await enregistrer({ ...ligneBase, statut: "echoue", erreur: "Aucune carte enregistrée." });
-    if (artisan.email) {
+    if (artisan.email && !silencieux && !reprise) {
       await envoyerEmail(artisan.email, "⚠️ Une carte est nécessaire pour votre commission CaraLink",
         `<div style="font-family:sans-serif;max-width:480px;">
           <h2 style="color:#B5502F;">Commission due, aucune carte enregistrée</h2>
           <p>Bonjour,</p>
           <p>Vos prestations trouvées via CaraLink ont dépassé le seuil gratuit ce mois-ci (${moisISO.slice(0, 7)}) : ${euros(commissionCentimes)} de commission sont dus, mais aucune carte n'est enregistrée sur votre compte.</p>
-          <p>Merci d'enregistrer une carte dans MPA Artisans (Tableau de bord → Carte prestations) pour régulariser.</p>
+          <p>Merci d'enregistrer une carte dans MPA Artisans (Ma comptabilité, encart « Carte ») pour régulariser.</p>
           <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Ouvrir MPA Artisans →</a></p>
         </div>`);
     }
@@ -248,7 +262,7 @@ async function traiterUnArtisan(sb: any, artisan: any, debut: string, finExclusi
     description: `Commission CaraLink Artisans — prestations ${moisISO.slice(0, 7)} — ${artisan.nom_entreprise}`,
     "metadata[artisan_id]": artisan.id,
     "metadata[mois]": moisISO,
-  }, `commission-prestations_${artisan.id}_${moisISO}_${commissionCentimes}`); // même artisan + même mois + même montant = jamais deux débits
+  }, `commission-prestations_${artisan.id}_${moisISO}_${commissionCentimes}` + (reprise ? `_reprise_${new Date().toISOString().slice(0, 10)}` : "")); // même artisan + même mois + même montant = jamais deux débits
 
   // Une autre requête avec la même clé est encore en cours après plusieurs attentes (lancement simultané) : ce n'est PAS un échec de
   // carte. On ne note rien et on n'écrit pas à l'artisan : l'autre lancement fait le travail.
@@ -258,13 +272,13 @@ async function traiterUnArtisan(sb: any, artisan: any, debut: string, finExclusi
   if (!ok || intent?.status !== "succeeded") {
     const motif = intent?.error?.message || (intent?.status ? `Paiement non abouti (état Stripe : ${intent.status}).` : "Erreur Stripe.");
     await enregistrer({ ...ligneBase, statut: "echoue", erreur: motif });
-    if (artisan.email) {
+    if (artisan.email && !silencieux) {
       await envoyerEmail(artisan.email, "⚠️ Le prélèvement de votre commission CaraLink a échoué",
         `<div style="font-family:sans-serif;max-width:480px;">
           <h2 style="color:#B5502F;">Prélèvement de commission — échec</h2>
           <p>Bonjour,</p>
           <p>Le prélèvement automatique de ${euros(commissionCentimes)} (commission sur vos prestations de ${moisISO.slice(0, 7)}) n'a pas pu être effectué${intent?.error?.message ? " : " + escHtml(intent.error.message) : ""}.</p>
-          <p>Merci de mettre à jour votre carte enregistrée dans MPA Artisans (Tableau de bord → Carte prestations) pour régulariser.</p>
+          <p>Merci de mettre à jour votre carte enregistrée dans MPA Artisans (Ma comptabilité, encart « Carte ») pour régulariser.</p>
           <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Ouvrir MPA Artisans →</a></p>
         </div>`);
     }
@@ -275,6 +289,54 @@ async function traiterUnArtisan(sb: any, artisan: any, debut: string, finExclusi
   if (suite === "echec") return { artisan_id: artisan.id, nom, statut: "reussi_non_enregistre", commission: commissionCentimes / 100, stripe_payment_intent_id: intent.id, erreur: "Débit réussi chez Stripe mais non enregistré en base : à vérifier." };
   if (suite === "deja") return { artisan_id: artisan.id, nom, statut: "deja_traite" };
   return { artisan_id: artisan.id, nom, statut: "reussi", commission: commissionCentimes / 100 };
+}
+
+const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Retente les mois « échoués » : ceux d'un artisan précis (carte tout juste enregistrée), ou de tous (lancement mensuel), en
+// excluant le mois qui vient d'être traité. Seuls les artisans qui ont maintenant une carte sont retentés.
+async function reprendreMoisEchoues(sb: any, artisanId: string | null, moisExclu: string | null, silencieux: boolean) {
+  let requete = sb.from("prelevements_prestations").select("artisan_id, mois").eq("statut", "echoue");
+  if (artisanId) requete = requete.eq("artisan_id", artisanId);
+  if (moisExclu) requete = requete.neq("mois", moisExclu);
+  const { data: lignes, error } = await requete.order("mois", { ascending: true }).limit(500);
+  if (error) { console.error("[prelever-commission-prestations] lecture des mois échoués :", error.message); return []; }
+  const maintenant = new Date();
+  const debutMoisCourant = new Date(Date.UTC(maintenant.getUTCFullYear(), maintenant.getUTCMonth(), 1)).toISOString().slice(0, 10);
+  const resultats: any[] = [];
+  const artisans = new Map<string, any>();
+  for (const l of lignes || []) {
+    if (String(l.mois) >= debutMoisCourant) continue; // jamais un mois en cours
+    try {
+      let artisan = artisans.get(l.artisan_id);
+      if (!artisan) {
+        const { data } = await sb.from("artisans").select("id, nom_entreprise, email, stripe_customer_id, carte_prestations_enregistree").eq("id", l.artisan_id).maybeSingle();
+        artisan = data; artisans.set(l.artisan_id, artisan);
+      }
+      if (!artisan || !artisan.stripe_customer_id) continue;
+      const carte = await carteEnregistree(artisan.stripe_customer_id);
+      if (!carte) continue; // toujours pas de carte : rien à retenter, la ligne reste « échouée »
+      const d = new Date(String(l.mois) + "T00:00:00Z");
+      d.setUTCMonth(d.getUTCMonth() + 1);
+      const r = await traiterUnArtisan(sb, artisan, String(l.mois), d.toISOString().slice(0, 10), String(l.mois), false, silencieux);
+      resultats.push({ ...r, mois: String(l.mois), reprise: true });
+    } catch (e) {
+      console.error("[prelever-commission-prestations] reprise", l.artisan_id, l.mois, e);
+      resultats.push({ artisan_id: l.artisan_id, mois: String(l.mois), statut: "erreur", erreur: (e as Error).message, reprise: true });
+    }
+  }
+  return resultats;
+}
+
+// Récapitulatif à l'admin dès qu'un prélèvement n'a pas abouti : sans lui, une commission impayée ne se voyait que si on ouvrait l'Admin.
+async function prevenirAdmin(resultats: any[], contexte: string) {
+  const aSignaler = resultats.filter((r) => ["echoue", "reussi_non_enregistre", "erreur"].includes(r.statut));
+  if (aSignaler.length === 0) return;
+  const lignes = aSignaler.map((r) =>
+    `<li><strong>${escHtml(r.nom || r.artisan_id)}</strong>${r.mois ? " (" + escHtml(String(r.mois).slice(0, 7)) + ")" : ""} : ${escHtml(r.statut)}${r.erreur ? " — " + escHtml(r.erreur) : ""}${r.commission ? " — " + escHtml(String(r.commission)) + " €" : ""}</li>`).join("");
+  await envoyerEmail(ADMIN_EMAIL, `⚠️ Commission prestations : ${aSignaler.length} prélèvement(s) non abouti(s)`,
+    `<div style="font-family:sans-serif;max-width:560px;"><h2 style="color:#B5502F;">Prélèvements de commission non aboutis</h2><p>Contexte : ${escHtml(contexte)}.</p><ul>${lignes}</ul>
+     <p>Tant qu'une commission reste échouée, l'artisan ne peut plus planifier de nouvelle intervention « annuaire » à la main.</p></div>`);
 }
 
 // Bornes du mois demandé, ou du mois précédent si rien n'est précisé. Un vrai prélèvement n'a lieu que sur un mois TERMINÉ.
@@ -317,6 +379,14 @@ Deno.serve(async (req: Request) => {
     if (body.simuler != null && typeof body.simuler !== "boolean") return json({ error: "Requête invalide." }, 400);
     const simuler = body.simuler === true;
 
+    // Reprise ciblée : une carte vient d'être enregistrée (webhook Stripe) → on retente les mois échoués de CET artisan, rien d'autre.
+    if (body.reprise_artisan_id != null) {
+      if (!estCron || typeof body.reprise_artisan_id !== "string" || !REGEX_UUID.test(body.reprise_artisan_id)) return json({ error: "Requête invalide." }, 400);
+      const resultats = await reprendreMoisEchoues(sb, body.reprise_artisan_id, null, false);
+      await prevenirAdmin(resultats, "reprise après enregistrement d'une carte");
+      return json({ ok: true, reprise: true, resultats });
+    }
+
     const mois = lireMois(body.mois_iso, simuler);
     if (typeof mois === "string") return json({ error: mois }, 400);
     const { debut, finExclusive, moisISO } = mois;
@@ -332,6 +402,13 @@ Deno.serve(async (req: Request) => {
         console.error("[prelever-commission-prestations] artisan", artisan.id, e);
         resultats.push({ artisan_id: artisan.id, nom: artisan.nom_entreprise, statut: "erreur", erreur: (e as Error).message });
       }
+    }
+
+    // Lancement réel : on retente aussi, sans écrire aux artisans, les ANCIENS mois échoués de ceux qui ont une carte aujourd'hui.
+    if (!simuler) {
+      const anciens = await reprendreMoisEchoues(sb, null, moisISO, true);
+      resultats.push(...anciens);
+      await prevenirAdmin(resultats, `mois ${moisISO.slice(0, 7)}`);
     }
 
     return json({ ok: true, simulation: simuler, mois: moisISO, traites: resultats.length, resultats });

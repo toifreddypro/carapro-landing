@@ -642,6 +642,20 @@ async function traiterCarteEnregistree(setupIntent: any) {
   if (!res.ok) throw new Error(`Stripe a refusé de définir le moyen de paiement par défaut (${res.status})`); // Stripe réessaiera
   const { error } = await sbAdmin.from("artisans").update({ carte_prestations_enregistree: true }).eq("id", artisanId);
   lever(error, "Maj carte_prestations_enregistree");
+
+  // Une commission restée « échouée » faute de carte (ou carte refusée) est retentée tout de suite avec la nouvelle carte.
+  // Jamais bloquant : si cet appel échoue, la carte reste bien enregistrée et le lancement mensuel retentera de toute façon.
+  const secretCron = Deno.env.get("PRELEVEMENT_CRON_SECRET");
+  if (secretCron) {
+    try {
+      const rep = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/prelever-commission-prestations`, {
+        method: "POST",
+        headers: { "X-Cron-Secret": secretCron, "Content-Type": "application/json" },
+        body: JSON.stringify({ reprise_artisan_id: artisanId }),
+      });
+      if (!rep.ok) console.error("[stripe-webhook-artisans] reprise de commission refusée :", rep.status);
+    } catch (e) { console.error("[stripe-webhook-artisans] reprise de commission impossible :", e); }
+  }
 }
 
 // ── Onboarding Stripe Connect d'un artisan terminé (compte prêt à recevoir des paiements) ──

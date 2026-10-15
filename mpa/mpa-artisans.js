@@ -247,6 +247,23 @@ async function verifierAlertesMpaAi() {
       }
     }
   }
+
+  // 8) Commission prestations : carte à enregistrer AVANT le seuil gratuit, ou commission restée impayée.
+  var etatC = await chargerEtatCommission();
+  if (etatC) {
+    var impayeC = Number(etatC.commission_impayee || 0);
+    var caC = Number(etatC.ca_mois || 0);
+    if (impayeC > 0) {
+      mpaAiDire('⚠️ Une commission de ' + eurosMPA(impayeC) + ' n\'a pas pu être prélevée. Tant qu\'elle n\'est pas réglée, vous ne pouvez plus planifier de nouvelle intervention venue de CaraLink.', 'warning',
+        { label: 'Enregistrer une carte', action: 'ouvrirCartePrestations()' });
+    } else if (!etatC.carte && caC >= Number(etatC.seuil || 200)) {
+      mpaAiDire('⚠️ Vous avez dépassé ' + etatC.seuil + ' € ce mois-ci avec vos clients venus de CaraLink. Enregistrez une carte pour pouvoir en planifier de nouveaux. Elle est débitée seulement sur la part au-dessus de ' + etatC.seuil + ' €.', 'warning',
+        { label: 'Enregistrer une carte', action: 'ouvrirCartePrestations()' });
+    } else if (!etatC.carte && caC >= SEUIL_ALERTE_CARTE_EUROS) {
+      mpaAiDire('🔔 Vous approchez du seuil gratuit (' + eurosMPA(caC) + ' sur ' + etatC.seuil + ' € ce mois-ci). Pensez à enregistrer une carte pour ne pas être bloqué.', 'info',
+        { label: 'Enregistrer une carte', action: 'ouvrirCartePrestations()' });
+    }
+  }
 }
 
 // ── Onglets principaux ──
@@ -1778,7 +1795,17 @@ async function sauverIntervention() {
   } else {
     res = await sb.from('mpa_artisans_interventions').insert(maj).select().single();
   }
-  if (res.error) { alert('Erreur : ' + res.error.message); return; }
+  if (res.error) {
+    if (String(res.error.message || '').indexOf('COMMISSION_CARTE_REQUISE') >= 0) {
+      // Verrou posé par la base : carte obligatoire au-dessus du seuil gratuit, ou commission restée impayée.
+      if (confirm('Pour planifier une nouvelle intervention venue de CaraLink, il faut d\'abord enregistrer une carte bancaire (ou régler la commission restée impayée).\n\nElle n\'est débitée qu\'au-dessus de 200 € par mois.\n\nL\'enregistrer maintenant ?')) {
+        fermerModale('modal-intervention');
+        ouvrirCartePrestations();
+      }
+      return;
+    }
+    alert('Erreur : ' + res.error.message); return;
+  }
   fermerModale('modal-intervention');
   await chargerInterventions();
   if (maj.statut !== 'annulee') {
@@ -2402,6 +2429,7 @@ function calculerIR(revenuImposable, nbParts) {
 
 async function initDashboard() {
   document.getElementById('dash-parts').value = _artisan.parts_fiscales || 1;
+  await chargerEtatCommission();
   renderEncartCartePrestations();
   await calculerDashboardFiscal();
   _dispoAnnee = new Date().getFullYear();
@@ -4225,21 +4253,56 @@ async function confirmerRemboursement() {
 var _stripeClientMpa = null;
 var _stripeElementsCarte = null;
 
+// État de la commission prestations de l'artisan connecté (carte, CA « annuaire » du mois, commission impayée) — calculé côté base.
+// Si la fonction SQL n'existe pas encore, l'écran se comporte comme avant (aucune alerte, aucun blocage affiché).
+var _etatCommission = null;
+var SEUIL_ALERTE_CARTE_EUROS = 150; // on prévient l'artisan avant qu'il atteigne le seuil gratuit de 200 €
+async function chargerEtatCommission() {
+  try {
+    var { data, error } = await sb.rpc('etat_commission_prestations');
+    if (error) throw error;
+    _etatCommission = data || null;
+  } catch (e) { console.warn('etat_commission_prestations :', e && e.message); _etatCommission = null; }
+  return _etatCommission;
+}
+
 function renderEncartCartePrestations() {
   var zone = document.getElementById('encart-carte-prestations');
   if (!zone) return;
-  if (_artisan.carte_prestations_enregistree) {
+  var etat = _etatCommission;
+  var aCarte = !!_artisan.carte_prestations_enregistree;
+  var impaye = etat ? Number(etat.commission_impayee || 0) : 0;
+  var caMois = etat ? Number(etat.ca_mois || 0) : 0;
+  var seuil = etat ? Number(etat.seuil || 200) : 200;
+  var bouton = function(texte, couleur) {
+    return '<button onclick="ouvrirCartePrestations()" style="flex-shrink:0;padding:9px 16px;border-radius:8px;border:none;background:' + couleur + ';color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;">' + texte + '</button>';
+  };
+  var boite = function(fond, bord, contenu, bout) {
+    return '<div style="background:' + fond + ';border:1px solid ' + bord + ';border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
+      '<div style="flex:1;min-width:220px;font-size:12.5px;color:var(--mu2);">' + contenu + '</div>' + bout + '</div>';
+  };
+  if (impaye > 0) {
+    zone.innerHTML = boite('rgba(220,38,38,.07)', 'rgba(220,38,38,.4)',
+      '⚠️ <strong>Commission impayée : ' + eurosMPA(impaye) + '.</strong> Le prélèvement n\'a pas pu être fait. Tant qu\'elle n\'est pas réglée, vous ne pouvez plus planifier de nouvelle intervention venue de CaraLink. Enregistrez une carte valide : elle sera débitée aussitôt.',
+      bouton('Enregistrer une carte →', '#dc2626'));
+  } else if (aCarte) {
     zone.innerHTML =
       '<div style="background:rgba(15,157,120,.06);border:1px solid rgba(15,157,120,.3);border-radius:14px;padding:12px 20px;font-size:12.5px;color:#0f9d78;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">' +
         '<span>✅ Carte enregistrée pour la commission prestations.</span>' +
         '<button onclick="ouvrirCartePrestations()" style="padding:6px 12px;border-radius:7px;border:1px solid rgba(15,157,120,.4);background:transparent;color:#0f9d78;font-size:12px;font-weight:700;cursor:pointer;">Remplacer</button>' +
       '</div>';
+  } else if (etat && caMois >= seuil) {
+    zone.innerHTML = boite('rgba(220,38,38,.07)', 'rgba(220,38,38,.4)',
+      '⚠️ <strong>Vous avez dépassé ' + seuil + ' € ce mois-ci</strong> avec vos clients venus de CaraLink. Pour pouvoir en planifier de nouveaux, enregistrez une carte. Elle est débitée une fois par mois, seulement sur la part au-dessus de ' + seuil + ' €.',
+      bouton('Enregistrer une carte →', '#dc2626'));
+  } else if (etat && caMois >= SEUIL_ALERTE_CARTE_EUROS) {
+    zone.innerHTML = boite('rgba(245,158,11,.08)', 'rgba(245,158,11,.4)',
+      '🔔 <strong>Vous approchez du seuil gratuit</strong> (' + eurosMPA(caMois) + ' sur ' + seuil + ' € ce mois-ci). Enregistrez une carte dès maintenant pour ne pas être bloqué : elle ne sera débitée que si vous dépassez ' + seuil + ' €.',
+      bouton('Enregistrer une carte →', '#f59e0b'));
   } else {
-    zone.innerHTML =
-      '<div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.3);border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
-        '<div style="flex:1;min-width:220px;font-size:12.5px;color:var(--mu2);">💳 Aucune carte enregistrée — nécessaire uniquement si vous dépassez le seuil gratuit de 200 €/mois sur vos clients CaraLink.</div>' +
-        '<button onclick="ouvrirCartePrestations()" style="flex-shrink:0;padding:9px 16px;border-radius:8px;border:none;background:#3b82f6;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;">Enregistrer une carte →</button>' +
-      '</div>';
+    zone.innerHTML = boite('rgba(59,130,246,.06)', 'rgba(59,130,246,.3)',
+      '💳 Aucune carte enregistrée — nécessaire uniquement si vous dépassez le seuil gratuit de 200 €/mois sur vos clients CaraLink.',
+      bouton('Enregistrer une carte →', '#3b82f6'));
   }
 }
 
@@ -4283,9 +4346,12 @@ async function confirmerCartePrestations() {
     // Le webhook (setup_intent.succeeded) confirme côté serveur ; on ne fait ici qu'un
     // rafraîchissement optimiste de l'écran, la vraie source de vérité reste le serveur.
     _artisan.carte_prestations_enregistree = true;
+    if (_etatCommission) { _etatCommission.carte = true; _etatCommission.bloque_seuil = false; }
     fermerModale('modal-carte-prestations');
     renderEncartCartePrestations();
-    alert('✅ Carte enregistrée. Elle ne sera débitée que si vos prestations trouvées via CaraLink dépassent 200 € dans un mois.');
+    // Le serveur confirme la carte (et relance une éventuelle commission échouée) en quelques secondes : on relit l'état juste après.
+    setTimeout(async function() { await chargerEtatCommission(); renderEncartCartePrestations(); }, 5000);
+    alert('✅ Carte enregistrée. Elle ne sera débitée que si vos prestations trouvées via CaraLink dépassent 200 € dans un mois' + (_etatCommission && _etatCommission.commission_impayee > 0 ? ', et la commission restée impayée va être prélevée dans quelques instants.' : '.'));
   } catch (e) {
     err.textContent = e.message;
     err.style.display = 'block';
