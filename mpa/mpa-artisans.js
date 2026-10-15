@@ -1410,6 +1410,7 @@ async function ouvrirNouvelleIntervention(dateStr, creneau) {
   document.getElementById('mi-delete-wrap').style.display = 'none';
   document.getElementById('mi-impossible-wrap').style.display = 'none';
   var zonePaiement = document.getElementById('mi-paiement-wrap'); if (zonePaiement) { zonePaiement.style.display = 'none'; zonePaiement.innerHTML = ''; }
+  var zoneFacture = document.getElementById('mi-facture-wrap'); if (zoneFacture) { zoneFacture.style.display = 'none'; zoneFacture.innerHTML = ''; }
   ouvrirModale('modal-intervention');
 }
 
@@ -1448,6 +1449,7 @@ async function ouvrirIntervention(id) {
   document.getElementById('mi-delete-wrap').style.display = 'block';
   document.getElementById('mi-impossible-wrap').style.display = ['planifiee', 'en_cours'].indexOf(i.statut || 'planifiee') !== -1 ? 'block' : 'none';
   renderZoneAvisIntervention(i);
+  renderZoneFactureIntervention(i);
   chargerPaiementsIntervention(i);
   ouvrirModale('modal-intervention');
   calculerCreneaux();
@@ -2163,9 +2165,9 @@ function renderMatriceCompta() {
   function ligneTableau(label, valeurs, cls, couleur) {
     var tot = valeurs.reduce(function(s, v) { return s + v; }, 0);
     var cells = valeurs.map(function(v, i) {
-      return '<td' + clsNow(i) + ' style="text-align:right;font-weight:700;' + (couleur ? 'color:' + couleur + ';' : '') + '">' + _eur0(v) + '</td>';
+      return '<td' + clsNow(i) + ' style="text-align:center;font-weight:700;' + (couleur ? 'color:' + couleur + ';' : '') + '">' + _eur0(v) + '</td>';
     }).join('');
-    return '<tr class="' + cls + '"><td>' + label + '</td>' + cells + '<td style="text-align:right;font-weight:800;' + (couleur ? 'color:' + couleur + ';' : '') + '">' + _eur0(tot) + '</td></tr>';
+    return '<tr class="' + cls + '"><td>' + label + '</td>' + cells + '<td style="text-align:center;font-weight:800;' + (couleur ? 'color:' + couleur + ';' : '') + '">' + _eur0(tot) + '</td></tr>';
   }
   var html = '';
   var totBrut = cols.map(function() { return 0; }), totCotis = cols.map(function() { return 0; });
@@ -2206,9 +2208,9 @@ function renderMatriceCompta() {
         var ligne = parClient[nom], totalLigne = 0, clr = getClientColor(nom);
         var cellules = cols.map(function(c, i) {
           var val = somme(ligne, c.m); totalLigne += val;
-          return '<td' + clsNow(i) + ' style="text-align:right;' + (val ? '' : 'color:var(--mu);') + '">' + _eur0(val) + '</td>';
+          return '<td' + clsNow(i) + ' style="text-align:center;' + (val ? '' : 'color:var(--mu);') + '">' + _eur0(val) + '</td>';
         }).join('');
-        return '<tr class="cpv2-row-client"><td style="border-left-color:' + clr + ';color:' + clr + ';"><strong>' + escHtml(nom) + '</strong></td>' + cellules + '<td style="text-align:right;font-weight:700;">' + _eur0(totalLigne) + '</td></tr>';
+        return '<tr class="cpv2-row-client"><td style="border-left-color:' + clr + ';color:' + clr + ';"><strong>' + escHtml(nom) + '</strong></td>' + cellules + '<td style="text-align:center;font-weight:700;">' + _eur0(totalLigne) + '</td></tr>';
       }).join('');
     }
   }
@@ -2384,6 +2386,118 @@ async function chargerFactures() {
   }).join('');
 }
 
+// ════════════════════════════════════════
+//  FACTURE EN 1 CLIC (Pro) — interventions et commandes de la boutique
+//  Le panier classique (plusieurs interventions sur une facture) reste gratuit.
+// ════════════════════════════════════════
+var _facturesCommandes = null; // commande_id → id de facture ; null = colonne absente (SQL facture-commandes.sql pas lancé) → boutons masqués
+
+async function prochainNumeroFacture() {
+  var { count } = await sb.from('mpa_artisans_factures').select('id', { count: 'exact', head: true }).eq('artisan_id', _artisan.id);
+  return new Date().getFullYear() + '-' + String((count || 0) + 1).padStart(3, '0');
+}
+
+function renderZoneFactureIntervention(i) {
+  var zone = document.getElementById('mi-facture-wrap');
+  if (!zone) return;
+  if (!i || ['terminee', 'payee'].indexOf(i.statut) === -1 || !(Number(i.prix) > 0)) { zone.style.display = 'none'; zone.innerHTML = ''; return; }
+  zone.style.display = 'block';
+  zone.innerHTML = i.facture_id
+    ? '<button onclick="imprimerFacture(\'' + i.facture_id + '\')" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--ac);background:transparent;color:var(--ac);font-size:13px;font-weight:700;cursor:pointer;">🧾 Voir la facture</button>'
+    : '<button onclick="facturerIntervention(\'' + i.id + '\')" style="padding:9px 18px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🧾 Facturer en 1 clic</button>' +
+      '<div style="font-size:11px;color:var(--mu);margin-top:5px;">Crée la facture de cette intervention et l\'ouvre pour l\'imprimer ou l\'enregistrer en PDF.</div>';
+}
+
+async function facturerIntervention(id) {
+  if (!verifierAccesEcriture()) return;
+  if (!exigerPro('facture_rapide')) return;
+  var i = _interventionsCache.find(function(x) { return x.id === id; });
+  if (!i || i.facture_id) return;
+  if (!i.client_id) { alert('Choisissez d\'abord un client pour cette intervention, puis enregistrez.'); return; }
+  var montant = Number(i.prix) || 0;
+  if (!(montant > 0)) { alert('Cette intervention n\'a pas de prix.'); return; }
+  var numero = await prochainNumeroFacture();
+  var { data: facture, error } = await sb.from('mpa_artisans_factures').insert({
+    artisan_id: _artisan.id, client_id: i.client_id, numero: numero, montant_total: montant,
+  }).select().single();
+  if (error) { alert('Erreur : ' + error.message); return; }
+  var { error: err2 } = await sb.from('mpa_artisans_interventions').update({ facture_id: facture.id }).eq('id', id).eq('artisan_id', _artisan.id);
+  if (err2) { alert('Erreur : ' + err2.message); return; }
+  i.facture_id = facture.id;
+  renderZoneFactureIntervention(i);
+  if (document.getElementById('fact-client') && document.getElementById('fact-client').value) chargerPanierClient();
+  chargerFactures();
+  imprimerFacture(facture.id);
+}
+
+// Lien commandes → factures. La colonne commande_id est facultative : sans elle, les boutons de facture des commandes restent masqués.
+async function chargerFacturesCommandes() {
+  var { data, error } = await sb.from('mpa_artisans_factures').select('id, commande_id').eq('artisan_id', _artisan.id).not('commande_id', 'is', null);
+  if (error) { _facturesCommandes = null; return; }
+  _facturesCommandes = {};
+  (data || []).forEach(function(f) { _facturesCommandes[f.commande_id] = f.id; });
+}
+
+function montantFacturableCommande(c) {
+  return Math.round(((Number(c.montant_total) || 0) - (Number(c.frais_livraison) || 0)) * 100) / 100;
+}
+
+function boutonFactureCommande(c) {
+  if (_facturesCommandes === null) return '';
+  if (_facturesCommandes[c.id]) {
+    return '<button onclick="imprimerFacture(\'' + _facturesCommandes[c.id] + '\')" style="padding:6px 14px;border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">🧾 Voir la facture</button>';
+  }
+  if (c.paiement_statut !== 'paye' || !(montantFacturableCommande(c) > 0)) return '';
+  return '<button onclick="facturerCommande(\'' + c.id + '\')" style="padding:6px 14px;border-radius:7px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">🧾 Facturer</button>';
+}
+
+function normaliserNomClient(n) {
+  return String(n || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+async function facturerCommande(id) {
+  if (!verifierAccesEcriture()) return;
+  if (!exigerPro('facture_rapide')) return;
+  var c = _commandesCache.find(function(x) { return x.id === id; });
+  if (!c || _facturesCommandes === null) return;
+  if (_facturesCommandes[id]) { imprimerFacture(_facturesCommandes[id]); return; }
+  if (c.paiement_statut !== 'paye') { alert('Seule une commande payée en ligne peut être facturée ici.'); return; }
+  var montant = montantFacturableCommande(c);
+  if (!(montant > 0)) { alert('Cette commande n\'a rien à facturer (les frais de livraison se facturent avec la livraison).'); return; }
+
+  // Client : fiche existante du même nom (ou même email), sinon création avec les coordonnées de la commande.
+  var nomNorm = normaliserNomClient(c.client_nom);
+  var client = (_clientsCache || []).find(function(x) {
+    return (c.client_email && x.email && x.email.toLowerCase() === String(c.client_email).toLowerCase()) || normaliserNomClient(x.nom) === nomNorm;
+  });
+  if (!client) {
+    var livraison = c.mode === 'livraison';
+    var { data: nouveau, error: errClient } = await sb.from('mpa_artisans_clients').insert({
+      artisan_id: _artisan.id, nom: c.client_nom, email: c.client_email || null,
+      adresse: livraison ? (c.adresse_livraison || null) : null,
+      code_postal: livraison ? (c.code_postal_livraison || null) : null,
+      commune: livraison ? (c.commune_livraison || null) : null,
+    }).select().single();
+    if (errClient) { alert('Erreur création client : ' + errClient.message); return; }
+    client = nouveau;
+    chargerClients();
+  }
+
+  var numero = await prochainNumeroFacture();
+  var { data: facture, error } = await sb.from('mpa_artisans_factures').insert({
+    artisan_id: _artisan.id, client_id: client.id, numero: numero, montant_total: montant, commande_id: id,
+  }).select().single();
+  if (error) {
+    alert(error.code === '23505' ? 'Cette commande a déjà été facturée.' : 'Erreur : ' + error.message);
+    await chargerFacturesCommandes(); renderCommandes();
+    return;
+  }
+  _facturesCommandes[id] = facture.id;
+  renderCommandes();
+  chargerFactures();
+  imprimerFacture(facture.id);
+}
+
 async function imprimerFacture(factureId) {
   var { data: facture, error } = await sb.from('mpa_artisans_factures')
     .select('*, mpa_artisans_clients(*)').eq('id', factureId).single();
@@ -2407,6 +2521,26 @@ async function imprimerFacture(factureId) {
     var montant = l.prix || 0;
     return '<tr><td>' + dateAff + '</td><td>' + escHtml(service) + (l.notes ? ' — ' + escHtml(l.notes) : '') + '</td><td>1</td><td>' + montant.toFixed(2) + '€</td><td>' + montant.toFixed(2) + '€</td></tr>';
   }).join('');
+  var libelleColonne = 'Prestation';
+  if (facture.commande_id) {
+    // Facture d'une commande de la boutique : articles de la commande (ou article unique), + ligne d'ajustement si une remise explique l'écart.
+    libelleColonne = 'Désignation';
+    var { data: cmd } = await sb.from('commandes_catalogue').select('*').eq('id', facture.commande_id).maybeSingle();
+    var articles = [];
+    if (cmd) {
+      var { data: lignesCmd } = await sb.from('commandes_catalogue_lignes').select('nom_article, prix_unitaire, quantite').eq('commande_id', cmd.id);
+      if (lignesCmd && lignesCmd.length) articles = lignesCmd.map(function(l) { return { nom: l.nom_article, qte: l.quantite, pu: Number(l.prix_unitaire) || 0 }; });
+      else articles = [{ nom: cmd.nom_article, qte: cmd.quantite || 1, pu: (Number(facture.montant_total) || 0) / (cmd.quantite || 1) }];
+    }
+    var dateCmd = cmd ? new Date(cmd.paiement_traite_le || cmd.created_at).toLocaleDateString('fr-FR', { day:'numeric', month:'short', year:'numeric', timeZone:'America/Guadeloupe' }) : '';
+    var somme = 0;
+    lignesHtml = articles.map(function(l) {
+      somme += l.pu * l.qte;
+      return '<tr><td>' + dateCmd + '</td><td>' + escHtml(l.nom) + '</td><td>' + l.qte + '</td><td>' + l.pu.toFixed(2) + '€</td><td>' + (l.pu * l.qte).toFixed(2) + '€</td></tr>';
+    }).join('');
+    var ecart = Math.round(((Number(facture.montant_total) || 0) - somme) * 100) / 100;
+    if (articles.length && Math.abs(ecart) > 0.004) lignesHtml += '<tr><td>' + dateCmd + '</td><td>Remise / ajustement</td><td>1</td><td>' + ecart.toFixed(2) + '€</td><td>' + ecart.toFixed(2) + '€</td></tr>';
+  }
 
   document.getElementById('facture-print').innerHTML =
     '<div class="fp-page">' +
@@ -2431,7 +2565,7 @@ async function imprimerFacture(factureId) {
         '</div>' +
       '</div>' +
       '<table class="fp-table">' +
-        '<thead><tr><th>Date</th><th>Prestation</th><th>Qté</th><th>Prix unit.</th><th>Montant</th></tr></thead>' +
+        '<thead><tr><th>Date</th><th>' + libelleColonne + '</th><th>Qté</th><th>Prix unit.</th><th>Montant</th></tr></thead>' +
         '<tbody>' + lignesHtml + '</tbody>' +
       '</table>' +
       '<div class="fp-total-row"><span>Total TTC</span><span>' + facture.montant_total.toFixed(2) + '€</span></div>' +
@@ -2730,6 +2864,8 @@ function proposerPassagePro(raison) {
     ? '⭐ L\'offre Essentiel permet ' + LIMITE_PHARES_GRATUIT + ' produit phare. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + '), vous en mettez ' + LIMITE_PHARES_PRO + ' en avant sur votre fiche et votre boutique, avec le catalogue illimité et Mes fournitures. Pour changer de produit phare, retirez d\'abord l\'étoile de l\'actuel.' + texteEssai()
     : raison === 'detail_client'
     ? '🔒 Le détail du chiffre d\'affaires par client fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Le récapitulatif par mois (interventions, ventes, livraisons) reste gratuit.' + texteEssai()
+    : raison === 'facture_rapide'
+    ? '🧾 La facture en 1 clic (depuis une intervention ou une commande de la boutique) fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Le panier de facturation classique reste gratuit.' + texteEssai()
     : raison === 'retard'
     ? '⏰ Prévenir un client d\'un retard fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
     : '🔒 Mes fournitures fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : suivi de vos consommables, scan QR code / code-barres et alerte avant la rupture.' + texteEssai();
@@ -4225,6 +4361,7 @@ async function chargerCommandes() {
   var { data, error } = await sb.from('commandes_catalogue').select('*').eq('artisan_id', _artisan.id).order('created_at', { ascending: false });
   if (error) { zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>'; return; }
   _commandesCache = (data || []).filter(commandeVisible);
+  await chargerFacturesCommandes();
 
   // Détail des commandes panier (plusieurs articles) — chargé en une seule requête groupée.
   _lignesCommandesCache = {};
@@ -4338,7 +4475,7 @@ function renderCommandes() {
       (c.notes ? '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;font-style:italic;">« ' + escHtml(c.notes) + ' »</div>' : '') +
       ligneReglement +
       badgeProche +
-      '<div>' + boutonSuivant + boutonLivraison + boutonRembourser + '</div>' +
+      '<div>' + boutonSuivant + boutonLivraison + boutonFactureCommande(c) + boutonRembourser + '</div>' +
     '</div>';
   }).join('');
 }
