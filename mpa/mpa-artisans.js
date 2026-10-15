@@ -104,7 +104,7 @@ function mpaAiDire(message, type, cta) {
 
 function renderMpaAiFeed() {
   var zone = document.getElementById('mpa-ai-feed');
-  if (!_mpaAiFeed.length) { zone.innerHTML = '<div class="mpa-ai-empty">Rien à signaler pour l\'instant 👋</div>'; return; }
+  if (!_mpaAiFeed.length) { zone.innerHTML = '<div class="mpa-ai-empty">' + (_artisan ? 'Bonjour ' + escHtml(nomAccueil()) + ' ! ' : '') + 'Rien à signaler pour l\'instant 👋</div>'; return; }
   zone.innerHTML = _mpaAiFeed.map(function(m) {
     var heure = m.time.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
     return '<div class="mpa-ai-msg">' +
@@ -191,7 +191,7 @@ async function verifierAlertesMpaAi() {
 
   // 3) Nouvel utilisateur — aucun client ni service configuré.
   if (!_clientsCache.length && !_servicesCache.length) {
-    mpaAiDire('Bienvenue sur MPA Artisans ! Commencez par ajouter un client habituel dans "Mon profil", ou ajoutez vos services dans "Mes interventions".', 'info');
+    mpaAiDire('Bienvenue sur MPA Artisans, ' + escHtml(nomAccueil()) + ' ! Commencez par ajouter un client habituel dans "Mon profil", ou ajoutez vos services dans "Mes interventions".', 'info');
   }
 
   // 4) Demandes et commandes en attente — réutilise les chiffres déjà calculés par
@@ -267,16 +267,81 @@ async function verifierAlertesMpaAi() {
 }
 
 // ── Onglets principaux ──
+// Les numéros d'onglet (0 à 7) restent ceux d'origine : les alertes et boutons qui appellent switchTab(n) n'ont donc pas à changer.
+// « Ma journée » (0) et « Mon planning » (2) sont désormais UN SEUL onglet, « Mon planning » : la journée en haut, le calendrier dessous.
+var TAB_PANNEAUX = ['p-journee', 'p-profil', 'p0', 'p-interventions', 'p-ventes', 'p-livraisons', 'p-stock', 'p-compta'];
+var TAB_BOUTONS  = ['nt-planning', 'nt-profil', 'nt-planning', 'nt-interventions', 'nt-ventes', 'nt-livraisons', 'nt-stock', 'nt-compta'];
 function switchTab(i) {
-  document.querySelectorAll('#nav .ntab').forEach(function(b, idx) { b.classList.toggle('active', idx === i); });
-  var panneaux = document.querySelectorAll('#content > .pnl');
-  panneaux.forEach(function(p, idx) { p.classList.toggle('active', idx === i); });
+  document.querySelectorAll('#nav .ntab').forEach(function(b) { b.classList.remove('active'); });
+  var bouton = document.getElementById(TAB_BOUTONS[i]);
+  if (bouton) bouton.classList.add('active');
+  var actifs = (i === 0 || i === 2) ? ['p-journee', 'p0'] : [TAB_PANNEAUX[i]];
+  document.querySelectorAll('#content > .pnl').forEach(function(p) { p.classList.toggle('active', actifs.indexOf(p.id) >= 0); });
   // La compta peut devenir périmée par une action faite depuis un autre onglet (ex : marquer une
   // intervention "Payée" depuis Ma journée) — on la rafraîchit systématiquement en y entrant,
   // plutôt que de compter sur chaque endroit qui pourrait la rendre périmée pour y penser.
-  var panneauActif = panneaux[i];
-  if (panneauActif && panneauActif.id === 'p-compta' && typeof chargerCompta === 'function') chargerCompta();
-  if (panneauActif && panneauActif.id === 'p-livraisons' && typeof chargerLivraisons === 'function') chargerLivraisons();
+  if (TAB_PANNEAUX[i] === 'p-compta' && typeof chargerCompta === 'function') chargerCompta();
+  if (TAB_PANNEAUX[i] === 'p-livraisons' && typeof chargerLivraisons === 'function') chargerLivraisons();
+}
+
+// ── Activités de l'artisan : intervention, boutique, livraison ──
+// artisans.activites (liste) : vide = l'artisan n'a pas encore répondu → TOUS les onglets restent normaux.
+// Sinon, les onglets dont il ne se sert pas sont estompés (jamais bloqués : un clic les ouvre quand même).
+// Planning, Mon profil et Ma comptabilité sont toujours en pleine couleur. Mon stock sert aux interventions (fournitures) ET à la boutique (produits).
+function appliquerActivites() {
+  var act = (_artisan && Array.isArray(_artisan.activites) && _artisan.activites.length) ? _artisan.activites : null;
+  var a = function(c) { return !act || act.indexOf(c) >= 0; };
+  var etat = {
+    'nt-interventions': a('interventions'),
+    'nt-ventes': a('boutique'),
+    'nt-livraisons': a('livraison'),
+    'nt-stock': a('interventions') || a('boutique')
+  };
+  Object.keys(etat).forEach(function(id) {
+    var b = document.getElementById(id); if (!b) return;
+    b.classList.toggle('inactif', !etat[id]);
+    if (etat[id]) b.removeAttribute('title'); else b.title = 'Vous n\'avez pas indiqué cette activité. Cliquez pour l\'ouvrir quand même.';
+  });
+}
+function ouvrirQuestionActivites() {
+  var act = (_artisan && Array.isArray(_artisan.activites)) ? _artisan.activites : [];
+  ['interventions', 'boutique', 'livraison'].forEach(function(c) { var e = document.getElementById('act-' + c); if (e) e.checked = act.indexOf(c) >= 0; });
+  var err = document.getElementById('act-erreur'); if (err) err.style.display = 'none';
+  ouvrirModale('modal-activites');
+}
+async function repondreQuestionActivites() {
+  var choisies = ['interventions', 'boutique', 'livraison'].filter(function(c) { var e = document.getElementById('act-' + c); return e && e.checked; });
+  var err = document.getElementById('act-erreur');
+  if (!choisies.length) { if (err) err.style.display = 'block'; return; }
+  var { error } = await sb.from('artisans').update({ activites: choisies }).eq('id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  _artisan.activites = choisies;
+  fermerModale('modal-activites');
+  appliquerActivites();
+  // La question est traitée : on la retire de la liste de MPA-AI et on la remplace par une confirmation.
+  _mpaAiFeed = _mpaAiFeed.filter(function(m) { return !(m.cta && m.cta.action === 'ouvrirQuestionActivites()'); });
+  var panneau = document.getElementById('mpa-ai-panel'); if (panneau) panneau.classList.remove('open');
+  mpaAiDire('C\'est noté. Les onglets dont vous ne vous servez pas sont estompés, mais ils restent ouverts si vous en avez besoin. Pour changer : « ⚙ Mes activités », à droite des onglets.', 'info');
+  // La question sur la visite d'estimation n'a de sens que pour qui intervient chez ses clients : elle vient juste après.
+  if (choisies.indexOf('interventions') >= 0) await demanderReglageVisite();
+}
+// MPA-AI pose la question tant que l'artisan n'a pas répondu (colonne présente et vide) — une fois par session. Renvoie true si elle a été posée.
+async function demanderActivites() {
+  if (window._questionActivitesDite || !_artisan || !('activites' in _artisan)) return false;
+  if (Array.isArray(_artisan.activites) && _artisan.activites.length) return false;
+  window._questionActivitesDite = true;
+  mpaAiDire('Bonjour ' + escHtml(nomAccueil()) + ' ! Une question rapide pour vous simplifier la vue : qu\'est-ce que vous faites ? Je mettrai en avant les onglets utiles.',
+    'pro', { label: 'Répondre', action: 'ouvrirQuestionActivites()' });
+  return true;
+}
+
+// Nom d'accueil : le nom de l'entreprise sans la forme juridique (SARL, EURL, SAS, EI…), et pas trop long.
+function nomAccueil() {
+  var brut = String((_artisan && _artisan.nom_entreprise) || '').trim();
+  var n = brut.replace(/(^|[\s,\-–])(S\.?A\.?R\.?L\.?|EURL|SASU|SAS|EIRL|EI|SA)\.?(?=$|[\s,\-–])/g, ' ').replace(/\s{2,}/g, ' ').replace(/^[\s,\-–]+|[\s,\-–]+$/g, '');
+  if (!n) n = brut;
+  if (n.length > 32) n = n.slice(0, 32).replace(/\s+\S*$/, '') + '…';
+  return n || 'à vous';
 }
 
 // ── Sous-onglets génériques — un seul mécanisme pour les trois groupes (Mon profil,
@@ -344,7 +409,9 @@ async function init() {
   await initDashboard();
   renderMpaAiFeed();
   await verifierAlertesMpaAi();
-  await demanderReglageVisite(); // après les autres alertes : la question de MPA-AI est la plus visible
+  appliquerActivites();
+  // Une seule question à la fois : d'abord l'activité (si pas encore répondu), la visite d'estimation ensuite.
+  if (!(await demanderActivites())) await demanderReglageVisite(); // après les autres alertes : la question de MPA-AI est la plus visible
   rappelerPaiementsBoutique('demarrage');
   rappelerStripeReservations();
   await verifierNouveautes();
