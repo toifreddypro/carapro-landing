@@ -289,6 +289,30 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 #tbl-compta tr.cpv2-row-brut td:first-child,
 #tbl-compta tr.cpv2-row-cotis td:first-child,
 #tbl-compta tr.cpv2-row-net td:first-child{text-align:left;padding-left:10px;}
+#tbl-recap{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:13px;}
+#tbl-recap thead th{padding:10px 6px;text-align:center;color:var(--mu);font-size:11px;letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--brd);}
+#tbl-recap thead th:first-child{text-align:left;padding-left:8px;}
+#tbl-recap tbody td{padding:12px 6px;text-align:center;font-size:13px;color:var(--tx);}
+#tbl-recap tbody td:first-child{text-align:left;padding-left:8px;font-weight:700;}
+#tbl-recap tbody tr:nth-child(even) td{background:rgba(181,80,47,.02);}
+#tbl-recap tbody tr:not(:last-child) td{border-bottom:1px solid var(--brd);}
+#tbl-recap thead th.col-now{color:var(--ac);background:rgba(181,80,47,.08);border-radius:4px 4px 0 0;}
+#tbl-recap tbody td.col-now{background:rgba(181,80,47,.05);}
+#tbl-recap tbody tr.cpv2-row-client td:first-child{border-left:3px solid transparent;padding-left:10px;}
+#tbl-recap tr.cpv2-sep td{padding:2px 0;border-bottom:none;}
+#tbl-recap tr.cpv2-row-brut td{color:var(--tx);font-weight:700;}
+#tbl-recap tr.cpv2-row-cotis td{color:var(--mu);}
+#tbl-recap tr.cpv2-row-net td{color:var(--ac);font-weight:700;}
+#tbl-recap tr.cpv2-row-brut td:first-child,
+#tbl-recap tr.cpv2-row-cotis td:first-child,
+#tbl-recap tr.cpv2-row-net td:first-child{text-align:left;padding-left:10px;}
+#tbl-recap tbody tr.rec-fam td{padding:14px 8px 6px;text-align:left;font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:800;color:var(--tx);background:rgba(181,80,47,.04);border-bottom:none;}
+#tbl-recap tbody tr.rec-fam .rec-taux{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;color:var(--mu);margin-left:6px;}
+#tbl-recap tbody tr.rec-total td{background:rgba(181,80,47,.1);border-top:2px solid rgba(181,80,47,.35);}
+#tbl-recap tbody tr:nth-child(even) td{background:none;}
+#tbl-recap tbody tr.rec-fam:nth-child(even) td{background:rgba(181,80,47,.04);}
+#tbl-recap tbody tr.rec-total:nth-child(even) td{background:rgba(181,80,47,.1);}
+.compta-mobile-fam{margin-top:14px;padding:6px 0;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:13.5px;border-bottom:2px solid rgba(181,80,47,.25);}
 .panier-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--brd);}
 .panier-item:last-child{border-bottom:none;}
 .panier-item input[type="checkbox"]{width:16px;height:16px;flex-shrink:0;accent-color:var(--ac);}
@@ -345,7 +369,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .cpv2-kpi-val{font-size:16px;}
   #zone-catalogue{grid-template-columns:repeat(2,1fr) !important;}
   #zone-photos{grid-template-columns:repeat(3,1fr) !important;}
-  #compta-table-wrap,#compta-scroll-hint{display:none !important;}
+  #compta-table-wrap,#compta-scroll-hint,#compta-recap-wrap,#compta-recap-hint{display:none !important;}
   .compta-mobile{display:block;}
   .compta-mobile-periodes{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:14px;padding-bottom:2px;}
   .compta-mobile-periodes button{flex-shrink:0;padding:8px 14px;border-radius:8px;border:1px solid var(--brd);background:var(--panel);color:var(--tx);font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;}
@@ -555,13 +579,44 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="fcbdy">
 <div class="ccrow">
 <div style="flex:1;">
-<span class="cclbl">Cotisations sociales</span>
-<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu);margin-top:2px;">Micro-entrepreneur : 22% par défaut</div>
+<span class="cclbl">Cotisations — interventions et livraisons</span>
+<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu);margin-top:2px;">Prestations de services : 21,2 % par défaut (10,6 % avec l'ACRE)</div>
 </div>
 <div style="display:flex;align-items:center;gap:4px;">
-<input class="ccinp" id="cfg-cotis" max="100" min="0" onchange="saveConfigFiscal()" step="0.1" style="width:60px;" type="number" value="22"/>
+<input class="ccinp" id="cfg-cotis" max="100" min="0" onchange="saveConfigFiscal()" step="0.1" style="width:60px;" type="number" value="21.2"/>
 <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mu);">%</span>
 </div>
+</div>
+<div class="ccrow">
+<div style="flex:1;">
+<span class="cclbl">Cotisations — ventes de produits</span>
+<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu);margin-top:2px;">Vente de marchandises : 12,3 % par défaut (6,2 % avec l'ACRE)</div>
+</div>
+<div style="display:flex;align-items:center;gap:4px;">
+<input class="ccinp" id="cfg-cotis-ventes" max="100" min="0" onchange="saveConfigFiscal()" step="0.1" style="width:60px;" type="number" value="12.3"/>
+<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mu);">%</span>
+</div>
+</div>
+<div class="ccrow">
+<div style="flex:1;">
+<span class="cclbl">Contribution formation professionnelle</span>
+<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu);margin-top:2px;">Artisans : 0,3 % du chiffre d'affaires, en plus des cotisations</div>
+</div>
+<div style="display:flex;align-items:center;gap:4px;">
+<input class="ccinp" id="cfg-cfp" max="100" min="0" onchange="saveConfigFiscal()" step="0.1" style="width:60px;" type="number" value="0.3"/>
+<span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mu);">%</span>
+</div>
+</div>
+<div class="ccrow">
+<div style="flex:1;">
+<span class="cclbl">Impôt sur le revenu</span>
+<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu);margin-top:2px;">Versement libératoire : 1 % ventes, 1,7 % services</div>
+</div>
+<select class="ccinp" id="cfg-liberatoire" onchange="saveConfigFiscal()" style="width:170px;">
+<option value="">Non précisé</option>
+<option value="oui">Versement libératoire</option>
+<option value="non">Barème classique</option>
+</select>
 </div>
 <div class="ccrow" style="border-bottom:none;">
 <div style="flex:1;">
@@ -783,8 +838,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="sous-nav" id="nav-compta"><button class="btab active" id="bt-compta-0" onclick="switchSousOnglet('nav-compta','conteneur-compta',0)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><line x1="12" x2="12" y1="1" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>Mon chiffre d'affaires</button><button class="btab" id="bt-compta-1" onclick="switchSousOnglet('nav-compta','conteneur-compta',1)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" x2="8" y1="13" y2="13"></line><line x1="16" x2="8" y1="17" y2="17"></line></svg>Mes factures</button><button class="btab" id="bt-compta-2" onclick="switchSousOnglet('nav-compta','conteneur-compta',2)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><line x1="18" x2="18" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="6" x2="6" y1="20" y2="14"></line></svg>Tableau de bord</button></div><div id="conteneur-compta"><div class="bpnl active"><div class="cpv2-card">
 <div class="cpv2-matrix-head">
 <div class="cpv2-matrix-headtext">
-<p class="cpv2-matrix-title"><svg fill="none" height="18" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="18"><rect height="7" rx="1" width="7" x="3" y="3"></rect><rect height="7" rx="1" width="7" x="14" y="3"></rect><rect height="7" rx="1" width="7" x="3" y="14"></rect><rect height="7" rx="1" width="7" x="14" y="14"></rect></svg><span id="compta-titre">Matrice CA — Clients &amp; Mois</span></p>
-<p class="cpv2-matrix-subtitle">Vue d'ensemble de votre activité — chiffre d'affaires, cotisations et net par client</p>
+<p class="cpv2-matrix-title"><svg fill="none" height="18" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="18"><rect height="7" rx="1" width="7" x="3" y="3"></rect><rect height="7" rx="1" width="7" x="14" y="3"></rect><rect height="7" rx="1" width="7" x="3" y="14"></rect><rect height="7" rx="1" width="7" x="14" y="14"></rect></svg><span id="compta-titre">Mon chiffre d'affaires</span></p>
+<p class="cpv2-matrix-subtitle">Interventions, ventes de la boutique et livraisons : chiffre d'affaires, cotisations et net, mois par mois</p>
 </div>
 <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
 <div class="cpv2-toggle">
@@ -816,11 +871,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <span class="cpv2-kpi-val" id="kpi-ca-net">0 €</span>
 </div>
 </div>
-<div class="scroll-hint" id="compta-scroll-hint">👉 Faites glisser pour voir tous les mois</div>
-<div class="dcbdy" id="compta-table-wrap" style="flex:1;min-height:0;">
-<table class="dtbl" id="tbl-compta">
-<thead><tr id="thead-compta-row"><th>Client</th></tr></thead>
-<tbody id="tbody-compta"></tbody>
+<div class="scroll-hint" id="compta-recap-hint">👉 Faites glisser pour voir tous les mois</div>
+<div class="dcbdy" id="compta-recap-wrap" style="min-height:0;">
+<table class="dtbl" id="tbl-recap">
+<thead><tr id="thead-recap-row"><th></th></tr></thead>
+<tbody id="tbody-recap"></tbody>
 </table>
 </div>
 <div class="compta-mobile" id="compta-mobile">
@@ -828,6 +883,30 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div id="compta-mobile-liste"></div>
 </div>
 <p class="cpv2-matrix-note" id="compta-note">💡 Vue <strong>Production</strong> : le CA est rangé dans le mois de l'intervention, dès qu'elle est marquée "Terminée" ou "Payée".</p>
+<p class="cpv2-matrix-note" id="compta-note-cotis"></p>
+</div>
+<div class="cpv2-card" id="compta-client-bloc" style="margin-top:16px;">
+<div class="cpv2-matrix-head">
+<div class="cpv2-matrix-headtext">
+<p class="cpv2-matrix-title">👥 <span>Détail par client</span> <span class="dbg pu" style="font-size:10px;">PRO</span></p>
+<p class="cpv2-matrix-subtitle">Chiffre d'affaires de chaque client, mois par mois (même vue et même année que ci-dessus)</p>
+</div>
+</div>
+<div id="compta-client-pro" style="display:none;">
+<div class="scroll-hint" id="compta-scroll-hint">👉 Faites glisser pour voir tous les mois</div>
+<div class="dcbdy" id="compta-table-wrap" style="flex:1;min-height:0;">
+<table class="dtbl" id="tbl-compta">
+<thead><tr id="thead-compta-row"><th>Client</th></tr></thead>
+<tbody id="tbody-compta"></tbody>
+</table>
+</div>
+<div class="compta-mobile" id="compta-client-mobile"></div>
+</div>
+<div id="compta-client-verrou" style="display:none;padding:18px;border:1px dashed var(--b2);border-radius:10px;text-align:center;">
+<div style="font-size:14px;font-weight:700;margin-bottom:6px;">🔒 Réservé à l'offre Pro</div>
+<div style="font-size:13px;color:var(--mu);line-height:1.5;margin-bottom:12px;">Voyez d'un coup d'œil quels clients vous rapportent le plus, mois par mois. Le récapitulatif ci-dessus (interventions, ventes, livraisons) reste gratuit.</div>
+<button class="addb" onclick="proposerPassagePro('detail_client')" type="button">Découvrir l'offre Pro</button>
+</div>
 </div></div><div class="bpnl"><div class="cpv2-page-wrap">
 <div class="cpv2-card">
 <div class="cpv2-matrix-head">
@@ -861,6 +940,18 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div></div><div class="bpnl"><div id="encart-rappel-cloture"></div><div id="encart-abonnement"></div><div class="dash-grid">
 <div>
+<div class="dash-jauge-card" id="carte-ca-mois">
+<div class="dj-header">
+<div class="dj-icon" style="background:rgba(15,157,120,.1);">
+<svg fill="none" height="13" stroke="#0f9d78" stroke-width="2" viewbox="0 0 24 24" width="13"><polyline points="3 17 9 11 13 15 21 7"></polyline><polyline points="14 7 21 7 21 14"></polyline></svg>
+</div>
+<div class="dj-title-block">
+<div class="dj-title" id="ca-mois-titre">Mon chiffre d'affaires du mois</div>
+<div class="dj-sub">Interventions, ventes de la boutique et livraisons</div>
+</div>
+</div>
+<div id="ca-mois-corps" style="font-size:13px;color:var(--mu);">Chargement…</div>
+</div>
 <div class="dash-jauge-card">
 <div class="dj-header">
 <div class="dj-icon" style="background:rgba(181,80,47,.1);">
@@ -868,13 +959,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 <div class="dj-title-block">
 <div class="dj-title">Plafond micro-entreprise</div>
-<div class="dj-sub">BIC prestations de services : 77 700 €</div>
+<div class="dj-sub">Services : 83 600 € · Ensemble ventes + services : 203 100 € (2026-2028)</div>
 </div>
 <div class="dj-pct" id="dash-me-pct">0%</div>
 </div>
 <div class="dj-track"><div class="dj-bar" id="dash-jauge-me"></div></div>
 <div class="dj-footer">
-<span id="dash-me-amt">0 € / 77 700 €</span>
+<span id="dash-me-amt">0 € / 83 600 €</span>
 <span class="dj-msg" id="dash-me-msg"></span>
 </div>
 <div id="dash-me-detail" style="font-size:10.5px;color:var(--mu);margin-top:4px;"></div>
@@ -904,7 +995,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 <div class="dj-title-block">
 <div class="dj-title">Estimation impôt sur le revenu</div>
-<div class="dj-sub">Abattement forfaitaire 50% — BIC services</div>
+<div class="dj-sub" id="dash-ir-sub">Abattement forfaitaire : 71 % ventes, 50 % services</div>
 </div>
 </div>
 <div id="dash-ir-body"></div>
@@ -1081,8 +1172,24 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <label class="act-choix"><input type="checkbox" id="act-livraison"/><div><strong>🚚 Je livre mes clients</strong><span>Tournée de livraison et regroupement des commandes.</span></div></label>
 <div id="act-erreur" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:8px;">Cochez au moins une case.</div>
 <div class="modal-actions" style="flex-direction:column;gap:8px;">
-<button class="btn-primary" onclick="repondreQuestionActivites()">Valider</button>
+<button class="btn-primary" id="act-btn-suivant" onclick="repondreQuestionActivites()">Suivant</button>
 <button class="btn-secondary" onclick="fermerModale('modal-activites')">Plus tard</button>
+</div>
+</div>
+</div>
+
+<!-- MODALE : Question MPA-AI — versement libératoire de l'impôt sur le revenu (juste après les activités) -->
+<div class="modal-overlay" id="modal-regime-fiscal">
+<div class="modal-box">
+<h3>💶 Votre impôt sur le revenu</h3>
+<p style="font-size:14px;line-height:1.5;margin:0 0 12px;">Avez-vous choisi le <strong>versement libératoire</strong> de l'impôt sur le revenu ? Il se paie en même temps que vos cotisations : <strong>1 %</strong> du chiffre d'affaires sur les ventes, <strong>1,7 %</strong> sur les prestations de services. Sinon, votre impôt est calculé au barème classique, avec un abattement.</p>
+<label class="act-choix"><input type="radio" name="regime-liberatoire" id="regime-oui"/><div><strong>Oui, j'ai le versement libératoire</strong><span>J'estimerai votre impôt à 1 % / 1,7 % de votre chiffre d'affaires.</span></div></label>
+<label class="act-choix"><input type="radio" name="regime-liberatoire" id="regime-non"/><div><strong>Non, impôt au barème classique</strong><span>J'appliquerai l'abattement : 71 % sur les ventes, 50 % sur les services.</span></div></label>
+<p style="font-size:12px;color:var(--mu);margin:0 0 8px;">Pas sûr ? Cliquez sur « Plus tard » : je vous le redemanderai. Vous pouvez aussi le régler dans Mon profil › Paramètres fiscaux.</p>
+<div id="regime-erreur" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:8px;">Choisissez une réponse, ou cliquez sur « Plus tard ».</div>
+<div class="modal-actions" style="flex-direction:column;gap:8px;">
+<button class="btn-primary" onclick="repondreQuestionRegime()">Suivant</button>
+<button class="btn-secondary" onclick="reporterQuestionRegime()">Plus tard</button>
 </div>
 </div>
 </div>

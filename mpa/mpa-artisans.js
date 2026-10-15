@@ -156,15 +156,15 @@ function toggleMpaAi() {
 
 // ── Déclencheurs proactifs propres au métier d'artisan ──
 async function verifierAlertesMpaAi() {
-  // 1) Plafond micro-entreprise proche — critique dès 90%.
+  // 1) Plafond micro-entreprise proche — critique dès 90 % (services 83 600 € ou ensemble 203 100 €, le plus proche des deux).
   var anneeAuj = new Date().getFullYear();
-  var { data: interYear } = await sb.from('mpa_artisans_interventions')
-    .select('prix, statut, date_intervention').eq('artisan_id', _artisan.id)
-    .in('statut', ['terminee','payee']).gte('date_intervention', anneeAuj+'-01-01').lte('date_intervention', anneeAuj+'-12-31');
-  var caBrut = (interYear||[]).reduce(function(s,i){ return s+(i.prix||0); }, 0);
-  var pct = (caBrut / PLAFOND_MICRO_BIC_SERVICES) * 100;
+  var lignesPlafond = [];
+  try { lignesPlafond = await chargerLignesCA(anneeAuj + '-01-01', (anneeAuj + 1) + '-01-01'); } catch (e) { console.error(e); }
+  var tPlafond = totauxFamilles(lignesPlafond, 'production', function(d) { return d.getFullYear() === anneeAuj; });
+  var plaf = calculPlafond(tPlafond);
+  var pct = plaf.pct;
   if (pct >= 90) {
-    mpaAiDire('Vous êtes à ' + pct.toFixed(0) + '% du plafond micro-entreprise (' + caBrut.toFixed(0) + '€ / 77 700€). Au-delà, changement de régime fiscal obligatoire.', 'important',
+    mpaAiDire('Vous êtes à ' + pct.toFixed(0) + '% du plafond micro-entreprise (' + plaf.montant.toFixed(0) + '€ / ' + plaf.limite.toLocaleString('fr-FR') + '€' + (plaf.parServices ? ', services' : ', ensemble') + '). Au-delà, changement de régime fiscal obligatoire.', 'important',
       { label: 'Voir ma comptabilité', action: "switchTab(7)" });
   } else if (pct >= 70) {
     mpaAiDire('Vous avez atteint ' + pct.toFixed(0) + '% du plafond micro-entreprise cette année — à surveiller.', 'warning');
@@ -307,6 +307,7 @@ function ouvrirQuestionActivites() {
   var act = (_artisan && Array.isArray(_artisan.activites)) ? _artisan.activites : [];
   ['interventions', 'boutique', 'livraison'].forEach(function(c) { var e = document.getElementById('act-' + c); if (e) e.checked = act.indexOf(c) >= 0; });
   var err = document.getElementById('act-erreur'); if (err) err.style.display = 'none';
+  var bAct = document.getElementById('act-btn-suivant'); if (bAct) bAct.textContent = regimeAPoser() ? 'Suivant' : 'Valider';
   ouvrirModale('modal-activites');
 }
 async function repondreQuestionActivites() {
@@ -322,8 +323,51 @@ async function repondreQuestionActivites() {
   _mpaAiFeed = _mpaAiFeed.filter(function(m) { return !(m.cta && m.cta.action === 'ouvrirQuestionActivites()'); });
   var panneau = document.getElementById('mpa-ai-panel'); if (panneau) panneau.classList.remove('open');
   mpaAiDire('C\'est noté. Les onglets dont vous ne vous servez pas sont estompés, mais ils restent ouverts si vous en avez besoin. Pour changer : « ⚙ Mes activités », à droite des onglets.', 'info');
-  // La question sur la visite d'estimation n'a de sens que pour qui intervient chez ses clients : elle vient juste après.
-  if (choisies.indexOf('interventions') >= 0) await demanderReglageVisite();
+  // Ensuite : la question sur l'impôt (si pas encore répondu), puis celle sur la visite d'estimation.
+  if (regimeAPoser()) { window._questionRegimeDite = true; ouvrirQuestionRegime(); return; }
+  await suiteApresQuestionsDebut();
+}
+// La visite d'estimation n'a de sens que pour qui intervient chez ses clients : elle vient en dernier.
+async function suiteApresQuestionsDebut() {
+  if (_artisan && Array.isArray(_artisan.activites) && _artisan.activites.indexOf('interventions') >= 0) await demanderReglageVisite();
+}
+
+// ── Question « versement libératoire » (impôt sur le revenu) — juste après la question sur les activités ──
+// artisans.versement_liberatoire : null = pas encore répondu, true / false = réponse. Sert à estimer l'impôt avec le bon calcul.
+function regimeAPoser() {
+  return !!_artisan && ('versement_liberatoire' in _artisan) && _artisan.versement_liberatoire == null;
+}
+function ouvrirQuestionRegime() {
+  ['oui', 'non'].forEach(function(v) { var e = document.getElementById('regime-' + v); if (e) e.checked = false; });
+  var err = document.getElementById('regime-erreur'); if (err) err.style.display = 'none';
+  ouvrirModale('modal-regime-fiscal');
+}
+async function repondreQuestionRegime() {
+  var oui = document.getElementById('regime-oui').checked, non = document.getElementById('regime-non').checked;
+  var err = document.getElementById('regime-erreur');
+  if (!oui && !non) { if (err) err.style.display = 'block'; return; }
+  var { error } = await sb.from('artisans').update({ versement_liberatoire: oui }).eq('id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  _artisan.versement_liberatoire = oui;
+  fermerModale('modal-regime-fiscal');
+  _mpaAiFeed = _mpaAiFeed.filter(function(m) { return !(m.cta && m.cta.action === 'ouvrirQuestionRegime()'); });
+  var panneau = document.getElementById('mpa-ai-panel'); if (panneau) panneau.classList.remove('open');
+  var sel = document.getElementById('cfg-liberatoire'); if (sel) sel.value = oui ? 'oui' : 'non';
+  mpaAiDire(oui ? 'C\'est noté : j\'estime votre impôt avec le versement libératoire. Pour changer : Mon profil › Paramètres fiscaux.' : 'C\'est noté : j\'estime votre impôt au barème classique, avec l\'abattement. Pour changer : Mon profil › Paramètres fiscaux.', 'info');
+  try { calculerDashboardFiscal(); } catch (e) {}
+  await suiteApresQuestionsDebut();
+}
+async function reporterQuestionRegime() {
+  fermerModale('modal-regime-fiscal');
+  await suiteApresQuestionsDebut();
+}
+// MPA-AI pose la question tant que l'artisan n'a pas répondu — une fois par session. Renvoie true si elle a été posée.
+async function demanderRegimeFiscal() {
+  if (window._questionRegimeDite || !regimeAPoser()) return false;
+  window._questionRegimeDite = true;
+  mpaAiDire('Une autre question rapide : avez-vous choisi le <strong>versement libératoire</strong> de l\'impôt sur le revenu ? Cela me permet d\'estimer votre impôt correctement.',
+    'pro', { label: 'Répondre', action: 'ouvrirQuestionRegime()' });
+  return true;
 }
 // MPA-AI pose la question tant que l'artisan n'a pas répondu (colonne présente et vide) — une fois par session. Renvoie true si elle a été posée.
 async function demanderActivites() {
@@ -410,8 +454,8 @@ async function init() {
   renderMpaAiFeed();
   await verifierAlertesMpaAi();
   appliquerActivites();
-  // Une seule question à la fois : d'abord l'activité (si pas encore répondu), la visite d'estimation ensuite.
-  if (!(await demanderActivites())) await demanderReglageVisite(); // après les autres alertes : la question de MPA-AI est la plus visible
+  // Une seule question à la fois : d'abord l'activité, puis l'impôt (versement libératoire), la visite d'estimation en dernier.
+  if (!(await demanderActivites()) && !(await demanderRegimeFiscal())) await demanderReglageVisite(); // après les autres alertes : la question de MPA-AI est la plus visible
   rappelerPaiementsBoutique('demarrage');
   rappelerStripeReservations();
   await verifierNouveautes();
@@ -1964,67 +2008,119 @@ function setVueMoisTrim(vue) {
 function anneeComptaPrec() { _anneeCompta--; chargerCompta(); }
 function anneeComptaSuiv() { _anneeCompta++; chargerCompta(); }
 
-async function chargerCompta() {
-  document.getElementById('compta-annee').textContent = _anneeCompta;
-  var debut = _anneeCompta + '-01-01';
-  var fin = _anneeCompta + '-12-31';
+// ── Comptabilité : trois familles de chiffre d'affaires (Interventions, Ventes boutique, Livraisons) ──
+// Chaque famille a son taux de cotisations (ventes de marchandises ≠ prestations de services) et son abattement fiscal.
+// Une « ligne » = un montant, sa famille, son client et ses deux dates (production / encaissement) :
+//   - Interventions et Livraisons viennent de mpa_artisans_interventions. Une intervention est une LIVRAISON quand une commande y est reliée
+//     (commandes_catalogue.intervention_id, posé par « Planifier la livraison ») ; son prix = les frais de livraison.
+//   - Ventes = commandes boutique réglées, nettes des remboursements et SANS les frais de livraison (déjà comptés dans la livraison).
+var _lignesCompta = [];
+var _erreurCompta = false;
+var _comptaMobilePeriode = null; // index de la colonne (0-11 mois, 0-3 trimestres) — null = période en cours
 
-  var { data, error } = await sb.from('mpa_artisans_interventions')
-    .select('*, mpa_artisans_clients(nom)')
-    .eq('artisan_id', _artisan.id)
-    .neq('statut', 'annulee')
-    .or('date_intervention.gte.' + debut + ',date_paiement.gte.' + debut)
-    .lte('date_intervention', fin);
-
-  if (error) { console.error(error); _interventionsAnneeCache = []; }
-  else { _interventionsAnneeCache = data || []; }
-
-  renderMatriceCompta();
+// 'AAAA-MM-JJ' → date locale à minuit (jamais new Date('AAAA-MM-JJ') : ce serait minuit UTC, donc la veille en Guadeloupe).
+function _dateJour(s) {
+  if (!s) return null;
+  var t = String(s), m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(t);
 }
 
-var _comptaMobilePeriode = null; // index (0-11 pour les mois, 0-3 pour les trimestres) — null = période en cours
+// Toutes les lignes de CA dont une date tombe dans [debut, finExclue[ (chaînes 'AAAA-MM-JJ'). Lève une erreur si la lecture échoue.
+async function chargerLignesCA(debut, finExclue) {
+  var d0 = _dateJour(debut), d1 = _dateJour(finExclue);
+  var margeA = new Date(d0.getTime()); margeA.setDate(margeA.getDate() - 1);
+  var margeB = new Date(d1.getTime()); margeB.setDate(margeB.getDate() + 1);
+  var rI = await sb.from('mpa_artisans_interventions')
+    .select('id, prix, statut, date_intervention, date_paiement, mpa_artisans_clients(nom)')
+    .eq('artisan_id', _artisan.id).neq('statut', 'annulee')
+    .or('and(date_intervention.gte.' + debut + ',date_intervention.lt.' + finExclue + '),and(date_paiement.gte.' + debut + ',date_paiement.lt.' + finExclue + ')');
+  var rL = await sb.from('commandes_catalogue').select('intervention_id')
+    .eq('artisan_id', _artisan.id).not('intervention_id', 'is', null);
+  var rV = await sb.from('commandes_catalogue')
+    .select('montant_total, montant_rembourse, frais_livraison, created_at, client_nom')
+    .eq('artisan_id', _artisan.id).in('paiement_statut', STATUTS_COMMANDE_REGLEE)
+    .gte('created_at', margeA.toISOString()).lt('created_at', margeB.toISOString());
+  var err = rI.error || rL.error || rV.error;
+  if (err) throw err;
 
-function renderComptaMobile(parClient, totalParMois, cotisPct, clients, curMonth, isCurYear) {
-  var zonePeriodes = document.getElementById('compta-mobile-periodes');
-  var zoneListe = document.getElementById('compta-mobile-liste');
-  if (!zonePeriodes || !zoneListe) return;
+  var liv = {};
+  (rL.data || []).forEach(function(c) { liv[c.intervention_id] = true; });
+  var lignes = [];
+  (rI.data || []).forEach(function(i) {
+    var fait = i.statut === 'terminee' || i.statut === 'payee';
+    lignes.push({
+      fam: liv[i.id] ? 'livraisons' : 'interventions',
+      client: (i.mpa_artisans_clients && i.mpa_artisans_clients.nom) || '(sans client)',
+      montant: Number(i.prix) || 0,
+      dProd: fait ? _dateJour(i.date_intervention) : null,
+      dReel: (i.statut === 'payee' && i.date_paiement) ? _dateJour(i.date_paiement) : null
+    });
+  });
+  (rV.data || []).forEach(function(v) {
+    var net = Math.max(0, Number(v.montant_total || 0) - Number(v.montant_rembourse || 0) - Number(v.frais_livraison || 0));
+    var d = new Date(v.created_at);
+    lignes.push({ fam: 'ventes', client: v.client_nom || '(client boutique)', montant: net, dProd: d, dReel: d });
+  });
+  return lignes;
+}
 
-  var estTrim = (_vueMoisTrim === 'trim');
-  var labels = estTrim ? ['T1', 'T2', 'T3', 'T4'] : MOIS_COURTS;
-  var moisParPeriode = estTrim ? [[1,2,3],[4,5,6],[7,8,9],[10,11,12]] : labels.map(function(_, i) { return [i + 1]; });
-  var periodeActuelle = estTrim ? Math.floor(curMonth / 3) : curMonth;
+// Taux de cotisations d'une famille = taux de l'activité + contribution à la formation professionnelle (CFP, artisans).
+function tauxCotisationsFamille(fam) {
+  var base = fam === 'ventes'
+    ? (_artisan.cotisation_ventes_pct ?? TAUX_DEFAUT_VENTES)
+    : (_artisan.cotisation_sociale_pct ?? TAUX_DEFAUT_SERVICES);
+  return Number(base) + Number(_artisan.cfp_pct ?? TAUX_DEFAUT_CFP);
+}
+function cotisationsFamille(fam, brut) { return Math.round(brut * tauxCotisationsFamille(fam)) / 100; }
+function formatPct(x) { return Number(x).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' %'; }
 
-  if (_comptaMobilePeriode === null || _comptaMobilePeriode >= labels.length) {
-    _comptaMobilePeriode = isCurYear ? periodeActuelle : 0;
+// vue : 'production' ou 'reel' ; dansPeriode(date) → booléen
+function totauxFamilles(lignes, vue, dansPeriode) {
+  var t = { interventions: 0, ventes: 0, livraisons: 0 };
+  lignes.forEach(function(l) {
+    var d = vue === 'reel' ? l.dReel : l.dProd;
+    if (d && dansPeriode(d)) t[l.fam] += l.montant;
+  });
+  t.services = t.interventions + t.livraisons;
+  t.total = t.services + t.ventes;
+  return t;
+}
+function cotisationsTotales(t) {
+  return cotisationsFamille('interventions', t.interventions) + cotisationsFamille('ventes', t.ventes) + cotisationsFamille('livraisons', t.livraisons);
+}
+
+// Plafond micro-entreprise : services ≤ 83 600 € ET ensemble (ventes + services) ≤ 203 100 € — on affiche celui dont on est le plus proche.
+function calculPlafond(t) {
+  var pS = t.services / PLAFOND_MICRO_SERVICES, pT = t.total / PLAFOND_MICRO_VENTE;
+  var parServices = pS >= pT;
+  return {
+    pct: Math.max(pS, pT) * 100,
+    montant: parServices ? t.services : t.total,
+    limite: parServices ? PLAFOND_MICRO_SERVICES : PLAFOND_MICRO_VENTE,
+    parServices: parServices
+  };
+}
+
+// Impôt sur le revenu estimé : versement libératoire (1 % ventes, 1,7 % services) OU barème avec l'abattement de chaque famille.
+function calculImpotEstime(t, nbParts) {
+  if (_artisan.versement_liberatoire === true) {
+    var vl = t.ventes * VERSEMENT_LIB_FAMILLE.ventes + t.interventions * VERSEMENT_LIB_FAMILLE.interventions + t.livraisons * VERSEMENT_LIB_FAMILLE.livraisons;
+    return { liberatoire: true, impot: vl, imposable: null };
   }
-  var idx = _comptaMobilePeriode;
-  var moisDeLaPeriode = moisParPeriode[idx];
+  var imposable = t.ventes * (1 - ABATTEMENT_FAMILLE.ventes) + t.interventions * (1 - ABATTEMENT_FAMILLE.interventions) + t.livraisons * (1 - ABATTEMENT_FAMILLE.livraisons);
+  return { liberatoire: false, impot: calculerIR(imposable, nbParts), imposable: imposable };
+}
 
-  zonePeriodes.innerHTML = labels.map(function(l, i) {
-    var actif = (i === idx);
-    var estAuj = (i === periodeActuelle && isCurYear);
-    return '<button class="' + (actif ? 'actif' : '') + '" onclick="choisirPeriodeComptaMobile(' + i + ')">' + l + (estAuj ? ' •' : '') + '</button>';
-  }).join('');
-
-  var totalPeriode = 0;
-  var lignesClients = clients.map(function(nom) {
-    var ligne = parClient[nom];
-    var val = 0;
-    moisDeLaPeriode.forEach(function(m) { val += ligne[m] || 0; });
-    if (!val) return null;
-    totalPeriode += val;
-    var clr = getClientColor(nom);
-    return '<div class="compta-mobile-client"><span style="color:' + clr + ';font-weight:600;">' + escHtml(nom) + '</span><span>' + val.toFixed(0) + ' €</span></div>';
-  }).filter(Boolean).join('');
-
-  var cotisPeriode = Math.round(totalPeriode * cotisPct / 100 * 100) / 100;
-  var netPeriode = totalPeriode - cotisPeriode;
-
-  zoneListe.innerHTML =
-    (lignesClients || '<p style="font-size:13px;color:var(--mu);padding:10px 0;">Aucune donnée pour ' + labels[idx] + '.</p>') +
-    '<div class="compta-mobile-total"><span>CA brut</span><span>' + totalPeriode.toFixed(0) + ' €</span></div>' +
-    '<div class="compta-mobile-total" style="color:var(--gold);"><span>Cotisations</span><span>' + cotisPeriode.toFixed(0) + ' €</span></div>' +
-    '<div class="compta-mobile-total" style="color:var(--ac);"><span>CA net</span><span>' + netPeriode.toFixed(0) + ' €</span></div>';
+async function chargerCompta() {
+  document.getElementById('compta-annee').textContent = _anneeCompta;
+  try {
+    _lignesCompta = await chargerLignesCA(_anneeCompta + '-01-01', (_anneeCompta + 1) + '-01-01');
+    _erreurCompta = false;
+  } catch (e) {
+    console.error(e);
+    _lignesCompta = []; _erreurCompta = true;
+  }
+  renderMatriceCompta();
 }
 
 function choisirPeriodeComptaMobile(idx) {
@@ -2032,153 +2128,145 @@ function choisirPeriodeComptaMobile(idx) {
   renderMatriceCompta();
 }
 
+var _FAM_LIBELLE = { interventions: '🔧 Interventions', ventes: '🛍️ Ventes boutique', livraisons: '🚚 Livraisons' };
+function _eur0(v) { return v ? v.toFixed(0) + '€' : '—'; }
+
 function renderMatriceCompta() {
-  // Regroupement par client, puis par mois (1-12), selon la vue active
-  var parClient = {}; // { nomClient: { 1: montant, 2: montant, ... } }
-  var totalParMois = Array(13).fill(0); // index 1-12
-  var totalGeneral = 0;
-
-  _interventionsAnneeCache.forEach(function(i) {
-    if (_vueCompta === 'production') {
-      if (i.statut !== 'terminee' && i.statut !== 'payee') return;
-      var d = new Date(i.date_intervention);
-      if (d.getFullYear() !== _anneeCompta) return;
-      var mois = d.getMonth() + 1;
-      ajouterMontant(i, mois);
-    } else {
-      if (i.statut !== 'payee' || !i.date_paiement) return;
-      var dp = new Date(i.date_paiement);
-      if (dp.getFullYear() !== _anneeCompta) return;
-      var moisP = dp.getMonth() + 1;
-      ajouterMontant(i, moisP);
-    }
+  var vue = _vueCompta, annee = _anneeCompta;
+  var parFam = { interventions: Array(13).fill(0), ventes: Array(13).fill(0), livraisons: Array(13).fill(0) };
+  var parClient = {}; // { nomClient: { mois: montant } } — toutes familles confondues
+  _lignesCompta.forEach(function(l) {
+    var d = vue === 'reel' ? l.dReel : l.dProd;
+    if (!d || d.getFullYear() !== annee) return;
+    var m = d.getMonth() + 1;
+    parFam[l.fam][m] += l.montant;
+    if (!parClient[l.client]) parClient[l.client] = {};
+    parClient[l.client][m] = (parClient[l.client][m] || 0) + l.montant;
   });
 
-  function ajouterMontant(i, mois) {
-    var nomClient = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '(sans client)';
-    if (!parClient[nomClient]) parClient[nomClient] = {};
-    parClient[nomClient][mois] = (parClient[nomClient][mois] || 0) + (i.prix || 0);
-    totalParMois[mois] += (i.prix || 0);
-    totalGeneral += (i.prix || 0);
+  var curMonth = new Date().getMonth();
+  var isCurYear = (annee === new Date().getFullYear());
+  var trim = (_vueMoisTrim === 'trim');
+  var cols = trim
+    ? [{ l: 'T1', m: [1, 2, 3] }, { l: 'T2', m: [4, 5, 6] }, { l: 'T3', m: [7, 8, 9] }, { l: 'T4', m: [10, 11, 12] }]
+    : MOIS_COURTS.map(function(l, i) { return { l: l, m: [i + 1] }; });
+  var curIdx = trim ? Math.floor(curMonth / 3) : curMonth;
+  var nbCol = cols.length + 2;
+  function somme(arr, ms) { return ms.reduce(function(s, m) { return s + (arr[m] || 0); }, 0); }
+  function clsNow(i) { return (i === curIdx && isCurYear) ? ' class="col-now"' : ''; }
+
+  // ── Tableau 1 (gratuit) : récapitulatif par famille ──
+  var thead = document.getElementById('thead-recap-row');
+  var tbody = document.getElementById('tbody-recap');
+  thead.innerHTML = '<th></th>' + cols.map(function(c, i) { return '<th' + clsNow(i) + '>' + c.l + '</th>'; }).join('') + '<th>Total</th>';
+
+  function ligneTableau(label, valeurs, cls, couleur) {
+    var tot = valeurs.reduce(function(s, v) { return s + v; }, 0);
+    var cells = valeurs.map(function(v, i) {
+      return '<td' + clsNow(i) + ' style="text-align:right;font-weight:700;' + (couleur ? 'color:' + couleur + ';' : '') + '">' + _eur0(v) + '</td>';
+    }).join('');
+    return '<tr class="' + cls + '"><td>' + label + '</td>' + cells + '<td style="text-align:right;font-weight:800;' + (couleur ? 'color:' + couleur + ';' : '') + '">' + _eur0(tot) + '</td></tr>';
   }
-
-  var curMonth = new Date().getMonth(); // 0-11
-  var isCurYear = (_anneeCompta === new Date().getFullYear());
-  var cotisPct = _artisan.cotisation_sociale_pct ?? 22;
-  var clients = Object.keys(parClient).sort();
-  var thead = document.getElementById('thead-compta-row');
-  var tbody = document.getElementById('tbody-compta');
-
-  if (_vueMoisTrim === 'trim') {
-    // ── COLONNES = 4 TRIMESTRES ──
-    var qDefs = [
-      { l: 'T1', m: [1, 2, 3] },
-      { l: 'T2', m: [4, 5, 6] },
-      { l: 'T3', m: [7, 8, 9] },
-      { l: 'T4', m: [10, 11, 12] }
-    ];
-    var curQ = Math.floor(curMonth / 3);
-
-    thead.innerHTML = '<th>Client</th>' + qDefs.map(function(q, qi) {
-      return '<th' + (qi === curQ && isCurYear ? ' class="col-now"' : '') + '>' + q.l + '</th>';
-    }).join('') + '<th>Total</th>';
-
-    if (!clients.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="etat-vide-tbl">Aucune donnée pour ' + _anneeCompta + '.</td></tr>';
-    } else {
-      tbody.innerHTML = clients.map(function(nom) {
-        var ligne = parClient[nom];
-        var totalLigne = 0;
-        var clr = getClientColor(nom);
-        var cellules = qDefs.map(function(q, qi) {
-          var val = 0;
-          q.m.forEach(function(m) { val += ligne[m] || 0; });
-          totalLigne += val;
-          var cls = (qi === curQ && isCurYear) ? ' class="col-now"' : '';
-          return '<td' + cls + ' style="text-align:right;' + (val ? '' : 'color:var(--mu);') + '">' + (val ? val.toFixed(0) + '€' : '—') + '</td>';
-        }).join('');
-        return '<tr class="cpv2-row-client"><td style="border-left-color:' + clr + ';color:' + clr + ';"><strong>' + escHtml(nom) + '</strong></td>' + cellules + '<td style="text-align:right;font-weight:700;">' + totalLigne.toFixed(0) + '€</td></tr>';
-      }).join('');
-
-      tbody.innerHTML += '<tr class="cpv2-sep"><td colspan="6"><div class="cpv2-matrix-sep-bar"></div></td></tr>';
-    }
-
-    var qBrut = [], qCotis = [], qNet = [];
-    qDefs.forEach(function(q) {
-      var b = 0; q.m.forEach(function(m) { b += totalParMois[m] || 0; });
-      var co = Math.round(b * cotisPct / 100 * 100) / 100;
-      qBrut.push(b); qCotis.push(co); qNet.push(b - co);
-    });
-    function makeQRow(data, label, cls, color) {
-      var cells = data.map(function(v, qi) {
-        var c = (qi === curQ && isCurYear) ? ' class="col-now"' : '';
-        return '<td' + c + ' style="text-align:right;font-weight:700;' + (color ? 'color:' + color + ';' : '') + '">' + (v ? v.toFixed(0) + '€' : '—') + '</td>';
-      }).join('');
-      return '<tr class="' + cls + '"><td><strong>' + label + '</strong></td>' + cells + '<td></td></tr>';
-    }
-    tbody.innerHTML += makeQRow(qBrut, 'CA brut', 'cpv2-row-brut');
-    tbody.innerHTML += makeQRow(qCotis, 'Cotisations', 'cpv2-row-cotis', 'var(--gold)');
-    tbody.innerHTML += makeQRow(qNet, 'CA net', 'cpv2-row-net', 'var(--ac)');
+  var html = '';
+  var totBrut = cols.map(function() { return 0; }), totCotis = cols.map(function() { return 0; });
+  if (_erreurCompta) {
+    html = '<tr><td colspan="' + nbCol + '" class="etat-vide-tbl">Le chiffre d\'affaires n\'a pas pu être chargé. Rechargez la page.</td></tr>';
   } else {
-    // ── COLONNES = 12 MOIS ──
-    thead.innerHTML = '<th>Client</th>' + MOIS_COURTS.map(function(m, idx) {
-      return '<th' + (idx === curMonth && isCurYear ? ' class="col-now"' : '') + '>' + m + '</th>';
-    }).join('') + '<th>Total</th>';
+    FAMILLES_CA.forEach(function(f) {
+      var brut = cols.map(function(c) { return somme(parFam[f], c.m); });
+      var cot = brut.map(function(v) { return cotisationsFamille(f, v); });
+      var net = brut.map(function(v, i) { return v - cot[i]; });
+      brut.forEach(function(v, i) { totBrut[i] += v; totCotis[i] += cot[i]; });
+      html += '<tr class="rec-fam"><td colspan="' + nbCol + '">' + _FAM_LIBELLE[f] + ' <span class="rec-taux">cotisations ' + formatPct(tauxCotisationsFamille(f)) + '</span></td></tr>';
+      html += ligneTableau('CA brut', brut, 'cpv2-row-brut');
+      html += ligneTableau('Cotisations', cot, 'cpv2-row-cotis', 'var(--gold)');
+      html += ligneTableau('Net', net, 'cpv2-row-net', 'var(--ac)');
+    });
+    var totNet = totBrut.map(function(v, i) { return v - totCotis[i]; });
+    html += '<tr class="rec-fam rec-total"><td colspan="' + nbCol + '">Σ Total</td></tr>';
+    html += ligneTableau('Total CA brut', totBrut, 'cpv2-row-brut');
+    html += ligneTableau('Total cotisations', totCotis, 'cpv2-row-cotis', 'var(--gold)');
+    html += ligneTableau('Total net', totNet, 'cpv2-row-net', 'var(--ac)');
+  }
+  tbody.innerHTML = html;
 
+  // ── Tableau 2 (Pro) : détail par client ──
+  var pro = estPro();
+  var blocPro = document.getElementById('compta-client-pro'), verrou = document.getElementById('compta-client-verrou');
+  if (blocPro) blocPro.style.display = pro ? '' : 'none';
+  if (verrou) verrou.style.display = pro ? 'none' : '';
+  var clients = Object.keys(parClient).sort();
+  if (pro) {
+    var th2 = document.getElementById('thead-compta-row'), tb2 = document.getElementById('tbody-compta');
+    th2.innerHTML = '<th>Client</th>' + cols.map(function(c, i) { return '<th' + clsNow(i) + '>' + c.l + '</th>'; }).join('') + '<th>Total</th>';
     if (!clients.length) {
-      tbody.innerHTML = '<tr><td colspan="14" class="etat-vide-tbl">Aucune donnée pour ' + _anneeCompta + '.</td></tr>';
+      tb2.innerHTML = '<tr><td colspan="' + nbCol + '" class="etat-vide-tbl">Aucune donnée pour ' + annee + '.</td></tr>';
     } else {
-      tbody.innerHTML = clients.map(function(nom) {
-        var ligne = parClient[nom];
-        var totalLigne = 0;
-        var clr = getClientColor(nom);
-        var cellules = MOIS_COURTS.map(function(_, idx) {
-          var m = idx + 1;
-          var val = ligne[m] || 0;
-          totalLigne += val;
-          var cls = (idx === curMonth && isCurYear) ? ' class="col-now"' : '';
-          return '<td' + cls + ' style="text-align:right;' + (val ? '' : 'color:var(--mu);') + '">' + (val ? val.toFixed(0) + '€' : '—') + '</td>';
+      tb2.innerHTML = clients.map(function(nom) {
+        var ligne = parClient[nom], totalLigne = 0, clr = getClientColor(nom);
+        var cellules = cols.map(function(c, i) {
+          var val = somme(ligne, c.m); totalLigne += val;
+          return '<td' + clsNow(i) + ' style="text-align:right;' + (val ? '' : 'color:var(--mu);') + '">' + _eur0(val) + '</td>';
         }).join('');
-        return '<tr class="cpv2-row-client"><td style="border-left-color:' + clr + ';color:' + clr + ';"><strong>' + escHtml(nom) + '</strong></td>' + cellules + '<td style="text-align:right;font-weight:700;">' + totalLigne.toFixed(0) + '€</td></tr>';
+        return '<tr class="cpv2-row-client"><td style="border-left-color:' + clr + ';color:' + clr + ';"><strong>' + escHtml(nom) + '</strong></td>' + cellules + '<td style="text-align:right;font-weight:700;">' + _eur0(totalLigne) + '</td></tr>';
       }).join('');
-
-      tbody.innerHTML += '<tr class="cpv2-sep"><td colspan="14"><div class="cpv2-matrix-sep-bar"></div></td></tr>';
     }
-
-    var mBrut = [], mCotis = [], mNet = [];
-    for (var mi = 1; mi <= 12; mi++) {
-      var b2 = totalParMois[mi] || 0;
-      var co2 = Math.round(b2 * cotisPct / 100 * 100) / 100;
-      mBrut.push(b2); mCotis.push(co2); mNet.push(b2 - co2);
-    }
-    function makeMRow(data, label, cls, color) {
-      var cells = data.map(function(v, idx) {
-        var c = (idx === curMonth && isCurYear) ? ' class="col-now"' : '';
-        return '<td' + c + ' style="text-align:right;font-weight:700;' + (color ? 'color:' + color + ';' : '') + '">' + (v ? v.toFixed(0) + '€' : '—') + '</td>';
-      }).join('');
-      return '<tr class="' + cls + '"><td><strong>' + label + '</strong></td>' + cells + '<td></td></tr>';
-    }
-    tbody.innerHTML += makeMRow(mBrut, 'CA brut', 'cpv2-row-brut');
-    tbody.innerHTML += makeMRow(mCotis, 'Cotisations', 'cpv2-row-cotis', 'var(--gold)');
-    tbody.innerHTML += makeMRow(mNet, 'CA net', 'cpv2-row-net', 'var(--ac)');
   }
 
-  renderComptaMobile(parClient, totalParMois, cotisPct, clients, curMonth, isCurYear);
+  renderComptaMobile(parFam, parClient, clients, cols, curIdx, isCurYear, pro);
 
-  // KPIs (toujours sur le CA Production de l'année, référence "vraie richesse produite")
-  var caBrutProduction = 0;
-  _interventionsAnneeCache.forEach(function(i) {
-    if (i.statut !== 'terminee' && i.statut !== 'payee') return;
-    var d = new Date(i.date_intervention);
-    if (d.getFullYear() !== _anneeCompta) return;
-    caBrutProduction += (i.prix || 0);
-  });
-  var cotis = caBrutProduction * (cotisPct / 100);
-  var net = caBrutProduction - cotis;
-
-  document.getElementById('kpi-ca-brut').textContent = caBrutProduction.toFixed(0) + ' €';
+  // KPIs de l'année (toujours en Production : la « vraie richesse produite »), toutes familles confondues
+  var t = totauxFamilles(_lignesCompta, 'production', function(d) { return d.getFullYear() === annee; });
+  var cotis = cotisationsTotales(t);
+  document.getElementById('kpi-ca-brut').textContent = t.total.toFixed(0) + ' €';
   document.getElementById('kpi-cotis').textContent = cotis.toFixed(0) + ' €';
-  document.getElementById('kpi-ca-net').textContent = net.toFixed(0) + ' €';
+  document.getElementById('kpi-ca-net').textContent = (t.total - cotis).toFixed(0) + ' €';
+
+  var note = document.getElementById('compta-note-cotis');
+  if (note) {
+    note.innerHTML = '💡 Cotisations estimées : ventes ' + formatPct(_artisan.cotisation_ventes_pct ?? TAUX_DEFAUT_VENTES) +
+      ', interventions et livraisons ' + formatPct(_artisan.cotisation_sociale_pct ?? TAUX_DEFAUT_SERVICES) +
+      ', <strong>plus ' + formatPct(_artisan.cfp_pct ?? TAUX_DEFAUT_CFP) + ' de contribution à la formation professionnelle</strong> (artisans). ' +
+      'Taux modifiables dans Mon profil (ex. avec l\'ACRE). Simple estimation : à confirmer avec votre comptable.';
+  }
+}
+
+function renderComptaMobile(parFam, parClient, clients, cols, curIdx, isCurYear, pro) {
+  var zonePeriodes = document.getElementById('compta-mobile-periodes');
+  var zoneListe = document.getElementById('compta-mobile-liste');
+  if (!zonePeriodes || !zoneListe) return;
+  if (_comptaMobilePeriode === null || _comptaMobilePeriode >= cols.length) _comptaMobilePeriode = isCurYear ? curIdx : 0;
+  var idx = _comptaMobilePeriode, ms = cols[idx].m;
+  function somme(arr) { return ms.reduce(function(s, m) { return s + (arr[m] || 0); }, 0); }
+
+  zonePeriodes.innerHTML = cols.map(function(c, i) {
+    return '<button class="' + (i === idx ? 'actif' : '') + '" onclick="choisirPeriodeComptaMobile(' + i + ')">' + c.l + ((i === curIdx && isCurYear) ? ' •' : '') + '</button>';
+  }).join('');
+
+  var totB = 0, totC = 0, h = '';
+  FAMILLES_CA.forEach(function(f) {
+    var b = somme(parFam[f]), c = cotisationsFamille(f, b);
+    totB += b; totC += c;
+    h += '<div class="compta-mobile-fam">' + _FAM_LIBELLE[f] + '</div>' +
+      '<div class="compta-mobile-client"><span>CA brut</span><span>' + b.toFixed(0) + ' €</span></div>' +
+      '<div class="compta-mobile-client" style="color:var(--gold);"><span>Cotisations</span><span>' + c.toFixed(0) + ' €</span></div>' +
+      '<div class="compta-mobile-client" style="color:var(--ac);"><span>Net</span><span>' + (b - c).toFixed(0) + ' €</span></div>';
+  });
+  h += '<div class="compta-mobile-fam">Σ Total</div>' +
+    '<div class="compta-mobile-total"><span>CA brut</span><span>' + totB.toFixed(0) + ' €</span></div>' +
+    '<div class="compta-mobile-total" style="color:var(--gold);"><span>Cotisations</span><span>' + totC.toFixed(0) + ' €</span></div>' +
+    '<div class="compta-mobile-total" style="color:var(--ac);"><span>Net</span><span>' + (totB - totC).toFixed(0) + ' €</span></div>';
+  zoneListe.innerHTML = h;
+
+  var zoneClients = document.getElementById('compta-client-mobile');
+  if (zoneClients) {
+    if (!pro) { zoneClients.innerHTML = ''; return; }
+    var lignes = clients.map(function(nom) {
+      var val = somme(parClient[nom]);
+      return val ? '<div class="compta-mobile-client"><span style="color:' + getClientColor(nom) + ';font-weight:600;">' + escHtml(nom) + '</span><span>' + val.toFixed(0) + ' €</span></div>' : '';
+    }).join('');
+    zoneClients.innerHTML = '<div class="compta-mobile-fam">Clients — ' + cols[idx].l + '</div>' + (lignes || '<p style="font-size:13px;color:var(--mu);padding:10px 0;">Aucune donnée pour cette période.</p>');
+  }
 }
 
 // ════════════════════════════════════════
@@ -2368,7 +2456,15 @@ async function imprimerFacture(factureId) {
 //  indépendant et un artisan, pas une erreur de recopie.
 // ════════════════════════════════════════
 const STRIPE_PUBLIC_KEY_MPA = 'pk_live_51TWxxBJPTOXXy1ykTYLysvDCbnnJUXzqbc164Wif38u1g7BijiOLdUWKD8HPlQBX7he8K76aZNMUARo14yuQhzdQ000WVXdeEF';
-const PLAFOND_MICRO_BIC_SERVICES = 77700;
+// Chiffres 2026 (micro-entreprise artisan, BIC) — à revoir chaque année. Sources : plafonds revalorisés 2026-2028 (CCI Paris IDF), taux URSSAF 2026, abattements et versement libératoire de l'administration fiscale.
+const PLAFOND_MICRO_SERVICES = 83600;   // prestations de services (interventions + livraisons)
+const PLAFOND_MICRO_VENTE = 203100;     // ensemble ventes + services
+const TAUX_DEFAUT_SERVICES = 21.2;      // cotisations : prestations de services (la livraison en est une)
+const TAUX_DEFAUT_VENTES = 12.3;        // cotisations : vente de marchandises
+const TAUX_DEFAUT_CFP = 0.3;            // contribution à la formation professionnelle, artisans
+const ABATTEMENT_FAMILLE = { interventions: 0.50, livraisons: 0.50, ventes: 0.71 };
+const VERSEMENT_LIB_FAMILLE = { interventions: 0.017, livraisons: 0.017, ventes: 0.01 };
+const FAMILLES_CA = ['interventions', 'ventes', 'livraisons'];
 
 // ── Modèle "gratuit sous un seuil" (28/09) — clients trouvés via CaraLink uniquement ──
 // Un client "annuaire" (origine trackée sur mpa_artisans_clients) vient d'une demande de devis
@@ -2470,7 +2566,6 @@ async function compterInterventionsEnCoursAnciennes() {
   return count || 0;
 }
 
-const ABATTEMENT_BIC_SERVICES = 0.50;
 // Barème progressif IR 2024 (revenus 2024, déclarés en 2025)
 const BAREME_IR = [
   { seuil: 0,      taux: 0    },
@@ -2629,6 +2724,8 @@ function proposerPassagePro(raison) {
   _dernierMessagePro = maintenant;
   var message = raison === 'produits'
     ? texteLimiteProduits() + texteEssai()
+    : raison === 'detail_client'
+    ? '🔒 Le détail du chiffre d\'affaires par client fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Le récapitulatif par mois (interventions, ventes, livraisons) reste gratuit.' + texteEssai()
     : raison === 'retard'
     ? '⏰ Prévenir un client d\'un retard fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
     : '🔒 Mes fournitures fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : suivi de vos consommables, scan QR code / code-barres et alerte avant la rupture.' + texteEssai();
@@ -2898,46 +2995,24 @@ async function declarerOffreAlternance() {
 
 async function calculerDashboardFiscal() {
   var anneeAuj = new Date().getFullYear();
-  var debut = anneeAuj + '-01-01';
-  var fin = anneeAuj + '-12-31';
+  var lignes = [];
+  try { lignes = await chargerLignesCA(anneeAuj + '-01-01', (anneeAuj + 1) + '-01-01'); } catch (e) { console.error(e); }
+  var t = totauxFamilles(lignes, 'production', function(d) { return d.getFullYear() === anneeAuj; });
+  var caBrut = t.total;
 
-  var { data } = await sb.from('mpa_artisans_interventions')
-    .select('prix, statut, date_intervention')
-    .eq('artisan_id', _artisan.id)
-    .in('statut', ['terminee', 'payee'])
-    .gte('date_intervention', debut)
-    .lte('date_intervention', fin);
-
-  var caPrestations = (data || []).reduce(function(s, i) { return s + (i.prix || 0); }, 0);
-
-  // Ventes catalogue (produits payés en ligne) — jamais comptées ici auparavant, manque réel
-  // repéré le 01/10. La part livraison n'est PAS reprise : elle est déjà comptée via le prix
-  // de l'intervention de livraison créée (mpa_artisans_interventions), la compter ici aussi
-  // la compterait deux fois.
-  var { data: ventes } = await sb.from('commandes_catalogue')
-    .select('montant_total, montant_rembourse, frais_livraison')
-    .eq('artisan_id', _artisan.id)
-    .in('paiement_statut', ['paye', 'partiellement_rembourse', 'rembourse'])
-    .gte('created_at', debut + 'T00:00:00')
-    .lt('created_at', (anneeAuj + 1) + '-01-01T00:00:00');
-  var caVentes = (ventes || []).reduce(function(s, v) {
-    var net = Number(v.montant_total || 0) - Number(v.montant_rembourse || 0) - Number(v.frais_livraison || 0);
-    return s + Math.max(0, net);
-  }, 0);
-
-  var caBrut = caPrestations + caVentes;
-
-  // Jauge plafond micro-entreprise
-  var pct = Math.min(100, (caBrut / PLAFOND_MICRO_BIC_SERVICES) * 100);
+  // Jauge plafond micro-entreprise (2026-2028) : services 83 600 € ET ensemble 203 100 € — on montre le plus proche.
+  var p = calculPlafond(t);
+  var pct = Math.min(100, p.pct);
   document.getElementById('dash-me-pct').textContent = pct.toFixed(0) + '%';
-  document.getElementById('dash-me-amt').textContent = caBrut.toFixed(0) + ' € / ' + PLAFOND_MICRO_BIC_SERVICES.toLocaleString('fr-FR') + ' €';
+  document.getElementById('dash-me-amt').textContent = p.montant.toFixed(0) + ' € / ' + p.limite.toLocaleString('fr-FR') + ' €';
   var bar = document.getElementById('dash-jauge-me');
   bar.style.width = pct + '%';
   bar.className = 'dj-bar' + (pct >= 90 ? ' danger' : pct >= 70 ? ' warn' : '');
   document.getElementById('dash-me-msg').textContent =
     pct >= 90 ? '⚠️ Seuil bientôt atteint' : pct >= 70 ? 'À surveiller' : 'Marge confortable';
   document.getElementById('dash-me-detail').textContent =
-    'dont ' + caPrestations.toFixed(0) + ' € de prestations et ' + caVentes.toFixed(0) + ' € de ventes catalogue';
+    'Services : ' + t.services.toFixed(0) + ' € / ' + PLAFOND_MICRO_SERVICES.toLocaleString('fr-FR') + ' € · Ensemble : ' + t.total.toFixed(0) + ' € / ' + PLAFOND_MICRO_VENTE.toLocaleString('fr-FR') + ' € ' +
+    '(interventions ' + t.interventions.toFixed(0) + ' €, livraisons ' + t.livraisons.toFixed(0) + ' €, ventes ' + t.ventes.toFixed(0) + ' €)';
 
   // Jauge seuil gratuit — CA prestations du mois, clients "annuaire" uniquement
   var caAnnuaireMois = await calculerCAPrestationsAnnuaireDuMois();
@@ -2953,15 +3028,58 @@ async function calculerDashboardFiscal() {
     ? '⚠️ ' + (partCommissionnableCentimes / 100).toFixed(0) + ' € au-dessus du seuil ce mois-ci'
     : 'Encore gratuit ce mois-ci';
 
-  // Estimation IR
-  var revenuImposable = caBrut * (1 - ABATTEMENT_BIC_SERVICES);
+  // Estimation IR : abattement propre à chaque famille (71 % ventes, 50 % services), ou versement libératoire si l'artisan l'a choisi.
   var nbParts = parseFloat(document.getElementById('dash-parts').value) || 1;
-  var ir = calculerIR(revenuImposable, nbParts);
-
+  var ir = calculImpotEstime(t, nbParts);
+  var regimeNonPrecise = ('versement_liberatoire' in _artisan) && _artisan.versement_liberatoire == null;
   document.getElementById('dash-ir-body').innerHTML =
     '<div class="ir-ligne"><span>CA brut (année)</span><span>' + caBrut.toFixed(0) + ' €</span></div>' +
-    '<div class="ir-ligne"><span>Revenu imposable (après abattement 50%)</span><span>' + revenuImposable.toFixed(0) + ' €</span></div>' +
-    '<div class="ir-ligne"><span>Estimation impôt sur le revenu</span><span>' + ir.toFixed(0) + ' €</span></div>';
+    (ir.liberatoire
+      ? '<div class="ir-ligne"><span>Versement libératoire (1 % ventes, 1,7 % services)</span><span>' + ir.impot.toFixed(0) + ' €</span></div>'
+      : '<div class="ir-ligne"><span>Revenu imposable (abattement 71 % ventes, 50 % services)</span><span>' + ir.imposable.toFixed(0) + ' €</span></div>' +
+        '<div class="ir-ligne"><span>Estimation impôt sur le revenu</span><span>' + ir.impot.toFixed(0) + ' €</span></div>') +
+    (regimeNonPrecise ? '<div style="font-size:10.5px;color:var(--mu);margin-top:6px;">Calcul au barème classique. Vous avez le versement libératoire ? Indiquez-le dans Mon profil › Paramètres fiscaux.</div>' : '');
+  var sousTitreIR = document.getElementById('dash-ir-sub');
+  if (sousTitreIR) sousTitreIR.textContent = ir.liberatoire ? 'Versement libératoire de l\'impôt sur le revenu' : 'Abattement forfaitaire : 71 % ventes, 50 % services';
+  afficherCAMois();
+}
+
+// ── CA du mois (carte du Tableau de bord) : trois familles, comparé au mois précédent complet. Mêmes règles que la Comptabilité (vue Production).
+async function afficherCAMois() {
+  var corps = document.getElementById('ca-mois-corps');
+  if (!corps || !_artisan) return;
+  try {
+    var n = new Date(), a = n.getFullYear(), m = n.getMonth();
+    var lignes = await chargerLignesCA(_dateLocaleISO(a, m - 1, 1), _dateLocaleISO(a, m + 1, 1));
+    var cur = totauxFamilles(lignes, 'production', function(d) { return d.getFullYear() === a && d.getMonth() === m; });
+    var prec = totauxFamilles(lignes, 'production', function(d) { var p = new Date(a, m - 1, 1); return d.getFullYear() === p.getFullYear() && d.getMonth() === p.getMonth(); });
+    var nomL = MOIS_NOMS[m].toLowerCase(), nomPrec = MOIS_NOMS[(m + 11) % 12].toLowerCase();
+    var t = document.getElementById('ca-mois-titre');
+    if (t) t.textContent = 'Mon chiffre d\'affaires ' + (/^[aeiouhé]/.test(nomL) ? 'd\'' : 'de ') + nomL;
+    var euros = function(x) { return Math.round(x).toLocaleString('fr-FR') + ' €'; };
+    var ecart = cur.total - prec.total, comp;
+    if (prec.total <= 0) comp = cur.total > 0 ? '<span style="color:var(--mu);">Pas de chiffre d\'affaires en ' + nomPrec + ' pour comparer.</span>' : '';
+    else {
+      var pct = Math.round(ecart / prec.total * 100);
+      comp = '<span style="font-weight:700;color:' + (ecart >= 0 ? '#0f9d78' : 'var(--danger)') + ';">' + (ecart >= 0 ? '▲ +' : '▼ ') + pct + ' %</span> <span style="color:var(--mu);">par rapport à ' + nomPrec + ' (' + euros(prec.total) + ', mois complet)</span>';
+    }
+    corps.innerHTML =
+      '<div style="font-size:26px;font-weight:800;color:var(--tx,inherit);line-height:1.1;margin-bottom:4px;">' + euros(cur.total) + '</div>' +
+      (comp ? '<div style="margin-bottom:8px;">' + comp + '</div>' : '') +
+      '<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;">' +
+        '<span>🔧 Interventions : <strong>' + euros(cur.interventions) + '</strong></span>' +
+        '<span>🛍️ Ventes : <strong>' + euros(cur.ventes) + '</strong></span>' +
+        '<span>🚚 Livraisons : <strong>' + euros(cur.livraisons) + '</strong></span>' +
+      '</div>';
+  } catch (e) {
+    console.error(e);
+    corps.textContent = 'Le chiffre d\'affaires du mois n\'a pas pu être chargé.';
+  }
+}
+
+function _dateLocaleISO(annee, moisIdx, jour) {
+  var d = new Date(annee, moisIdx, jour);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
 async function sauverPartsFiscales() {
@@ -3042,7 +3160,10 @@ function renderFiche() {
     fvAnnul.textContent = hAnnul > 0 ? 'Jusqu\'à ' + (hAnnul >= 48 && hAnnul % 24 === 0 ? (hAnnul / 24) + ' jours' : hAnnul + ' h') + ' avant le rendez-vous' : 'Jamais (frais acquis dès la confirmation)';
   }
 
-  document.getElementById('cfg-cotis').value = a.cotisation_sociale_pct ?? 22;
+  document.getElementById('cfg-cotis').value = a.cotisation_sociale_pct ?? TAUX_DEFAUT_SERVICES;
+  document.getElementById('cfg-cotis-ventes').value = a.cotisation_ventes_pct ?? TAUX_DEFAUT_VENTES;
+  document.getElementById('cfg-cfp').value = a.cfp_pct ?? TAUX_DEFAUT_CFP;
+  document.getElementById('cfg-liberatoire').value = a.versement_liberatoire === true ? 'oui' : a.versement_liberatoire === false ? 'non' : '';
   document.getElementById('cfg-tva').value = a.tva_config || 'Non assujetti';
 }
 
@@ -3303,13 +3424,23 @@ async function sauverFiche() {
 }
 
 async function saveConfigFiscal() {
+  function nombre(id, defaut) { var v = parseFloat(String(document.getElementById(id).value).replace(',', '.')); return (isFinite(v) && v >= 0 && v <= 100) ? v : defaut; }
   var maj = {
-    cotisation_sociale_pct: parseFloat(document.getElementById('cfg-cotis').value) || 22,
+    cotisation_sociale_pct: nombre('cfg-cotis', TAUX_DEFAUT_SERVICES),
     tva_config: document.getElementById('cfg-tva').value.trim() || 'Non assujetti',
   };
+  // Nouvelles colonnes : on ne les écrit que si la base les a (le SQL « regime-fiscal-artisan.sql » doit avoir été lancé).
+  if ('cotisation_ventes_pct' in _artisan) maj.cotisation_ventes_pct = nombre('cfg-cotis-ventes', TAUX_DEFAUT_VENTES);
+  if ('cfp_pct' in _artisan) maj.cfp_pct = nombre('cfg-cfp', TAUX_DEFAUT_CFP);
+  if ('versement_liberatoire' in _artisan) {
+    var vl = document.getElementById('cfg-liberatoire').value;
+    maj.versement_liberatoire = vl === 'oui' ? true : vl === 'non' ? false : null;
+  }
   var { error } = await sb.from('artisans').update(maj).eq('id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
   Object.assign(_artisan, maj);
+  // Les écrans de chiffres dépendent de ces réglages : on les recalcule.
+  try { renderMatriceCompta(); calculerDashboardFiscal(); } catch (e) { console.error(e); }
 }
 
 // ════════════════════════════════════════
