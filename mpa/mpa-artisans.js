@@ -1449,6 +1449,7 @@ async function ouvrirIntervention(id) {
   document.getElementById('mi-delete-wrap').style.display = 'block';
   document.getElementById('mi-impossible-wrap').style.display = ['planifiee', 'en_cours'].indexOf(i.statut || 'planifiee') !== -1 ? 'block' : 'none';
   renderZoneAvisIntervention(i);
+  if (i.facture_id && !_numerosFactures[i.facture_id]) await chargerFacturesCommandes();
   renderZoneFactureIntervention(i);
   chargerPaiementsIntervention(i);
   ouvrirModale('modal-intervention');
@@ -2368,6 +2369,7 @@ async function chargerFactures() {
     .order('date_facture', { ascending: false });
   if (error) { console.error(error); return; }
 
+  (data || []).forEach(function(f) { _numerosFactures[f.id] = f.numero; if (f.envoyee_le) _envoisFactures[f.id] = { le: f.envoyee_le, a: f.envoyee_a }; });
   var tbody = document.getElementById('tbody-factures');
   if (!data || !data.length) {
     tbody.innerHTML = '<tr><td colspan="5" class="etat-vide-tbl">Aucune facture émise pour l\'instant.</td></tr>';
@@ -2381,7 +2383,8 @@ async function chargerFactures() {
       '<td>' + escHtml(client) + '</td>' +
       '<td>' + dateAff + '</td>' +
       '<td>' + f.montant_total.toFixed(2) + '€</td>' +
-      '<td><button class="icbtn" onclick="imprimerFacture(\'' + f.id + '\')" title="Voir / imprimer">🖨</button></td>' +
+      '<td><button class="icbtn" onclick="imprimerFacture(\'' + f.id + '\')" title="Voir / imprimer">🖨</button> ' +
+        '<button class="icbtn" onclick="envoyerFacture(\'' + f.id + '\')" title="' + (_envoisFactures[f.id] ? 'Envoyée — renvoyer par email' : 'Envoyer par email au client (Pro)') + '">' + (_envoisFactures[f.id] ? '✅✉️' : '✉️') + '</button></td>' +
     '</tr>';
   }).join('');
 }
@@ -2390,6 +2393,8 @@ async function chargerFactures() {
 //  FACTURE EN 1 CLIC (Pro) — interventions et commandes de la boutique
 //  Le panier classique (plusieurs interventions sur une facture) reste gratuit.
 // ════════════════════════════════════════
+var _envoisFactures = {}; // id de facture → { le, a } : date et adresse du dernier envoi par email
+var _numerosFactures = {}; // id de facture → numéro, pour afficher « Facturée n° … »
 var _facturesCommandes = null; // commande_id → id de facture ; null = colonne absente (SQL facture-commandes.sql pas lancé) → boutons masqués
 
 async function prochainNumeroFacture() {
@@ -2403,12 +2408,13 @@ function renderZoneFactureIntervention(i) {
   if (!i || ['terminee', 'payee'].indexOf(i.statut) === -1 || !(Number(i.prix) > 0)) { zone.style.display = 'none'; zone.innerHTML = ''; return; }
   zone.style.display = 'block';
   zone.innerHTML = i.facture_id
-    ? '<button onclick="imprimerFacture(\'' + i.facture_id + '\')" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--ac);background:transparent;color:var(--ac);font-size:13px;font-weight:700;cursor:pointer;">🧾 Voir la facture</button>'
-    : '<button onclick="facturerIntervention(\'' + i.id + '\')" style="padding:9px 18px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🧾 Facturer en 1 clic</button>' +
-      '<div style="font-size:11px;color:var(--mu);margin-top:5px;">Crée la facture de cette intervention et l\'ouvre pour l\'imprimer ou l\'enregistrer en PDF.</div>';
+    ? '<div style="font-size:13px;color:#0f9d78;font-weight:700;margin-bottom:8px;">✓ Facturée' + (_numerosFactures[i.facture_id] ? ' — facture n° ' + escHtml(_numerosFactures[i.facture_id]) : '') + '</div>' + htmlEnvoiFacture(i.facture_id)
+    : '<button onclick="facturerIntervention(\'' + i.id + '\')" style="padding:9px 18px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🧾 Facturer en 1 clic</button> ' +
+      '<button onclick="facturerIntervention(\'' + i.id + '\', true)" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--ac);background:transparent;color:var(--ac);font-size:13px;font-weight:700;cursor:pointer;">✉️ Facturer et envoyer</button>' +
+      '<div style="font-size:11px;color:var(--mu);margin-top:5px;">Crée la facture de cette intervention ; elle s\'ouvre pour l\'imprimer, et vous la retrouvez dans « Mes factures ».</div>';
 }
 
-async function facturerIntervention(id) {
+async function facturerIntervention(id, envoyer) {
   if (!verifierAccesEcriture()) return;
   if (!exigerPro('facture_rapide')) return;
   var i = _interventionsCache.find(function(x) { return x.id === id; });
@@ -2423,19 +2429,76 @@ async function facturerIntervention(id) {
   if (error) { alert('Erreur : ' + error.message); return; }
   var { error: err2 } = await sb.from('mpa_artisans_interventions').update({ facture_id: facture.id }).eq('id', id).eq('artisan_id', _artisan.id);
   if (err2) { alert('Erreur : ' + err2.message); return; }
-  i.facture_id = facture.id;
+  i.facture_id = facture.id; _numerosFactures[facture.id] = facture.numero;
   renderZoneFactureIntervention(i);
   if (document.getElementById('fact-client') && document.getElementById('fact-client').value) chargerPanierClient();
   chargerFactures();
-  imprimerFacture(facture.id);
+  if (envoyer) envoyerFacture(facture.id); else imprimerFacture(facture.id);
 }
 
 // Lien commandes → factures. La colonne commande_id est facultative : sans elle, les boutons de facture des commandes restent masqués.
 async function chargerFacturesCommandes() {
-  var { data, error } = await sb.from('mpa_artisans_factures').select('id, commande_id').eq('artisan_id', _artisan.id).not('commande_id', 'is', null);
-  if (error) { _facturesCommandes = null; return; }
-  _facturesCommandes = {};
-  (data || []).forEach(function(f) { _facturesCommandes[f.commande_id] = f.id; });
+  // Colonnes facultatives (facture-commandes.sql, facture-email.sql) : on essaie le jeu le plus complet, puis on retombe sur moins.
+  var jeux = ['id, numero, commande_id, envoyee_le, envoyee_a', 'id, numero, commande_id', 'id, numero, envoyee_le, envoyee_a', 'id, numero'];
+  var data = null, colonnes = '';
+  for (var k = 0; k < jeux.length; k++) {
+    var r = await sb.from('mpa_artisans_factures').select(jeux[k]).eq('artisan_id', _artisan.id);
+    if (!r.error) { data = r.data; colonnes = jeux[k]; break; }
+  }
+  if (data === null) { _facturesCommandes = null; return; }
+  _facturesCommandes = colonnes.indexOf('commande_id') !== -1 ? {} : null; // sans commande_id : boutons de facture des commandes masqués
+  (data || []).forEach(function(f) {
+    _numerosFactures[f.id] = f.numero;
+    if (f.envoyee_le) _envoisFactures[f.id] = { le: f.envoyee_le, a: f.envoyee_a };
+    if (_facturesCommandes && f.commande_id) _facturesCommandes[f.commande_id] = f.id;
+  });
+}
+
+// Ligne « envoyée le … » + bouton d'envoi / de renvoi d'une facture déjà créée (Pro).
+function htmlEnvoiFacture(factureId, petit) {
+  var e = _envoisFactures[factureId];
+  var taille = petit ? 'padding:4px 10px;font-size:11.5px;' : 'padding:7px 14px;font-size:12.5px;';
+  var bouton = '<button onclick="envoyerFacture(\'' + factureId + '\')" style="' + taille + 'border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-weight:700;cursor:pointer;">' + (e ? '↻ Renvoyer' : '✉️ Envoyer au client') + '</button>';
+  var mention = e ? '<span style="font-size:11.5px;color:var(--mu);margin-right:8px;">✉️ Envoyée le ' + new Date(e.le).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'America/Guadeloupe' }) + (e.a ? ' à ' + escHtml(e.a) : '') + '</span>' : '';
+  return mention + bouton;
+}
+
+async function envoyerFacture(factureId) {
+  if (!verifierAccesEcriture()) return;
+  if (!exigerPro('facture_email')) return;
+  var { data: f, error } = await sb.from('mpa_artisans_factures').select('numero, mpa_artisans_clients(nom, email)').eq('id', factureId).eq('artisan_id', _artisan.id).maybeSingle();
+  if (error || !f) { alert('Facture introuvable.'); return; }
+  var client = f.mpa_artisans_clients || {};
+  var email = '';
+  if (_envoisFactures[factureId] && !confirm('Cette facture a déjà été envoyée. L\'envoyer de nouveau à ' + (client.email || 'ce client') + ' ?')) return;
+  if (!client.email) {
+    email = (prompt('Adresse email de ' + (client.nom || 'ce client') + ' pour lui envoyer la facture :', '') || '').trim();
+    if (!email) return;
+  }
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/envoyer-facture', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({ facture_id: factureId, email: email || undefined }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    _envoisFactures[factureId] = { le: data.envoyee_le, a: data.envoyee_a };
+    if (email) { try { chargerClients(); } catch (e) {} }
+    rafraichirZonesFacture(factureId);
+    mpaAiDire('✉️ La facture n° ' + escHtml(f.numero) + ' a été envoyée à ' + escHtml(data.envoyee_a || client.email) + '. S\'il répond, sa réponse arrive directement dans votre boîte mail.', 'info');
+  } catch (e) {
+    if (traiterErreurPlan(e)) return;
+    alert(e.message === 'email_client_manquant' ? 'Cette adresse email n\'est pas valide.' : 'Erreur : ' + e.message);
+  }
+}
+
+function rafraichirZonesFacture(factureId) {
+  var i = (_interventionsCache || []).find(function(x) { return x.facture_id === factureId; });
+  if (i) renderZoneFactureIntervention(i);
+  if (typeof renderCommandes === 'function' && _commandesCache && _commandesCache.length) renderCommandes();
+  chargerFactures();
 }
 
 function montantFacturableCommande(c) {
@@ -2445,22 +2508,23 @@ function montantFacturableCommande(c) {
 function boutonFactureCommande(c) {
   if (_facturesCommandes === null) return '';
   if (_facturesCommandes[c.id]) {
-    return '<button onclick="imprimerFacture(\'' + _facturesCommandes[c.id] + '\')" style="padding:6px 14px;border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">🧾 Voir la facture</button>';
+    return '<span style="font-size:11.5px;color:#0f9d78;font-weight:700;margin-left:8px;">✓ Facturée' + (_numerosFactures[_facturesCommandes[c.id]] ? ' — n° ' + escHtml(_numerosFactures[_facturesCommandes[c.id]]) : '') + '</span> ' + htmlEnvoiFacture(_facturesCommandes[c.id], true);
   }
   if (c.paiement_statut !== 'paye' || !(montantFacturableCommande(c) > 0)) return '';
-  return '<button onclick="facturerCommande(\'' + c.id + '\')" style="padding:6px 14px;border-radius:7px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">🧾 Facturer</button>';
+  return '<button onclick="facturerCommande(\'' + c.id + '\')" style="padding:6px 14px;border-radius:7px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">🧾 Facturer</button>' +
+    '<button onclick="facturerCommande(\'' + c.id + '\', true)" style="padding:6px 14px;border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">✉️ Facturer et envoyer</button>';
 }
 
 function normaliserNomClient(n) {
   return String(n || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
-async function facturerCommande(id) {
+async function facturerCommande(id, envoyer) {
   if (!verifierAccesEcriture()) return;
   if (!exigerPro('facture_rapide')) return;
   var c = _commandesCache.find(function(x) { return x.id === id; });
   if (!c || _facturesCommandes === null) return;
-  if (_facturesCommandes[id]) { imprimerFacture(_facturesCommandes[id]); return; }
+  if (_facturesCommandes[id]) return; // déjà facturée
   if (c.paiement_statut !== 'paye') { alert('Seule une commande payée en ligne peut être facturée ici.'); return; }
   var montant = montantFacturableCommande(c);
   if (!(montant > 0)) { alert('Cette commande n\'a rien à facturer (les frais de livraison se facturent avec la livraison).'); return; }
@@ -2492,10 +2556,10 @@ async function facturerCommande(id) {
     await chargerFacturesCommandes(); renderCommandes();
     return;
   }
-  _facturesCommandes[id] = facture.id;
+  _facturesCommandes[id] = facture.id; _numerosFactures[facture.id] = facture.numero;
   renderCommandes();
   chargerFactures();
-  imprimerFacture(facture.id);
+  if (envoyer) envoyerFacture(facture.id); else imprimerFacture(facture.id);
 }
 
 async function imprimerFacture(factureId) {
@@ -2866,6 +2930,8 @@ function proposerPassagePro(raison) {
     ? '🔒 Le détail du chiffre d\'affaires par client fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Le récapitulatif par mois (interventions, ventes, livraisons) reste gratuit.' + texteEssai()
     : raison === 'facture_rapide'
     ? '🧾 La facture en 1 clic (depuis une intervention ou une commande de la boutique) fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Le panier de facturation classique reste gratuit.' + texteEssai()
+    : raison === 'facture_email'
+    ? '✉️ L\'envoi de vos factures par email, directement à vos clients, fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Imprimer une facture reste gratuit.' + texteEssai()
     : raison === 'retard'
     ? '⏰ Prévenir un client d\'un retard fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
     : '🔒 Mes fournitures fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : suivi de vos consommables, scan QR code / code-barres et alerte avant la rupture.' + texteEssai();
@@ -2892,6 +2958,7 @@ function traiterErreurPlan(erreur) {
   var raison = m.indexOf('fournitures_reservees_pro') !== -1 ? 'fournitures'
     : m.indexOf('limite_produits_essentiel') !== -1 ? 'produits'
     : m.indexOf('retard_reserve_pro') !== -1 ? 'retard'
+    : m.indexOf('facture_email_reserve_pro') !== -1 ? 'facture_email'
     : m.indexOf('limite_phares') !== -1 ? 'phares' : null;
   if (!raison) return false;
   rafraichirPlan();
