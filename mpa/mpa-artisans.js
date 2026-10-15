@@ -2702,6 +2702,8 @@ function renderEncartAbonnement() {
 // après un refus de la base.
 // ═════════════════════════════════════════════════════════════════════════════
 var LIMITE_PRODUITS_ESSENTIEL = 15; // à garder identique à la limite écrite dans paywall-plan.sql
+var LIMITE_PHARES_GRATUIT = 1, LIMITE_PHARES_PRO = 4; // à garder identiques à phares-plan.sql
+function limitePhares() { return estPro() ? LIMITE_PHARES_PRO : LIMITE_PHARES_GRATUIT; }
 var PRIX_PRO_AFFICHE = '9,90 €/mois';
 var _dernierMessagePro = 0;
 
@@ -2724,6 +2726,8 @@ function proposerPassagePro(raison) {
   _dernierMessagePro = maintenant;
   var message = raison === 'produits'
     ? texteLimiteProduits() + texteEssai()
+    : raison === 'phares'
+    ? '⭐ L\'offre Essentiel permet ' + LIMITE_PHARES_GRATUIT + ' produit phare. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + '), vous en mettez ' + LIMITE_PHARES_PRO + ' en avant sur votre fiche et votre boutique, avec le catalogue illimité et Mes fournitures. Pour changer de produit phare, retirez d\'abord l\'étoile de l\'actuel.' + texteEssai()
     : raison === 'detail_client'
     ? '🔒 Le détail du chiffre d\'affaires par client fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Le récapitulatif par mois (interventions, ventes, livraisons) reste gratuit.' + texteEssai()
     : raison === 'retard'
@@ -2751,7 +2755,8 @@ function traiterErreurPlan(erreur) {
   var m = (erreur && erreur.message) || '';
   var raison = m.indexOf('fournitures_reservees_pro') !== -1 ? 'fournitures'
     : m.indexOf('limite_produits_essentiel') !== -1 ? 'produits'
-    : m.indexOf('retard_reserve_pro') !== -1 ? 'retard' : null;
+    : m.indexOf('retard_reserve_pro') !== -1 ? 'retard'
+    : m.indexOf('limite_phares') !== -1 ? 'phares' : null;
   if (!raison) return false;
   rafraichirPlan();
   proposerPassagePro(raison);
@@ -4017,8 +4022,14 @@ async function togglePhareCatalogue(id) {
   var item = _catalogueCache.find(function(c) { return c.id === id; });
   if (!item) return;
   var nouveauEtat = !item.est_phare;
+  // Limite de l'offre : 1 produit phare en Essentiel, 4 en Pro (la base la contrôle aussi : phares-plan.sql).
+  if (nouveauEtat && _catalogueCache.filter(function(c) { return c.est_phare; }).length >= limitePhares()) {
+    if (estPro()) alert('Vous avez déjà ' + LIMITE_PHARES_PRO + ' produits phares. Retirez l\'étoile d\'un produit avant d\'en choisir un autre.');
+    else proposerPassagePro('phares');
+    return;
+  }
   var { error } = await sb.from('artisans_catalogue').update({ est_phare: nouveauEtat }).eq('id', id);
-  if (error) { alert('Erreur : ' + error.message); return; }
+  if (error) { if (traiterErreurPlan(error)) return; alert('Erreur : ' + error.message); return; }
   item.est_phare = nouveauEtat;
   renderCatalogueGrille();
 }

@@ -31,6 +31,12 @@ const COLONNES_ARTISAN_BASE = "id, nom_entreprise, secteur, commune, bio, photo_
 const JEUX_COLONNES_ARTISAN = [`${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite`, `${COLONNES_ARTISAN_BASE}, frais_deplacement`, COLONNES_ARTISAN_BASE];
 const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
+// Produits phares selon l'offre : 1 en gratuit, 4 en Pro (même règle écrite côté base : phares-plan.sql).
+const NB_PHARES_GRATUIT = 1;
+const NB_PHARES_PRO = 4;
+function nbPharesPlan(plan: string | null | undefined): number {
+  return (plan === "pro" || plan === "pro_offert") ? NB_PHARES_PRO : NB_PHARES_GRATUIT;
+}
 
 function ipVisiteur(req: Request): string {
   return req.headers.get("cf-connecting-ip") || (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "inconnue";
@@ -89,8 +95,8 @@ Deno.serve(async (req: Request) => {
       .eq("artisan_id", id)
       .order("ordre", { ascending: true });
 
-    // Produits phares — choisis à la main par l'artisan (est_phare), sinon repli sur les 3
-    // meilleures ventes. Même logique que catalogue.html et la vignette (verifier-disponibilite-
+    // Produits phares — choisis à la main par l'artisan (est_phare), sinon repli sur les
+    // meilleures ventes (1 en gratuit, 4 en Pro). Même logique que catalogue.html et la vignette (verifier-disponibilite-
     // artisan.ts), jamais un compteur stocké : toujours recalculé sur les commandes réglées.
     // Le catalogue complet reste sur la page boutique dédiée (lien slug_catalogue) — cette fiche
     // ne montre qu'un aperçu soigné des produits phares, pas la liste entière.
@@ -99,6 +105,8 @@ Deno.serve(async (req: Request) => {
       .eq("artisan_id", id)
       .or("en_vente.is.null,en_vente.eq.true"); // jamais « Mon stock »
     const listeProduits = produitsArtisan || [];
+    const { data: lignePlan } = await sb.from("artisans").select("plan").eq("id", id).maybeSingle(); // jamais renvoyé au public
+    const nbPhares = nbPharesPlan(lignePlan?.plan);
     let produitsPhares: any[] = [];
     if (listeProduits.length) {
       const idsProduits = listeProduits.map((p: any) => p.id);
@@ -112,7 +120,7 @@ Deno.serve(async (req: Request) => {
       const source = phares.length
         ? phares
         : [...listeProduits].sort((a: any, b: any) => (ventes.get(b.id) || 0) - (ventes.get(a.id) || 0));
-      produitsPhares = source.slice(0, 3).map((p: any) => ({
+      produitsPhares = source.slice(0, nbPhares).map((p: any) => ({
         id: p.id, nom: p.nom, description: p.description, prix: p.prix, url_photo: p.url_photo,
         type: p.type, delai_preparation: p.delai_preparation, promo_pct: p.promo_pct,
       }));

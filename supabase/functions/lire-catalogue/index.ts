@@ -7,7 +7,7 @@
 // aucune connexion nécessaire pour le visiteur.
 //
 // Produits phares : ceux que l'artisan a choisis à la main (est_phare) ;
-// à défaut, les 3 meilleures ventes (calculées sur les commandes payées,
+// à défaut, les meilleures ventes (autant que l'offre le permet : 1 en gratuit, 4 en Pro) (calculées sur les commandes payées,
 // jamais un compteur stocké à part — toujours recalculé, jamais désynchronisé).
 // Nouveauté : un produit créé il y a moins de 30 jours, calculé à la volée,
 // jamais un champ à cocher qui resterait vrai indéfiniment.
@@ -23,7 +23,12 @@ const corsHeaders = {
 };
 
 const JOURS_NOUVEAUTE = 30;
-const NB_PHARES = 3;
+// Produits phares selon l'offre : 1 en gratuit, 4 en Pro (même règle écrite côté base : phares-plan.sql).
+const NB_PHARES_GRATUIT = 1;
+const NB_PHARES_PRO = 4;
+function nbPharesPlan(plan: string | null | undefined): number {
+  return (plan === "pro" || plan === "pro_offert") ? NB_PHARES_PRO : NB_PHARES_GRATUIT;
+}
 const NB_COMPLEMENTAIRES = 3;
 
 function json(payload: unknown, status = 200): Response {
@@ -41,7 +46,7 @@ Deno.serve(async (req: Request) => {
     if (!slug) return json({ error: "Lien manquant." }, 400);
 
     const { data: artisan, error } = await sb.from("artisans")
-      .select("id, nom_entreprise, secteur, commune, photo_profil_url, verifie, code_promo, stripe_connect_statut, boutique_en_pause")
+      .select("id, nom_entreprise, secteur, commune, photo_profil_url, verifie, code_promo, stripe_connect_statut, boutique_en_pause, plan")
       .eq("slug_catalogue", slug)
       .eq("actif", true)
       .maybeSingle();
@@ -89,14 +94,15 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    const nbPhares = nbPharesPlan(artisan.plan);
     const auMoinsUnPhareChoisi = liste.some((p: any) => p.est_phare);
     let idsPhares: Set<string>;
     if (auMoinsUnPhareChoisi) {
-      idsPhares = new Set(liste.filter((p: any) => p.est_phare).slice(0, NB_PHARES).map((p: any) => p.id));
+      idsPhares = new Set(liste.filter((p: any) => p.est_phare).slice(0, nbPhares).map((p: any) => p.id));
     } else {
       idsPhares = new Set(
         [...liste].sort((a: any, b: any) => (ventesParProduit.get(b.id) || 0) - (ventesParProduit.get(a.id) || 0))
-          .slice(0, NB_PHARES).map((p: any) => p.id),
+          .slice(0, nbPhares).map((p: any) => p.id),
       );
     }
 

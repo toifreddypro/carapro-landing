@@ -41,6 +41,12 @@ const corsHeaders = {
 //    ce sont des lectures publiques, mieux vaut un service disponible qu'un site bloqué par une panne du limiteur. ──
 const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
+// Produits phares selon l'offre : 1 en gratuit, 4 en Pro (même règle écrite côté base : phares-plan.sql).
+const NB_PHARES_GRATUIT = 1;
+const NB_PHARES_PRO = 4;
+function nbPharesPlan(plan: string | null | undefined): number {
+  return (plan === "pro" || plan === "pro_offert") ? NB_PHARES_PRO : NB_PHARES_GRATUIT;
+}
 
 function ipVisiteur(req: Request): string {
   return req.headers.get("cf-connecting-ip") || (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "inconnue";
@@ -182,7 +188,7 @@ Deno.serve(async (req: Request) => {
     if (await limiteAtteinte(sb, `dispo-${mode}:` + ipVisiteur(req), mode === "creneaux" ? 30 : 300, 60)) return reponseTropDeRequetes(corsHeaders);
 
     // L'artisan doit exister ET être actif : jamais les horaires ni le code promo d'un artisan désactivé.
-    const { data: artisanPublic, error: errArt } = await sb.from("artisans").select("id, slug_catalogue, code_promo, stripe_connect_statut, boutique_en_pause").eq("id", artisan_id).eq("actif", true).maybeSingle();
+    const { data: artisanPublic, error: errArt } = await sb.from("artisans").select("id, slug_catalogue, code_promo, stripe_connect_statut, boutique_en_pause, plan").eq("id", artisan_id).eq("actif", true).maybeSingle();
     if (errArt) throw errArt;
     if (!artisanPublic) return json({ error: "Artisan introuvable." }, 404);
     // Règle du 15/10/2026 : sans paiements en ligne actifs, plus de réservation de créneau (deux semaines de grâce, jusqu'au 1er/11/2026).
@@ -203,8 +209,8 @@ Deno.serve(async (req: Request) => {
       slugCatalogue = artisanPublic.slug_catalogue ?? null;
       codePromo = artisanPublic.code_promo ?? null;
 
-      // Produits phares : choisis à la main par l'artisan, sinon repli sur les 3 meilleures
-      // ventes (jamais un compteur stocké — toujours recalculé sur les commandes réglées).
+      // Produits phares : choisis à la main par l'artisan, sinon repli sur les meilleures
+      // ventes (1 en gratuit, 4 en Pro) (jamais un compteur stocké — toujours recalculé sur les commandes réglées).
       const { data: produits } = await sb.from("artisans_catalogue")
         .select("id, nom, url_photo, est_phare").eq("artisan_id", artisan_id)
         .or("en_vente.is.null,en_vente.eq.true"); // jamais « Mon stock »
@@ -221,7 +227,7 @@ Deno.serve(async (req: Request) => {
         const source = phares.length
           ? phares
           : [...listeProduits].sort((a: any, b: any) => (ventes.get(b.id) || 0) - (ventes.get(a.id) || 0));
-        produitsPhares = source.slice(0, 3).map((p: any) => ({ nom: p.nom, url_photo: p.url_photo }));
+        produitsPhares = source.slice(0, nbPharesPlan(artisanPublic.plan)).map((p: any) => ({ nom: p.nom, url_photo: p.url_photo }));
       }
     }
 
