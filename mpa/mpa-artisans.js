@@ -224,6 +224,23 @@ async function verifierAlertesMpaAi() {
       { label: 'Voir mon planning', action: "switchTab(2)" });
   }
 
+  // 4 ter) Demandes de paiement non réglées : le silence est ce qui décourage l'artisan, on le lui dit.
+  try {
+    var { data: impayes } = await sb.from('paiements_prestations').select('id, client_nom, montant, statut, created_at, annule_le')
+      .eq('artisan_id', _artisan.id).eq('type', 'solde').in('statut', ['en_attente', 'expire']).order('created_at', { ascending: true });
+    var ilYa7j = Date.now() - 7 * 86400000;
+    var enAttente = (impayes || []).filter(function(x) { return x.statut === 'en_attente' && Date.now() - new Date(x.created_at).getTime() > 2 * 86400000; });
+    var expires = (impayes || []).filter(function(x) { return x.statut === 'expire' && x.annule_le && new Date(x.annule_le).getTime() > ilYa7j; });
+    if (enAttente.length || expires.length) {
+      var parties = [];
+      if (enAttente.length === 1) { var a1 = enAttente[0]; parties.push(escHtml(a1.client_nom || 'Un client') + ' n\'a pas encore payé ' + eurosMPA(a1.montant) + ' (demande envoyée il y a ' + Math.floor((Date.now() - new Date(a1.created_at).getTime()) / 86400000) + ' jours)'); }
+      else if (enAttente.length > 1) parties.push(enAttente.length + ' demandes de paiement ne sont pas encore réglées (' + eurosMPA(enAttente.reduce(function(t, x) { return t + Number(x.montant); }, 0)) + ' au total)');
+      if (expires.length) parties.push(expires.length === 1 ? 'le lien de ' + escHtml(expires[0].client_nom || 'un client') + ' a expiré sans paiement' : expires.length + ' liens ont expiré sans paiement');
+      mpaAiDire('💶 ' + parties.join(' ; ') + '. Ouvrez l\'intervention pour relancer votre client, copier le lien ou créer un nouveau lien.', 'warning',
+        { label: 'Voir mon planning', action: "switchTab(2)" });
+    }
+  } catch (e) { /* table ou colonnes pas encore créées : rien à signaler */ }
+
   // 5) Interventions "En cours" qui traînent depuis plus de 60 jours — un simple rappel, jamais
   // bloquant (contrairement au seuil des 90 jours, qui lui empêche de planifier du nouveau).
   var nbEnCoursAnciennes = await compterInterventionsEnCoursAnciennes();
@@ -1802,9 +1819,10 @@ async function chargerPaiementsIntervention(i) {
   zone.innerHTML = '<div style="font-size:12px;color:var(--mu);">Chargement des paiements…</div>';
   try {
     var { data, error } = await sb.from('paiements_prestations').select('*').eq('artisan_id', _artisan.id).eq('intervention_id', i.id)
-      .not('statut', 'in', '(annule,expire)').order('created_at', { ascending: true });
+      .neq('statut', 'annule').order('created_at', { ascending: true });
     if (error) throw error;
-    _paiementsIntervention = data || [];
+    // Un lien de paiement (solde) expiré reste visible : l'artisan voit pourquoi rien n'est arrivé. Une réservation expirée, non.
+    _paiementsIntervention = (data || []).filter(function(p) { return p.statut !== 'expire' || p.type === 'solde'; });
   } catch (e) { zone.style.display = 'none'; return; } // table pas encore créée (SQL pas lancé) : rien à afficher
   renderPaiementsIntervention(i);
 }
@@ -1812,22 +1830,93 @@ async function chargerPaiementsIntervention(i) {
 function renderPaiementsIntervention(i) {
   var zone = document.getElementById('mi-paiement-wrap');
   if (!zone) return;
-  var libelleStatut = { en_attente: '⏳ en attente de paiement', paye: '✅ payé', partiellement_rembourse: '↩️ remboursé en partie', rembourse: '↩️ remboursé' };
+  var libelleStatut = { expire: '⌛ lien expiré sans paiement', en_attente: '⏳ en attente de paiement', paye: '✅ payé', partiellement_rembourse: '↩️ remboursé en partie', rembourse: '↩️ remboursé' };
   var lignes = _paiementsIntervention.map(function(p) {
     var nom = p.type === 'reservation' ? 'Frais payés à la réservation' : 'Paiement demandé';
     var datePaye = p.paye_le ? ' le ' + new Date(p.paye_le).toLocaleDateString('fr-FR') : '';
     var actions = '';
     if (['paye', 'partiellement_rembourse'].indexOf(p.statut) !== -1) actions = ' <button type="button" onclick="rembourserPaiementPrestation(\'' + p.id + '\')" style="background:none;border:none;color:var(--danger);font-size:12px;cursor:pointer;text-decoration:underline;">Rembourser</button>';
+    var detailAttente = '';
+    if (p.type === 'solde' && p.statut === 'en_attente') detailAttente = detailAttentePaiement(p);
+    if (p.type === 'solde' && p.statut === 'expire') detailAttente = '<div style="font-size:11.5px;color:var(--mu);margin:3px 0 0 22px;">Le client n\'a pas payé' + historiqueRelances(p) + '. Contactez-le, ou créez un nouveau lien avec « Demander un paiement ».' + boutonMarquerPaye(p) + '</div>';
     if (p.statut === 'en_attente') actions = ' <button type="button" onclick="copierLienPaiementPrestation(\'' + p.token + '\')" style="background:none;border:none;color:var(--ac);font-size:12px;cursor:pointer;text-decoration:underline;">Copier le lien</button>';
     if (p.conditions_acceptees_le) actions += ' <button type="button" onclick="ouvrirPreuveConsentement(\'' + p.id + '\')" style="background:none;border:none;color:var(--ac);font-size:12px;cursor:pointer;text-decoration:underline;">📜 Preuve d\'acceptation</button>';
     var reste = Number(p.montant_rembourse) > 0 ? ' (remboursé : ' + eurosMPA(p.montant_rembourse) + ')' : '';
-    return '<div style="font-size:12.5px;margin-bottom:6px;">💶 ' + nom + ' : <strong>' + eurosMPA(p.montant) + '</strong> — ' + (libelleStatut[p.statut] || escHtml(p.statut)) + datePaye + reste + actions + '</div>';
+    return '<div style="font-size:12.5px;margin-bottom:6px;">💶 ' + nom + ' : <strong>' + eurosMPA(p.montant) + '</strong> — ' + (libelleStatut[p.statut] || escHtml(p.statut)) + datePaye + reste + actions + detailAttente + '</div>';
   }).join('');
   var peutDemander = paiementsEnLigneActifs() && ['annulee'].indexOf(i.statut) === -1;
   zone.innerHTML = (lignes || '') +
     (peutDemander
       ? '<div style="text-align:center;margin-top:6px;"><button type="button" onclick="ouvrirDemandePaiement()" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--ac);background:var(--ac);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">💶 Demander un paiement</button><div style="font-size:11px;color:var(--mu);margin-top:5px;">Envoie à votre client un lien de paiement par carte pour le montant de votre devis.</div></div>'
       : (lignes ? '' : '<div style="font-size:11.5px;color:var(--mu);text-align:center;">Activez vos paiements en ligne (Mon profil) pour pouvoir demander un paiement à vos clients.</div>'));
+}
+
+// ── Relances d'un lien de paiement non réglé ──
+function historiqueRelances(p) {
+  var h = Array.isArray(p.relances_historique) ? p.relances_historique : [];
+  if (!h.length) return '';
+  return ' · relances : ' + h.map(function(r) { return new Date(r.le).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + (r.par === 'auto' ? ' (auto)' : ' (vous)'); }).join(', ');
+}
+function boutonMarquerPaye(p) {
+  return ' <button type="button" onclick="marquerPayeHorsLigne(\'' + p.id + '\')" style="background:none;border:none;color:var(--ac);font-size:12px;cursor:pointer;text-decoration:underline;">Le client a payé autrement ? Marquer payé</button>';
+}
+function detailAttentePaiement(p) {
+  var creeLe = new Date(p.created_at).getTime(), maintenant = Date.now();
+  var jours = Math.floor((maintenant - creeLe) / 86400000);
+  var expireLe = new Date(creeLe + 14 * 86400000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+  var nb = Number(p.relances_nb || 0);
+  var dernier = new Date(p.derniere_relance_le || p.created_at).getTime();
+  var heuresRestantes = Math.ceil((24 * 3600000 - (maintenant - dernier)) / 3600000);
+  var bouton;
+  if (!p.client_email) bouton = '<span style="color:var(--mu);">Pas d\'email pour ce client : copiez le lien et envoyez-le vous-même (SMS, WhatsApp).</span>';
+  else if (nb >= 2) bouton = '<span style="color:var(--mu);">2 relances envoyées : c\'était la dernière.</span>';
+  else if (heuresRestantes > 0) bouton = '<span style="color:var(--mu);">Prochaine relance possible dans ' + (heuresRestantes > 1 ? heuresRestantes + ' h' : '1 h') + ' (' + nb + '/2 envoyée' + (nb > 1 ? 's' : '') + ').</span>';
+  else bouton = '<button type="button" onclick="relancerPaiementPrestation(\'' + p.id + '\')" style="padding:5px 12px;border-radius:7px;border:1.5px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;font-weight:700;cursor:pointer;">✉️ Renvoyer l\'email au client (' + nb + '/2)</button>';
+  var auto = (p.relance_auto && nb < 2) ? '<br>🤖 Relance automatique prévue si le client ne paie pas.' : '';
+  return '<div style="font-size:11.5px;color:var(--mu);margin:3px 0 0 22px;line-height:1.6;">Lien envoyé il y a ' + (jours < 1 ? 'moins d\'un jour' : jours + ' jour' + (jours > 1 ? 's' : '')) + ', valable jusqu\'au ' + expireLe + historiqueRelances(p) + '.' + auto + '<br>' + bouton + boutonMarquerPaye(p) + '</div>';
+}
+async function relancerPaiementPrestation(id) {
+  var p = _paiementsIntervention.find(function(x) { return x.id === id; });
+  if (!p) return;
+  if (!confirm('Renvoyer l\'email de paiement à ' + (p.client_nom || 'votre client') + ' ?\n\nVous pouvez le faire 2 fois au plus, une fois par jour.')) return;
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/relancer-paiement', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({ paiement_id: id }),
+    });
+    var data = await res.json();
+    if (data.error) {
+      var messages = {
+        relance_trop_tot: 'Une relance a déjà été envoyée il y a moins de 24 h. Réessayez dans ' + (data.dans_heures || 24) + ' h.',
+        relances_epuisees: 'Les 2 relances ont déjà été envoyées.',
+        lien_expire: 'Ce lien a expiré : créez-en un nouveau avec « Demander un paiement ».',
+        deja_paye: 'Ce paiement a déjà été réglé.',
+        lien_inactif: 'Ce lien n\'est plus actif.',
+        email_client_manquant: 'Ce client n\'a pas d\'email : copiez le lien et envoyez-le lui vous-même.',
+        email_non_envoye: 'L\'email n\'a pas pu partir. Réessayez dans un instant.',
+        relance_en_cours: 'Une relance est déjà en cours.',
+      };
+      throw new Error(messages[data.error] || data.error);
+    }
+    mpaAiDire('✉️ Relance envoyée à ' + escHtml(p.client_nom || 'votre client') + '.' + (data.derniere ? ' C\'était la dernière : le lien expire à la date prévue.' : ''), 'info');
+    var i = _interventionsCache.find(function(x) { return x.id === _interventionEnCours; });
+    if (i) await chargerPaiementsIntervention(i);
+  } catch (e) { alert(e.message); }
+}
+// Le client a payé autrement (espèces, virement…) : l'intervention passe en « Payée » ; la base annule alors le lien en attente.
+async function marquerPayeHorsLigne(id) {
+  if (!verifierAccesEcriture()) return;
+  var p = _paiementsIntervention.find(function(x) { return x.id === id; });
+  var i = _interventionsCache.find(function(x) { return x.id === _interventionEnCours; });
+  if (!p || !i) return;
+  if (!confirm('Marquer cette intervention « Payée » ?\n\nLe lien de paiement en ligne envoyé à ' + (p.client_nom || 'votre client') + ' sera annulé : il ne pourra plus payer.')) return;
+  var { error } = await sb.from('mpa_artisans_interventions').update({ statut: 'payee', date_paiement: new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10) }).eq('id', i.id).eq('artisan_id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  mpaAiDire('✅ Intervention marquée « Payée ». Le lien de paiement en ligne a été annulé.', 'info');
+  await chargerInterventions();
+  await ouvrirIntervention(i.id);
 }
 
 function copierLienPaiementPrestation(token) {
@@ -1847,7 +1936,11 @@ function ouvrirDemandePaiement() {
   document.getElementById('dp-email').value = client.email || '';
   var dejaPaye = _paiementsIntervention.filter(function(p) { return ['paye', 'partiellement_rembourse'].indexOf(p.statut) !== -1; }).reduce(function(s, p) { return s + Number(p.montant) - Number(p.montant_rembourse || 0); }, 0);
   document.getElementById('dp-note').innerHTML = (dejaPaye > 0 ? '💡 Ce client a déjà payé <strong>' + eurosMPA(dejaPaye) + '</strong> en ligne (frais de réservation / de déplacement) : déduisez-le du montant si vous le souhaitez.<br>' : '') +
-    '✉️ Le client reçoit un email avec le lien de paiement (valable 14 jours). Vous pouvez aussi copier le lien ensuite et l\'envoyer vous-même.';
+    '✉️ Le client reçoit un email avec le lien de paiement (valable 14 jours). Vous pouvez aussi copier le lien ensuite et l\'envoyer vous-même.<br>🏦 L\'argent arrive tout de suite sur votre compte Stripe, puis sur votre compte bancaire sous quelques jours (délai fixé par Stripe, pas par CaraLink).';
+  var caseAuto = document.getElementById('dp-relance-auto');
+  if (caseAuto) { caseAuto.checked = estPro(); caseAuto.disabled = !estPro(); }
+  var noteAuto = document.getElementById('dp-relance-note');
+  if (noteAuto) noteAuto.textContent = estPro() ? 'Si le client n\'a pas payé, MPA-AI le relance par email à J+3 puis à J+10 (la dernière fois), à votre nom. Vous gardez la main : vous pouvez aussi relancer vous-même, 2 fois au plus.' : 'Offre Pro : relance automatique du client à J+3 et J+10. Vous pouvez toujours le relancer vous-même, 2 fois au plus.';
   document.getElementById('btn-dp').disabled = false;
   document.getElementById('btn-dp').textContent = 'Envoyer la demande de paiement';
   fermerModale('modal-intervention');
@@ -1867,7 +1960,7 @@ async function confirmerDemandePaiement() {
     var res = await fetch(SUPABASE_URL + '/functions/v1/demander-paiement-prestation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
-      body: JSON.stringify({ intervention_id: i.id, montant: montant, description: document.getElementById('dp-description').value, client_email: document.getElementById('dp-email').value.trim() }),
+      body: JSON.stringify({ intervention_id: i.id, montant: montant, description: document.getElementById('dp-description').value, client_email: document.getElementById('dp-email').value.trim(), relance_auto: !!(document.getElementById('dp-relance-auto') && document.getElementById('dp-relance-auto').checked) }),
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error);

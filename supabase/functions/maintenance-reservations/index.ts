@@ -79,12 +79,12 @@ Deno.serve(async (req: Request) => {
         return res.ok;
       } catch (e) { console.error(`[maintenance-reservations] ${fonction} injoignable :`, e); return false; }
     };
-    const bilan = { expirees: 0, liberees: 0, sans_reponse_remboursees: 0, remboursements_rejoues: 0, erreurs: 0 };
+    const bilan = { expirees: 0, relances: 0, liberees: 0, sans_reponse_remboursees: 0, remboursements_rejoues: 0, erreurs: 0 };
     const maintenant = Date.now();
     const aujourdhui = new Date(maintenant - DECALAGE_LOCAL_MS).toISOString().slice(0, 10);
 
     // ── 1. Non payées → expirées ──
-    const { data: attente } = await sb.from("paiements_prestations").select("id, type, demande_id, created_at, stripe_payment_intent_id, stripe_account").eq("statut", "en_attente");
+    const { data: attente } = await sb.from("paiements_prestations").select("id, type, demande_id, created_at, stripe_payment_intent_id, stripe_account, artisan_id, client_nom, montant, relances_nb").eq("statut", "en_attente");
     for (const p of attente || []) {
       try {
         const age = maintenant - new Date(p.created_at).getTime();
@@ -101,7 +101,27 @@ Deno.serve(async (req: Request) => {
         }
         if (p.type === "reservation" && p.demande_id) await sb.from("demandes_devis").update({ statut: "creneau_refuse", reponse_message: "Paiement non réglé" }).eq("id", p.demande_id).eq("statut", "creneau_propose");
         bilan.expirees++;
+        // Un lien de paiement (solde) qui expire sans règlement : l'artisan en est prévenu (sinon il ne verrait que le silence).
+        if (p.type === "solde") {
+          try {
+            const { data: art } = await sb.from("artisans").select("nom_entreprise, email").eq("id", p.artisan_id).maybeSingle();
+            if (art?.email) await envoyerEmail(art.email, `⌛ Paiement non réglé — ${p.client_nom || "votre client"}`,
+              `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#B5502F;">⌛ Lien de paiement expiré</h2><p>Le lien de paiement de <strong>${escHtml(Number(p.montant).toFixed(2).replace(".", ","))} €</strong> envoyé à <strong>${escHtml(p.client_nom || "votre client")}</strong> a expiré sans règlement${Number(p.relances_nb || 0) > 0 ? ` (${Number(p.relances_nb)} relance${Number(p.relances_nb) > 1 ? "s" : ""} envoyée${Number(p.relances_nb) > 1 ? "s" : ""})` : ""}.</p><p>Vous pouvez le contacter, créer un nouveau lien depuis l'intervention (« Demander un paiement »), ou marquer l'intervention « Payée » s'il a réglé autrement.</p></div>`);
+          } catch (e) { console.error("[maintenance-reservations] Prévenir l'artisan (lien expiré) :", e); }
+        }
       } catch (e) { bilan.erreurs++; console.error("[maintenance-reservations] Expiration :", e); }
+    }
+
+    // ── 1 bis. Relances automatiques (offre Pro) : paiements de solde non réglés, à J+3 puis J+10 ──
+    // La fonction relancer-paiement refait tous les contrôles (Pro, case cochée, âge du lien, 2 relances maximum, 24 h entre deux).
+    const { data: aRelancer } = await sb.from("paiements_prestations").select("id").eq("type", "solde").eq("statut", "en_attente").eq("relance_auto", true).lt("relances_nb", 2);
+    for (const r of aRelancer || []) {
+      try {
+        const res = await fetch(`${base}/functions/v1/relancer-paiement`, { method: "POST", headers: { "Authorization": `Bearer ${cleService}`, "Content-Type": "application/json" }, body: JSON.stringify({ paiement_id: r.id, auto: true }) });
+        const rep = await res.json().catch(() => ({}));
+        if (!res.ok) { bilan.erreurs++; console.error("[maintenance-reservations] relancer-paiement a répondu", res.status, rep); }
+        else if (!rep.ignoree) bilan.relances++;
+      } catch (e) { bilan.erreurs++; console.error("[maintenance-reservations] Relance :", e); }
     }
 
     // ── 2 + 3. Réservations payées en attente de réponse ──

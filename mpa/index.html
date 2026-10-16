@@ -1397,6 +1397,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Saisissez le montant de votre devis / de votre facture. Si le client a déjà payé des frais en ligne, tenez-en compte.</div></div>
 <div class="modal-field"><label>Pour quoi ? (facultatif — visible par le client)</label><input id="dp-description" maxlength="300" placeholder="Ex : Remplacement du chauffe-eau" type="text"/></div>
 <div class="modal-field" id="dp-email-wrap"><label>Email du client</label><input id="dp-email" type="email" placeholder="client@exemple.com"/></div>
+<div class="modal-field"><label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-weight:600;"><input id="dp-relance-auto" type="checkbox" checked style="margin-top:3px;"/><span>Relancer automatiquement mon client s'il ne paie pas <span style="font-size:10.5px;font-weight:700;color:var(--ac);border:1px solid var(--ac);border-radius:10px;padding:1px 7px;margin-left:4px;">PRO</span></span></label><div id="dp-relance-note" style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;"></div></div>
 <div id="dp-note" style="font-size:12px;color:var(--mu);line-height:1.5;margin-bottom:6px;"></div>
 <div class="modal-actions">
 <button class="btn-primary" id="btn-dp" onclick="confirmerDemandePaiement()">Envoyer la demande de paiement</button>

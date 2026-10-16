@@ -13,7 +13,8 @@
 //  - l'artisan n'agit que sur SES interventions ; paiements Stripe actifs obligatoires ;
 //  - le montant est contrôlé (de 0,50 € à 10 000 €) ; la description est limitée et échappée dans l'email ;
 //  - une demande de paiement encore en attente pour la même intervention est annulée avant d'en créer une nouvelle (jamais deux liens vivants) ;
-//  - l'adresse email du client est contrôlée ; le lien expire au bout de 14 jours (voir maintenance-reservations).
+//  - l'adresse email du client est contrôlée ; le lien expire au bout de 14 jours (voir maintenance-reservations) ;
+//  - relance_auto (Pro) : le client est relancé automatiquement à J+3 et J+10 s'il n'a pas payé (voir relancer-paiement).
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -72,7 +73,7 @@ Deno.serve(async (req: Request) => {
     if (emailSaisi && (emailSaisi.length > 200 || !REGEX_EMAIL.test(emailSaisi))) return json({ error: "Adresse email invalide." }, 400);
 
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { data: artisan } = await sb.from("artisans").select("id, nom_entreprise, stripe_connect_account_id, stripe_connect_statut").eq("user_id", user.id).maybeSingle();
+    const { data: artisan } = await sb.from("artisans").select("id, nom_entreprise, stripe_connect_account_id, stripe_connect_statut, plan").eq("user_id", user.id).maybeSingle();
     if (!artisan) return json({ error: "Aucun profil artisan trouvé." }, 404);
     if (!artisan.stripe_connect_account_id || artisan.stripe_connect_statut !== "actif") {
       return json({ error: "Activez d'abord vos paiements en ligne (Stripe) pour pouvoir demander un paiement." }, 400);
@@ -98,6 +99,8 @@ Deno.serve(async (req: Request) => {
       artisan_id: artisan.id, type: "solde", intervention_id,
       client_nom: client?.nom || null, client_email: emailClient || null, client_telephone: client?.telephone || null,
       description: description || null, montant, statut: "en_attente",
+      // Relances automatiques (offre Pro) : cochées par défaut, jamais pour une autre offre (et refusées aussi côté serveur).
+      relance_auto: body.relance_auto !== false && (artisan.plan === "pro" || artisan.plan === "pro_offert") && !!emailClient,
     }).select("token").single();
     if (errP) throw errP;
     const lien = `${PAGE_PAIEMENT}?token=${pai.token}`;
