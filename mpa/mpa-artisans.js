@@ -2335,7 +2335,8 @@ function recalculerPanier() {
   if (el) el.textContent = total.toFixed(2) + '€';
 }
 
-async function genererFacture() {
+function genererFacture() { return avecVerrouFacture('basket', _genererFacture); }
+async function _genererFacture() {
   if (!verifierAccesEcriture()) return;
   var clientId = document.getElementById('fact-client').value;
   var checked = Array.from(document.querySelectorAll('.panier-check:checked'));
@@ -2414,21 +2415,48 @@ function renderZoneFactureIntervention(i) {
       '<div style="font-size:11px;color:var(--mu);margin-top:5px;">Crée la facture de cette intervention ; elle s\'ouvre pour l\'imprimer, et vous la retrouvez dans « Mes factures ».</div>';
 }
 
-async function facturerIntervention(id, envoyer) {
+// Verrou d'interface : un double clic ne lance jamais deux fois la même opération (la base garantit en plus qu'un doublon est refusé).
+var _verrousFacture = {};
+async function avecVerrouFacture(cle, fonction) {
+  if (_verrousFacture[cle]) return;
+  _verrousFacture[cle] = true;
+  try { return await fonction(); } finally { delete _verrousFacture[cle]; }
+}
+// Erreurs de la base lors de la facture en 1 clic → message clair. Retourne true si l'erreur est traitée.
+function traiterErreurFacture(erreur) {
+  var m = (erreur && erreur.message) || '';
+  if (m.indexOf('facture_rapide_reserve_pro') !== -1) { proposerPassagePro('facture_rapide'); return true; }
+  var textes = {
+    deja_facturee: 'Cette facture a déjà été créée : elle apparaît dans « Mes factures ».',
+    statut_non_facturable: 'Seule une intervention terminée ou payée peut être facturée.',
+    client_manquant: 'Choisissez d\'abord un client pour cette intervention, puis enregistrez.',
+    prix_manquant: 'Cette intervention n\'a pas de prix.',
+    commande_non_payee: 'Seule une commande payée en ligne peut être facturée ici.',
+    rien_a_facturer: 'Cette commande n\'a rien à facturer (les frais de livraison se facturent avec la livraison).',
+    intervention_introuvable: 'Intervention introuvable. Rechargez la page.',
+    commande_introuvable: 'Commande introuvable. Rechargez la page.',
+    client_introuvable: 'Client introuvable. Rechargez la page.',
+  };
+  for (var cle in textes) { if (m.indexOf(cle) !== -1) { alert(textes[cle]); return true; } }
+  if (/function .* does not exist|Could not find the function|PGRST202/.test(m)) { alert('Cette fonction n\'est pas encore activée sur votre compte (mise à jour en cours). Réessayez dans un instant.'); return true; }
+  return false;
+}
+
+function facturerIntervention(id, envoyer) { return avecVerrouFacture('fi:' + id, function() { return _facturerIntervention(id, envoyer); }); }
+async function _facturerIntervention(id, envoyer) {
   if (!verifierAccesEcriture()) return;
   if (!exigerPro('facture_rapide')) return;
   var i = _interventionsCache.find(function(x) { return x.id === id; });
   if (!i || i.facture_id) return;
   if (!i.client_id) { alert('Choisissez d\'abord un client pour cette intervention, puis enregistrez.'); return; }
-  var montant = Number(i.prix) || 0;
-  if (!(montant > 0)) { alert('Cette intervention n\'a pas de prix.'); return; }
-  var numero = await prochainNumeroFacture();
-  var { data: facture, error } = await sb.from('mpa_artisans_factures').insert({
-    artisan_id: _artisan.id, client_id: i.client_id, numero: numero, montant_total: montant,
-  }).select().single();
-  if (error) { alert('Erreur : ' + error.message); return; }
-  var { error: err2 } = await sb.from('mpa_artisans_interventions').update({ facture_id: facture.id }).eq('id', id).eq('artisan_id', _artisan.id);
-  if (err2) { alert('Erreur : ' + err2.message); return; }
+  if (!(Number(i.prix) > 0)) { alert('Cette intervention n\'a pas de prix.'); return; }
+  // Tout se passe dans la base, d'un seul bloc : verrou de l'intervention, contrôle Pro, numéro attribué, facture créée et liée.
+  var { data: facture, error } = await sb.rpc('facturer_intervention', { p_intervention_id: id });
+  if (error) {
+    if (!traiterErreurFacture(error)) alert('Erreur : ' + error.message);
+    if ((error.message || '').indexOf('deja_facturee') !== -1) { await chargerFacturesCommandes(); }
+    return;
+  }
   i.facture_id = facture.id; _numerosFactures[facture.id] = facture.numero;
   renderZoneFactureIntervention(i);
   if (document.getElementById('fact-client') && document.getElementById('fact-client').value) chargerPanierClient();
@@ -2463,7 +2491,8 @@ function htmlEnvoiFacture(factureId, petit) {
   return mention + bouton;
 }
 
-async function envoyerFacture(factureId) {
+function envoyerFacture(factureId) { return avecVerrouFacture('ef:' + factureId, function() { return _envoyerFacture(factureId); }); }
+async function _envoyerFacture(factureId) {
   if (!verifierAccesEcriture()) return;
   if (!exigerPro('facture_email')) return;
   var { data: f, error } = await sb.from('mpa_artisans_factures').select('numero, mpa_artisans_clients(nom, email)').eq('id', factureId).eq('artisan_id', _artisan.id).maybeSingle();
@@ -2490,7 +2519,7 @@ async function envoyerFacture(factureId) {
     mpaAiDire('✉️ La facture n° ' + escHtml(f.numero) + ' a été envoyée à ' + escHtml(data.envoyee_a || client.email) + '. S\'il répond, sa réponse arrive directement dans votre boîte mail.', 'info');
   } catch (e) {
     if (traiterErreurPlan(e)) return;
-    alert(e.message === 'email_client_manquant' ? 'Cette adresse email n\'est pas valide.' : 'Erreur : ' + e.message);
+    alert(e.message === 'email_client_manquant' ? 'Cette adresse email n\'est pas valide.' : e.message === 'envoi_en_cours' ? 'Un envoi est déjà en cours pour cette facture. Patientez quelques secondes.' : 'Erreur : ' + e.message);
   }
 }
 
@@ -2519,7 +2548,8 @@ function normaliserNomClient(n) {
   return String(n || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
-async function facturerCommande(id, envoyer) {
+function facturerCommande(id, envoyer) { return avecVerrouFacture('fc:' + id, function() { return _facturerCommande(id, envoyer); }); }
+async function _facturerCommande(id, envoyer) {
   if (!verifierAccesEcriture()) return;
   if (!exigerPro('facture_rapide')) return;
   var c = _commandesCache.find(function(x) { return x.id === id; });
@@ -2547,12 +2577,9 @@ async function facturerCommande(id, envoyer) {
     chargerClients();
   }
 
-  var numero = await prochainNumeroFacture();
-  var { data: facture, error } = await sb.from('mpa_artisans_factures').insert({
-    artisan_id: _artisan.id, client_id: client.id, numero: numero, montant_total: montant, commande_id: id,
-  }).select().single();
+  var { data: facture, error } = await sb.rpc('facturer_commande', { p_commande_id: id, p_client_id: client.id });
   if (error) {
-    alert(error.code === '23505' ? 'Cette commande a déjà été facturée.' : 'Erreur : ' + error.message);
+    if (!traiterErreurFacture(error)) alert('Erreur : ' + error.message);
     await chargerFacturesCommandes(); renderCommandes();
     return;
   }
@@ -2960,6 +2987,7 @@ function traiterErreurPlan(erreur) {
   var raison = m.indexOf('fournitures_reservees_pro') !== -1 ? 'fournitures'
     : m.indexOf('limite_produits_essentiel') !== -1 ? 'produits'
     : m.indexOf('retard_reserve_pro') !== -1 ? 'retard'
+    : m.indexOf('facture_rapide_reserve_pro') !== -1 ? 'facture_rapide'
     : m.indexOf('facture_email_reserve_pro') !== -1 ? 'facture_email'
     : m.indexOf('limite_phares') !== -1 ? 'phares' : null;
   if (!raison) return false;
