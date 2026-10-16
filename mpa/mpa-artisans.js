@@ -544,11 +544,17 @@ async function chargerInterventions() {
   var debutStr = debutMois.toISOString().slice(0, 10);
   var finStr = finMois.toISOString().slice(0, 10);
 
-  var { data, error } = await sb.from('mpa_artisans_interventions')
-    .select('*, mpa_artisans_clients(nom, email, telephone), artisans_services(nom_service)')
-    .eq('artisan_id', _artisan.id)
-    .gte('date_intervention', debutStr)
-    .lte('date_intervention', finStr);
+  // Si une colonne du client manque en base (ex. telephone), on réessaie sans elle plutôt que de vider tout le planning.
+  var res = null;
+  for (var champs of ['nom, email, telephone', 'nom, email']) {
+    res = await sb.from('mpa_artisans_interventions')
+      .select('*, mpa_artisans_clients(' + champs + '), artisans_services(nom_service)')
+      .eq('artisan_id', _artisan.id)
+      .gte('date_intervention', debutStr)
+      .lte('date_intervention', finStr);
+    if (!res.error || res.error.code !== '42703') break;
+  }
+  var data = res.data, error = res.error;
 
   if (error) { console.error(error); _interventionsCache = []; }
   else { _interventionsCache = data || []; }
