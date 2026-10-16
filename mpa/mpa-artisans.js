@@ -329,7 +329,7 @@ async function repondreQuestionActivites() {
 }
 // La visite d'estimation n'a de sens que pour qui intervient chez ses clients : elle vient en dernier.
 async function suiteApresQuestionsDebut() {
-  if (_artisan && Array.isArray(_artisan.activites) && _artisan.activites.indexOf('interventions') >= 0) await demanderReglageVisite();
+  await demanderAssistantReglages(true); // l'assistant de réglage remplace la question isolée sur la visite d'estimation
 }
 
 // ── Question « versement libératoire » (impôt sur le revenu) — juste après la question sur les activités ──
@@ -455,7 +455,7 @@ async function init() {
   await verifierAlertesMpaAi();
   appliquerActivites();
   // Une seule question à la fois : d'abord l'activité, puis l'impôt (versement libératoire), la visite d'estimation en dernier.
-  if (!(await demanderActivites()) && !(await demanderRegimeFiscal())) await demanderReglageVisite(); // après les autres alertes : la question de MPA-AI est la plus visible
+  if (!(await demanderActivites()) && !(await demanderRegimeFiscal())) await demanderAssistantReglages(false); // après les autres alertes : la question de MPA-AI est la plus visible
   rappelerPaiementsBoutique('demarrage');
   rappelerStripeReservations();
   await verifierNouveautes();
@@ -972,7 +972,275 @@ async function libelleSecteurArtisan() { // « code + libellé » du secteur de 
   } catch (e) { /* le code suffit pour la suggestion */ }
   return texte;
 }
-// MPA-AI pose la question tant que l'artisan n'a pas répondu (colonne présente et vide) — une fois par session.
+// ════════════════════════════════════════
+//  ASSISTANT DE RÉGLAGE (MPA-AI) — pose les bonnes questions selon ce que l'artisan fait, et règle sa fiche pour lui.
+//  Services (interventions) : visite sur place ? frais de déplacement, frais de réservation, annulation gratuite.
+//  Ventes (boutique) : explications (paiements, produits phares, partage du lien). Livraison : frais de livraison.
+//  Chaque étape : valeur proposée, « Passer » possible, jamais d'effacement silencieux. Les mêmes réglages restent modifiables dans « Mon profil ».
+// ════════════════════════════════════════
+var _as = null;
+function cleAssistant() { return 'mpa_assistant_' + (_artisan ? _artisan.id : ''); }
+function lireEtatAssistant() { try { return localStorage.getItem(cleAssistant()) || ''; } catch (e) { return ''; } }
+function ecrireEtatAssistant(v) { try { localStorage.setItem(cleAssistant(), v); } catch (e) { /* confort uniquement */ } }
+
+function assistantGroupes() {
+  var act = (_artisan && Array.isArray(_artisan.activites) && _artisan.activites.length) ? _artisan.activites : ['interventions', 'boutique', 'livraison'];
+  return { services: act.indexOf('interventions') >= 0, ventes: act.indexOf('boutique') >= 0, livraison: act.indexOf('livraison') >= 0 };
+}
+// Y a-t-il encore quelque chose à régler ? (sert à proposer l'assistant automatiquement, jamais plus d'une fois par session)
+function assistantAFaire() {
+  if (!_artisan) return false;
+  var g = assistantGroupes();
+  if (g.services && ('proposer_visite' in _artisan) && _artisan.proposer_visite == null) return true;
+  if (g.livraison && ('livraison_forfait_base' in _artisan) && _artisan.livraison_forfait_base == null && _artisan.livraison_km_inclus == null && _artisan.livraison_prix_km_supp == null) return true;
+  if (g.ventes && lireEtatAssistant() === '') return true;
+  return false;
+}
+// direct = true : juste après les questions de début (l'assistant s'ouvre) ; false : au démarrage, MPA-AI propose seulement.
+async function demanderAssistantReglages(direct) {
+  if (window._assistantDit || !_artisan || !assistantAFaire()) return false;
+  if (lireEtatAssistant() === 'reporte' || lireEtatAssistant() === 'fait') return false;
+  window._assistantDit = true;
+  if (direct) { lancerAssistantReglages(); return true; }
+  mpaAiDire('Je peux régler votre fiche avec vous en quelques minutes : je vous pose les bonnes questions selon ce que vous faites (déplacements, boutique, livraison), et je remplis pour vous.',
+    'pro', { label: 'C\'est parti', action: 'lancerAssistantReglages()' });
+  return true;
+}
+
+function euroLisible(n) { return Number(n).toFixed(2).replace('.', ',') + ' €'; }
+function noteStripeAssistant() {
+  if (paiementsEnLigneActifs()) return '';
+  return '<div style="margin-top:12px;padding:10px 12px;border-radius:9px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12.5px;line-height:1.5;">⚠️ Vos paiements en ligne ne sont pas encore activés : ces frais ne seront demandés à vos clients qu\'une fois Stripe activé. <button class="addb" style="margin-top:6px;" onclick="lancerStripeConnect(this)">Activer mes paiements →</button></div>';
+}
+function champEuroAssistant(id, valeurInitiale, placeholder) {
+  return '<input id="' + id + '" type="text" inputmode="decimal" value="' + (valeurInitiale != null && Number(valeurInitiale) > 0 ? escHtml(String(valeurInitiale).replace('.', ',')) : '') + '" placeholder="' + placeholder + '" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:9px;border:1px solid var(--b2);font-size:15px;"/>';
+}
+function fraisActifsAssistant() {
+  var visite = _as.rep.visite !== undefined ? _as.rep.visite : _artisan.proposer_visite === true;
+  var dep = _as.rep.deplacement !== undefined ? _as.rep.deplacement : _artisan.frais_deplacement;
+  var resa = _as.rep.reservation !== undefined ? _as.rep.reservation : _artisan.frais_reservation;
+  return (visite && Number(dep) > 0) || Number(resa) > 0;
+}
+
+function etapesAssistant() {
+  var g = assistantGroupes(), E = [];
+  if (g.services && 'proposer_visite' in _artisan) {
+    E.push({ id: 'visite', titre: '🔧 Faut-il aller voir le chantier avant le devis ?',
+      rendre: function() {
+        var cur = _as.rep.visite !== undefined ? _as.rep.visite : (_artisan.proposer_visite != null ? _artisan.proposer_visite : null);
+        var sug = _as.suggestion || { reponse: null, phrase: '' };
+        return '<p style="font-size:13.5px;line-height:1.5;margin:0 0 10px;">Pour beaucoup de métiers, on ne peut pas chiffrer sans avoir vu les lieux.</p>' +
+          (sug.phrase ? '<div style="font-size:12.5px;color:var(--ac);margin-bottom:10px;">✨ ' + escHtml(sug.phrase) + '</div>' : '') +
+          '<label class="act-choix"><input type="radio" name="as-visite" id="as-visite-oui"' + (cur === true ? ' checked' : '') + '/><div><strong>Oui, souvent' + (sug.reponse === true ? ' (suggéré)' : '') + '</strong><span>Vos clients peuvent vous demander de venir voir le chantier : ils choisissent un créneau de visite, et vos frais de déplacement leur sont annoncés avant.</span></div></label>' +
+          '<label class="act-choix"><input type="radio" name="as-visite" id="as-visite-non"' + (cur === false ? ' checked' : '') + '/><div><strong>Non, mes clients peuvent réserver directement' + (sug.reponse === false ? ' (suggéré)' : '') + '</strong><span>Ils réservent un créneau sans visite préalable.</span></div></label>';
+      },
+      valider: function() { var o = document.getElementById('as-visite-oui').checked, n = document.getElementById('as-visite-non').checked; if (!o && !n) return 'Choisissez une réponse (ou « Passer »).'; _as.tmp = o; return null; },
+      sauver: async function() {
+        var { error } = await sb.from('artisans').update({ proposer_visite: _as.tmp }).eq('id', _artisan.id);
+        if (error) return error.message;
+        _artisan.proposer_visite = _as.tmp; _as.rep.visite = _as.tmp;
+        _as.resume.push(_as.tmp ? 'Visite sur place : vos clients peuvent la demander' : 'Réservation directe, sans visite');
+      } });
+    E.push({ id: 'deplacement', titre: '🚗 Frais de déplacement (visite sur place)',
+      si: function() { return (_as.rep.visite !== undefined ? _as.rep.visite : _artisan.proposer_visite === true) === true; },
+      rendre: function() {
+        return '<p style="font-size:13.5px;line-height:1.5;margin:0 0 10px;">Annoncés au client, puis payés par lui <strong>en ligne</strong> au moment où il demande le rendez-vous (vous ne voyez sa demande qu\'une fois payée). Remboursés automatiquement s\'il annule dans votre délai gratuit, ou si vous refusez ou annulez.</p>' +
+          '<label style="font-size:12px;font-weight:600;color:var(--mu2);display:block;margin-bottom:4px;">Montant en € — laissez vide : visite sans frais</label>' + champEuroAssistant('as-dep', _artisan.frais_deplacement, 'Ex. 25') + noteStripeAssistant();
+      },
+      valider: function() { var r = lireFraisDeplacement(document.getElementById('as-dep').value); if (!r.ok) return 'Indiquez un montant entre 0 et 500 € (par exemple 25 ou 25,50), ou laissez vide.'; _as.tmp = r.valeur; return null; },
+      sauver: async function() {
+        var { error } = await sb.from('artisans').update({ frais_deplacement: _as.tmp }).eq('id', _artisan.id);
+        if (error) return error.message;
+        _artisan.frais_deplacement = _as.tmp; _as.rep.deplacement = _as.tmp;
+        _as.resume.push(_as.tmp > 0 ? 'Frais de déplacement : ' + euroLisible(_as.tmp) : 'Visite sans frais de déplacement');
+      } });
+  }
+  if (g.services && 'frais_reservation' in _artisan) {
+    E.push({ id: 'reservation', titre: '📅 Frais de réservation d\'un créneau',
+      rendre: function() {
+        return '<p style="font-size:13.5px;line-height:1.5;margin:0 0 10px;">Payés <strong>en ligne</strong> par un client qui réserve directement un créneau (de 1 à 500 €). Ils protègent votre temps : un client qui ne vient pas ne vous fait plus perdre de chiffre d\'affaires. Remboursés automatiquement si vous refusez, annulez, ou ne répondez pas sous 48 h.</p>' +
+          '<div style="font-size:12.5px;color:var(--mu);margin-bottom:10px;">Sans frais, la réservation est gratuite pour vos clients : c\'est le choix le plus simple pour démarrer.</div>' +
+          '<label style="font-size:12px;font-weight:600;color:var(--mu2);display:block;margin-bottom:4px;">Montant en € — laissez vide : aucun frais</label>' + champEuroAssistant('as-resa', _artisan.frais_reservation, 'Ex. 10') + noteStripeAssistant();
+      },
+      valider: function() {
+        var r = lireFraisDeplacement(document.getElementById('as-resa').value);
+        if (!r.ok || (r.valeur !== null && r.valeur > 0 && r.valeur < 1)) return 'Indiquez un montant entre 1 et 500 € (par exemple 10 ou 12,50), ou laissez vide.';
+        _as.tmp = r.valeur; return null;
+      },
+      sauver: async function() {
+        var { error } = await sb.from('artisans').update({ frais_reservation: _as.tmp }).eq('id', _artisan.id);
+        if (error) return error.message;
+        _artisan.frais_reservation = _as.tmp; _as.rep.reservation = _as.tmp;
+        _as.resume.push(_as.tmp > 0 ? 'Frais de réservation : ' + euroLisible(_as.tmp) : 'Réservation gratuite');
+      } });
+  }
+  if (g.services && 'annulation_gratuite_heures' in _artisan) {
+    E.push({ id: 'annulation', titre: '↩️ Annulation gratuite par le client',
+      si: function() { return fraisActifsAssistant(); },
+      rendre: function() {
+        var h = Number(_artisan.annulation_gratuite_heures); if (!isFinite(h)) h = 24;
+        var opts = [[0, 'Jamais — les frais restent acquis dès la confirmation'], [2, 'Jusqu\'à 2 h avant le rendez-vous'], [6, 'Jusqu\'à 6 h avant le rendez-vous'], [12, 'Jusqu\'à 12 h avant le rendez-vous'], [24, 'Jusqu\'à 24 h avant le rendez-vous'], [48, 'Jusqu\'à 48 h avant le rendez-vous'], [72, 'Jusqu\'à 72 h avant le rendez-vous'], [168, 'Jusqu\'à 7 jours avant le rendez-vous']];
+        return '<p style="font-size:13.5px;line-height:1.5;margin:0 0 10px;">Jusqu\'à quand votre client peut-il annuler en étant remboursé de ses frais ? Au-delà de ce délai, il perd ses frais (vous gardez votre dû). Avant votre confirmation, il est toujours remboursé.</p>' +
+          '<select id="as-annul" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--b2);font-size:14px;">' + opts.map(function(o) { return '<option value="' + o[0] + '"' + (o[0] === h ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
+      },
+      valider: function() { _as.tmp = parseInt(document.getElementById('as-annul').value, 10) || 0; return null; },
+      sauver: async function() {
+        var { error } = await sb.from('artisans').update({ annulation_gratuite_heures: _as.tmp }).eq('id', _artisan.id);
+        if (error) return error.message;
+        _artisan.annulation_gratuite_heures = _as.tmp;
+        _as.resume.push(_as.tmp > 0 ? 'Annulation gratuite jusqu\'à ' + _as.tmp + ' h avant' : 'Frais acquis dès la confirmation');
+      } });
+  }
+  if (g.ventes) {
+    E.push({ id: 'ventes', titre: '🛍️ Votre boutique en 3 gestes', info: true,
+      rendre: function() {
+        var actif = paiementsEnLigneActifs();
+        return '<div style="font-size:13.5px;line-height:1.55;">' +
+          '<p style="margin:0 0 12px;"><strong>1. Activer les paiements.</strong> Vos clients paient en ligne par carte, l\'argent arrive sur votre compte Stripe. ' + (actif ? '<span style="color:#0f9d78;font-weight:700;">✓ Déjà activés.</span>' : 'Ça se fait une fois, en quelques minutes : <button class="addb" onclick="lancerStripeConnect(this)">Activer mes paiements →</button>') + '</p>' +
+          '<p style="margin:0 0 12px;"><strong>2. Mettre en avant vos produits phares.</strong> Ce sont les produits montrés en premier sur votre fiche : <strong>1 en offre Essentiel, 4 en offre Pro</strong>. Dans <em>Mes ventes › Mon catalogue</em>, touchez l\'étoile ⭐ d\'un produit.</p>' +
+          '<p style="margin:0;"><strong>3. Partager votre boutique par lien.</strong> Envoyez le lien (WhatsApp, Facebook, email) ou imprimez le QR code : <button class="addb" onclick="assistantOuvrirPartage()">🔗 Partager ma boutique</button></p></div>';
+      },
+      sauver: async function() { ecrireEtatAssistant(lireEtatAssistant() || 'ventes_vu'); _as.resume.push('Boutique : explications vues'); } });
+  }
+  if (g.livraison && 'livraison_forfait_base' in _artisan) {
+    E.push({ id: 'livraison', titre: '🚚 Frais de livraison',
+      rendre: function() {
+        function v(x) { return x != null ? escHtml(String(x)) : ''; }
+        var st = 'width:100%;box-sizing:border-box;padding:10px 12px;border-radius:9px;border:1px solid var(--b2);font-size:15px;';
+        return '<p style="font-size:13.5px;line-height:1.5;margin:0 0 10px;">Calculés automatiquement à chaque commande, selon la vraie distance entre vous et le client. Mettez 0 pour ne rien facturer.</p>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">' +
+          '<div><label style="font-size:11.5px;font-weight:600;color:var(--mu2);display:block;margin-bottom:4px;">Forfait de base (€)</label><input id="as-liv-base" type="number" min="0" step="0.5" value="' + v(_artisan.livraison_forfait_base) + '" oninput="assistantExempleLivraison()" style="' + st + '"/></div>' +
+          '<div><label style="font-size:11.5px;font-weight:600;color:var(--mu2);display:block;margin-bottom:4px;">Distance incluse (km)</label><input id="as-liv-km" type="number" min="0" step="1" value="' + v(_artisan.livraison_km_inclus) + '" oninput="assistantExempleLivraison()" style="' + st + '"/></div>' +
+          '<div><label style="font-size:11.5px;font-weight:600;color:var(--mu2);display:block;margin-bottom:4px;">€/km au-delà</label><input id="as-liv-prix" type="number" min="0" step="0.1" value="' + v(_artisan.livraison_prix_km_supp) + '" oninput="assistantExempleLivraison()" style="' + st + '"/></div></div>' +
+          '<div id="as-liv-exemple" style="margin-top:10px;font-size:12.5px;color:var(--mu);"></div>';
+      },
+      apres: function() { assistantExempleLivraison(); },
+      valider: function() {
+        var ids = ['as-liv-base', 'as-liv-km', 'as-liv-prix'], vals = [];
+        for (var k = 0; k < ids.length; k++) {
+          var brut = document.getElementById(ids[k]).value.trim().replace(',', '.');
+          if (brut === '') { vals.push(null); continue; }
+          var n = parseFloat(brut);
+          if (!isFinite(n) || n < 0 || n > 10000) return 'Indiquez des montants positifs (ou laissez vide).';
+          vals.push(n);
+        }
+        _as.tmp = vals; return null;
+      },
+      sauver: async function() {
+        var maj = { livraison_forfait_base: _as.tmp[0], livraison_km_inclus: _as.tmp[1], livraison_prix_km_supp: _as.tmp[2] };
+        var { error } = await sb.from('artisans').update(maj).eq('id', _artisan.id);
+        if (error) return error.message;
+        Object.assign(_artisan, maj);
+        var ch = { 'livraison-base': maj.livraison_forfait_base, 'livraison-km-inclus': maj.livraison_km_inclus, 'livraison-prix-km': maj.livraison_prix_km_supp };
+        Object.keys(ch).forEach(function(id) { var e = document.getElementById(id); if (e) e.value = ch[id] == null ? '' : ch[id]; });
+        try { afficherExempleLivraison(); } catch (e) {}
+        _as.resume.push(maj.livraison_forfait_base > 0 || maj.livraison_prix_km_supp > 0 ? 'Livraison : ' + euroLisible(maj.livraison_forfait_base || 0) + ' de base' + (maj.livraison_km_inclus ? ' jusqu\'à ' + maj.livraison_km_inclus + ' km' : '') + (maj.livraison_prix_km_supp > 0 ? ', puis ' + euroLisible(maj.livraison_prix_km_supp) + '/km' : '') : 'Livraison sans frais');
+      } });
+  }
+  return E;
+}
+function assistantExempleLivraison() {
+  var z = document.getElementById('as-liv-exemple'); if (!z) return;
+  var b = document.getElementById('as-liv-base').value, k = document.getElementById('as-liv-km').value, p = document.getElementById('as-liv-prix').value;
+  if (b === '' || k === '') { z.textContent = ''; return; }
+  z.textContent = '💡 ' + b + ' € jusqu\'à ' + k + ' km depuis chez vous' + (p && Number(p) > 0 ? ', puis ' + p + ' € par km supplémentaire.' : ', rien au-delà.');
+}
+function assistantOuvrirPartage() { assistantFermer(true); setTimeout(function() { ouvrirPartageArtisan('boutique'); }, 50); }
+
+async function lancerAssistantReglages() {
+  if (!_artisan) return;
+  // L'assistant s'appuie sur ce que l'artisan fait : si pas encore répondu, on commence par cette question.
+  if (('activites' in _artisan) && !(Array.isArray(_artisan.activites) && _artisan.activites.length)) { ouvrirQuestionActivites(); return; }
+  var panneau = document.getElementById('mpa-ai-panel'); if (panneau) panneau.classList.remove('open');
+  _mpaAiFeed = _mpaAiFeed.filter(function(m) { return !(m.cta && m.cta.action === 'lancerAssistantReglages()'); });
+  _as = { etapes: etapesAssistant(), cur: null, rep: {}, resume: [], tmp: null, suggestion: null };
+  if (!_as.etapes.length) { alert('Il n\'y a rien à régler pour le moment.'); return; }
+  if (assistantGroupes().services && _artisan.proposer_visite == null) { try { _as.suggestion = suggestionVisite(await libelleSecteurArtisan()); } catch (e) {} }
+  assistantAller(0);
+  ouvrirModale('modal-assistant');
+}
+function assistantActives() { return _as.etapes.filter(function(s) { return !s.si || s.si(); }); }
+function assistantAller(index) {
+  // Saute les étapes dont la condition n'est plus vraie.
+  while (index < _as.etapes.length && _as.etapes[index].si && !_as.etapes[index].si()) index++;
+  if (index >= _as.etapes.length) { assistantFin(); return; }
+  _as.cur = index;
+  var s = _as.etapes[index], actives = assistantActives();
+  var pos = actives.indexOf(s) + 1;
+  document.getElementById('as-progression').textContent = 'Étape ' + pos + ' sur ' + actives.length;
+  document.getElementById('as-titre').textContent = s.titre;
+  document.getElementById('as-corps').innerHTML = s.rendre();
+  var err = document.getElementById('as-erreur'); err.style.display = 'none';
+  document.getElementById('as-suivant').textContent = s.info ? 'Compris' : 'Suivant';
+  document.getElementById('as-passer').style.display = s.info ? 'none' : '';
+  document.getElementById('as-suivant').disabled = false;
+  if (s.apres) s.apres();
+}
+function assistantErreur(msg) { var e = document.getElementById('as-erreur'); e.textContent = msg; e.style.display = 'block'; }
+async function assistantSuivant() {
+  var s = _as.etapes[_as.cur]; if (!s) return;
+  if (s.valider) { var msg = s.valider(); if (msg) { assistantErreur(msg); return; } }
+  var btn = document.getElementById('as-suivant'); btn.disabled = true;
+  var erreur = s.sauver ? await s.sauver() : null;
+  if (erreur) { assistantErreur('Erreur : ' + erreur); btn.disabled = false; return; }
+  assistantAller(_as.cur + 1);
+}
+function assistantPasser() { assistantAller(_as.cur + 1); }
+function assistantFin() {
+  document.getElementById('as-progression').textContent = 'Terminé';
+  document.getElementById('as-titre').textContent = '✅ C\'est réglé';
+  document.getElementById('as-corps').innerHTML =
+    (_as.resume.length ? '<ul style="margin:0 0 12px;padding-left:20px;font-size:13.5px;line-height:1.7;">' + _as.resume.map(function(t) { return '<li>' + escHtml(t) + '</li>'; }).join('') + '</ul>' : '<p style="font-size:13.5px;">Rien n\'a été modifié.</p>') +
+    '<p style="font-size:12.5px;color:var(--mu);line-height:1.5;margin:0;">Vous pouvez tout changer à tout moment dans « Mon profil › Modifier ». Pour relancer cet assistant : « 🧭 Assistant de réglage » dans Mon profil. Le bouton <strong>?</strong> dans « Mes interventions » rappelle le parcours de vos clients.</p>';
+  document.getElementById('as-erreur').style.display = 'none';
+  document.getElementById('as-suivant').textContent = 'Fermer';
+  document.getElementById('as-suivant').onclick = function() { assistantFermer(); };
+  document.getElementById('as-suivant').disabled = false;
+  document.getElementById('as-passer').style.display = 'none';
+  document.getElementById('as-plus-tard').style.display = 'none';
+  ecrireEtatAssistant('fait');
+  try { renderFiche(); } catch (e) {}
+}
+// « Plus tard » : l'assistant ne se rouvre plus tout seul (il reste dans Mon profil).
+function assistantFermer(silencieux) {
+  fermerModale('modal-assistant');
+  if (_as && _as.cur != null && lireEtatAssistant() !== 'fait' && !silencieux) ecrireEtatAssistant('reporte');
+  var b = document.getElementById('as-suivant'); if (b) b.onclick = assistantSuivant;
+  var pt = document.getElementById('as-plus-tard'); if (pt) pt.style.display = '';
+  try { renderFiche(); } catch (e) {}
+}
+
+// ════════════════════════════════════════
+//  Bouton « ? » de « Mes interventions » : le parcours d'un client, avec les VRAIS réglages de l'artisan.
+// ════════════════════════════════════════
+function ouvrirAideParcours() {
+  var a = _artisan || {}, actif = paiementsEnLigneActifs();
+  var resa = Number(a.frais_reservation) || 0, dep = Number(a.frais_deplacement) || 0, visite = a.proposer_visite === true;
+  var h = Number(a.annulation_gratuite_heures); if (!isFinite(h)) h = 24;
+  var lignesPaiement = [];
+  if (actif && resa >= 1) lignesPaiement.push('Réservation directe : le client paie <strong>' + euroLisible(resa) + '</strong> de frais de réservation en ligne, avant que vous voyiez sa demande.');
+  if (actif && visite && dep > 0) lignesPaiement.push('Visite sur place : il paie <strong>' + euroLisible(dep) + '</strong> de frais de déplacement en ligne.');
+  var etape1Paiement = lignesPaiement.length ? lignesPaiement.join('<br>')
+    : 'Aucun paiement à cette étape : la réservation est <strong>gratuite</strong> pour vos clients.';
+  var avertissement = (!actif && (resa >= 1 || (visite && dep > 0)))
+    ? '<div style="margin-top:8px;padding:8px 10px;border-radius:8px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12px;">⚠️ Vos frais ne sont pas demandés tant que vos paiements en ligne ne sont pas activés (Mes ventes › Mon catalogue).</div>' : '';
+  var fraisEnJeu = actif && (resa >= 1 || (visite && dep > 0));
+  var etape3Annul = fraisEnJeu ? '<br>' + (h > 0 ? 'Il peut annuler gratuitement jusqu\'à <strong>' + h + ' h</strong> avant le rendez-vous ; ensuite, il perd ses frais.' : 'Ses frais restent acquis dès la confirmation.') : '';
+  function bloc(n, titre, texte) {
+    return '<div style="display:flex;gap:12px;margin-bottom:14px;"><div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--ac);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;">' + n + '</div>' +
+      '<div style="font-size:13px;line-height:1.55;"><strong>' + titre + '</strong><div style="color:var(--mu2);margin-top:2px;">' + texte + '</div></div></div>';
+  }
+  document.getElementById('aide-parcours-corps').innerHTML =
+    bloc(1, 'Le client réserve', 'Depuis votre fiche ou votre lien de partage, il choisit un créneau libre et laisse ses coordonnées.<br>💳 ' + etape1Paiement + avertissement) +
+    bloc(2, 'Vous recevez la demande', 'Un email vous prévient, et la demande apparaît dans « Mes demandes ». Vous confirmez ou vous refusez. <strong>Sans réponse sous 48 h</strong>, ou si vous refusez, les frais éventuellement payés sont remboursés automatiquement.') +
+    bloc(3, 'Le client reçoit la confirmation', 'Par email, avec son lien pour annuler.' + etape3Annul) +
+    bloc(4, 'Le jour J', 'Vous faites l\'intervention, puis vous la passez en « Terminée » dans « Mes interventions ».') +
+    bloc(5, 'Le paiement du solde', '💳 Ouvrez l\'intervention et touchez <strong>« Demander un paiement »</strong> : le client reçoit un lien pour payer par carte, valable 14 jours. Tenez compte des frais déjà payés.<br>🧾 En Pro, « Facturer en 1 clic » crée la facture.') +
+    '<div style="font-size:12px;color:var(--mu);border-top:1px solid var(--brd);padding-top:10px;line-height:1.5;">Boutique : le client paie sa commande en ligne au moment de commander. Pour changer vos frais : <a href="#" onclick="fermerModale(\'modal-aide-parcours\');lancerAssistantReglages();return false;" style="color:var(--ac);">🧭 Assistant de réglage</a>.</div>';
+  ouvrirModale('modal-aide-parcours');
+}
+
+// (ancienne question isolée sur la visite : remplacée par l'assistant ci-dessus, conservée pour mémoire)
 async function demanderReglageVisite() {
   if (window._questionVisiteDite || !_artisan || !('proposer_visite' in _artisan) || _artisan.proposer_visite != null) return;
   window._questionVisiteDite = true;
