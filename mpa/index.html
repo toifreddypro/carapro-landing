@@ -1197,11 +1197,26 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-field"><label>Votre lien privé</label>
 <div style="display:flex;gap:8px;align-items:center;"><input id="ag-lien" readonly="" onclick="this.select()" type="text" style="flex:1;min-width:0;font-family:'JetBrains Mono',monospace;font-size:12px;"/><button class="addb" id="ag-copier" onclick="copierTextePartageArtisan('ag-lien', 'ag-copier')">📋 Copier</button></div></div>
 <div style="font-size:12.5px;line-height:1.6;color:var(--mu2);margin-bottom:12px;">
-<div style="margin-bottom:6px;"><strong>Google Agenda</strong> (sur ordinateur) : « Autres agendas » (+) › « À partir de l'URL » › collez le lien › « Ajouter l'agenda ». Il apparaît ensuite aussi sur votre téléphone.</div>
-<div style="margin-bottom:6px;"><strong>iPhone / Mac</strong> : touchez le bouton ci-dessous, puis « Abonner ».</div>
-<div><strong>Outlook</strong> : « Ajouter un calendrier » › « S'abonner à partir du web » › collez le lien.</div>
+<div id="ag-bloc-ios" style="margin-bottom:10px;padding:10px 12px;border:1px solid var(--brd);border-radius:10px;">
+<strong>🍎 iPhone / iPad / Mac (Apple Calendrier)</strong>
+<ol style="margin:6px 0 0 18px;padding:0;">
+<li>Touchez « Copier » ci-dessus.</li>
+<li>Ouvrez <strong>Réglages</strong> › <strong>Calendrier</strong> (ou <strong>Apps</strong> › <strong>Calendrier</strong>) › <strong>Comptes de calendrier</strong> › <strong>Ajouter un compte</strong> › <strong>Autre</strong> › <strong>Ajouter un calendrier avec abonnement</strong>.</li>
+<li>Collez le lien dans « Serveur », puis « Suivant » › « Enregistrer ».</li>
+</ol>
+<div style="margin-top:6px;"><a class="addb" id="ag-apple" style="text-decoration:none;display:inline-block;" onclick="ouvrirAppleCalendrier(event)">🍎 Essayer le raccourci Apple Calendrier</a><span style="font-size:11.5px;color:var(--mu);display:block;margin-top:4px;">Ce raccourci ne marche que depuis Safari. S'il ne fait rien, utilisez les étapes ci-dessus.</span></div>
 </div>
-<a class="addb" id="ag-apple" style="text-decoration:none;display:inline-block;margin-bottom:12px;">🍎 Ouvrir dans Apple Calendrier</a>
+<div id="ag-bloc-google" style="margin-bottom:10px;padding:10px 12px;border:1px solid var(--brd);border-radius:10px;">
+<strong>📅 Google Agenda (Android, ou iPhone avec Google Agenda)</strong>
+<div style="margin-top:6px;">L'application Google Agenda <strong>ne permet pas</strong> d'ajouter un agenda par lien : cela se fait une seule fois depuis le site, puis l'agenda apparaît tout seul sur votre téléphone.</div>
+<ol style="margin:6px 0 0 18px;padding:0;">
+<li>Ouvrez <strong>calendar.google.com</strong> sur un ordinateur (ou, sur téléphone, dans votre navigateur en choisissant « Version pour ordinateur »).</li>
+<li>À gauche, « Autres agendas » (+) › « À partir de l'URL ».</li>
+<li>Collez le lien › « Ajouter l'agenda ». Il se synchronise ensuite sur le téléphone (vérifiez qu'il est coché dans l'application, menu ☰).</li>
+</ol>
+</div>
+<div id="ag-bloc-outlook"><strong>Outlook</strong> : « Ajouter un calendrier » › « S'abonner à partir du web » › collez le lien.</div>
+</div>
 <div style="font-size:11.5px;color:var(--mu);line-height:1.5;border-top:1px solid var(--brd);padding-top:10px;">
 ⏱️ Les agendas se mettent à jour d'eux-mêmes, mais pas instantanément : Google peut mettre plusieurs heures à afficher un changement. Pour une modification de dernière minute, fiez-vous à MPA.<br>
 🔒 Ce lien est privé : toute personne qui l'a voit votre planning (dates, services, noms de clients, adresses). Ne le partagez pas. Jamais de téléphone ni d'email de vos clients. Si le lien a été envoyé par erreur, générez-en un nouveau : l'ancien cesse aussitôt de fonctionner.
@@ -1425,6 +1440,18 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-overlay" id="modal-intervention">
 <div class="modal-box">
 <h3 id="mi-titre">Nouvelle intervention</h3>
+<div class="modal-field"><label>Statut de l'intervention</label>
+<select id="mi-statut" onchange="toggleDatePaiement()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
+<option value="planifiee">🟠 Planifiée</option>
+<option value="terminee">🔵 Terminée</option>
+<option value="payee">🟢 Payée</option>
+<option value="annulee">⚫ Annulée</option>
+</select>
+</div>
+<div class="modal-field" id="mi-date-paiement-wrap" style="display:none;">
+<label>Date de paiement réelle</label>
+<input id="mi-date-paiement" type="date"/>
+</div>
 <div class="modal-field"><label>Date</label><input id="mi-date" onchange="calculerCreneaux()" type="date"/></div>
 <div class="modal-field"><label>Client</label>
 <select id="mi-client" onchange="preRemplirAdresseIntervention()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;"></select>
@@ -1461,18 +1488,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 <div class="modal-field"><label>Prix (€)</label><input id="mi-prix" step="0.01" type="number"/><div id="mi-prix-hint" style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;"></div></div>
 <div class="modal-field"><label>Notes</label><input id="mi-notes" placeholder="Optionnel" type="text"/></div>
-<div class="modal-field"><label>Statut</label>
-<select id="mi-statut" onchange="toggleDatePaiement()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
-<option value="planifiee">🟠 Planifiée</option>
-<option value="terminee">🔵 Terminée</option>
-<option value="payee">🟢 Payée</option>
-<option value="annulee">⚫ Annulée</option>
-</select>
-</div>
-<div class="modal-field" id="mi-date-paiement-wrap" style="display:none;">
-<label>Date de paiement réelle</label>
-<input id="mi-date-paiement" type="date"/>
-</div>
 <div class="modal-actions">
 <button class="btn-primary" onclick="sauverIntervention()">Enregistrer</button>
 <button class="btn-secondary" onclick="fermerModale('modal-intervention')">Annuler</button>

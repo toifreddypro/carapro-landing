@@ -4519,6 +4519,24 @@ function afficherAgendaSync() {
   var lien = lienAgenda();
   document.getElementById('ag-lien').value = lien;
   document.getElementById('ag-apple').href = lien.replace(/^https:/, 'webcal:');
+  // L'appareil de l'artisan passe en premier : Apple sur iPhone / Mac, Google Agenda ailleurs.
+  var estApple = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent || '');
+  var ios = document.getElementById('ag-bloc-ios'), goo = document.getElementById('ag-bloc-google'), zone = ios.parentNode;
+  zone.insertBefore(estApple ? ios : goo, zone.firstChild);
+}
+// Raccourci Apple Calendrier : seul Safari sait ouvrir un lien « webcal: ». Ailleurs (application installée, navigateur intégré), rien ne se passe :
+// on prévient alors l'artisan au lieu de le laisser devant un bouton muet.
+function ouvrirAppleCalendrier(ev) {
+  if (ev) ev.preventDefault();
+  var lien = lienAgenda(); if (!lien) return;
+  var cache = false;
+  var surCache = function() { cache = document.hidden; };
+  document.addEventListener('visibilitychange', surCache, { once: true });
+  window.location.href = lien.replace(/^https:/, 'webcal:');
+  setTimeout(function() {
+    document.removeEventListener('visibilitychange', surCache);
+    if (!cache && !document.hidden) alert('Ce raccourci n\'a pas pu ouvrir Apple Calendrier depuis cette page.\n\nPas de souci : touchez « Copier », puis Réglages › Calendrier › Comptes de calendrier › Ajouter un compte › Autre › Ajouter un calendrier avec abonnement, et collez le lien.');
+  }, 2500);
 }
 async function regenererLienAgenda() {
   if (!confirm('Générer un nouveau lien ? L\'ancien cessera de fonctionner : vous devrez coller le nouveau dans votre agenda.')) return;
