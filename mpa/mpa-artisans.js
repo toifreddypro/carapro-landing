@@ -3475,7 +3475,7 @@ function proposerPassagePro(raison) {
     : raison === 'facture_rapide'
     ? '🧾 La facture en 1 clic (depuis une intervention ou une commande de la boutique) fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Le panier de facturation classique reste gratuit.' + texteEssai()
     : raison === 'agenda'
-    ? '📅 Retrouver votre planning dans Google Agenda, Apple Calendrier ou Outlook, mis à jour tout seul, fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
+    ? '📅 Retrouver votre planning dans Google Agenda, Apple Calendrier ou Outlook, mis à jour automatiquement, fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
     : raison === 'facture_email'
     ? '✉️ L\'envoi de vos factures par email, directement à vos clients, fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Imprimer une facture reste gratuit.' + texteEssai()
     : raison === 'retard'
