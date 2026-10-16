@@ -745,6 +745,8 @@ async function avancerStatut(id, ev) {
   if (statutActuel === 'annulee') return; // une intervention annulée ne suit pas ce cycle
 
   var nouveauStatut = CYCLE_STATUT[statutActuel] || 'planifiee';
+  // Terminée / Payée : le prix doit avoir été validé (sinon l'intervention compterait pour 0 € et ne pourrait pas être facturée).
+  if (['terminee', 'payee'].indexOf(nouveauStatut) !== -1 && i.prix == null) { demanderPrixPuis(i, function() { avancerStatut(id); }); return; }
   var maj = { statut: nouveauStatut };
   maj.date_paiement = nouveauStatut === 'payee' ? new Date().toISOString().slice(0, 10) : null;
 
@@ -754,6 +756,40 @@ async function avancerStatut(id, ev) {
   await chargerInterventions();
   if (document.getElementById('p-compta').classList.contains('active')) await chargerCompta();
   if (nouveauStatut === 'terminee') suiteInterventionTerminee(id);
+}
+
+// ── Fenêtre « Quel est le prix ? » : barrière avant Terminée / Payée ──
+var _suitePrix = null, _intervPrix = null;
+function demanderPrixPuis(i, suite) {
+  _suitePrix = suite; _intervPrix = i;
+  var client = i.mpa_artisans_clients && i.mpa_artisans_clients.nom ? i.mpa_artisans_clients.nom : 'Client';
+  var service = i.artisans_services && i.artisans_services.nom_service ? ' — ' + i.artisans_services.nom_service : '';
+  var dateAff = new Date(i.date_intervention + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  document.getElementById('px-resume').textContent = client + service + ' — ' + dateAff;
+  var sug = suggestionPrixService(i.service_id, i.duree_min || (i.heure_debut && i.heure_fin ? heureVersMin(String(i.heure_fin).slice(0, 5)) - heureVersMin(String(i.heure_debut).slice(0, 5)) : 0));
+  document.getElementById('px-prix').value = sug.valeur != null ? String(sug.valeur).replace('.', ',') : '';
+  document.getElementById('px-aide').textContent = sug.texte;
+  document.getElementById('px-erreur').style.display = 'none';
+  document.getElementById('px-valider').disabled = false;
+  ouvrirModale('modal-prix');
+}
+async function validerPrixRequis(gratuit) {
+  var i = _intervPrix; if (!i) return;
+  var prix = 0;
+  if (!gratuit) {
+    var brut = document.getElementById('px-prix').value.replace(/\s/g, '').replace('€', '').replace(',', '.');
+    prix = Number(brut);
+    if (!/^\d+(\.\d{1,2})?$/.test(brut) || !isFinite(prix) || prix <= 0 || prix > 1000000) {
+      var e = document.getElementById('px-erreur'); e.textContent = 'Indiquez un prix valide, par exemple 120 ou 120,50. Si c\'est gratuit, utilisez le bouton « C\'est gratuit ».'; e.style.display = 'block'; return;
+    }
+  }
+  document.getElementById('px-valider').disabled = true;
+  var { error } = await sb.from('mpa_artisans_interventions').update({ prix: prix }).eq('id', i.id).eq('artisan_id', _artisan.id);
+  if (error) { var e2 = document.getElementById('px-erreur'); e2.textContent = 'Erreur : ' + error.message; e2.style.display = 'block'; document.getElementById('px-valider').disabled = false; return; }
+  i.prix = prix;
+  fermerModale('modal-prix');
+  var suite = _suitePrix; _suitePrix = null; _intervPrix = null;
+  if (suite) suite();
 }
 
 // ── Une intervention vient d'être marquée « Terminée » : MPA-AI propose la suite (facturer, demander le solde). ──
@@ -777,6 +813,7 @@ function messageSuiteTerminee(ids) {
   var i = liste[0];
   var nomClient = (i.mpa_artisans_clients && i.mpa_artisans_clients.nom) ? escHtml(i.mpa_artisans_clients.nom) : 'votre client';
   if (i.facture_id) return; // déjà facturée : rien à proposer
+  if (i.prix === 0 || i.prix === '0') return; // marquée gratuite : rien à facturer
   if (!i.client_id || !(Number(i.prix) > 0)) {
     mpaAiDire('✅ Intervention chez ' + nomClient + ' terminée. Pour la facturer, il faut un client et un prix : complétez la fiche.', 'info',
       { label: 'Ouvrir l\'intervention', action: "ouvrirIntervention('" + i.id + "')" });
@@ -1540,12 +1577,27 @@ function preRemplirAdresseIntervention() {
   calculerCreneaux();
 }
 
+// Tarif indicatif du service → prix proposé pour l'intervention. Forfait ou sans unité : tel quel ; à l'heure : × la durée ;
+// autre unité (m², jour…) : aucun calcul (on ne connaît pas la quantité), le tarif est seulement rappelé.
+function suggestionPrixService(serviceId, dureeMin) {
+  var sv = _servicesCache.find(function(x) { return x.id === serviceId; });
+  if (!sv || !(Number(sv.prix_indicatif) > 0)) return { valeur: null, texte: '' };
+  var pu = Number(sv.prix_indicatif), unite = String(sv.unite || '').trim().toLowerCase();
+  var rappel = 'Tarif indicatif de ce service : ' + eurosMPA(pu) + (sv.unite ? ' / ' + sv.unite : '') + '.';
+  if (!unite || unite.indexOf('forfait') >= 0) return { valeur: pu, texte: rappel + ' Prix proposé : modifiez-le si besoin.' };
+  if (/^(h|heure|heures)$/.test(unite) && dureeMin > 0) { var v = Math.round(pu * dureeMin / 60 * 100) / 100; return { valeur: v, texte: rappel + ' Prix proposé pour ' + dureeMin + ' min : ' + eurosMPA(v) + ' — modifiez-le si besoin.' }; }
+  return { valeur: null, texte: rappel + ' Indiquez le prix total de l\'intervention.' };
+}
+
 function preRemplirDureeIntervention() {
   var serviceId = document.getElementById('mi-service').value;
   var s = _servicesCache.find(function(x) { return x.id === serviceId; });
   if (s && s.duree_estimee_min && !document.getElementById('mi-duree').value) {
     document.getElementById('mi-duree').value = s.duree_estimee_min;
   }
+  var sug = suggestionPrixService(serviceId, parseInt(document.getElementById('mi-duree').value, 10) || (s && s.duree_estimee_min) || 0);
+  var hint = document.getElementById('mi-prix-hint'); if (hint) hint.textContent = sug.texte;
+  if (sug.valeur != null && !document.getElementById('mi-prix').value) document.getElementById('mi-prix').value = sug.valeur;
   calculerCreneaux();
 }
 
@@ -1750,6 +1802,7 @@ async function ouvrirNouvelleIntervention(dateStr, creneau) {
   document.getElementById('mi-duree').value = '';
   document.getElementById('mi-creneaux-zone').innerHTML = 'Renseignez la date, l\'adresse et la durée pour voir les créneaux qui tiennent compte de vos trajets.';
   document.getElementById('mi-prix').value = '';
+  var hintN = document.getElementById('mi-prix-hint'); if (hintN) hintN.textContent = '';
   document.getElementById('mi-notes').value = '';
   document.getElementById('mi-statut').value = 'planifiee';
   document.getElementById('mi-date-paiement').value = '';
@@ -1788,7 +1841,8 @@ async function ouvrirIntervention(id) {
   document.getElementById('mi-com').value = i.commune || '';
   document.getElementById('mi-service').value = i.service_id || '';
   document.getElementById('mi-duree').value = (i.heure_debut && i.heure_fin) ? (heureVersMin(i.heure_fin.slice(0,5)) - heureVersMin(i.heure_debut.slice(0,5))) : '';
-  document.getElementById('mi-prix').value = i.prix || '';
+  document.getElementById('mi-prix').value = i.prix == null ? '' : i.prix;
+  var hintP = document.getElementById('mi-prix-hint'); if (hintP) hintP.textContent = (i.prix == null && i.service_id) ? suggestionPrixService(i.service_id, i.duree_min || 0).texte : (i.prix === 0 || i.prix === '0' ? 'Intervention marquée gratuite.' : '');
   document.getElementById('mi-notes').value = i.notes || '';
   document.getElementById('mi-statut').value = i.statut || 'planifiee';
   document.getElementById('mi-date-paiement').value = i.date_paiement || '';
@@ -1953,6 +2007,15 @@ async function confirmerDemandePaiement() {
   var brut = document.getElementById('dp-montant').value.replace(/\s/g, '').replace('€', '').replace(',', '.');
   var montant = Number(brut);
   if (!/^\d+(\.\d{1,2})?$/.test(brut) || !isFinite(montant) || montant < 0.5 || montant > 10000) { alert('Indiquez un montant valide (de 0,50 € à 10 000 €), par exemple 180 ou 180,50.'); return; }
+  // Cohérence avec le prix de l'intervention : ce que le client a déjà payé + ce qu'on lui demande ne doit pas dépasser le prix enregistré.
+  var dejaPayeNet = _paiementsIntervention.filter(function(p) { return ['paye', 'partiellement_rembourse'].indexOf(p.statut) !== -1; }).reduce(function(t, p) { return t + Number(p.montant) - Number(p.montant_rembourse || 0); }, 0);
+  var totalAttendu = Math.round((montant + dejaPayeNet) * 100) / 100;
+  if (Number(i.prix) > 0 && totalAttendu > Number(i.prix) + 0.005) {
+    if (!confirm('Le prix enregistré pour cette intervention est de ' + eurosMPA(i.prix) + ', mais vous demandez ' + eurosMPA(montant) + (dejaPayeNet > 0 ? ' en plus des ' + eurosMPA(dejaPayeNet) + ' déjà payés en ligne' : '') + ', soit ' + eurosMPA(totalAttendu) + ' au total.\n\nMettre le prix de l\'intervention à ' + eurosMPA(totalAttendu) + ' et envoyer la demande ?\n\n(Annuler : revenir pour corriger le montant.)')) return;
+    var { error: errMaj } = await sb.from('mpa_artisans_interventions').update({ prix: totalAttendu }).eq('id', i.id).eq('artisan_id', _artisan.id);
+    if (errMaj) { alert('Erreur : ' + errMaj.message); return; }
+    i.prix = totalAttendu;
+  }
   var btn = document.getElementById('btn-dp');
   btn.disabled = true; btn.textContent = 'Envoi…';
   try {
@@ -1966,7 +2029,7 @@ async function confirmerDemandePaiement() {
     if (data.error) throw new Error(data.error);
     fermerModale('modal-demander-paiement');
     // Sans prix sur l'intervention, elle compterait pour 0 € dans le chiffre d'affaires et ne pourrait pas être facturée : on le renseigne.
-    if (!(Number(i.prix) > 0)) {
+    if (i.prix == null || i.prix === '') {
       var prixTotal = Math.round((montant + (Number(data.deja_paye_en_ligne) || 0)) * 100) / 100;
       var { error: errPrix } = await sb.from('mpa_artisans_interventions').update({ prix: prixTotal }).eq('id', i.id).eq('artisan_id', _artisan.id);
       if (!errPrix) { i.prix = prixTotal; mpaAiDire('🏷️ Cette intervention n\'avait pas de prix : j\'ai enregistré ' + eurosMPA(prixTotal) + ' (ce que vous demandez' + (data.deja_paye_en_ligne > 0 ? ', plus ' + eurosMPA(data.deja_paye_en_ligne) + ' déjà payés en ligne' : '') + '), pour votre chiffre d\'affaires et votre facture. Modifiable dans l\'intervention.', 'info'); }
@@ -2320,12 +2383,17 @@ async function sauverIntervention() {
     code_postal: cp,
     commune: commune,
     service_id: document.getElementById('mi-service').value || null,
-    prix: parseFloat(document.getElementById('mi-prix').value) || null,
+    prix: isNaN(parseFloat(document.getElementById('mi-prix').value)) ? null : parseFloat(document.getElementById('mi-prix').value), // 0 = gratuit, volontairement
     notes: document.getElementById('mi-notes').value.trim() || null,
     statut: document.getElementById('mi-statut').value,
     date_paiement: document.getElementById('mi-statut').value === 'payee' ? (document.getElementById('mi-date-paiement').value || null) : null,
   };
   if (!maj.date_intervention) { alert('La date est obligatoire.'); return; }
+  if (['terminee', 'payee'].indexOf(maj.statut) !== -1 && maj.prix == null) {
+    alert('Indiquez le prix de l\'intervention avant de la passer en « ' + (maj.statut === 'payee' ? 'Payée' : 'Terminée') + ' » : il compte dans votre chiffre d\'affaires et sert à votre facture.\n\nSi c\'est gratuit (garantie, geste commercial), saisissez 0.');
+    document.getElementById('mi-prix').focus();
+    return;
+  }
 
   // Géocodage silencieux — si l'adresse a une correspondance, on la stocke ; sinon on enregistre quand même (jamais bloquant)
   if (adresse) {
@@ -2839,7 +2907,7 @@ async function prochainNumeroFacture() {
 function renderZoneFactureIntervention(i) {
   var zone = document.getElementById('mi-facture-wrap');
   if (!zone) return;
-  if (!i || ['terminee', 'payee'].indexOf(i.statut) === -1) { zone.style.display = 'none'; zone.innerHTML = ''; return; }
+  if (!i || ['terminee', 'payee'].indexOf(i.statut) === -1 || i.prix === 0 || i.prix === '0') { zone.style.display = 'none'; zone.innerHTML = ''; return; }
   zone.style.display = 'block';
   if (!(Number(i.prix) > 0) || !i.client_id) {
     // On explique au lieu de cacher : sans prix ni client, pas de facture, et l'intervention compte pour 0 € dans le chiffre d'affaires.
