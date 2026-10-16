@@ -1965,6 +1965,12 @@ async function confirmerDemandePaiement() {
     var data = await res.json();
     if (data.error) throw new Error(data.error);
     fermerModale('modal-demander-paiement');
+    // Sans prix sur l'intervention, elle compterait pour 0 € dans le chiffre d'affaires et ne pourrait pas être facturée : on le renseigne.
+    if (!(Number(i.prix) > 0)) {
+      var prixTotal = Math.round((montant + (Number(data.deja_paye_en_ligne) || 0)) * 100) / 100;
+      var { error: errPrix } = await sb.from('mpa_artisans_interventions').update({ prix: prixTotal }).eq('id', i.id).eq('artisan_id', _artisan.id);
+      if (!errPrix) { i.prix = prixTotal; mpaAiDire('🏷️ Cette intervention n\'avait pas de prix : j\'ai enregistré ' + eurosMPA(prixTotal) + ' (ce que vous demandez' + (data.deja_paye_en_ligne > 0 ? ', plus ' + eurosMPA(data.deja_paye_en_ligne) + ' déjà payés en ligne' : '') + '), pour votre chiffre d\'affaires et votre facture. Modifiable dans l\'intervention.', 'info'); }
+    }
     if (data.email_envoye) mpaAiDire('💶 Demande de paiement de ' + eurosMPA(montant) + ' envoyée à votre client par email. Vous serez prévenu dès qu\'il aura payé.', 'info');
     else {
       mpaAiDire('💶 Demande de paiement créée (' + eurosMPA(montant) + '), mais ' + (data.sans_email ? 'ce client n\'a pas d\'email' : 'l\'email n\'a pas pu partir') + ' : copiez le lien et envoyez-le lui vous-même.', 'warning');
@@ -2833,8 +2839,13 @@ async function prochainNumeroFacture() {
 function renderZoneFactureIntervention(i) {
   var zone = document.getElementById('mi-facture-wrap');
   if (!zone) return;
-  if (!i || ['terminee', 'payee'].indexOf(i.statut) === -1 || !(Number(i.prix) > 0)) { zone.style.display = 'none'; zone.innerHTML = ''; return; }
+  if (!i || ['terminee', 'payee'].indexOf(i.statut) === -1) { zone.style.display = 'none'; zone.innerHTML = ''; return; }
   zone.style.display = 'block';
+  if (!(Number(i.prix) > 0) || !i.client_id) {
+    // On explique au lieu de cacher : sans prix ni client, pas de facture, et l'intervention compte pour 0 € dans le chiffre d'affaires.
+    zone.innerHTML = '<div style="font-size:12.5px;color:#b45309;background:rgba(245,158,11,.1);border-radius:8px;padding:9px 12px;line-height:1.5;">🧾 Pour facturer cette intervention (et la compter dans votre chiffre d\'affaires), renseignez ' + (!(Number(i.prix) > 0) && !i.client_id ? 'le <strong>prix</strong> et le <strong>client</strong>' : !(Number(i.prix) > 0) ? 'le <strong>prix</strong>' : 'le <strong>client</strong>') + ' ci-dessus, puis enregistrez.</div>';
+    return;
+  }
   zone.innerHTML = i.facture_id
     ? '<div style="font-size:13px;color:#0f9d78;font-weight:700;margin-bottom:8px;">✓ Facturée' + (_numerosFactures[i.facture_id] ? ' — facture n° ' + escHtml(_numerosFactures[i.facture_id]) : '') + '</div>' + htmlEnvoiFacture(i.facture_id)
     : '<button onclick="facturerIntervention(\'' + i.id + '\')" style="padding:9px 18px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🧾 Facturer en 1 clic</button> ' +

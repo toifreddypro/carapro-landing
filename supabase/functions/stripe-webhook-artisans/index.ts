@@ -552,6 +552,15 @@ async function traiterPaiementPrestation(intent: any, compteEvenement: string | 
           if (p.intervention_id) {
             await sbAdmin.from("mpa_artisans_interventions").update({ statut: "payee", date_paiement: new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10) })
               .eq("id", p.intervention_id).eq("statut", "terminee");
+            // Une intervention sans prix (le montant du lien a été saisi à part) compterait pour 0 € dans le chiffre d'affaires et ne pourrait
+            // pas être facturée : on lui donne pour prix ce que le client a réellement payé en ligne pour elle (frais compris), jamais écrasé s'il existe.
+            const { data: payes } = await sbAdmin.from("paiements_prestations").select("montant, montant_rembourse")
+              .eq("intervention_id", p.intervention_id).in("statut", ["paye", "partiellement_rembourse"]);
+            const total = (payes || []).reduce((t: number, x: any) => t + Number(x.montant) - Number(x.montant_rembourse || 0), 0);
+            if (total > 0) {
+              await sbAdmin.from("mpa_artisans_interventions").update({ prix: Math.round(total * 100) / 100 })
+                .eq("id", p.intervention_id).or("prix.is.null,prix.eq.0");
+            }
           }
           const { data: art } = await sbAdmin.from("artisans").select("email, nom_entreprise").eq("id", p.artisan_id).maybeSingle();
           if (art?.email) {
