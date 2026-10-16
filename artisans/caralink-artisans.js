@@ -32,6 +32,9 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       annul_aucune: "Pas d'annulation gratuite : ces frais restent acquis à l'artisan si vous annulez.",
       err_email_paiement: "Une adresse email est nécessaire pour payer en ligne (votre reçu et le lien d'annulation y sont envoyés).",
       ph_email_paiement: 'Email (obligatoire — pour payer en ligne et recevoir votre reçu)',
+      contact_titre: "Vos coordonnées (pour confirmer votre rendez-vous)",
+      err_nom_complet: "Merci d'indiquer votre prénom ET votre nom (ex. Marie Dupont) : l'artisan en a besoin pour vous reconnaître.",
+      err_email_format: "Cette adresse email ne semble pas valide.",
       redirection_paiement: 'Redirection vers le paiement sécurisé…',
       fiche_indisponible_titre: 'Fiche indisponible', fiche_occupee_titre: 'Trop de visites en ce moment', fiche_erreur_titre: 'Une erreur est survenue',
       fiche_indisponible_texte: "Cet artisan n'est plus visible sur CaraLink ou le lien est incorrect.",
@@ -65,6 +68,9 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       annul_aucune: 'No free cancellation: this fee is kept by the craftsman if you cancel.',
       err_email_paiement: 'An email address is required to pay online (your receipt and cancellation link are sent there).',
       ph_email_paiement: 'Email (required — to pay online and receive your receipt)',
+      contact_titre: "Your details (to confirm your appointment)",
+      err_nom_complet: "Please enter your first AND last name (e.g. Mary Smith): the craftsman needs it to recognise you.",
+      err_email_format: "This email address doesn't look valid.",
       redirection_paiement: 'Redirecting to secure payment…',
       fiche_indisponible_titre: 'Profile unavailable', fiche_occupee_titre: 'Too many visits right now', fiche_erreur_titre: 'Something went wrong',
       fiche_indisponible_texte: 'This craftsman is no longer visible on CaraLink or the link is incorrect.',
@@ -98,6 +104,9 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       annul_aucune: 'Sin cancelación gratuita: estos gastos quedan para el profesional si usted cancela.',
       err_email_paiement: 'Se necesita un correo electrónico para pagar en línea (allí se envían su recibo y el enlace de cancelación).',
       ph_email_paiement: 'Email (obligatorio — para pagar en línea y recibir su recibo)',
+      contact_titre: "Sus datos (para confirmar su cita)",
+      err_nom_complet: "Indique su nombre Y apellido (p. ej. María García): el profesional lo necesita para reconocerle.",
+      err_email_format: "Este correo electrónico no parece válido.",
       redirection_paiement: 'Redirigiendo al pago seguro…',
       fiche_indisponible_titre: 'Ficha no disponible', fiche_occupee_titre: 'Demasiadas visitas ahora', fiche_erreur_titre: 'Ha ocurrido un error',
       fiche_indisponible_texte: 'Este profesional ya no es visible en CaraLink o el enlace es incorrecto.',
@@ -882,6 +891,10 @@ function ouvrirVerifDispo(artisanId, pourVisite) {
         '<input id="dispo-cp" type="text" placeholder="' + T('ph_cp') + '" style="flex:1;min-width:0;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);box-sizing:border-box;">' +
         '<input id="dispo-commune" type="text" placeholder="' + T('ph_commune') + '" style="flex:2;min-width:0;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);box-sizing:border-box;">' +
       '</div>' +
+      '<div style="font-size:12px;font-weight:700;color:var(--mu2,#555);margin:6px 0 6px;">' + T('contact_titre') + '</div>' +
+      '<input id="dispo-nom" type="text" autocomplete="name" placeholder="' + T('ph_nom') + '" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' +
+      '<input id="dispo-tel" type="tel" autocomplete="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' +
+      '<input id="dispo-email" type="email" autocomplete="email" placeholder="' + (montantPaiementEnLigne('visite', artisanId) > 0 || montantPaiementEnLigne('reservation', artisanId) > 0 ? T('ph_email_paiement') : T('ph_email_optionnel')) + '" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' +
       '<button type="button" onclick="verifierDispoReelle(' + jsAttr(artisanId) + ')" style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--ac,#B5502F);color:#fff;font-weight:700;cursor:pointer;">' + T('dispo_verifier_btn') + '</button>' +
       '<div id="dispo-resultat" style="margin-top:10px;"></div>' +
     '</div>';
@@ -889,9 +902,10 @@ function ouvrirVerifDispo(artisanId, pourVisite) {
 
 async function verifierDispoReelle(artisanId, dateDebut) {
   var resultat = document.getElementById('dispo-resultat');
-  var adresse, cp, commune, dureeMin, serviceId;
+  var adresse, cp, commune, dureeMin, serviceId, contact = null;
 
   if (dateDebut && window._dispoContexte) {
+    contact = window._dispoContexte.contact || null;
     // Navigation semaine suivante/précédente : on réutilise le contexte déjà validé
     adresse = window._dispoContexte.adresse; cp = window._dispoContexte.cp; commune = window._dispoContexte.commune;
     dureeMin = window._dispoContexte.duree; serviceId = window._dispoContexte.serviceId;
@@ -899,7 +913,14 @@ async function verifierDispoReelle(artisanId, dateDebut) {
     adresse = document.getElementById('dispo-adresse').value.trim();
     cp = document.getElementById('dispo-cp').value.trim();
     commune = document.getElementById('dispo-commune').value.trim();
-    if (!adresse || !commune) { resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">' + T('err_champs') + '</div>'; return; }
+    var cNom = document.getElementById('dispo-nom').value.trim();
+    var cTel = document.getElementById('dispo-tel').value.trim();
+    var cEmail = document.getElementById('dispo-email').value.trim();
+    if (!adresse || !commune || !cNom || !cTel) { resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">' + T('err_champs') + '</div>'; return; }
+    if (cNom.indexOf(' ') < 0) { resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">' + T('err_nom_complet') + '</div>'; return; }
+    if (cEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cEmail)) { resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">' + T('err_email_format') + '</div>'; return; }
+    if (!cEmail && (montantPaiementEnLigne('visite', artisanId) > 0 || montantPaiementEnLigne('reservation', artisanId) > 0)) { resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">' + T('err_email_paiement') + '</div>'; return; }
+    contact = { nom: cNom, tel: cTel, email: cEmail };
     var selService = document.getElementById('dispo-service');
     dureeMin = selService ? parseInt(selService.selectedOptions[0].getAttribute('data-duree'), 10) : 60;
     serviceId = selService ? selService.value : null;
@@ -917,7 +938,7 @@ async function verifierDispoReelle(artisanId, dateDebut) {
     if (data.error) { resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">' + escHtml(data.error) + '</div>'; return; }
 
     window._dispoContexte = {
-      artisanId: artisanId, adresse: adresse, cp: cp, commune: commune, serviceId: serviceId, duree: dureeMin,
+      artisanId: artisanId, adresse: adresse, cp: cp, commune: commune, serviceId: serviceId, duree: dureeMin, contact: contact,
       secteur: (_profilDataCourant && _profilDataCourant.artisan.secteur) || 'autre',
       latitude: data.latitude, longitude: data.longitude, dateDebutFenetre: data.date_debut_fenetre,
     };
@@ -1006,9 +1027,9 @@ function ouvrirModalCreneau() {
       '<div style="' + STYLE_BOITE_DEVIS + '">' +
         '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">' + T('creneau_titre') + '</div>' +
         '<div style="font-size:12.5px;color:var(--mu2,#777);margin-bottom:16px;text-transform:capitalize;">' + dateAff + ' à ' + ctx.heureDebut + ' — ' + escHtml(ctx.adresse) + '</div>' +
-        '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
-        '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
-        '<input id="devis-email" type="email" placeholder="' + (paiementPossibleSurCreneau() ? T('ph_email_paiement') : T('ph_email_optionnel')) + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        '<input id="devis-nom" type="text" value="' + escHtml((ctx.contact && ctx.contact.nom) || '') + '" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        '<input id="devis-tel" type="tel" value="' + escHtml((ctx.contact && ctx.contact.tel) || '') + '" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+        '<input id="devis-email" type="email" value="' + escHtml((ctx.contact && ctx.contact.email) || '') + '" placeholder="' + (paiementPossibleSurCreneau() ? T('ph_email_paiement') : T('ph_email_optionnel')) + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
         premiereInterventionHTML() +
         '<textarea id="devis-message" rows="3" placeholder="' + T('ph_precisions') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
         photosPickerHTML() +

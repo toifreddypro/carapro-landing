@@ -247,6 +247,11 @@ Deno.serve(async (req: Request) => {
     }
 
     const aujourdhui = baseJour(body.aujourdhui);
+    // Heure actuelle en Guadeloupe (UTC-4, sans changement d'heure) : on ne propose jamais un créneau déjà passé,
+    // ni un créneau trop proche pour que l'artisan ait le temps de réagir (préavis de 2 h).
+    const maintenantGP = new Date(Date.now() - 4 * 3600 * 1000);
+    const jourGP = maintenantGP.toISOString().slice(0, 10);
+    const minPlancherAujourdhui = maintenantGP.getUTCHours() * 60 + maintenantGP.getUTCMinutes() + 120;
     const dateDebut = dateISO(aujourdhui);
     const dateFinHorizon = new Date(aujourdhui);
     dateFinHorizon.setDate(dateFinHorizon.getDate() + HORIZON_PAGINATION_JOURS);
@@ -312,7 +317,7 @@ Deno.serve(async (req: Request) => {
         const blocsJour = horaires.filter((h: any) => h.jour_semaine === joursemaine);
         if (!blocsJour.length) continue; // l'artisan ne travaille pas ce jour-là
         const interDuJour = interduJourStr(jourStr);
-        if (blocsJour.some((bloc: any) => blocLibre(bloc, interDuJour))) {
+        if (blocsJour.some((bloc: any) => blocLibre(bloc, interDuJour) && !(jourStr === jourGP && heureVersMin(bloc.heure_fin) - minPlancherAujourdhui < 30))) {
           return json({
             prochaine_date: jourStr,
             label: i === 0 ? "aujourd'hui" : i === 1 ? "demain" : JOURS_NOMS[joursemaine] + " " + jour.getDate() + "/" + (jour.getMonth() + 1),
@@ -389,6 +394,7 @@ Deno.serve(async (req: Request) => {
               }
 
               let debutMin = arrondirQuart(prev.finMin + travelIn + (prev.estAncre ? 0 : MARGE_SECURITE_MIN));
+              if (jourStr === jourGP && debutMin < minPlancherAujourdhui) debutMin = arrondirQuart(minPlancherAujourdhui); // pas de créneau passé ni à moins de 2 h
               const finDispoBloc = next ? next.debutMin : finBloc;
 
               if (next) {
