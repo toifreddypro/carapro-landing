@@ -109,12 +109,13 @@ function renderMpaAiFeed() {
     var heure = m.time.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
     return '<div class="mpa-ai-msg">' +
       '<span class="mpa-ai-msg-icone">' + m.icone + '</span>' + m.message +
-      (m.cta ? '<br><button class="mpa-ai-msg-cta" onclick="' + m.cta.action + '">' + m.cta.label + '</button>' : '') +
+      (m.cta ? '<br>' + [].concat(m.cta).map(function(c) { return '<button class="mpa-ai-msg-cta" onclick="' + c.action + '">' + c.label + '</button>'; }).join(' ') : '') +
       '<div class="mpa-ai-msg-time">' + heure + '</div>' +
     '</div>';
   }).join('');
 }
 
+function ouvrirPanneauMpaAi() { var pn = document.getElementById('mpa-ai-panel'); if (pn) pn.classList.add('open'); var d = document.getElementById('mpa-ai-dot'); if (d) d.classList.remove('show'); }
 function toggleMpaAi() {
   var panel = document.getElementById('mpa-ai-panel');
   panel.classList.toggle('open');
@@ -211,6 +212,16 @@ async function verifierAlertesMpaAi() {
   } else if (nbCommandes > 0) {
     mpaAiDire('🛒 Vous avez ' + nbCommandes + ' nouvelle' + (nbCommandes > 1 ? 's' : '') + ' commande' + (nbCommandes > 1 ? 's' : '') + ' à traiter.', 'info',
       { label: 'Voir mes commandes', action: "switchTab(4);switchSousOnglet('nav-ventes','conteneur-ventes',2)" });
+  }
+
+  // 4 bis) Interventions dont la date est passée mais qui ne sont pas encore « terminées » : c'est ce qui fausse le chiffre d'affaires,
+  // la facturation et les demandes d'avis (qui partent 48 h après « terminée »). Rappel simple, pour tous les plans, jamais bloquant.
+  var nbAClore = await compterInterventionsACloturer();
+  var nbEnCoursVieilles = await compterInterventionsEnCoursAnciennes(); // celles-là ont leur propre rappel juste après
+  if (nbAClore - nbEnCoursVieilles > 0) {
+    var nAC = nbAClore - nbEnCoursVieilles;
+    mpaAiDire('🗓️ ' + nAC + ' intervention' + (nAC > 1 ? 's sont passées' : ' est passée') + ' mais ' + (nAC > 1 ? 'ne sont pas encore marquées' : 'n\'est pas encore marquée') + ' « Terminée ». Mettez-' + (nAC > 1 ? 'les' : 'la') + ' à jour : votre chiffre d\'affaires sera juste et vous pourrez facturer.', 'info',
+      { label: 'Voir mon planning', action: "switchTab(2)" });
   }
 
   // 5) Interventions "En cours" qui traînent depuis plus de 60 jours — un simple rappel, jamais
@@ -725,6 +736,51 @@ async function avancerStatut(id, ev) {
 
   await chargerInterventions();
   if (document.getElementById('p-compta').classList.contains('active')) await chargerCompta();
+  if (nouveauStatut === 'terminee') suiteInterventionTerminee(id);
+}
+
+// ── Une intervention vient d'être marquée « Terminée » : MPA-AI propose la suite (facturer, demander le solde). ──
+// Plusieurs clôtures d'affilée (rattrapage) → UN seul message récapitulatif, jamais une pile de messages.
+var _termineesRecentes = [], _minuteurTerminees = null;
+function suiteInterventionTerminee(id) {
+  if (_termineesRecentes.indexOf(id) < 0) _termineesRecentes.push(id);
+  clearTimeout(_minuteurTerminees);
+  _minuteurTerminees = setTimeout(function() { var ids = _termineesRecentes; _termineesRecentes = []; messageSuiteTerminee(ids); }, 1800);
+}
+function messageSuiteTerminee(ids) {
+  var liste = ids.map(function(x) { return _interventionsCache.find(function(i) { return i.id === x; }); }).filter(Boolean);
+  if (!liste.length) return;
+  var facturables = liste.filter(function(i) { return !i.facture_id && i.client_id && Number(i.prix) > 0; });
+  if (liste.length > 1) {
+    if (!facturables.length) return;
+    mpaAiDire('🧾 ' + liste.length + ' interventions terminées, ' + facturables.length + ' à facturer. ' + (estPro() ? 'Ouvrez chacune pour « Facturer en 1 clic », ou regroupez-les dans une seule facture.' : 'Regroupez-les dans une seule facture depuis Mes factures.'), 'info',
+      { label: 'Aller à Mes factures', action: "switchTab(7);switchSousOnglet('nav-compta','conteneur-compta',1)" });
+    return;
+  }
+  var i = liste[0];
+  var nomClient = (i.mpa_artisans_clients && i.mpa_artisans_clients.nom) ? escHtml(i.mpa_artisans_clients.nom) : 'votre client';
+  if (i.facture_id) return; // déjà facturée : rien à proposer
+  if (!i.client_id || !(Number(i.prix) > 0)) {
+    mpaAiDire('✅ Intervention chez ' + nomClient + ' terminée. Pour la facturer, il faut un client et un prix : complétez la fiche.', 'info',
+      { label: 'Ouvrir l\'intervention', action: "ouvrirIntervention('" + i.id + "')" });
+    return;
+  }
+  var boutons = [];
+  if (estPro()) {
+    boutons.push({ label: '🧾 Facturer en 1 clic', action: "facturerIntervention('" + i.id + "')" });
+    boutons.push({ label: '✉️ Facturer et envoyer', action: "facturerIntervention('" + i.id + "', true)" });
+  } else {
+    boutons.push({ label: 'Aller à Mes factures', action: "switchTab(7);switchSousOnglet('nav-compta','conteneur-compta',1)" });
+  }
+  var resteAPayer = paiementsEnLigneActifs() && i.statut !== 'payee';
+  if (resteAPayer) boutons.push({ label: '💶 Demander un paiement', action: "demanderPaiementDepuisMessage('" + i.id + "')" });
+  mpaAiDire('✅ Intervention chez ' + nomClient + ' terminée (' + eurosMPA(i.prix) + '). On ' + (estPro() ? 'facture ?' : 'pense à la facturer ? (Avec l\'offre Pro, un seul clic suffit.)') + (resteAPayer ? ' Vous pouvez aussi lui envoyer un lien de paiement par carte.' : ''), 'info', boutons);
+  ouvrirPanneauMpaAi();
+}
+async function demanderPaiementDepuisMessage(id) {
+  await ouvrirIntervention(id);
+  await chargerPaiementsIntervention(_interventionsCache.find(function(x) { return x.id === id; }));
+  ouvrirDemandePaiement();
 }
 
 // ════════════════════════════════════════
@@ -2179,6 +2235,8 @@ async function sauverIntervention() {
   }
 
   var res;
+  var ancienStatut = null;
+  if (_interventionEnCours) { var _ex = _interventionsCache.find(function(x) { return x.id === _interventionEnCours; }); ancienStatut = _ex ? _ex.statut : null; }
   if (_interventionEnCours) {
     res = await sb.from('mpa_artisans_interventions').update(maj).eq('id', _interventionEnCours).eq('artisan_id', _artisan.id).select().single();
   } else {
@@ -2197,6 +2255,7 @@ async function sauverIntervention() {
   }
   fermerModale('modal-intervention');
   await chargerInterventions();
+  if (maj.statut === 'terminee' && ancienStatut !== 'terminee' && res.data) suiteInterventionTerminee(res.data.id);
   if (maj.statut !== 'annulee') {
     verifierFaisabiliteJour(maj.date_intervention);
     verifierTensionJournee(maj.date_intervention, maj.commune, _interventionEnCours);
@@ -3053,6 +3112,17 @@ async function trouverInterventionsAvisAProposer() {
   if (error) { console.error(error); return []; }
   // Un avis ne sert à rien à demander sans email pour l'envoyer.
   return (data || []).filter(function(i) { return i.mpa_artisans_clients && i.mpa_artisans_clients.email; });
+}
+
+async function compterInterventionsACloturer() {
+  var aujourdhui = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10); // jour en Guadeloupe (UTC-4)
+  var { count, error } = await sb.from('mpa_artisans_interventions')
+    .select('id', { count: 'exact', head: true })
+    .eq('artisan_id', _artisan.id)
+    .in('statut', ['planifiee', 'en_cours'])
+    .lt('date_intervention', aujourdhui);
+  if (error) { console.error(error); return 0; }
+  return count || 0;
 }
 
 async function compterInterventionsEnCoursAnciennes() {
