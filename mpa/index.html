@@ -797,7 +797,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="dctit">🚚 Frais de livraison</div>
 </div>
 <div style="padding:16px;">
-<p style="font-size:12.5px;color:var(--mu);margin-bottom:14px;">Calculés automatiquement selon la vraie distance entre vous et le client, au moment de la commande. Laissez à 0 pour ne rien facturer.</p>
+<p style="font-size:12.5px;color:var(--mu);margin-bottom:14px;">Vos kilomètres sont facturés automatiquement au client selon la distance, au moment de la commande. Mettez 0 € pour une livraison gratuite.</p>
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
 <div>
 <label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;">Forfait de base (€)</label>
@@ -1116,8 +1116,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-field"><label>Commune</label><input id="m-com" type="text"/></div>
 <div class="modal-field"><label>Rayon d'intervention (km)</label><input id="m-rayon" type="number" value="15"/></div>
 <div class="modal-field"><label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-weight:600;"><input id="m-visite" type="checkbox" style="margin-top:3px;" onchange="window._visiteTouchee = true; majVisiteChamps();"/><span>Il me faut souvent aller voir le chantier avant de faire mon devis</span></label><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Cochée : vos clients peuvent vous demander de venir voir le chantier (un créneau de visite, avec vos frais de déplacement). Décochée : ils réservent directement un créneau, sans visite.</div></div>
-<div class="modal-field" id="m-frais-bloc"><label>Frais de déplacement pour une visite sur place (€) — facultatif</label><input id="m-frais" type="text" inputmode="decimal" placeholder="Ex. 25 — laissez vide : visite sans frais"/><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Annoncés au client, puis payés par lui EN LIGNE au moment où il demande le rendez-vous (vous ne voyez sa demande qu'une fois payée). Remboursés automatiquement s'il annule dans votre délai gratuit, ou si vous refusez ou annulez. Nécessite vos paiements en ligne activés.</div></div>
-<div class="modal-field" id="m-resa-bloc"><label>Frais de réservation d'un créneau (€) — facultatif</label><input id="m-frais-resa" type="text" inputmode="decimal" placeholder="Ex. 10 — laissez vide : aucun frais"/><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Payés EN LIGNE par un client qui réserve directement un créneau (de 1 à 500 €). Ils protègent votre temps : un client qui ne vient pas ne vous fait plus perdre de chiffre d'affaires. Remboursés automatiquement si vous refusez, annulez, ou ne répondez pas sous 48 h. Nécessite vos paiements en ligne activés.</div></div>
+<div class="modal-field" id="m-frais-bloc"><label>Frais de déplacement pour une visite sur place (€) — facultatif</label><input id="m-frais" type="text" inputmode="decimal" placeholder="Ex. 25 — laissez vide : visite sans frais"/><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Le client paie votre déplacement en ligne dès sa demande : vous ne vous déplacez plus gratuitement, et la demande ne vous arrive qu'une fois payée. Il est remboursé automatiquement s'il annule dans votre délai gratuit, ou si vous refusez ou annulez. Nécessite vos paiements en ligne activés.</div></div>
+<div class="modal-field" id="m-resa-bloc"><label>Frais de réservation d'un créneau (€) — facultatif</label><input id="m-frais-resa" type="text" inputmode="decimal" placeholder="Ex. 10 — laissez vide : aucun frais"/><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">C'est un acompte payé en ligne par le client à la réservation (de 1 à 500 €). Il vous assure un revenu si le client manque le rendez-vous, et lui est renvoyé si c'est vous qui annulez, ou si vous ne répondez pas sous 48 h. Nécessite vos paiements en ligne activés.</div></div>
 <div class="modal-field" id="m-annul-bloc"><label>Annulation gratuite par le client</label><select id="m-annul-heures" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
 <option value="0">Jamais — les frais restent acquis dès la confirmation</option>
 <option value="2">Jusqu'à 2 h avant le rendez-vous</option>
@@ -1127,7 +1127,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <option value="48">Jusqu'à 48 h avant le rendez-vous</option>
 <option value="72">Jusqu'à 72 h avant le rendez-vous</option>
 <option value="168">Jusqu'à 7 jours avant le rendez-vous</option>
-</select><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Au-delà de ce délai, un client qui annule perd ses frais (vous gardez votre dû). Avant confirmation de votre part, il est toujours remboursé.</div></div>
+</select><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Jusqu'à quand votre client peut-il annuler et être remboursé ? Après ce délai, il perd ses frais et c'est vous qui les gardez. Avant votre confirmation, il est toujours remboursé.</div></div>
 <div class="modal-field"><label>Téléphone</label><input id="m-tel" type="text"/></div>
 <div class="modal-field"><label>E-mail</label><input id="m-email" type="text"/></div>
 <div class="modal-field"><label>Site web</label><input id="m-web" type="text"/></div>
@@ -1159,6 +1159,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <h3>Comment ça se passe pour vos clients</h3>
 <div id="aide-parcours-corps"></div>
 <div class="modal-actions"><button class="btn-secondary" onclick="fermerModale('modal-aide-parcours')">Fermer</button></div>
+</div>
+</div>
+
+<!-- MODALE : Preuve d'acceptation des conditions -->
+<div class="modal-overlay" id="modal-preuve">
+<div class="modal-box">
+<h3>📜 Preuve d'acceptation</h3>
+<div id="preuve-corps"></div>
+<div style="font-size:11.5px;color:var(--mu);margin-top:10px;line-height:1.45;">Ces informations sont enregistrées automatiquement au moment où votre client coche les cases et paie. Conservez-les en cas de contrôle ou de litige.</div>
+<div class="modal-actions"><button class="btn-primary" onclick="imprimerPreuveConsentement()">🖨️ Imprimer</button><button class="btn-secondary" onclick="fermerModale('modal-preuve')">Fermer</button></div>
 </div>
 </div>
 

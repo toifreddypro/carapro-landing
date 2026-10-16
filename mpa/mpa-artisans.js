@@ -1050,7 +1050,7 @@ function etapesAssistant() {
     E.push({ id: 'deplacement', titre: '🚗 Frais de déplacement (visite sur place)',
       si: function() { return (_as.rep.visite !== undefined ? _as.rep.visite : _artisan.proposer_visite === true) === true; },
       rendre: function() {
-        return '<p style="font-size:13.5px;line-height:1.5;margin:0 0 10px;">Annoncés au client, puis payés par lui <strong>en ligne</strong> au moment où il demande le rendez-vous (vous ne voyez sa demande qu\'une fois payée). Remboursés automatiquement s\'il annule dans votre délai gratuit, ou si vous refusez ou annulez.</p>' +
+        return '<p style="font-size:13.5px;line-height:1.5;margin:0 0 10px;">Le client paie votre déplacement <strong>en ligne</strong> dès sa demande : vous ne vous déplacez plus gratuitement, et la demande ne vous arrive qu\'une fois payée. Il est remboursé automatiquement s\'il annule dans votre délai gratuit, ou si vous refusez ou annulez.</p>' +
           '<label style="font-size:12px;font-weight:600;color:var(--mu2);display:block;margin-bottom:4px;">Montant en € — laissez vide : visite sans frais</label>' + champEuroAssistant('as-dep', _artisan.frais_deplacement, 'Ex. 25') + noteStripeAssistant();
       },
       valider: function() { var r = lireFraisDeplacement(document.getElementById('as-dep').value); if (!r.ok) return 'Indiquez un montant entre 0 et 500 € (par exemple 25 ou 25,50), ou laissez vide.'; _as.tmp = r.valeur; return null; },
@@ -1064,7 +1064,7 @@ function etapesAssistant() {
   if (g.services && 'frais_reservation' in _artisan) {
     E.push({ id: 'reservation', titre: '📅 Frais de réservation d\'un créneau',
       rendre: function() {
-        return '<p style="font-size:13.5px;line-height:1.5;margin:0 0 10px;">Payés <strong>en ligne</strong> par un client qui réserve directement un créneau (de 1 à 500 €). Ils protègent votre temps : un client qui ne vient pas ne vous fait plus perdre de chiffre d\'affaires. Remboursés automatiquement si vous refusez, annulez, ou ne répondez pas sous 48 h.</p>' +
+        return '<p style="font-size:13.5px;line-height:1.5;margin:0 0 10px;">C\'est un acompte payé <strong>en ligne</strong> par le client à la réservation (de 1 à 500 €). Il vous assure un revenu si le client manque le rendez-vous, et lui est renvoyé si c\'est vous qui annulez, ou si vous ne répondez pas sous 48 h.</p>' +
           '<div style="font-size:12.5px;color:var(--mu);margin-bottom:10px;">Sans frais, la réservation est gratuite pour vos clients : c\'est le choix le plus simple pour démarrer.</div>' +
           '<label style="font-size:12px;font-weight:600;color:var(--mu2);display:block;margin-bottom:4px;">Montant en € — laissez vide : aucun frais</label>' + champEuroAssistant('as-resa', _artisan.frais_reservation, 'Ex. 10') + noteStripeAssistant();
       },
@@ -1086,7 +1086,7 @@ function etapesAssistant() {
       rendre: function() {
         var h = Number(_artisan.annulation_gratuite_heures); if (!isFinite(h)) h = 24;
         var opts = [[0, 'Jamais — les frais restent acquis dès la confirmation'], [2, 'Jusqu\'à 2 h avant le rendez-vous'], [6, 'Jusqu\'à 6 h avant le rendez-vous'], [12, 'Jusqu\'à 12 h avant le rendez-vous'], [24, 'Jusqu\'à 24 h avant le rendez-vous'], [48, 'Jusqu\'à 48 h avant le rendez-vous'], [72, 'Jusqu\'à 72 h avant le rendez-vous'], [168, 'Jusqu\'à 7 jours avant le rendez-vous']];
-        return '<p style="font-size:13.5px;line-height:1.5;margin:0 0 10px;">Jusqu\'à quand votre client peut-il annuler en étant remboursé de ses frais ? Au-delà de ce délai, il perd ses frais (vous gardez votre dû). Avant votre confirmation, il est toujours remboursé.</p>' +
+        return '<p style="font-size:13.5px;line-height:1.5;margin:0 0 10px;">Jusqu\'à quand votre client peut-il annuler et être remboursé ? Après ce délai, il perd ses frais et c\'est vous qui les gardez. Avant votre confirmation, il est toujours remboursé.</p>' +
           '<select id="as-annul" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--b2);font-size:14px;">' + opts.map(function(o) { return '<option value="' + o[0] + '"' + (o[0] === h ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
       },
       valider: function() { _as.tmp = parseInt(document.getElementById('as-annul').value, 10) || 0; return null; },
@@ -1113,7 +1113,7 @@ function etapesAssistant() {
       rendre: function() {
         function v(x) { return x != null ? escHtml(String(x)) : ''; }
         var st = 'width:100%;box-sizing:border-box;padding:10px 12px;border-radius:9px;border:1px solid var(--b2);font-size:15px;';
-        return '<p style="font-size:13.5px;line-height:1.5;margin:0 0 10px;">Calculés automatiquement à chaque commande, selon la vraie distance entre vous et le client. Mettez 0 pour ne rien facturer.</p>' +
+        return '<p style="font-size:13.5px;line-height:1.5;margin:0 0 10px;">Vos kilomètres sont facturés automatiquement au client selon la distance, à chaque commande. Mettez 0 € pour une livraison gratuite.</p>' +
           '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">' +
           '<div><label style="font-size:11.5px;font-weight:600;color:var(--mu2);display:block;margin-bottom:4px;">Forfait de base (€)</label><input id="as-liv-base" type="number" min="0" step="0.5" value="' + v(_artisan.livraison_forfait_base) + '" oninput="assistantExempleLivraison()" style="' + st + '"/></div>' +
           '<div><label style="font-size:11.5px;font-weight:600;color:var(--mu2);display:block;margin-bottom:4px;">Distance incluse (km)</label><input id="as-liv-km" type="number" min="0" step="1" value="' + v(_artisan.livraison_km_inclus) + '" oninput="assistantExempleLivraison()" style="' + st + '"/></div>' +
@@ -1763,6 +1763,7 @@ function renderPaiementsIntervention(i) {
     var actions = '';
     if (['paye', 'partiellement_rembourse'].indexOf(p.statut) !== -1) actions = ' <button type="button" onclick="rembourserPaiementPrestation(\'' + p.id + '\')" style="background:none;border:none;color:var(--danger);font-size:12px;cursor:pointer;text-decoration:underline;">Rembourser</button>';
     if (p.statut === 'en_attente') actions = ' <button type="button" onclick="copierLienPaiementPrestation(\'' + p.token + '\')" style="background:none;border:none;color:var(--ac);font-size:12px;cursor:pointer;text-decoration:underline;">Copier le lien</button>';
+    if (p.conditions_acceptees_le) actions += ' <button type="button" onclick="ouvrirPreuveConsentement(\'' + p.id + '\')" style="background:none;border:none;color:var(--ac);font-size:12px;cursor:pointer;text-decoration:underline;">📜 Preuve d\'acceptation</button>';
     var reste = Number(p.montant_rembourse) > 0 ? ' (remboursé : ' + eurosMPA(p.montant_rembourse) + ')' : '';
     return '<div style="font-size:12.5px;margin-bottom:6px;">💶 ' + nom + ' : <strong>' + eurosMPA(p.montant) + '</strong> — ' + (libelleStatut[p.statut] || escHtml(p.statut)) + datePaye + reste + actions + '</div>';
   }).join('');
@@ -5746,3 +5747,45 @@ async function supprimerService(id) {
 }
 
 init();
+
+
+// ════════════════════════════════════════
+//  PREUVE D'ACCEPTATION DES CONDITIONS (frais de réservation / déplacement)
+//  Le client a coché les cases avant de payer : le serveur a gardé la date, l'heure et le TEXTE EXACT accepté.
+//  L'artisan peut l'afficher et l'imprimer (contrôle, litige, contestation de paiement).
+// ════════════════════════════════════════
+function donneesPreuve(idPaiement) {
+  var p = (_paiementsIntervention || []).find(function(x) { return x.id === idPaiement; });
+  if (!p || !p.conditions_acceptees_le) return null;
+  var i = (_interventionsCache || []).find(function(x) { return x.id === _interventionEnCours; }) || {};
+  return {
+    p: p, i: i,
+    quand: new Date(p.conditions_acceptees_le).toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'medium', timeZone: 'America/Guadeloupe' }) + ' (heure de la Guadeloupe)',
+    rdv: i.date_intervention ? new Date(i.date_intervention + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + (i.heure_debut ? ' à ' + String(i.heure_debut).slice(0, 5) : '') : '—'
+  };
+}
+function htmlPreuve(d) {
+  var p = d.p, e = escHtml;
+  var textes = String(p.conditions_texte || '').split('\n\n').filter(Boolean).map(function(t) { return '<li style="margin-bottom:8px;">☑ ' + e(t) + '</li>'; }).join('');
+  return '<div style="font-size:13px;line-height:1.55;">' +
+    '<p style="margin:0 0 10px;"><strong>Client :</strong> ' + e(p.client_nom || '—') + (p.client_email ? ' — ' + e(p.client_email) : '') + '<br>' +
+    '<strong>Rendez-vous :</strong> ' + e(d.rdv) + '<br>' +
+    '<strong>Montant :</strong> ' + eurosMPA(p.montant) + ' (' + (p.type === 'reservation' ? 'frais payés à la réservation' : 'paiement') + ')<br>' +
+    '<strong>Conditions acceptées le :</strong> ' + e(d.quand) + '<br>' +
+    (p.paye_le ? '<strong>Paiement le :</strong> ' + e(new Date(p.paye_le).toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short', timeZone: 'America/Guadeloupe' })) + '<br>' : '') +
+    '<strong>Références :</strong> ' + e(p.id) + (p.stripe_payment_intent_id ? ' / ' + e(p.stripe_payment_intent_id) : '') + '</p>' +
+    '<p style="margin:0 0 6px;font-weight:700;">Le client a coché les cases suivantes avant de payer :</p><ul style="list-style:none;padding:0;margin:0;">' + textes + '</ul></div>';
+}
+function ouvrirPreuveConsentement(idPaiement) {
+  var d = donneesPreuve(idPaiement); if (!d) return;
+  window._preuveCourante = idPaiement;
+  document.getElementById('preuve-corps').innerHTML = htmlPreuve(d);
+  ouvrirModale('modal-preuve');
+}
+function imprimerPreuveConsentement() {
+  var d = donneesPreuve(window._preuveCourante); if (!d) return;
+  var w = window.open('', '_blank'); if (!w) { alert('Autorisez les fenêtres pop-up pour imprimer.'); return; }
+  w.document.write('<!doctype html><meta charset="utf-8"><title>Preuve d\'acceptation des conditions</title><body style="font-family:Arial,sans-serif;max-width:720px;margin:30px auto;padding:0 16px;color:#111;">' +
+    '<h2>Preuve d\'acceptation des conditions de réservation</h2><p style="color:#555;font-size:12px;">' + escHtml((_artisan && _artisan.nom_entreprise) || '') + ' — document généré par CaraLink Artisans à partir des données enregistrées au moment du paiement.</p>' + htmlPreuve(d) + '</body>');
+  w.document.close(); w.focus(); setTimeout(function() { w.print(); }, 300);
+}
