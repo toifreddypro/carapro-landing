@@ -100,11 +100,11 @@ Deno.serve(async (req: Request) => {
     const auj = new Date(Date.now() - DECALAGE_GUADELOUPE_H * 3600 * 1000);
     const bornes = (decalageJours: number) => new Date(auj.getTime() + decalageJours * 86400000).toISOString().slice(0, 10);
     const { data: interventions, error } = await sb.from("mpa_artisans_interventions")
-      .select("id, date_intervention, creneau, heure_debut, heure_fin, adresse, code_postal, commune, notes, statut, updated_at, mpa_artisans_clients(nom), artisans_services(nom_service)")
+      .select("*, mpa_artisans_clients(nom), artisans_services(nom_service)") // « * » comme le fait MPA : ne dépend d'aucune colonne particulière
       .eq("artisan_id", artisan.id).in("statut", STATUTS)
       .gte("date_intervention", bornes(-JOURS_AVANT)).lte("date_intervention", bornes(JOURS_APRES))
       .order("date_intervention", { ascending: true });
-    if (error) throw error;
+    if (error) { console.error("[planning-ics] lecture interventions", error.message); return refus(500); }
 
     const maintenant = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
     const lignes: string[] = [
