@@ -34,8 +34,15 @@ async function limiteAtteinte(sb: any, cle: string, max: number, fenetreSecondes
   } catch (e) { console.error("[limiter_appel]", e); return false; }
 }
 
+// Le message dit seulement POURQUOI le lien ne marche pas (sans rien révéler de privé : il faut déjà posséder le code secret pour en voir un autre que « lien invalide »).
+const MOTIFS: Record<number, string> = {
+  404: "Calendrier indisponible : lien invalide, incomplet ou remplacé par un nouveau lien.",
+  403: "Calendrier indisponible : le planning dans l'agenda fait partie de l'offre Pro.",
+  429: "Calendrier indisponible : trop de demandes, réessayez dans quelques minutes.",
+  500: "Calendrier indisponible : erreur temporaire, réessayez dans quelques minutes.",
+};
 function refus(status: number): Response {
-  return new Response("Calendrier indisponible.", { status, headers: { ...corsHeaders, "Content-Type": "text/plain; charset=utf-8" } });
+  return new Response(MOTIFS[status] || "Calendrier indisponible.", { status, headers: { ...corsHeaders, "Content-Type": "text/plain; charset=utf-8" } });
 }
 
 // Texte ICS : barre oblique, point-virgule, virgule et retours à la ligne protégés.
@@ -84,7 +91,8 @@ Deno.serve(async (req: Request) => {
     if (!REGEX_CODE.test(code)) return refus(404);
     if (await limiteAtteinte(sb, "planning-ics:" + ipVisiteur(req), 60, 60)) return refus(429);
 
-    const { data: artisan } = await sb.from("artisans").select("id, nom_entreprise, plan, actif").eq("calendrier_code", code).maybeSingle();
+    const { data: artisan, error: errArtisan } = await sb.from("artisans").select("id, nom_entreprise, plan, actif").eq("calendrier_code", code).maybeSingle();
+    if (errArtisan) { console.error("[planning-ics] lecture artisan", errArtisan.message); return refus(500); }
     if (!artisan || artisan.actif === false) return refus(404);
     if (artisan.plan !== "pro" && artisan.plan !== "pro_offert") return refus(403);
     if (await limiteAtteinte(sb, "planning-ics:artisan:" + artisan.id, 240, 3600)) return refus(429);
