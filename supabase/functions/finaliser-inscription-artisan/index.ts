@@ -212,6 +212,21 @@ Deno.serve(async (req: Request) => {
       else documentEnregistre = true;
     }
 
+    // Prévenir l'administrateur d'une nouvelle inscription. Jamais bloquant : un échec est seulement journalisé.
+    try {
+      await fetch(`${SUPABASE_URL}/functions/v1/notifier-admin`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "inscription", nom_entreprise: nom, email: userData.user.email ?? "", telephone: tel, secteur: secteurCode, commune: communeNom,
+          siret: siretPropre || "non renseigné",
+          verification: siretPropre ? (siretValide ? "SIRET reconnu : badge Vérifié attribué" : "SIRET à vérifier à la main") : "Pas de SIRET",
+          document: documentEnregistre ? "Déposé (à relire)" : "Non déposé",
+        }),
+        signal: AbortSignal.timeout(5000),
+      });
+    } catch (e) { console.error("[finaliser-inscription-artisan] notifier-admin :", e); }
+
     return json({
       success: true, artisan_id: artisan.id,
       siret_reconnu: siretValide,

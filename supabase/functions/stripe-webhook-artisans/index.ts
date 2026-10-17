@@ -214,6 +214,20 @@ async function traiterDoublonAbonnement(sub: any, cible: (q: any) => any): Promi
   return true;
 }
 
+// Prévient l'administrateur (email). Une notification n'a JAMAIS le droit de faire échouer le traitement d'un abonnement : tout est avalé.
+async function notifierAdmin(type: string, donnees: Record<string, unknown>) {
+  try {
+    const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/notifier-admin`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ type, ...donnees }),
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) console.error("[stripe-webhook-artisans] notifier-admin a répondu", res.status);
+  } catch (e) { console.error("[stripe-webhook-artisans] notifier-admin :", e); }
+}
+const LIBELLE_STATUT_ABO: Record<string, string> = { trialing: "Essai gratuit", active: "Actif (payant)", past_due: "Paiement en retard", canceled: "Résilié", paused: "Essai terminé sans carte", unpaid: "Impayé", incomplete_expired: "Expiré" };
+
 async function appliquerAbonnement(sub: any) {
   const donneLePro = abonnementDonneLePro(sub.status);
   const artisanId = sub.metadata?.artisan_id;
@@ -226,6 +240,9 @@ async function appliquerAbonnement(sub: any) {
 
   // Un abonnement qui donne le Pro alors que l'artisan en a déjà un autre en cours est un doublon : annulé, rien à appliquer.
   if (donneLePro && await traiterDoublonAbonnement(sub, cible)) return;
+
+  // État AVANT la mise à jour : c'est lui qui dit ce qui vient de se passer (et évite tout mail en double si Stripe renvoie le même événement).
+  const { data: avant } = await cible(sbAdmin.from("artisans").select("id, nom_entreprise, email, plan, stripe_subscription_id, abonnement_fin_programmee, abonnement_paiement_en_echec")).maybeSingle();
 
   const { error: errAbo } = await seulementSiCourant(cible(sbAdmin.from("artisans").update({
     abonnement_statut: mapStatutStripeVersArtisans(sub.status),
@@ -242,6 +259,27 @@ async function appliquerAbonnement(sub: any) {
     plan: donneLePro ? "pro" : "gratuit",
   }))).neq("plan", "pro_offert"); // jamais d'écrasement d'un Pro offert
   lever(errPlan, "Maj plan artisan");
+
+  // ── Prévenir l'administrateur (sans jamais bloquer) ──
+  if (avant) {
+    const finProgrammee = donneLePro && (sub.cancel_at_period_end === true || sub.cancel_at != null);
+    const echeance = extraireEcheance(sub);
+    const echeanceAff = echeance ? new Date(echeance).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "America/Guadeloupe" }) : "";
+    const base = { nom_entreprise: avant.nom_entreprise, email: avant.email, statut: LIBELLE_STATUT_ABO[sub.status] || sub.status };
+    const memeAbonnement = avant.stripe_subscription_id === sub.id;
+    if (donneLePro && !memeAbonnement && avant.plan !== "pro_offert") {
+      await notifierAdmin(avant.stripe_subscription_id ? "reabonnement" : "abonnement", { ...base, echeance: echeanceAff });
+    } else if (donneLePro && memeAbonnement && avant.abonnement_fin_programmee && !finProgrammee) {
+      await notifierAdmin("reprise", { ...base, echeance: echeanceAff });
+    } else if (donneLePro && memeAbonnement && !avant.abonnement_fin_programmee && finProgrammee) {
+      await notifierAdmin("resiliation_programmee", { ...base, fin_pro: echeanceAff });
+    } else if (!donneLePro && memeAbonnement && avant.plan === "pro") {
+      await notifierAdmin("abonnement_termine", { ...base, plan: "Retour en Essentiel" });
+    }
+    if (sub.status === "past_due" && !avant.abonnement_paiement_en_echec && memeAbonnement) {
+      await notifierAdmin("paiement_echec", { ...base, note: "Stripe réessaie le paiement automatiquement ; le Pro n'est pas coupé tout de suite." });
+    }
+  }
 }
 
 // ── Paiement d'une commande du catalogue ──
