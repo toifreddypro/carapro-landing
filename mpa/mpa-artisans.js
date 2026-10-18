@@ -1899,8 +1899,11 @@ function renderPaiementsIntervention(i) {
     return '<div style="font-size:12.5px;margin-bottom:6px;">💶 ' + nom + ' : <strong>' + eurosMPA(p.montant) + '</strong> — ' + (libelleStatut[p.statut] || escHtml(p.statut)) + datePaye + reste + actions + detailAttente + '</div>';
   }).join('');
   var peutDemander = paiementsEnLigneActifs() && ['annulee'].indexOf(i.statut) === -1;
+  var dejaPayee = i.statut === 'payee';
   zone.innerHTML = (lignes || '') +
-    (peutDemander
+    (peutDemander && dejaPayee
+      ? '<div style="text-align:center;margin-top:6px;"><button type="button" disabled aria-disabled="true" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--b2);background:var(--bg);color:var(--mu);font-size:13px;font-weight:700;cursor:not-allowed;opacity:.65;">💶 Demander un paiement</button><div style="font-size:11px;color:var(--mu);margin-top:5px;">Cette intervention est déjà payée. Pour redemander un paiement, repassez-la d\'abord en « Terminée ».</div></div>'
+      : peutDemander
       ? '<div style="text-align:center;margin-top:6px;"><button type="button" onclick="ouvrirDemandePaiement()" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--ac);background:var(--ac);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">💶 Demander un paiement</button><div style="font-size:11px;color:var(--mu);margin-top:5px;">Envoie à votre client un lien de paiement par carte pour le montant de votre devis.</div></div>'
       : (lignes ? '' : '<div style="font-size:11.5px;color:var(--mu);text-align:center;">Activez vos paiements en ligne (Mon profil) pour pouvoir demander un paiement à vos clients.</div>'));
 }
@@ -1982,6 +1985,7 @@ function copierLienPaiementPrestation(token) {
 function ouvrirDemandePaiement() {
   var i = _interventionsCache.find(function(x) { return x.id === _interventionEnCours; });
   if (!i) return;
+  if (i.statut === 'payee') { alert('Cette intervention est déjà payée : il n\'y a plus rien à demander. Repassez-la en « Terminée » si vous devez encore encaisser un montant.'); return; }
   var client = i.mpa_artisans_clients || {};
   var dateAff = new Date(i.date_intervention + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   document.getElementById('dp-resume').textContent = (client.nom || 'Client') + ' — ' + dateAff;
@@ -3443,7 +3447,7 @@ function renderEncartAbonnement() {
 // ce qui suit sert seulement à expliquer clairement à l'artisan ce qui se passe — avant, ou juste
 // après un refus de la base.
 // ═════════════════════════════════════════════════════════════════════════════
-var LIMITE_PRODUITS_ESSENTIEL = 15; // à garder identique à la limite écrite dans paywall-plan.sql
+var LIMITE_PRODUITS_ESSENTIEL = 9; // à garder identique à la limite écrite dans paywall-plan.sql
 var LIMITE_PHARES_GRATUIT = 1, LIMITE_PHARES_PRO = 4; // à garder identiques à phares-plan.sql
 function limitePhares() { return estPro() ? LIMITE_PHARES_PRO : LIMITE_PHARES_GRATUIT; }
 var PRIX_PRO_AFFICHE = '9,90 €/mois';
