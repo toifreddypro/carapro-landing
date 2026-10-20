@@ -593,6 +593,7 @@ async function chargerInterventions() {
   _indisposMois = ind.error ? [] : (ind.data || []);
 
   renderCalendrier();
+  renderRecapInterventions();
 }
 
 function renderCalendrier() {
@@ -2597,13 +2598,13 @@ async function chargerLignesCA(debut, finExclue) {
   var margeA = new Date(d0.getTime()); margeA.setDate(margeA.getDate() - 1);
   var margeB = new Date(d1.getTime()); margeB.setDate(margeB.getDate() + 1);
   var rI = await sb.from('mpa_artisans_interventions')
-    .select('id, prix, statut, date_intervention, date_paiement, mpa_artisans_clients(nom)')
+    .select('id, prix, statut, date_intervention, date_paiement, facture_id, mpa_artisans_clients(nom), artisans_services(nom_service)')
     .eq('artisan_id', _artisan.id).neq('statut', 'annulee')
     .or('and(date_intervention.gte.' + debut + ',date_intervention.lt.' + finExclue + '),and(date_paiement.gte.' + debut + ',date_paiement.lt.' + finExclue + ')');
   var rL = await sb.from('commandes_catalogue').select('intervention_id')
     .eq('artisan_id', _artisan.id).not('intervention_id', 'is', null);
   var rV = await sb.from('commandes_catalogue')
-    .select('montant_total, montant_rembourse, frais_livraison, created_at, client_nom')
+    .select('id, nom_article, catalogue_id, montant_total, montant_rembourse, frais_livraison, created_at, client_nom')
     .eq('artisan_id', _artisan.id).in('paiement_statut', STATUTS_COMMANDE_REGLEE)
     .gte('created_at', margeA.toISOString()).lt('created_at', margeB.toISOString());
   var err = rI.error || rL.error || rV.error;
@@ -2618,6 +2619,7 @@ async function chargerLignesCA(debut, finExclue) {
       fam: liv[i.id] ? 'livraisons' : 'interventions',
       client: (i.mpa_artisans_clients && i.mpa_artisans_clients.nom) || '(sans client)',
       montant: Number(i.prix) || 0,
+      libelle: (i.artisans_services && i.artisans_services.nom_service) || 'Intervention', statut: i.statut, factureId: i.facture_id || null,
       dProd: fait ? _dateJour(i.date_intervention) : null,
       dReel: (i.statut === 'payee' && i.date_paiement) ? _dateJour(i.date_paiement) : null
     });
@@ -2625,7 +2627,7 @@ async function chargerLignesCA(debut, finExclue) {
   (rV.data || []).forEach(function(v) {
     var net = Math.max(0, Number(v.montant_total || 0) - Number(v.montant_rembourse || 0) - Number(v.frais_livraison || 0));
     var d = new Date(v.created_at);
-    lignes.push({ fam: 'ventes', client: v.client_nom || '(client boutique)', montant: net, dProd: d, dReel: d });
+    lignes.push({ fam: 'ventes', client: v.client_nom || '(client boutique)', montant: net, libelle: v.nom_article || 'Commande', statut: Number(v.montant_rembourse) > 0 ? 'remboursée en partie' : 'réglée', factureId: null, dProd: d, dReel: d });
   });
   return lignes;
 }
@@ -2677,6 +2679,68 @@ function calculImpotEstime(t, nbParts) {
   return { liberatoire: false, impot: calculerIR(imposable, nbParts), imposable: imposable };
 }
 
+// ── Détail du chiffre d'affaires (Pro) : chaque ligne qui compose un mois, avec client, date, statut, facture et centimes ──
+var _detailCAMois = null, _detailCAFam = 'toutes';
+function changerDetailCA() {
+  _detailCAMois = parseInt(document.getElementById('detail-ca-mois').value, 10);
+  _detailCAFam = document.getElementById('detail-ca-fam').value;
+  renderDetailCA();
+}
+function renderDetailCA() {
+  var zone = document.getElementById('detail-ca-liste'), selM = document.getElementById('detail-ca-mois'), selF = document.getElementById('detail-ca-fam');
+  if (!zone || !selM || !selF) return;
+  var annee = _anneeCompta, aujourdhui = new Date();
+  if (_detailCAMois === null || isNaN(_detailCAMois)) _detailCAMois = (annee === aujourdhui.getFullYear()) ? aujourdhui.getMonth() + 1 : 1;
+  selM.innerHTML = MOIS_NOMS.map(function(n, i) { return '<option value="' + (i + 1) + '"' + (i + 1 === _detailCAMois ? ' selected' : '') + '>' + n + ' ' + annee + '</option>'; }).join('');
+  selF.innerHTML = '<option value="toutes">Toutes les familles</option>' + FAMILLES_CA.map(function(f) { return '<option value="' + f + '"' + (f === _detailCAFam ? ' selected' : '') + '>' + _FAM_LIBELLE[f] + '</option>'; }).join('');
+  if (_erreurCompta) { zone.innerHTML = '<p style="color:var(--mu);">Le chiffre d\'affaires n\'a pas pu être chargé. Rechargez la page.</p>'; return; }
+  var lignes = _lignesCompta.filter(function(l) {
+    var d = l.dProd; // Production : le mois de l'intervention (terminée/payée) ou de la vente — même règle que les totaux
+    return d && d.getFullYear() === annee && d.getMonth() + 1 === _detailCAMois && (_detailCAFam === 'toutes' || l.fam === _detailCAFam);
+  }).sort(function(a, b) { return a.dProd - b.dProd; });
+  if (!lignes.length) { zone.innerHTML = '<p style="color:var(--mu);">Aucune ligne pour ce mois.</p>'; return; }
+  var total = lignes.reduce(function(s, l) { return s + l.montant; }, 0);
+  var nbFact = lignes.filter(function(l) { return l.factureId; }).length;
+  var LIB_STATUT = { terminee: 'Terminée', payee: 'Payée', planifiee: 'Planifiée', en_cours: 'En cours' };
+  zone.innerHTML = '<div style="overflow-x:auto;"><table class="dtbl" style="min-width:560px;"><thead><tr><th>Date</th><th>Libellé</th><th>Client</th><th>Statut</th><th>Facture</th><th style="text-align:right;">Montant</th></tr></thead><tbody>' +
+    lignes.map(function(l) {
+      var num = l.factureId ? (_numerosFactures[l.factureId] || 'oui') : '—';
+      return '<tr><td>' + l.dProd.toLocaleDateString('fr-FR') + '</td><td>' + escHtml(l.libelle || '') + ' <span style="color:var(--mu);font-size:11px;">' + (l.fam === 'ventes' ? '🛍️' : l.fam === 'livraisons' ? '🚚' : '🔧') + '</span></td><td>' + escHtml(l.client) + '</td><td>' + escHtml(LIB_STATUT[l.statut] || l.statut || '') + '</td><td>' + escHtml(String(num)) + '</td><td style="text-align:right;font-weight:700;">' + eurosMPA(l.montant) + '</td></tr>';
+    }).join('') + '</tbody></table></div>' +
+    '<div style="margin-top:8px;font-size:12.5px;color:var(--mu2);">' + lignes.length + ' ligne' + (lignes.length > 1 ? 's' : '') + ' · ' + nbFact + ' facturée' + (nbFact > 1 ? 's' : '') + ' · Total <strong>' + eurosMPA(total) + '</strong> (avant cotisations)</div>';
+}
+
+// ── Récapitulatif gratuit des interventions du mois affiché au planning : nom, date, montant, remboursée ou non ──
+var _recapIntSeq = 0;
+async function renderRecapInterventions() {
+  var zone = document.getElementById('zone-recap-interventions');
+  if (!zone) return;
+  var seq = ++_recapIntSeq;
+  var lignes = (_interventionsCache || []).filter(function(i) { return i.statut !== 'annulee'; })
+    .sort(function(a, b) { return String(a.date_intervention).localeCompare(String(b.date_intervention)); });
+  var titre = '<div style="font-size:14px;font-weight:700;margin-bottom:8px;">📊 Mes interventions de ' + MOIS_NOMS[_calMois].toLowerCase() + '</div>';
+  if (!lignes.length) { zone.innerHTML = titre + '<p style="font-size:13px;color:var(--mu);margin:0;">Aucune intervention ce mois-ci.</p>'; return; }
+  var rembourse = {};
+  try {
+    var r = await sb.from('paiements_prestations').select('intervention_id, montant_rembourse, statut')
+      .eq('artisan_id', _artisan.id).in('intervention_id', lignes.map(function(i) { return i.id; }));
+    (r.data || []).forEach(function(p) { if (Number(p.montant_rembourse) > 0) rembourse[p.intervention_id] = (rembourse[p.intervention_id] || 0) + Number(p.montant_rembourse); });
+  } catch (e) { /* table absente ou erreur : on affiche le récap sans la mention de remboursement */ }
+  if (seq !== _recapIntSeq) return; // le mois a changé entre-temps
+  var fait = lignes.filter(function(i) { return i.statut === 'terminee' || i.statut === 'payee'; });
+  var total = fait.reduce(function(s, i) { return s + (Number(i.prix) || 0); }, 0);
+  zone.innerHTML = titre + lignes.map(function(i) {
+    var nom = (i.artisans_services && i.artisans_services.nom_service) || 'Intervention';
+    var date = new Date(i.date_intervention + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    var badge = rembourse[i.id] ? ' <span style="font-size:11px;font-weight:700;color:#b45309;background:rgba(245,158,11,.12);padding:2px 7px;border-radius:6px;">↩️ remboursée ' + eurosMPA(rembourse[i.id]) + '</span>' : '';
+    var fait1 = i.statut === 'terminee' || i.statut === 'payee';
+    return '<div onclick="ouvrirIntervention(\'' + i.id + '\')" style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--brd);cursor:pointer;font-size:13px;' + (fait1 ? '' : 'color:var(--mu);') + '">' +
+      '<span><span style="color:var(--mu);margin-right:8px;">' + date + '</span>' + escHtml(nom) + badge + '</span>' +
+      '<strong>' + (Number(i.prix) > 0 ? eurosMPA(Number(i.prix)) : '—') + '</strong></div>';
+  }).join('') +
+  '<div style="margin-top:8px;font-size:12.5px;color:var(--mu2);">' + fait.length + ' réalisée' + (fait.length > 1 ? 's' : '') + ' · Total <strong>' + eurosMPA(total) + '</strong>. Les interventions à venir sont en gris. Le détail par client est dans Ma comptabilité (offre Pro).</div>';
+}
+
 async function chargerCompta() {
   document.getElementById('compta-annee').textContent = _anneeCompta;
   try {
@@ -2695,7 +2759,9 @@ function choisirPeriodeComptaMobile(idx) {
 }
 
 var _FAM_LIBELLE = { interventions: '🔧 Interventions', ventes: '🛍️ Ventes boutique', livraisons: '🚚 Livraisons' };
-function _eur0(v) { return v ? v.toFixed(0) + '€' : '—'; }
+// Montants du tableau de bord : sans décimale quand c'est un compte rond, avec centimes sinon (un 0,60 € ne doit pas disparaître).
+function _fmtCA(v) { return Math.abs(v - Math.round(v)) < 0.005 ? String(Math.round(v)) : v.toFixed(2).replace('.', ','); }
+function _eur0(v) { return v ? _fmtCA(v) + '€' : '—'; }
 
 function renderMatriceCompta() {
   var vue = _vueCompta, annee = _anneeCompta;
@@ -2762,6 +2828,9 @@ function renderMatriceCompta() {
   if (blocPro) blocPro.style.display = pro ? '' : 'none';
   if (verrou) verrou.style.display = pro ? 'none' : '';
   var clients = Object.keys(parClient).sort();
+  var blocDetail = document.getElementById('compta-detail-ca');
+  if (blocDetail) blocDetail.style.display = pro ? '' : 'none';
+  if (pro) renderDetailCA();
   if (pro) {
     var th2 = document.getElementById('thead-compta-row'), tb2 = document.getElementById('tbody-compta');
     th2.innerHTML = '<th>Client</th>' + cols.map(function(c, i) { return '<th' + clsNow(i) + '>' + c.l + '</th>'; }).join('') + '<th>Total</th>';
@@ -2784,9 +2853,9 @@ function renderMatriceCompta() {
   // KPIs de l'année (toujours en Production : la « vraie richesse produite »), toutes familles confondues
   var t = totauxFamilles(_lignesCompta, 'production', function(d) { return d.getFullYear() === annee; });
   var cotis = cotisationsTotales(t);
-  document.getElementById('kpi-ca-brut').textContent = t.total.toFixed(0) + ' €';
-  document.getElementById('kpi-cotis').textContent = cotis.toFixed(0) + ' €';
-  document.getElementById('kpi-ca-net').textContent = (t.total - cotis).toFixed(0) + ' €';
+  document.getElementById('kpi-ca-brut').textContent = _fmtCA(t.total) + ' €';
+  document.getElementById('kpi-cotis').textContent = _fmtCA(cotis) + ' €';
+  document.getElementById('kpi-ca-net').textContent = _fmtCA(t.total - cotis) + ' €';
 
   var note = document.getElementById('compta-note-cotis');
   if (note) {
@@ -2814,14 +2883,14 @@ function renderComptaMobile(parFam, parClient, clients, cols, curIdx, isCurYear,
     var b = somme(parFam[f]), c = cotisationsFamille(f, b);
     totB += b; totC += c;
     h += '<div class="compta-mobile-fam">' + _FAM_LIBELLE[f] + '</div>' +
-      '<div class="compta-mobile-client"><span>CA brut</span><span>' + b.toFixed(0) + ' €</span></div>' +
-      '<div class="compta-mobile-client" style="color:var(--gold);"><span>Cotisations</span><span>' + c.toFixed(0) + ' €</span></div>' +
-      '<div class="compta-mobile-client" style="color:var(--ac);"><span>Net</span><span>' + (b - c).toFixed(0) + ' €</span></div>';
+      '<div class="compta-mobile-client"><span>CA brut</span><span>' + _fmtCA(b) + ' €</span></div>' +
+      '<div class="compta-mobile-client" style="color:var(--gold);"><span>Cotisations</span><span>' + _fmtCA(c) + ' €</span></div>' +
+      '<div class="compta-mobile-client" style="color:var(--ac);"><span>Net</span><span>' + _fmtCA(b - c) + ' €</span></div>';
   });
   h += '<div class="compta-mobile-fam">Σ Total</div>' +
-    '<div class="compta-mobile-total"><span>CA brut</span><span>' + totB.toFixed(0) + ' €</span></div>' +
-    '<div class="compta-mobile-total" style="color:var(--gold);"><span>Cotisations</span><span>' + totC.toFixed(0) + ' €</span></div>' +
-    '<div class="compta-mobile-total" style="color:var(--ac);"><span>Net</span><span>' + (totB - totC).toFixed(0) + ' €</span></div>';
+    '<div class="compta-mobile-total"><span>CA brut</span><span>' + _fmtCA(totB) + ' €</span></div>' +
+    '<div class="compta-mobile-total" style="color:var(--gold);"><span>Cotisations</span><span>' + _fmtCA(totC) + ' €</span></div>' +
+    '<div class="compta-mobile-total" style="color:var(--ac);"><span>Net</span><span>' + _fmtCA(totB - totC) + ' €</span></div>';
   zoneListe.innerHTML = h;
 
   var zoneClients = document.getElementById('compta-client-mobile');
@@ -4532,26 +4601,30 @@ function alerterStocksBas() {
 // réglées (catalogue_id sur chaque ligne). Les commandes de la boutique actuelle sont toutes des paniers : sans leurs lignes,
 // le compteur restait à 0 malgré des ventes. Les lignes sont lues par paquets de 100 commandes (adresse de requête limitée).
 var STATUTS_COMMANDE_REGLEE = ['paye', 'partiellement_rembourse', 'rembourse'];
+var _caCatalogue = {}; // chiffre d'affaires par article (remboursements et livraison exclus), rempli avec les quantités
 async function calculerVentesCatalogue(ids) {
   var ventes = {};
+  _caCatalogue = {};
   if (!ids.length) return ventes;
   var connus = {};
   ids.forEach(function(id) { connus[id] = true; });
-  var { data: unArticle } = await sb.from('commandes_catalogue').select('catalogue_id, quantite')
+  var { data: unArticle } = await sb.from('commandes_catalogue').select('catalogue_id, quantite, montant_total, montant_rembourse, frais_livraison')
     .in('catalogue_id', ids).in('paiement_statut', STATUTS_COMMANDE_REGLEE);
   (unArticle || []).forEach(function(c) {
     if (!c.catalogue_id) return;
     ventes[c.catalogue_id] = (ventes[c.catalogue_id] || 0) + (c.quantite || 0);
+    _caCatalogue[c.catalogue_id] = (_caCatalogue[c.catalogue_id] || 0) + Math.max(0, Number(c.montant_total || 0) - Number(c.montant_rembourse || 0) - Number(c.frais_livraison || 0));
   });
   var { data: paniers } = await sb.from('commandes_catalogue').select('id')
     .eq('artisan_id', _artisan.id).is('catalogue_id', null).in('paiement_statut', STATUTS_COMMANDE_REGLEE);
   var idsPaniers = (paniers || []).map(function(c) { return c.id; });
   for (var i = 0; i < idsPaniers.length; i += 100) {
-    var { data: lignes } = await sb.from('commandes_catalogue_lignes').select('catalogue_id, quantite')
+    var { data: lignes } = await sb.from('commandes_catalogue_lignes').select('catalogue_id, quantite, prix_unitaire')
       .in('commande_id', idsPaniers.slice(i, i + 100));
     (lignes || []).forEach(function(l) {
       if (!l.catalogue_id || !connus[l.catalogue_id]) return;
       ventes[l.catalogue_id] = (ventes[l.catalogue_id] || 0) + (l.quantite || 0);
+      _caCatalogue[l.catalogue_id] = (_caCatalogue[l.catalogue_id] || 0) + (Number(l.prix_unitaire) || 0) * (l.quantite || 0);
     });
   }
   return ventes;
@@ -4741,13 +4814,13 @@ function renderVentesProduits() {
   if (!zone) return;
   if (!_catalogueCache.length) { zone.innerHTML = 'Ajoutez des produits pour voir vos ventes ici.'; return; }
 
-  var avecVentes = _catalogueCache.map(function(c) { return { nom: c.nom, ventes: _ventesCatalogueCache[c.id] || 0 }; })
+  var avecVentes = _catalogueCache.map(function(c) { return { nom: c.nom, ventes: _ventesCatalogueCache[c.id] || 0, ca: _caCatalogue[c.id] || 0 }; })
     .sort(function(a, b) { return b.ventes - a.ventes; });
   var meilleures = avecVentes.slice(0, 3);
   var moins = avecVentes.slice(-3).reverse();
 
   function liste(items) {
-    return items.map(function(i) { return '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>' + escHtml(i.nom) + '</span><strong>' + i.ventes + ' vendu' + (i.ventes > 1 ? 's' : '') + '</strong></div>'; }).join('');
+    return items.map(function(i) { return '<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>' + escHtml(i.nom) + '</span><strong>' + i.ventes + ' vendu' + (i.ventes > 1 ? 's' : '') + (i.ca > 0 ? ' · ' + eurosMPA(i.ca) : '') + '</strong></div>'; }).join('');
   }
   zone.innerHTML =
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">' +

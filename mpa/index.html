@@ -692,6 +692,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div style="font-size:14px;font-weight:600;line-height:1.5;color:var(--tx);background:rgba(181,80,47,.09);border:1.5px solid rgba(181,80,47,.35);border-left:5px solid var(--ac);border-radius:10px;padding:12px 16px;margin-bottom:14px;">💡 Cliquez sur une intervention pour changer son statut en <span style="color:var(--ac);">Terminée</span> ou <span style="color:var(--ac);">Payée</span>, ou sur le crayon ✎ pour voir et modifier les détails (prix, paiement, notes).</div>
 <div class="cal-grid" id="cal-dows"></div>
 <div class="cal-grid" id="cal-grid" style="margin-top:6px;"></div>
+<div id="zone-recap-interventions" style="margin-top:16px;border-top:1px solid var(--brd);padding-top:14px;"></div>
 <div class="dash-jauge-card" style="margin-top:16px;margin-bottom:0;">
 <div class="dj-header">
 <div class="dj-icon" style="background:rgba(59,130,246,.1);">
@@ -907,9 +908,19 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 <div class="compta-mobile" id="compta-client-mobile"></div>
 </div>
+<div id="compta-detail-ca" style="display:none;margin-top:18px;border-top:1px solid var(--brd);padding-top:14px;">
+<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px;">
+<div style="font-size:14px;font-weight:700;">🔎 Détail du chiffre d'affaires</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;">
+<select id="detail-ca-mois" class="cpv2-select" onchange="changerDetailCA()" style="min-width:130px;"></select>
+<select id="detail-ca-fam" class="cpv2-select" onchange="changerDetailCA()" style="min-width:150px;"></select>
+</div>
+</div>
+<div id="detail-ca-liste" style="font-size:13px;"></div>
+</div>
 <div id="compta-client-verrou" style="display:none;padding:18px;border:1px dashed var(--b2);border-radius:10px;text-align:center;">
 <div style="font-size:14px;font-weight:700;margin-bottom:6px;">🔒 Réservé à l'offre Pro</div>
-<div style="font-size:13px;color:var(--mu);line-height:1.5;margin-bottom:12px;">Voyez d'un coup d'œil quels clients vous rapportent le plus, mois par mois. Le récapitulatif ci-dessus (interventions, ventes, livraisons) reste gratuit.</div>
+<div style="font-size:13px;color:var(--mu);line-height:1.5;margin-bottom:12px;">Voyez d'un coup d'œil quels clients vous rapportent le plus, mois par mois. Le détail de chaque ligne du chiffre d'affaires (client, date, statut, facture) est aussi réservé au Pro. Le récapitulatif ci-dessus (interventions, ventes, livraisons) reste gratuit.</div>
 <button class="addb" onclick="proposerPassagePro('detail_client')" type="button">Découvrir l'offre Pro</button>
 </div>
 </div></div><div class="bpnl"><div class="cpv2-page-wrap">
