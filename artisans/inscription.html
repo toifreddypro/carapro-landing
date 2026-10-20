@@ -162,6 +162,7 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
     <div id="turnstile-resume" style="margin:16px auto;display:flex;justify-content:center;"></div>
     <div id="resume-err" class="msg-err"></div>
     <button type="button" class="btn-submit" id="btn-resume" onclick="terminerInscription()">Terminer mon inscription</button>
+    <p style="margin-top:14px;font-size:13px;"><a href="#" onclick="recommencerInscription();return false;">Ce n'est pas votre inscription ? Recommencer avec un autre email</a></p>
     <p style="margin-top:14px;font-size:12.5px;color:var(--mu,#888);">Le document d'assurance n'a pas pu être conservé pendant l'attente de confirmation — vous pourrez l'ajouter depuis votre profil une fois inscrit.</p>
   </div>
 </div>
@@ -310,6 +311,8 @@ async function soumettreInscription() {
         localStorage.setItem('caralink_inscription_attente', JSON.stringify({
           nom_entreprise: nom, secteur: secteur, commune: commune, telephone: telephone,
           bio: bio || null, rayon_intervention_km: rayon, siret: siret || null,
+          // Sert uniquement à vérifier, au retour, que la session est bien celle de CET email.
+          email_attente: email.toLowerCase(), cree_le: Date.now(),
         }));
       } catch (e) { /* stockage indisponible : au pire, l'utilisateur retapera ses infos */ }
 
@@ -318,7 +321,7 @@ async function soumettreInscription() {
       document.getElementById('confirmation-icon').textContent = '📧';
       document.getElementById('confirmation-titre').textContent = 'Vérifiez votre boîte mail';
       document.getElementById('confirmation-msg').innerHTML = 'Un email de confirmation vient de vous être envoyé à <strong>' + escHtmlLocal(email) + '</strong>.<br><br>Cliquez sur le lien qu\'il contient pour continuer — vous terminerez ensuite votre profil directement dans <strong>Mon espace</strong>. Pensez à vérifier vos spams si vous ne le voyez pas d\'ici quelques minutes.';
-      document.getElementById('confirmation-action').innerHTML = '';
+      document.getElementById('confirmation-action').innerHTML = '<a href="#" onclick="recommencerInscription();return false;" style="font-size:13.5px;">Mauvaise adresse email ? Recommencer l\'inscription</a>';
       return;
     }
 
@@ -362,17 +365,45 @@ async function soumettreInscription() {
 // Supabase place la session dans l'adresse au retour du lien de confirmation (comportement
 // standard, rien à faire côté code pour ça) — on vérifie juste si une inscription était en
 // attente, et si oui on propose de la terminer plutôt que de faire tout resaisir.
+function oublierInscriptionEnAttente() {
+  try { localStorage.removeItem('caralink_inscription_attente'); } catch (e) {}
+}
+
+function recommencerInscription() {
+  oublierInscriptionEnAttente();
+  _repriseNecessaire = false;
+  document.getElementById('wrap-resume').style.display = 'none';
+  document.getElementById('wrap-confirmation').style.display = 'none';
+  document.getElementById('wrap-form').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 async function verifierRepriseInscription() {
   try {
     var brut = localStorage.getItem('caralink_inscription_attente');
     if (!brut) return;
-    var { data: { session } } = await sb.auth.getSession();
-    if (!session) return; // pas encore confirmé, ou lien pas encore cliqué : rien à faire ici
-
     var infos = JSON.parse(brut);
+
+    // Inscription en attente trop ancienne, ou enregistrée avant cette vérification : on l'oublie,
+    // sinon elle bloquerait le formulaire pour toujours.
+    var QUARANTE_HUIT_H = 48 * 3600 * 1000;
+    if (!infos || !infos.email_attente || !infos.cree_le || (Date.now() - infos.cree_le) > QUARANTE_HUIT_H) {
+      oublierInscriptionEnAttente();
+      return;
+    }
+
+    var { data: { session } } = await sb.auth.getSession();
+    if (!session || !session.user) return; // lien pas encore cliqué : le formulaire reste affiché
+
+    // La session doit être celle de l'email qui vient d'être confirmé — pas celle d'un autre compte
+    // déjà ouvert dans ce navigateur (c'était la cause de « Email confirmé ! » à tort).
+    var emailSession = String(session.user.email || '').toLowerCase();
+    var confirme = !!(session.user.email_confirmed_at || session.user.confirmed_at);
+    if (!confirme || emailSession !== infos.email_attente) return;
+
     document.getElementById('resume-recap').innerHTML =
-      '<strong>' + infos.nom_entreprise.replace(/[<>&]/g, '') + '</strong><br>' +
-      infos.commune.replace(/[<>&]/g, '') + ' · ' + infos.telephone.replace(/[<>&]/g, '');
+      '<strong>' + String(infos.nom_entreprise || '').replace(/[<>&]/g, '') + '</strong><br>' +
+      String(infos.commune || '').replace(/[<>&]/g, '') + ' · ' + String(infos.telephone || '').replace(/[<>&]/g, '');
     document.getElementById('wrap-form').style.display = 'none';
     document.getElementById('wrap-confirmation').style.display = 'none';
     document.getElementById('wrap-resume').style.display = 'block';
@@ -403,7 +434,11 @@ async function terminerInscription() {
     var res = await fetch(SUPABASE_URL + '/functions/v1/finaliser-inscription-artisan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
-      body: JSON.stringify(Object.assign({}, infos, { document_path: null, turnstile_token: turnstileToken })),
+      body: JSON.stringify({
+        nom_entreprise: infos.nom_entreprise, secteur: infos.secteur, commune: infos.commune, telephone: infos.telephone,
+        bio: infos.bio, rayon_intervention_km: infos.rayon_intervention_km, siret: infos.siret,
+        document_path: null, turnstile_token: turnstileToken,
+      }),
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -416,6 +451,17 @@ async function terminerInscription() {
     document.getElementById('confirmation-msg').textContent = data.message;
     document.getElementById('confirmation-action').innerHTML = '<a href="https://caralink.app/mpa/" class="btn-submit" style="display:inline-block;text-decoration:none;">Aller sur Mon espace →</a>';
   } catch (e) {
+    if (/existe déjà/i.test(e.message || '')) {
+      // Le profil est déjà créé : l'inscription en attente n'a plus lieu d'être, on ne bloque plus l'utilisateur.
+      oublierInscriptionEnAttente();
+      document.getElementById('wrap-resume').style.display = 'none';
+      document.getElementById('wrap-confirmation').style.display = 'block';
+      document.getElementById('confirmation-icon').textContent = 'ℹ️';
+      document.getElementById('confirmation-titre').textContent = 'Votre profil existe déjà';
+      document.getElementById('confirmation-msg').textContent = 'Un profil est déjà associé à ce compte : il n\'y a rien de plus à faire ici.';
+      document.getElementById('confirmation-action').innerHTML = '<a href="https://caralink.app/mpa/" class="btn-submit" style="display:inline-block;text-decoration:none;">Aller sur Mon espace →</a>';
+      return;
+    }
     err.textContent = e.message;
     err.classList.add('show');
     btn.disabled = false; btn.textContent = 'Terminer mon inscription';
