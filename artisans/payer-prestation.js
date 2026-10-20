@@ -6,6 +6,7 @@
   var API = 'https://uzgboxfxpxazhysusewv.supabase.co/functions/v1/creer-paiement-prestation';
   var STRIPE_PUBLIC_KEY = 'pk_live_51TWxxBJPTOXXy1ykTYLysvDCbnnJUXzqbc164Wif38u1g7BijiOLdUWKD8HPlQBX7he8K76aZNMUARo14yuQhzdQ000WVXdeEF';
   var PAGE_ANNULER = 'annuler-reservation.html';
+  var SITE_RETOUR = 'https://caralink.app/artisans/';
   var token = new URLSearchParams(location.search).get('token') || '';
   var racine = document.getElementById('contenu');
   var infos = null, stripe = null, elements = null;
@@ -84,9 +85,12 @@
     var enfants = [el('h1', 'ok', '✅ Paiement reçu')];
     if (infos.type === 'reservation') {
       enfants.push(el('p', '', 'Merci ! Votre demande vient d\'être transmise à ' + infos.artisan + '. Vous recevrez un email dès qu\'il aura confirmé le rendez-vous. S\'il refuse ou ne peut pas l\'honorer, vous êtes remboursé(e) intégralement et automatiquement.'));
+      if (infos.nature !== 'frais de déplacement') enfants.push(el('p', '', 'Ces frais sont déduits du prix final de l\'intervention.'));
       var a = el('a', 'lien', 'Annuler ma réservation'); a.href = PAGE_ANNULER + '?token=' + encodeURIComponent(token); enfants.push(a);
+      var retour = el('a', 'lien', 'Revenir à CaraLink'); retour.href = SITE_RETOUR; enfants.push(retour);
     } else {
       enfants.push(el('p', '', 'Merci ! ' + infos.artisan + ' est prévenu de votre paiement. Un reçu vous est envoyé par email.'));
+      var retour2 = el('a', 'lien', 'Revenir à CaraLink'); retour2.href = SITE_RETOUR; enfants.push(retour2);
     }
     ecran.apply(null, enfants);
   }

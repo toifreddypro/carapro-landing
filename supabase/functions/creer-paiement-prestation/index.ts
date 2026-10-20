@@ -200,7 +200,7 @@ Deno.serve(async (req: Request) => {
       "metadata[paiement_prestation_id]": p.id,
       "metadata[artisan_id]": p.artisan_id,
       "metadata[type]": p.type,
-      "description": `${p.type === "reservation" ? "Frais de réservation" : "Paiement de prestation"} — ${artisan.nom_entreprise}`,
+      "description": `${p.type === "reservation" ? (demande?.type_intervention === "visite" ? "Frais de déplacement" : "Frais de réservation (déduits du prix final de l'intervention)") : "Paiement de prestation"} — ${artisan.nom_entreprise}`,
     };
     if (p.client_email) params["receipt_email"] = p.client_email;
     if (commission > 0) params["application_fee_amount"] = String(commission);
