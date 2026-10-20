@@ -62,6 +62,9 @@ const PAGE_PAIEMENT = "https://caralink.app/artisans/payer-prestation.html";
 // Après, il n'en reçoit plus (et disparaît de l'annuaire). Deux semaines de grâce pour activer Stripe.
 const FIN_PERIODE_GRACE = "2026-11-01";
 const MONTANT_PAIEMENT_MINIMUM = 0.5;
+// Anti-arnaque : les frais de réservation (acompte) ne dépassent jamais 30 % du prix du service (quand il est connu), ni 100 € dans tous les cas.
+const FRAIS_RESERVATION_PART_MAX = 0.30;
+const FRAIS_RESERVATION_MAX = 100;
 const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const REGEX_EMAIL = /^[^\s@<>"'()\[\]\\,;:]+@[^\s@<>"'()\[\]\\,;:]+\.[^\s@<>"'()\[\]\\,;:]+$/;
 const REGEX_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -425,8 +428,9 @@ Deno.serve(async (req: Request) => {
       else if (typeIntervention === "reservation") {
         const f = Number(artisanVise.frais_reservation);
         montantAPayer = Number.isFinite(f) && f > 0 ? Math.min(f, FRAIS_DEPLACEMENT_MAX) : 0;
-        // Les frais de réservation sont un acompte inclus dans le prix : jamais plus que le prix du service.
-        if (prixServiceTotal !== null) montantAPayer = Math.min(montantAPayer, prixServiceTotal);
+        // Les frais de réservation sont un acompte inclus dans le prix : plafonnés (30 % du prix du service, 100 € au maximum).
+        montantAPayer = Math.min(montantAPayer, FRAIS_RESERVATION_MAX);
+        if (prixServiceTotal !== null) montantAPayer = Math.min(montantAPayer, Math.floor(prixServiceTotal * FRAIS_RESERVATION_PART_MAX * 100) / 100);
       }
       if (montantAPayer < MONTANT_PAIEMENT_MINIMUM) montantAPayer = 0;
     }

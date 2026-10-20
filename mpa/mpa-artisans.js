@@ -1181,7 +1181,7 @@ function etapesAssistant() {
   if (g.services && 'frais_reservation' in _artisan) {
     E.push({ id: 'reservation', titre: '📅 Frais de réservation d\'un créneau',
       rendre: function() {
-        return '<p style="font-size:13.5px;line-height:1.5;margin:0 0 10px;">C\'est un acompte payé <strong>en ligne</strong> par le client à la réservation (de 1 à 500 €). Il vous assure un revenu si le client manque le rendez-vous, et lui est renvoyé si c\'est vous qui annulez, ou si vous ne répondez pas sous 48 h.</p>' +
+        return '<p style="font-size:13.5px;line-height:1.5;margin:0 0 10px;">C\'est un acompte payé <strong>en ligne</strong> par le client à la réservation (de 1 à 100 €, et au plus <strong>30 % du prix</strong> de chaque service). Il est déduit du prix final. Il vous assure un revenu si le client manque le rendez-vous, et lui est renvoyé si c\'est vous qui annulez, ou si vous ne répondez pas sous 48 h.</p>' +
           '<div style="font-size:12.5px;color:var(--mu);margin-bottom:10px;">Sans frais, la réservation est gratuite pour vos clients : c\'est le choix le plus simple pour démarrer.</div>' +
           '<label style="font-size:12px;font-weight:600;color:var(--mu2);display:block;margin-bottom:4px;">Montant en € — laissez vide : aucun frais</label>' + champEuroAssistant('as-resa', _artisan.frais_reservation, 'Ex. 10') + noteStripeAssistant();
       },
@@ -4231,7 +4231,7 @@ async function sauverFiche() {
   var champResa = document.getElementById('m-frais-resa');
   if (champResa && 'frais_reservation' in _artisan) {
     var resa = lireFraisDeplacement(champResa.value);
-    if (!resa.ok || (resa.valeur !== null && resa.valeur > 0 && resa.valeur < 1)) { alert('Les frais de réservation doivent être un montant entre 1 et 500 € (par exemple 10 ou 12,50), ou rester vides.'); return; }
+    if (!resa.ok || (resa.valeur !== null && resa.valeur > 0 && resa.valeur < 1) || (resa.valeur !== null && resa.valeur > 100 && resa.valeur !== Number(_artisan.frais_reservation))) { alert('Les frais de réservation doivent être un montant entre 1 et 100 € (par exemple 10 ou 12,50), ou rester vides. Ils sont aussi limités à 30 % du prix de chaque service.'); return; }
     if (resa.valeur !== null || _artisan.frais_reservation != null) maj.frais_reservation = resa.valeur;
     if (resa.valeur !== null && resa.valeur > 0 && !paiementsEnLigneActifs()) {
       if (!confirm('Ces frais sont payés en ligne : ils ne s\'appliqueront qu\'une fois vos paiements en ligne activés (Stripe).\n\nEnregistrer quand même ?')) return;

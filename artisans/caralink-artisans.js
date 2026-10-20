@@ -1291,7 +1291,10 @@ function montantPaiementEnLigne(type, artisanId) {
   var a = artisanPaiementsActifs(artisanId);
   if (!a) return 0;
   var m = type === 'visite' ? Number(a.frais_deplacement) : (type === 'reservation' ? Number(a.frais_reservation) : 0);
-  if (type === 'reservation' && isFinite(m)) { var pt = prixTotalServiceChoisi(); if (pt !== null) m = Math.min(m, pt); } // acompte : jamais plus que le prix du service
+  if (type === 'reservation' && isFinite(m)) { // anti-arnaque : au plus 30 % du prix du service (s'il est connu) et 100 €, comme le serveur
+    m = Math.min(m, 100);
+    var pt = prixTotalServiceChoisi(); if (pt !== null) m = Math.min(m, Math.floor(pt * 0.30 * 100) / 100);
+  }
   return isFinite(m) && m >= 0.5 ? m : 0;
 }
 function politiqueAnnulationHTML(a) {
