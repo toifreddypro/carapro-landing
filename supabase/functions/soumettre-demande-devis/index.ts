@@ -334,6 +334,7 @@ Deno.serve(async (req: Request) => {
 
     // ── L'artisan visé et le service doivent exister (et le service lui appartenir) ──
     let artisanVise: any = null;
+    let prixServiceTotal: number | null = null; // prix total connu du service (forfait, ou tarif horaire × durée) : plafond des frais de réservation
     if (artisanId) {
       // Tolérance : si une colonne facultative n'existe pas encore (devis-visite.sql, devis-visite-reglage.sql pas lancés), on
       // réessaie avec moins de colonnes : jamais une panne, seulement les réglages absents ignorés.
@@ -349,9 +350,15 @@ Deno.serve(async (req: Request) => {
       if (!a) return json({ error: "Artisan introuvable." }, 404);
       artisanVise = a;
       if (serviceId) {
-        const { data: svc, error: errSvc } = await sb.from("artisans_services").select("id").eq("id", serviceId).eq("artisan_id", artisanId).maybeSingle();
+        const { data: svc, error: errSvc } = await sb.from("artisans_services").select("id, prix_indicatif, unite, duree_estimee_min").eq("id", serviceId).eq("artisan_id", artisanId).maybeSingle();
         if (errSvc) throw errSvc;
         if (!svc) return json({ error: "Service invalide." }, 400);
+        // Même règle que le prix automatique de MPA : forfait/sans unité → le tarif ; à l'heure → tarif × durée ; autre unité → prix inconnu (pas de plafond).
+        const pu = Number(svc.prix_indicatif), unite = String(svc.unite ?? "").trim().toLowerCase(), duree = Number(svc.duree_estimee_min);
+        if (Number.isFinite(pu) && pu > 0) {
+          if (!unite || unite.includes("forfait")) prixServiceTotal = pu;
+          else if (/^(h|heure|heures)$/.test(unite) && Number.isFinite(duree) && duree > 0) prixServiceTotal = Math.round(pu * duree / 60 * 100) / 100;
+        }
       }
     }
 
@@ -418,6 +425,8 @@ Deno.serve(async (req: Request) => {
       else if (typeIntervention === "reservation") {
         const f = Number(artisanVise.frais_reservation);
         montantAPayer = Number.isFinite(f) && f > 0 ? Math.min(f, FRAIS_DEPLACEMENT_MAX) : 0;
+        // Les frais de réservation sont un acompte inclus dans le prix : jamais plus que le prix du service.
+        if (prixServiceTotal !== null) montantAPayer = Math.min(montantAPayer, prixServiceTotal);
       }
       if (montantAPayer < MONTANT_PAIEMENT_MINIMUM) montantAPayer = 0;
     }

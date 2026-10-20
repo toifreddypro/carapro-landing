@@ -1266,6 +1266,18 @@ function visitePropose(artisanId) {
 
 // ── Paiement en ligne à la réservation (15/10/2026) ──
 // L'artisan dont la fiche est ouverte, SEULEMENT s'il a activé ses paiements en ligne (sinon : ancien fonctionnement, rien à payer ici).
+// Prix total connu du service choisi (forfait, ou tarif horaire × durée), sinon null. Même règle que le serveur, qui recalcule de toute façon.
+function prixTotalServiceChoisi() {
+  var ctx = window._dispoContexte, services = (_profilDataCourant && _profilDataCourant.services) || [];
+  if (!ctx || !ctx.serviceId) return null;
+  var sv = services.find(function(x) { return x.id === ctx.serviceId; });
+  if (!sv) return null;
+  var pu = Number(sv.prix_indicatif), unite = String(sv.unite || '').trim().toLowerCase(), duree = Number(sv.duree_estimee_min);
+  if (!(pu > 0)) return null;
+  if (!unite || unite.indexOf('forfait') >= 0) return pu;
+  if (/^(h|heure|heures)$/.test(unite) && duree > 0) return Math.round(pu * duree / 60 * 100) / 100;
+  return null;
+}
 function artisanPaiementsActifs(artisanId) {
   var a = _profilDataCourant && _profilDataCourant.artisan;
   if (!a || (artisanId && a.id !== artisanId)) return null;
@@ -1276,6 +1288,7 @@ function montantPaiementEnLigne(type, artisanId) {
   var a = artisanPaiementsActifs(artisanId);
   if (!a) return 0;
   var m = type === 'visite' ? Number(a.frais_deplacement) : (type === 'reservation' ? Number(a.frais_reservation) : 0);
+  if (type === 'reservation' && isFinite(m)) { var pt = prixTotalServiceChoisi(); if (pt !== null) m = Math.min(m, pt); } // acompte : jamais plus que le prix du service
   return isFinite(m) && m >= 0.5 ? m : 0;
 }
 function politiqueAnnulationHTML(a) {
