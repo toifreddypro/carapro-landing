@@ -93,9 +93,11 @@ function dateFr(iso: string | null): string {
 }
 
 // Les deux phrases que le client coche — écrites ICI (une seule source) et conservées telles quelles comme preuve.
-function conditionsReservation(montant: number, heures: number, type: string | null, nomArtisan: string): string[] {
+function conditionsReservation(montant: number, heures: number, type: string | null, nomArtisan: string, delaiDejaPasse = false): string[] {
   const nature = type === "visite" ? "frais de déplacement" : "frais de réservation";
-  const politique = heures > 0
+  const politique = heures > 0 && delaiDejaPasse
+    ? `Ce rendez-vous a lieu dans moins de ${heures} h : l'annulation gratuite n'est donc plus possible pour ce créneau. Si j'annule, les ${nature} (${euros(montant)}) restent acquis à ${nomArtisan}.`
+    : heures > 0
     ? `Annulation gratuite jusqu'à ${heures} h avant le rendez-vous : je suis alors remboursé(e) intégralement. Passé ce délai, les ${nature} (${euros(montant)}) restent acquis à ${nomArtisan}.`
     : `Aucune annulation gratuite n'est prévue : les ${nature} (${euros(montant)}) restent acquis à ${nomArtisan} si j'annule.`;
   return [
@@ -136,7 +138,10 @@ Deno.serve(async (req: Request) => {
     const statutEffectif = expire ? "expire" : p.statut;
     const montant = Number(p.montant);
     const heures = Number(p.annulation_gratuite_heures ?? 0);
-    const conditions = p.type === "reservation" ? conditionsReservation(montant, heures, demande?.type_intervention ?? null, artisan.nom_entreprise) : [];
+    // Si le rendez-vous est déjà plus proche que le délai d'annulation gratuite, on le dit AVANT le paiement (la case cochée sert de preuve).
+    const debutRdv = demande?.date_intervention ? new Date(`${demande.date_intervention}T${String(demande.heure_debut || "00:00").slice(0, 5)}:00-04:00`).getTime() : NaN;
+    const delaiGratuitDejaPasse = heures > 0 && Number.isFinite(debutRdv) && Date.now() > debutRdv - heures * 3600 * 1000;
+    const conditions = p.type === "reservation" ? conditionsReservation(montant, heures, demande?.type_intervention ?? null, artisan.nom_entreprise, delaiGratuitDejaPasse) : [];
 
     if (action === "infos") {
       return json({
