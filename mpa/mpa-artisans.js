@@ -1602,9 +1602,33 @@ function preRemplirDureeIntervention() {
   if (s && s.duree_estimee_min && !document.getElementById('mi-duree').value) {
     document.getElementById('mi-duree').value = s.duree_estimee_min;
   }
-  var sug = suggestionPrixService(serviceId, parseInt(document.getElementById('mi-duree').value, 10) || (s && s.duree_estimee_min) || 0);
+  majPrixSuggere();
+  calculerCreneaux();
+}
+
+// Le prix proposé suit le service et la durée, TANT QUE l'artisan ne l'a pas saisi lui-même :
+// un prix tapé à la main n'est jamais écrasé ; un prix proposé automatiquement est recalculé quand la durée change.
+function majPrixSuggere() {
+  var champ = document.getElementById('mi-prix');
+  var serviceId = document.getElementById('mi-service').value;
+  var s = _servicesCache.find(function(x) { return x.id === serviceId; });
+  var duree = parseInt(document.getElementById('mi-duree').value, 10) || (s && s.duree_estimee_min) || 0;
+  var sug = suggestionPrixService(serviceId, duree);
   var hint = document.getElementById('mi-prix-hint'); if (hint) hint.textContent = sug.texte;
-  if (sug.valeur != null && !document.getElementById('mi-prix').value) document.getElementById('mi-prix').value = sug.valeur;
+  var vide = champ.value === '';
+  var suitEncore = champ.dataset.auto === '1' && Number(champ.value) === Number(champ.dataset.autoVal);
+  if (sug.valeur != null && (vide || suitEncore)) {
+    champ.value = sug.valeur;
+    champ.dataset.auto = '1'; champ.dataset.autoVal = String(sug.valeur);
+  } else if (sug.valeur == null && suitEncore) {
+    // Le nouveau service n'a pas de prix proposable (autre unité) : on retire l'ancien prix automatique, qui n'est plus le bon.
+    champ.value = '';
+    champ.dataset.auto = '0';
+  }
+}
+
+function surDureeChangee() {
+  majPrixSuggere();
   calculerCreneaux();
 }
 
@@ -1809,6 +1833,7 @@ async function ouvrirNouvelleIntervention(dateStr, creneau) {
   document.getElementById('mi-duree').value = '';
   document.getElementById('mi-creneaux-zone').innerHTML = 'Renseignez la date, l\'adresse et la durée pour voir les créneaux qui tiennent compte de vos trajets.';
   document.getElementById('mi-prix').value = '';
+  document.getElementById('mi-prix').dataset.auto = '0';
   var hintN = document.getElementById('mi-prix-hint'); if (hintN) hintN.textContent = '';
   document.getElementById('mi-notes').value = '';
   document.getElementById('mi-statut').value = 'planifiee';
@@ -1849,6 +1874,7 @@ async function ouvrirIntervention(id) {
   document.getElementById('mi-service').value = i.service_id || '';
   document.getElementById('mi-duree').value = (i.heure_debut && i.heure_fin) ? (heureVersMin(i.heure_fin.slice(0,5)) - heureVersMin(i.heure_debut.slice(0,5))) : '';
   document.getElementById('mi-prix').value = i.prix == null ? '' : i.prix;
+  document.getElementById('mi-prix').dataset.auto = '0';
   var hintP = document.getElementById('mi-prix-hint'); if (hintP) hintP.textContent = (i.prix == null && i.service_id) ? suggestionPrixService(i.service_id, i.duree_min || 0).texte : (i.prix === 0 || i.prix === '0' ? 'Intervention marquée gratuite.' : '');
   document.getElementById('mi-notes').value = i.notes || '';
   document.getElementById('mi-statut').value = i.statut || 'planifiee';
@@ -5979,7 +6005,7 @@ function openAjouterService() {
   document.getElementById('s-desc').value = '';
   document.getElementById('s-duree').value = '';
   document.getElementById('s-prix').value = '';
-  document.getElementById('s-unite').value = '';
+  positionnerUnite('forfait');
   ouvrirModale('modal-service');
 }
 
@@ -5993,8 +6019,34 @@ function ouvrirService(id) {
   document.getElementById('s-desc').value = s.description || '';
   document.getElementById('s-duree').value = s.duree_estimee_min || '';
   document.getElementById('s-prix').value = s.prix_indicatif || '';
-  document.getElementById('s-unite').value = s.unite || '';
+  positionnerUnite(s.unite);
   ouvrirModale('modal-service');
+}
+
+// ── Unité du tarif indicatif : liste déroulante (+ « Autre… » en texte libre) ──
+var UNITES_PROPOSEES = ['forfait', 'heure', 'jour', 'm²', 'ml', 'pièce'];
+function majChampUnite() {
+  var autre = document.getElementById('s-unite-choix').value === 'autre';
+  var champ = document.getElementById('s-unite');
+  champ.style.display = autre ? '' : 'none';
+  if (autre) champ.focus();
+}
+// Reconnaît aussi les anciennes saisies libres (« h », « heures », « m2 »…) pour retrouver la bonne ligne de la liste.
+function positionnerUnite(valeur) {
+  var u = String(valeur || '').trim().toLowerCase();
+  var alias = { h: 'heure', heures: 'heure', m2: 'm²', 'm 2': 'm²', piece: 'pièce', 'pièces': 'pièce', pieces: 'pièce', unite: 'pièce', 'unité': 'pièce', jours: 'jour', j: 'jour' };
+  if (alias[u]) u = alias[u];
+  var choix = document.getElementById('s-unite-choix');
+  if (!u) { choix.value = 'forfait'; document.getElementById('s-unite').value = ''; }
+  else if (UNITES_PROPOSEES.indexOf(u) >= 0) { choix.value = u; document.getElementById('s-unite').value = ''; }
+  else { choix.value = 'autre'; document.getElementById('s-unite').value = String(valeur).trim(); }
+  majChampUnite();
+  if (choix.value === 'autre') document.getElementById('s-unite').blur();
+}
+function lireUnite() {
+  var v = document.getElementById('s-unite-choix').value;
+  if (v === 'autre') return document.getElementById('s-unite').value.trim() || null;
+  return v;
 }
 
 async function sauverService() {
@@ -6007,7 +6059,7 @@ async function sauverService() {
     description: document.getElementById('s-desc').value.trim() || null,
     duree_estimee_min: parseInt(document.getElementById('s-duree').value, 10) || null,
     prix_indicatif: parseFloat(document.getElementById('s-prix').value) || null,
-    unite: document.getElementById('s-unite').value.trim() || null,
+    unite: lireUnite(),
   };
   var res;
   if (_serviceEnCours) {
