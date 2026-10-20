@@ -587,6 +587,11 @@ async function chargerInterventions() {
   if (error) { console.error(error); _interventionsCache = []; }
   else { _interventionsCache = data || []; }
 
+  // Journées bloquées qui touchent ce mois (pour les afficher dans le calendrier).
+  var ind = await sb.from('artisans_indisponibilites').select('*').eq('artisan_id', _artisan.id)
+    .lte('date_debut', finStr).gte('date_fin', debutStr);
+  _indisposMois = ind.error ? [] : (ind.data || []);
+
   renderCalendrier();
 }
 
@@ -614,7 +619,8 @@ function renderCalendrier() {
     var estWeekend = idx % 7 >= 5;
     var estAuj = dateStr === aujStr;
 
-    var classes = 'cal-day' + (c.autreMonth ? ' other-month' : '') + (estWeekend ? ' weekend' : '') + (estAuj ? ' today' : '');
+    var blocage = dateStr ? _indisposMois.find(function(x) { return dateStr >= x.date_debut && dateStr <= x.date_fin; }) : null;
+    var classes = 'cal-day' + (c.autreMonth ? ' other-month' : '') + (estWeekend ? ' weekend' : '') + (estAuj ? ' today' : '') + (blocage ? ' bloque' : '');
 
     var interDuJour = dateStr ? _interventionsCache.filter(function(i) { return i.date_intervention === dateStr; }) : [];
     var interMatin = interDuJour.filter(function(i) { return i.creneau !== 'apres_midi'; });
@@ -632,6 +638,7 @@ function renderCalendrier() {
 
     return '<div class="' + classes + '"' + (c.autreMonth ? '' : ' onclick="ouvrirDetailJourMobile(\'' + dateStr + '\')"') + '>' +
       '<div class="cal-day-num">' + c.jour + '</div>' +
+      (blocage ? '<div class="cal-bloque-tag" title="Journée bloquée : vos clients voient « ' + escHtml(libelleTypeFermeture(blocage.type_fermeture)) + ' »">⛔ ' + escHtml(libelleTypeFermeture(blocage.type_fermeture)) + '</div>' : '') +
       compactHtml +
       (c.autreMonth ? '' :
         '<div class="cal-halves">' +
@@ -4041,6 +4048,10 @@ async function supprimerPlageHoraire(id) {
 // ════════════════════════════════════════
 
 var _indisposCache = [];
+// Types de fermeture : c'est le SEUL élément montré aux clients (jamais du texte libre — voir « note personnelle » ci-dessous).
+var TYPES_FERMETURE_LIBELLE = { vacances: 'Vacances', fermeture: 'Fermeture exceptionnelle', inventaire: 'Inventaire', formation: 'Formation', autre: 'Indisponible' };
+function libelleTypeFermeture(code) { return TYPES_FERMETURE_LIBELLE[code] || TYPES_FERMETURE_LIBELLE.autre; }
+var _indisposMois = []; // journées bloquées du mois affiché dans le planning
 
 async function chargerIndispos() {
   var zone = document.getElementById('zone-indispo');
@@ -4063,7 +4074,8 @@ function renderIndispos() {
     return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--brd);">' +
       '<div>' +
         '<span style="font-weight:600;font-size:13px;">' + periode + '</span>' +
-        (i.motif ? '<span style="font-size:12px;color:var(--mu);margin-left:8px;">' + escHtml(i.motif) + '</span>' : '') +
+        '<span style="font-size:12px;font-weight:600;color:var(--ac);margin-left:8px;">' + escHtml(libelleTypeFermeture(i.type_fermeture)) + '</span>' +
+        (i.motif ? '<span style="font-size:12px;color:var(--mu);margin-left:8px;" title="Note personnelle : visible par vous seulement">🔒 ' + escHtml(i.motif) + '</span>' : '') +
       '</div>' +
       '<button onclick="supprimerIndispo(\'' + i.id + '\')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;padding:0;">✕</button>' +
     '</div>';
@@ -4075,9 +4087,14 @@ function renderIndispos() {
       '<input type="date" id="indispo-debut" style="padding:6px 8px;border-radius:6px;border:1px solid var(--b2);font-size:12.5px;">' +
       '<span style="font-size:12px;color:var(--mu);">au</span>' +
       '<input type="date" id="indispo-fin" style="padding:6px 8px;border-radius:6px;border:1px solid var(--b2);font-size:12.5px;">' +
-      '<input type="text" id="indispo-motif" placeholder="Motif (optionnel)" style="flex:1;min-width:120px;padding:6px 8px;border-radius:6px;border:1px solid var(--b2);font-size:12.5px;">' +
+      '<select id="indispo-type" title="Ce motif est affiché à vos clients" style="padding:6px 8px;border-radius:6px;border:1px solid var(--b2);font-size:12.5px;">' +
+        '<option value="vacances">Vacances</option><option value="fermeture">Fermeture exceptionnelle</option>' +
+        '<option value="inventaire">Inventaire</option><option value="formation">Formation</option><option value="autre">Autre (affiché « Indisponible »)</option>' +
+      '</select>' +
+      '<input type="text" id="indispo-motif" maxlength="200" placeholder="Note personnelle (non visible par vos clients)" style="flex:1;min-width:160px;padding:6px 8px;border-radius:6px;border:1px solid var(--b2);font-size:12.5px;">' +
       '<button onclick="ajouterIndispo()" style="padding:6px 12px;border-radius:6px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">+ Bloquer</button>' +
-    '</div>';
+    '</div>' +
+    '<div style="font-size:11.5px;color:var(--mu);margin-top:6px;">Vos clients voient le <strong>type</strong> (ex. « Vacances ») sur votre fiche et au moment de réserver. La note personnelle reste privée.</div>';
 }
 
 async function ajouterIndispo() {
@@ -4085,9 +4102,11 @@ async function ajouterIndispo() {
   var debut = document.getElementById('indispo-debut').value;
   var fin = document.getElementById('indispo-fin').value || debut;
   var motif = document.getElementById('indispo-motif').value.trim() || null;
+  var typeFermeture = document.getElementById('indispo-type').value;
+  if (!TYPES_FERMETURE_LIBELLE[typeFermeture]) typeFermeture = 'autre';
   if (!debut) { alert('Merci de renseigner au moins une date de début.'); return; }
   if (fin < debut) { alert('La date de fin ne peut pas être avant la date de début.'); return; }
-  var { error } = await sb.from('artisans_indisponibilites').insert({ artisan_id: _artisan.id, date_debut: debut, date_fin: fin, motif: motif });
+  var { error } = await sb.from('artisans_indisponibilites').insert({ artisan_id: _artisan.id, date_debut: debut, date_fin: fin, motif: motif, type_fermeture: typeFermeture });
   if (error) { alert('Erreur : ' + error.message); return; }
   await chargerIndispos();
 }

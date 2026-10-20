@@ -78,6 +78,14 @@ function horaires(i: any): { debut: string; fin: string } {
   if (hd) { const [h, m] = hd.split(":").map(Number); return { debut: hd, fin: `${p2(Math.min(h + 1, 23))}:${p2(m)}` }; }
   return i.creneau === "apres_midi" ? { debut: "14:00", fin: "18:00" } : { debut: "07:00", fin: "12:00" };
 }
+const LIBELLE_FERMETURE: Record<string, string> = { vacances: "Vacances", fermeture: "Fermeture exceptionnelle", inventaire: "Inventaire", formation: "Formation", autre: "Indisponible" };
+// « 2026-10-16 » → 20261016 ; jour suivant pour la fin d'un évènement « journée entière » (la date de fin y est exclue).
+const jourCompact = (d: string) => d.replace(/-/g, "");
+function jourSuivantCompact(d: string): string {
+  const [a, m, j] = d.split("-").map(Number);
+  const x = new Date(Date.UTC(a, m - 1, j + 1));
+  return `${x.getUTCFullYear()}${p2(x.getUTCMonth() + 1)}${p2(x.getUTCDate())}`;
+}
 const STATUTS = ["planifiee", "en_cours", "terminee", "payee"];
 const LIBELLE_STATUT: Record<string, string> = { planifiee: "Planifiée", en_cours: "En cours", terminee: "Terminée", payee: "Payée" };
 
@@ -125,6 +133,23 @@ Deno.serve(async (req: Request) => {
       );
       if (lieu) lignes.push("LOCATION:" + echapper(lieu));
       if (description) lignes.push("DESCRIPTION:" + echapper(description));
+      lignes.push("END:VEVENT");
+    }
+
+    // Journées bloquées (vacances, fermetures…) : affichées en « journée entière » dans l'agenda de l'artisan.
+    // Ce fichier est privé (lien secret de l'artisan) : sa note personnelle peut donc y figurer.
+    const { data: indispos, error: errIndispo } = await sb.from("artisans_indisponibilites")
+      .select("*").eq("artisan_id", artisan.id)
+      .gte("date_fin", bornes(-JOURS_AVANT)).lte("date_debut", bornes(JOURS_APRES));
+    if (errIndispo) console.error("[planning-ics] lecture journées bloquées", errIndispo.message); // le planning reste servi sans elles
+    for (const b of (indispos || []) as any[]) {
+      const lib = LIBELLE_FERMETURE[b.type_fermeture] || LIBELLE_FERMETURE.autre;
+      lignes.push(
+        "BEGIN:VEVENT", `UID:indispo-${b.id}@caralink.app`, `DTSTAMP:${maintenant}`,
+        `DTSTART;VALUE=DATE:${jourCompact(String(b.date_debut))}`, `DTEND;VALUE=DATE:${jourSuivantCompact(String(b.date_fin))}`,
+        "SUMMARY:" + echapper("⛔ " + lib), "TRANSP:TRANSPARENT",
+      );
+      if (b.motif) lignes.push("DESCRIPTION:" + echapper(String(b.motif)));
       lignes.push("END:VEVENT");
     }
     lignes.push("END:VCALENDAR");

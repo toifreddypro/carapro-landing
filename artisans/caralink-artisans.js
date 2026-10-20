@@ -53,6 +53,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       visite_frais: 'Frais de déplacement :', visite_sans_frais: 'Visite sans frais de déplacement.',
       visite_mention: "Le devis définitif des travaux vous est remis par l'artisan après sa visite.",
       visite_pas_de_creneaux: 'Choisissez un créneau dans les disponibilités de cet artisan.',
+      fermeture_vacances: 'Vacances', fermeture_fermeture: 'Fermeture exceptionnelle', fermeture_inventaire: 'Inventaire', fermeture_formation: 'Formation', fermeture_autre: 'Indisponible',
       premiere_titre: 'Première intervention avec cet artisan ?',
       premiere_texte: "Pour un nouveau chantier, l'artisan doit d'abord se déplacer pour l'estimer.",
       premiere_oui: "Oui, c'est la première fois (devis / rendez-vous sur place)", premiere_non: "Non, je connais déjà cet artisan (réservation directe)",
@@ -89,6 +90,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       visite_frais: 'Call-out fee:', visite_sans_frais: 'Visit with no call-out fee.',
       visite_mention: 'The final quote for the work is given by the craftsman after the visit.',
       visite_pas_de_creneaux: "Choose a slot in this craftsman's availability.",
+      fermeture_vacances: 'Holiday', fermeture_fermeture: 'Closed', fermeture_inventaire: 'Stocktake', fermeture_formation: 'Training', fermeture_autre: 'Unavailable',
       premiere_titre: 'First job with this craftsman?',
       premiere_texte: 'For a new job, the craftsman first needs to visit to assess it.',
       premiere_oui: "Yes, it's the first time (quote / on-site appointment)", premiere_non: 'No, I already know this craftsman (direct booking)',
@@ -125,6 +127,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       visite_frais: 'Gastos de desplazamiento:', visite_sans_frais: 'Visita sin gastos de desplazamiento.',
       visite_mention: 'El presupuesto definitivo de la obra se entrega tras la visita.',
       visite_pas_de_creneaux: 'Elija un hueco en la disponibilidad de este profesional.',
+      fermeture_vacances: 'Vacaciones', fermeture_fermeture: 'Cierre excepcional', fermeture_inventaire: 'Inventario', fermeture_formation: 'Formación', fermeture_autre: 'No disponible',
       premiere_titre: '¿Primera intervención con este profesional?',
       premiere_texte: 'Para una obra nueva, el profesional debe desplazarse primero para evaluarla.',
       premiere_oui: 'Sí, es la primera vez (presupuesto / cita en el lugar)', premiere_non: 'No, ya conozco a este profesional (reserva directa)',
@@ -568,10 +571,19 @@ function pastillesSpecialesCarte(a) {
   return h;
 }
 
+// Libellé court d'une journée bloquée par l'artisan (type choisi dans une liste, jamais de texte libre) — null si le jour n'est pas bloqué.
+function libelleFermeture(code) {
+  if (!code) return '';
+  var cles = { vacances: 'fermeture_vacances', fermeture: 'fermeture_fermeture', inventaire: 'fermeture_inventaire', formation: 'fermeture_formation' };
+  return T(cles[code] || 'fermeture_autre');
+}
+
 // Une colonne de la grille : jour + plages horaires (début–fin). Une plage "complète" est grisée ; un jour fermé affiche —.
 function colonneJourCarte(j) {
   var slots = (j.ferme || !j.plages.length)
-    ? '<div class="dispo-slot unavailable">—</div>'
+    ? (j.fermeture
+        ? '<div class="dispo-slot unavailable" style="font-size:10px;line-height:1.25;white-space:normal;">' + escHtml(libelleFermeture(j.fermeture)) + '</div>'
+        : '<div class="dispo-slot unavailable">—</div>')
     : j.plages.map(function(p) {
         return '<div class="dispo-slot ' + (p.libre ? 'available' : 'unavailable') + '"' + (p.libre ? '' : ' title="' + escHtml(T('dispo_complet')) + '"') + '>' +
           '<span class="h-deb">' + p.debut + '</span><span class="h-sep">–</span><span class="h-fin">' + p.fin + '</span></div>';
@@ -958,7 +970,9 @@ async function verifierDispoReelle(artisanId, dateDebut) {
               ? j.creneaux.map(function(h) {
                   return '<button type="button" onclick="choisirCreneauPublic(' + jsAttr(j.date) + ',' + jsAttr(h) + ')" style="display:block;width:100%;padding:5px 2px;margin-bottom:4px;border-radius:6px;border:1px solid var(--ac-brd,#e8c4b8);background:#eef7f2;color:var(--ac,#B5502F);font-weight:700;font-size:11.5px;cursor:pointer;">' + h + '</button>';
                 }).join('')
-              : '<div style="color:var(--line,#ccc);font-size:13px;padding:5px 0;">—</div>') +
+              : (j.fermeture
+                  ? '<div style="color:var(--mu,#999);font-size:10.5px;line-height:1.25;padding:5px 0;">' + escHtml(libelleFermeture(j.fermeture)) + '</div>'
+                  : '<div style="color:var(--line,#ccc);font-size:13px;padding:5px 0;">—</div>')) +
           '</div>';
         }).join('') +
       '</div>' +

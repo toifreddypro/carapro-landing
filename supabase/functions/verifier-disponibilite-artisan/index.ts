@@ -264,14 +264,29 @@ Deno.serve(async (req: Request) => {
       .lte("date_intervention", dateISO(dateFinHorizon));
     if (errI) throw errI;
 
-    const { data: indispos } = await sb.from("artisans_indisponibilites")
-      .select("date_debut, date_fin")
-      .eq("artisan_id", artisan_id)
-      .gte("date_fin", dateDebut)
-      .lte("date_debut", dateISO(dateFinHorizon));
+    // Si la colonne « type_fermeture » n'existe pas encore (SQL pas encore lancé), on relit sans elle :
+    // les journées bloquées doivent continuer à bloquer les réservations quoi qu'il arrive.
+    let indispos: any[] | null = null;
+    for (const colonnes of ["date_debut, date_fin, type_fermeture", "date_debut, date_fin"]) {
+      const r = await sb.from("artisans_indisponibilites")
+        .select(colonnes)
+        .eq("artisan_id", artisan_id)
+        .gte("date_fin", dateDebut)
+        .lte("date_debut", dateISO(dateFinHorizon));
+      if (!r.error) { indispos = r.data; break; }
+      console.error("[verifier-disponibilite-artisan] indisponibilités (" + colonnes + ") :", r.error.message);
+    }
 
     function estJourBloque(jourStr: string): boolean {
       return (indispos || []).some((i: any) => jourStr >= i.date_debut && jourStr <= i.date_fin);
+    }
+    // Ce que le client peut savoir d'une journée bloquée : UNIQUEMENT le type choisi dans la liste ci-dessous.
+    // La note personnelle de l'artisan (colonne « motif ») n'est jamais lue ici, donc jamais envoyée au client.
+    const TYPES_FERMETURE = ["vacances", "fermeture", "inventaire", "formation", "autre"];
+    function typeJourBloque(jourStr: string): string | null {
+      const i = (indispos || []).find((x: any) => jourStr >= x.date_debut && jourStr <= x.date_fin);
+      if (!i) return null;
+      return TYPES_FERMETURE.includes(i.type_fermeture) ? i.type_fermeture : "autre";
     }
 
     // ═══ MODE APERÇU — pas de trajet, juste "y a-t-il un trou dans le planning" ═══
@@ -288,13 +303,13 @@ Deno.serve(async (req: Request) => {
       const interduJourStr = (jourStr: string) => (interventions || []).filter((x: any) => x.date_intervention === jourStr);
 
       // Semaine affichée sur la vignette : horaires + libre/complet. Jamais le détail du planning.
-      const semaine: Array<{ date: string; ferme: boolean; plages: Array<{ debut: string; fin: string; libre: boolean }> }> = [];
+      const semaine: Array<{ date: string; ferme: boolean; fermeture?: string | null; plages: Array<{ debut: string; fin: string; libre: boolean }> }> = [];
       for (let i = 0; i < SEMAINE_JOURS; i++) {
         const jour = new Date(aujourdhui);
         jour.setDate(jour.getDate() + i);
         const jourStr = dateISO(jour);
         const blocsJour = horaires.filter((h: any) => h.jour_semaine === jour.getDay());
-        if (estJourBloque(jourStr) || !blocsJour.length) { semaine.push({ date: jourStr, ferme: true, plages: [] }); continue; }
+        if (estJourBloque(jourStr) || !blocsJour.length) { semaine.push({ date: jourStr, ferme: true, fermeture: typeJourBloque(jourStr), plages: [] }); continue; }
         const interDuJour = interduJourStr(jourStr);
         semaine.push({
           date: jourStr,
@@ -418,6 +433,7 @@ Deno.serve(async (req: Request) => {
           jour_num: jour.getDate(),
           mois_label: MOIS_NOMS[jour.getMonth()],
           creneaux: creneauxJour.slice(0, 4),
+          fermeture: typeJourBloque(jourStr), // null si le jour n'est pas bloqué ; sinon vacances | fermeture | inventaire | formation | autre
         });
       }
 

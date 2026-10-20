@@ -426,6 +426,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .cal-day.other-month{opacity:.35;}
 .cal-day.today{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac);}
 .cal-day.weekend{background:var(--p2);}
+.cal-day.bloque{background:repeating-linear-gradient(45deg,var(--p2),var(--p2) 7px,transparent 7px,transparent 14px);}
+.cal-bloque-tag{font-size:10.5px;font-weight:700;color:var(--mu);background:var(--panel);border:1px solid var(--brd);border-radius:6px;padding:2px 6px;margin-bottom:5px;display:inline-block;line-height:1.3;}
+@media(max-width:760px){.cal-bloque-tag{font-size:0;padding:0;border:0;background:none;}.cal-bloque-tag::before{content:"⛔";font-size:11px;}}
 .cal-day-num{font-size:12.5px;font-weight:700;color:var(--tx);margin-bottom:5px;}
 .cal-halves{display:flex;flex-direction:column;gap:4px;}
 .cal-half{border-radius:6px;padding:3px;min-height:24px;}
