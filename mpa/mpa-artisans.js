@@ -3015,7 +3015,9 @@ async function _facturerIntervention(id, envoyer) {
   if (!verifierAccesEcriture()) return;
   if (!exigerPro('facture_rapide')) return;
   var i = _interventionsCache.find(function(x) { return x.id === id; });
-  if (!i || i.facture_id) return;
+  if (!i) return;
+  // Déjà facturée (par exemple en « 1 clic » juste avant) : on ne reste pas muet, on envoie ou on ouvre la facture existante.
+  if (i.facture_id) { if (envoyer) envoyerFacture(i.facture_id); else imprimerFacture(i.facture_id); return; }
   if (!i.client_id) { alert('Choisissez d\'abord un client pour cette intervention, puis enregistrez.'); return; }
   if (!(Number(i.prix) > 0)) { alert('Cette intervention n\'a pas de prix.'); return; }
   // Tout se passe dans la base, d'un seul bloc : verrou de l'intervention, contrôle Pro, numéro attribué, facture créée et liée.
