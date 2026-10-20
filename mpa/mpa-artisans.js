@@ -1895,6 +1895,14 @@ async function ouvrirIntervention(id) {
 //  Frais de réservation / de déplacement payés à la réservation, et paiements demandés après la visite (« Demander un paiement »).
 // ════════════════════════════════════════
 var _paiementsIntervention = [];
+// Ce que le client a déjà payé en ligne (net des remboursements), et la part qui est un ACOMPTE sur le prix (frais de réservation, pas frais de déplacement d'une visite).
+function netPaiement(p) { return Number(p.montant) - Number(p.montant_rembourse || 0); }
+function dejaPayeEnLigne() {
+  return _paiementsIntervention.filter(function(p) { return ['paye', 'partiellement_rembourse'].indexOf(p.statut) !== -1; }).reduce(function(t, p) { return t + netPaiement(p); }, 0);
+}
+function acompteDejaPaye() {
+  return _paiementsIntervention.filter(function(p) { return p.type === 'reservation' && !p._visite && ['paye', 'partiellement_rembourse'].indexOf(p.statut) !== -1; }).reduce(function(t, p) { return t + netPaiement(p); }, 0);
+}
 function eurosMPA(n) { return Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'; }
 
 async function chargerPaiementsIntervention(i) {
@@ -1910,6 +1918,15 @@ async function chargerPaiementsIntervention(i) {
     if (error) throw error;
     // Un lien de paiement (solde) expiré reste visible : l'artisan voit pourquoi rien n'est arrivé. Une réservation expirée, non.
     _paiementsIntervention = (data || []).filter(function(p) { return p.statut !== 'expire' || p.type === 'solde'; });
+    // Les frais de DÉPLACEMENT d'une visite ne sont pas un acompte sur le prix : on repère ces paiements pour ne pas les déduire automatiquement.
+    try {
+      var idsDemandes = _paiementsIntervention.filter(function(p) { return p.type === 'reservation' && p.demande_id; }).map(function(p) { return p.demande_id; });
+      if (idsDemandes.length) {
+        var rd = await sb.from('demandes_devis').select('id, type_intervention').in('id', idsDemandes);
+        var visites = {}; (rd.data || []).forEach(function(d) { if (d.type_intervention === 'visite') visites[d.id] = true; });
+        _paiementsIntervention.forEach(function(p) { p._visite = !!visites[p.demande_id]; });
+      }
+    } catch (e) { /* facultatif : sans cette information, tous les frais de réservation sont traités comme un acompte */ }
   } catch (e) { zone.style.display = 'none'; return; } // table pas encore créée (SQL pas lancé) : rien à afficher
   renderPaiementsIntervention(i);
 }
@@ -2022,11 +2039,19 @@ function ouvrirDemandePaiement() {
   var client = i.mpa_artisans_clients || {};
   var dateAff = new Date(i.date_intervention + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   document.getElementById('dp-resume').textContent = (client.nom || 'Client') + ' — ' + dateAff;
-  document.getElementById('dp-montant').value = i.prix ? String(i.prix).replace('.', ',') : '';
+  // Les frais de réservation sont un acompte inclus dans le prix : on demande le RESTE (prix − acompte déjà payé).
+  var acompte = acompteDejaPaye();
+  var reste = i.prix ? Math.round((Number(i.prix) - acompte) * 100) / 100 : 0;
+  document.getElementById('dp-montant').value = reste > 0 ? String(reste).replace('.', ',') : '';
   document.getElementById('dp-description').value = '';
   document.getElementById('dp-email').value = client.email || '';
   var dejaPaye = _paiementsIntervention.filter(function(p) { return ['paye', 'partiellement_rembourse'].indexOf(p.statut) !== -1; }).reduce(function(s, p) { return s + Number(p.montant) - Number(p.montant_rembourse || 0); }, 0);
-  document.getElementById('dp-note').innerHTML = (dejaPaye > 0 ? '💡 Ce client a déjà payé <strong>' + eurosMPA(dejaPaye) + '</strong> en ligne (frais de réservation / de déplacement) : déduisez-le du montant si vous le souhaitez.<br>' : '') +
+  var autresPayes = Math.round((dejaPaye - acompte) * 100) / 100;
+  var noteAcompte = '';
+  if (acompte > 0 && i.prix) noteAcompte = '💡 Le client a déjà payé <strong>' + eurosMPA(acompte) + '</strong> de frais de réservation : c\'est un acompte, il est <strong>déduit automatiquement</strong> du prix de ' + eurosMPA(i.prix) + (reste > 0 ? ' (reste à payer : <strong>' + eurosMPA(reste) + '</strong>).' : '. Il n\'y a plus rien à demander : le prix est déjà couvert.') + '<br>';
+  else if (acompte > 0) noteAcompte = '💡 Le client a déjà payé <strong>' + eurosMPA(acompte) + '</strong> de frais de réservation (acompte) : déduisez-le du montant que vous demandez.<br>';
+  if (autresPayes > 0.004) noteAcompte += '💡 Le client a aussi payé <strong>' + eurosMPA(autresPayes) + '</strong> de frais de déplacement : non déduits automatiquement, à vous de décider.<br>';
+  document.getElementById('dp-note').innerHTML = noteAcompte +
     '✉️ Le client reçoit un email avec le lien de paiement (valable 14 jours). Vous pouvez aussi copier le lien ensuite et l\'envoyer vous-même.<br>🏦 L\'argent arrive tout de suite sur votre compte Stripe, puis sur votre compte bancaire sous quelques jours (délai fixé par Stripe, pas par CaraLink).';
   var caseAuto = document.getElementById('dp-relance-auto');
   if (caseAuto) { caseAuto.checked = estPro(); caseAuto.disabled = !estPro(); }
