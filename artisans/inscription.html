@@ -375,6 +375,12 @@ function recommencerInscription() {
   document.getElementById('wrap-resume').style.display = 'none';
   document.getElementById('wrap-confirmation').style.display = 'none';
   document.getElementById('wrap-form').style.display = 'block';
+  // Le bouton était resté sur « Création en cours… » (grisé) depuis le premier envoi : on le rend à nouveau utilisable,
+  // et on renouvelle la vérification anti-robot, dont la réponse a déjà été consommée.
+  var btn = document.getElementById('btn-submit');
+  btn.disabled = false; btn.textContent = 'Créer mon profil';
+  try { if (typeof turnstile !== 'undefined' && _idWidgetForm != null) turnstile.reset(_idWidgetForm); } catch (e) {}
+  document.getElementById('msg-err').classList.remove('show');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
