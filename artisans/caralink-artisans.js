@@ -29,6 +29,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       reservation_frais_enligne: 'Frais de réservation à régler en ligne :',
       reservation_mention_enligne: "Réglés maintenant, en ligne. Ces frais sont déduits du prix final de l’intervention. Vous êtes remboursé(e) intégralement si l'artisan refuse ou annule.",
       annul_grat_1: 'Annulation gratuite jusqu’à ', annul_grat_2: ' h avant le rendez-vous.',
+      annul_trop_tard_1: 'Ce créneau a lieu dans moins de ', annul_trop_tard_2: " h : l'annulation gratuite n'est plus possible. Si vous annulez, ces frais restent acquis à l'artisan.",
       annul_aucune: "Pas d'annulation gratuite : ces frais restent acquis à l'artisan si vous annulez.",
       err_email_paiement: "Une adresse email est nécessaire pour payer en ligne (votre reçu et le lien d'annulation y sont envoyés).",
       ph_email_paiement: 'Email (obligatoire — pour payer en ligne et recevoir votre reçu)',
@@ -65,6 +66,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       visite_mention_enligne: 'Paid now, online. You are fully refunded if the craftsman declines or cannot come.',
       reservation_frais_enligne: 'Booking fee to pay online:',
       reservation_mention_enligne: 'Paid now, online. These fees are deducted from the final price of the service. You are fully refunded if the craftsman declines or cancels.',
+      annul_trop_tard_1: 'This slot is in less than ', annul_trop_tard_2: ' h: free cancellation is no longer possible. If you cancel, these fees are kept by the craftsman.',
       annul_grat_1: 'Free cancellation up to ', annul_grat_2: ' h before the appointment.',
       annul_aucune: 'No free cancellation: this fee is kept by the craftsman if you cancel.',
       err_email_paiement: 'An email address is required to pay online (your receipt and cancellation link are sent there).',
@@ -102,6 +104,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       visite_mention_enligne: 'Se pagan ahora, en línea. Se le reembolsa íntegramente si el profesional rechaza o no puede ir.',
       reservation_frais_enligne: 'Gastos de reserva a pagar en línea:',
       reservation_mention_enligne: 'Se pagan ahora, en línea. Estos gastos se descuentan del precio final de la intervención. Se le reembolsa íntegramente si el profesional rechaza o cancela.',
+      annul_trop_tard_1: 'Esta franja es dentro de menos de ', annul_trop_tard_2: ' h: ya no es posible la cancelación gratuita. Si cancela, el profesional se queda con estos gastos.',
       annul_grat_1: 'Cancelación gratuita hasta ', annul_grat_2: ' h antes de la cita.',
       annul_aucune: 'Sin cancelación gratuita: estos gastos quedan para el profesional si usted cancela.',
       err_email_paiement: 'Se necesita un correo electrónico para pagar en línea (allí se envían su recibo y el enlace de cancelación).',
@@ -1294,7 +1297,16 @@ function montantPaiementEnLigne(type, artisanId) {
 function politiqueAnnulationHTML(a) {
   var h = Number(a && a.annulation_gratuite_heures);
   if (!isFinite(h)) h = 24;
-  return h > 0 ? T('annul_grat_1') + h + T('annul_grat_2') : T('annul_aucune');
+  if (h > 0) {
+    // Créneau déjà plus proche que le délai gratuit : on prévient AVANT que le client ne choisisse et ne paie (heure de la Guadeloupe, UTC-4).
+    var ctx = window._dispoContexte;
+    if (ctx && ctx.date && ctx.heureDebut) {
+      var debut = new Date(ctx.date + 'T' + String(ctx.heureDebut).slice(0, 5) + ':00-04:00').getTime();
+      if (isFinite(debut) && Date.now() > debut - h * 3600000) return '<strong>⚠️ ' + T('annul_trop_tard_1') + h + T('annul_trop_tard_2') + '</strong>';
+    }
+    return T('annul_grat_1') + h + T('annul_grat_2');
+  }
+  return T('annul_aucune');
 }
 function reservationInfoHTML() {
   var ctx = window._dispoContexte;
