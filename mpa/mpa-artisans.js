@@ -752,6 +752,7 @@ async function avancerStatut(id, ev) {
   var statutActuel = i.statut || 'planifiee';
   if (statutActuel === 'annulee') return; // une intervention annulée ne suit pas ce cycle
 
+  if (statutActuel === 'terminee') { payerEnMainPropre(id, false); return; } // « Payée » ne se pose plus d'un simple clic : confirmation « Payé en main propre »
   var nouveauStatut = CYCLE_STATUT[statutActuel] || 'planifiee';
   // Terminée / Payée : le prix doit avoir été validé (sinon l'intervention compterait pour 0 € et ne pourrait pas être facturée).
   if (['terminee', 'payee'].indexOf(nouveauStatut) !== -1 && i.prix == null) { demanderPrixPuis(i, function() { avancerStatut(id); }); return; }
@@ -1838,6 +1839,7 @@ async function ouvrirNouvelleIntervention(dateStr, creneau) {
   var hintN = document.getElementById('mi-prix-hint'); if (hintN) hintN.textContent = '';
   document.getElementById('mi-notes').value = '';
   document.getElementById('mi-statut').value = 'planifiee';
+  masquerOptionPayee(false);
   document.getElementById('mi-date-paiement').value = '';
   document.getElementById('mi-date-paiement-wrap').style.display = 'none';
   document.getElementById('mi-delete-wrap').style.display = 'none';
@@ -1878,6 +1880,7 @@ async function ouvrirIntervention(id) {
   document.getElementById('mi-prix').dataset.auto = '0';
   var hintP = document.getElementById('mi-prix-hint'); if (hintP) hintP.textContent = (i.prix == null && i.service_id) ? suggestionPrixService(i.service_id, i.duree_min || 0).texte : (i.prix === 0 || i.prix === '0' ? 'Intervention marquée gratuite.' : '');
   document.getElementById('mi-notes').value = i.notes || '';
+  masquerOptionPayee(i.statut === 'payee');
   document.getElementById('mi-statut').value = i.statut || 'planifiee';
   document.getElementById('mi-date-paiement').value = i.date_paiement || '';
   toggleDatePaiement();
@@ -1928,7 +1931,7 @@ async function chargerPaiementsIntervention(i) {
         _paiementsIntervention.forEach(function(p) { p._visite = !!visites[p.demande_id]; });
       }
     } catch (e) { /* facultatif : sans cette information, tous les frais de réservation sont traités comme un acompte */ }
-  } catch (e) { zone.style.display = 'none'; return; } // table pas encore créée (SQL pas lancé) : rien à afficher
+  } catch (e) { _paiementsIntervention = []; } // table pas encore créée (SQL pas lancé) : on affiche seulement le bouton « Payé en main propre »
   renderPaiementsIntervention(i);
 }
 
@@ -1951,12 +1954,20 @@ function renderPaiementsIntervention(i) {
   }).join('');
   var peutDemander = paiementsEnLigneActifs() && ['annulee'].indexOf(i.statut) === -1;
   var dejaPayee = i.statut === 'payee';
+  var payeEnLigne = _paiementsIntervention.some(function(p) { return p.type === 'solde' && ['paye', 'partiellement_rembourse', 'rembourse'].indexOf(p.statut) !== -1; });
+  var etatPaye = dejaPayee ? '<div style="font-size:12.5px;margin-top:8px;text-align:center;">' + (payeEnLigne ? '🟢 Payée en ligne via CaraLink' : '🟢 Payée en main propre <span style="color:var(--mu);">(hors CaraLink)</span>') + '</div>' : '';
+  var blocPropre = (i.statut === 'terminee')
+    ? '<div style="text-align:center;margin-top:10px;"><button type="button" onclick="payerEnMainPropre(null, true)" style="padding:9px 18px;border-radius:8px;border:1.5px solid #16a34a;background:rgba(34,197,94,.08);color:#15803d;font-size:13px;font-weight:700;cursor:pointer;">💵 Payé en main propre</button><div style="font-size:11px;color:var(--mu);margin-top:5px;">Espèces, chèque, virement… tout paiement reçu hors CaraLink.</div></div>'
+    : '';
+  var enAttente = _paiementsIntervention.some(function(p) { return p.type === 'solde' && p.statut === 'en_attente' && Date.now() - new Date(p.created_at).getTime() < 14 * 86400000; });
   zone.innerHTML = (lignes || '') +
     (peutDemander && dejaPayee
       ? '<div style="text-align:center;margin-top:6px;"><button type="button" disabled aria-disabled="true" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--b2);background:var(--bg);color:var(--mu);font-size:13px;font-weight:700;cursor:not-allowed;opacity:.65;">💶 Demander un paiement</button><div style="font-size:11px;color:var(--mu);margin-top:5px;">Cette intervention est déjà payée. Pour redemander un paiement, repassez-la d\'abord en « Terminée ».</div></div>'
+      : peutDemander && enAttente
+      ? '<div style="text-align:center;margin-top:6px;"><button type="button" disabled aria-disabled="true" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--b2);background:var(--bg);color:var(--mu);font-size:13px;font-weight:700;cursor:not-allowed;opacity:.65;">💶 Demander un paiement</button><div style="font-size:11px;color:var(--mu);margin-top:5px;">⏳ Une demande de paiement est déjà en attente. Utilisez « Relancer » ci-dessus pour rappeler votre client.</div></div>'
       : peutDemander
       ? '<div style="text-align:center;margin-top:6px;"><button type="button" onclick="ouvrirDemandePaiement()" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--ac);background:var(--ac);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">💶 Demander un paiement</button><div style="font-size:11px;color:var(--mu);margin-top:5px;">Envoie à votre client un lien de paiement par carte pour le montant de votre devis.</div></div>'
-      : (lignes ? '' : '<div style="font-size:11.5px;color:var(--mu);text-align:center;">Activez vos paiements en ligne (Mon profil) pour pouvoir demander un paiement à vos clients.</div>'));
+      : (lignes ? '' : '<div style="font-size:11.5px;color:var(--mu);text-align:center;">Activez vos paiements en ligne (Mon profil) pour pouvoir demander un paiement à vos clients.</div>')) + blocPropre + etatPaye;
 }
 
 // ── Relances d'un lien de paiement non réglé ──
@@ -1966,7 +1977,7 @@ function historiqueRelances(p) {
   return ' · relances : ' + h.map(function(r) { return new Date(r.le).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + (r.par === 'auto' ? ' (auto)' : ' (vous)'); }).join(', ');
 }
 function boutonMarquerPaye(p) {
-  return ' <button type="button" onclick="marquerPayeHorsLigne(\'' + p.id + '\')" style="background:none;border:none;color:var(--ac);font-size:12px;cursor:pointer;text-decoration:underline;">Le client a payé autrement ? Marquer payé</button>';
+  return ' <button type="button" onclick="payerEnMainPropre(null, true)" style="background:none;border:none;color:var(--ac);font-size:12px;cursor:pointer;text-decoration:underline;">Le client a payé autrement ? 💵 Payé en main propre</button>';
 }
 function detailAttentePaiement(p) {
   var creeLe = new Date(p.created_at).getTime(), maintenant = Date.now();
@@ -1976,10 +1987,12 @@ function detailAttentePaiement(p) {
   var dernier = new Date(p.derniere_relance_le || p.created_at).getTime();
   var heuresRestantes = Math.ceil((24 * 3600000 - (maintenant - dernier)) / 3600000);
   var bouton;
+  var styleDesactive = 'padding:5px 12px;border-radius:7px;border:1.5px solid var(--b2);background:var(--bg);color:var(--mu);font-size:12px;font-weight:700;cursor:not-allowed;opacity:.7;';
   if (!p.client_email) bouton = '<span style="color:var(--mu);">Pas d\'email pour ce client : copiez le lien et envoyez-le vous-même (SMS, WhatsApp).</span>';
-  else if (nb >= 2) bouton = '<span style="color:var(--mu);">2 relances envoyées : c\'était la dernière.</span>';
-  else if (heuresRestantes > 0) bouton = '<span style="color:var(--mu);">Prochaine relance possible dans ' + (heuresRestantes > 1 ? heuresRestantes + ' h' : '1 h') + ' (' + nb + '/2 envoyée' + (nb > 1 ? 's' : '') + ').</span>';
-  else bouton = '<button type="button" onclick="relancerPaiementPrestation(\'' + p.id + '\')" style="padding:5px 12px;border-radius:7px;border:1.5px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;font-weight:700;cursor:pointer;">✉️ Renvoyer l\'email au client (' + nb + '/2)</button>';
+  else if (nb >= 2) bouton = '<button type="button" disabled aria-disabled="true" style="' + styleDesactive + '">✉️ Relancer (2/2)</button> <span style="color:var(--mu);">2 relances envoyées : c\'était la dernière.</span>';
+  else if (heuresRestantes > 0) bouton = '<button type="button" disabled aria-disabled="true" style="' + styleDesactive + '">✉️ Relancer (' + nb + '/2)</button> <span style="color:var(--mu);">Disponible dans ' + (heuresRestantes > 1 ? heuresRestantes + ' h' : '1 h') + ' : une relance n\'est possible que 24 h après la demande de paiement' + (nb > 0 ? ' (ou après la précédente relance)' : '') + '.</span>';
+  else bouton = '<button type="button" onclick="relancerPaiementPrestation(\'' + p.id + '\')" style="padding:5px 12px;border-radius:7px;border:1.5px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;font-weight:700;cursor:pointer;">✉️ Relancer (' + nb + '/2)</button>';
+  if (p.client_email) bouton += '<br><span style="color:var(--mu);">Le client a perdu l\'email ? </span><button type="button" onclick="renvoyerLienPaiement(\'' + p.id + '\')" style="background:none;border:none;color:var(--ac);font-size:11.5px;cursor:pointer;text-decoration:underline;padding:0;">Renvoyer le même lien</button>';
   var auto = (p.relance_auto && nb < 2) ? '<br>🤖 Relance automatique prévue si le client ne paie pas.' : '';
   return '<div style="font-size:11.5px;color:var(--mu);margin:3px 0 0 22px;line-height:1.6;">Lien envoyé il y a ' + (jours < 1 ? 'moins d\'un jour' : jours + ' jour' + (jours > 1 ? 's' : '')) + ', valable jusqu\'au ' + expireLe + historiqueRelances(p) + '.' + auto + '<br>' + bouton + boutonMarquerPaye(p) + '</div>';
 }
@@ -2013,18 +2026,42 @@ async function relancerPaiementPrestation(id) {
     if (i) await chargerPaiementsIntervention(i);
   } catch (e) { alert(e.message); }
 }
-// Le client a payé autrement (espèces, virement…) : l'intervention passe en « Payée » ; la base annule alors le lien en attente.
-async function marquerPayeHorsLigne(id) {
-  if (!verifierAccesEcriture()) return;
+// « Le client a perdu l'email » : le même lien est renvoyé tel quel, avec confirmation. Cela ne compte pas comme une relance.
+async function renvoyerLienPaiement(id) {
   var p = _paiementsIntervention.find(function(x) { return x.id === id; });
-  var i = _interventionsCache.find(function(x) { return x.id === _interventionEnCours; });
-  if (!p || !i) return;
-  if (!confirm('Marquer cette intervention « Payée » ?\n\nLe lien de paiement en ligne envoyé à ' + (p.client_nom || 'votre client') + ' sera annulé : il ne pourra plus payer.')) return;
+  if (!p) return;
+  if (!confirm('Renvoyer le MÊME lien de paiement (' + eurosMPA(p.montant) + ') par email à ' + (p.client_nom || 'votre client') + ' (' + (p.client_email || '') + ') ?\n\nÀ utiliser s\'il a perdu le premier email. Cela ne compte pas comme une relance (3 renvois par jour au plus).')) return;
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/relancer-paiement', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({ paiement_id: id, renvoi: true }),
+    });
+    var data = await res.json();
+    if (data.error) {
+      var messages = { renvoi_trop_souvent: 'Vous avez déjà renvoyé ce lien 3 fois aujourd\'hui. Réessayez demain, ou copiez le lien pour l\'envoyer vous-même.', lien_expire: 'Ce lien a expiré : créez-en un nouveau.', deja_paye: 'Ce paiement a déjà été réglé.', lien_inactif: 'Ce lien n\'est plus actif.', email_non_envoye: 'L\'email n\'a pas pu partir. Réessayez dans un instant.' };
+      throw new Error(messages[data.error] || data.error);
+    }
+    alert('✅ Le lien de paiement a été renvoyé à ' + (p.client_email || 'votre client') + '.');
+  } catch (e) { alert(e.message); }
+}
+// Paiement reçu hors CaraLink (espèces, chèque, virement…) : l'intervention passe en « Payée » ; la base annule alors un éventuel lien en attente.
+async function payerEnMainPropre(id, depuisModale) {
+  if (!verifierAccesEcriture()) return;
+  var i = _interventionsCache.find(function(x) { return x.id === (id || _interventionEnCours); });
+  if (!i) return;
+  if (i.statut === 'payee') { alert('Cette intervention est déjà payée.'); return; }
+  if (i.prix == null || i.prix === '') { demanderPrixPuis(i, function() { payerEnMainPropre(i.id, depuisModale); }); return; }
+  var client = (i.mpa_artisans_clients && i.mpa_artisans_clients.nom) || 'votre client';
+  var lienEnAttente = (_paiementsIntervention || []).some(function(p) { return p.intervention_id === i.id && p.type === 'solde' && p.statut === 'en_attente'; });
+  if (!confirm('💵 Marquer cette intervention « Payée en main propre » ?\n\n' + client + ' vous a réglé ' + (Number(i.prix) > 0 ? eurosMPA(i.prix) : '') + ' hors CaraLink (espèces, chèque, virement…).' + (lienEnAttente ? '\n\nLe lien de paiement en ligne déjà envoyé sera annulé : il ne pourra plus payer.' : '') + '\n\nLe montant compte dans votre chiffre d\'affaires, sans frais de paiement en ligne.')) return;
   var { error } = await sb.from('mpa_artisans_interventions').update({ statut: 'payee', date_paiement: new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10) }).eq('id', i.id).eq('artisan_id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
-  mpaAiDire('✅ Intervention marquée « Payée ». Le lien de paiement en ligne a été annulé.', 'info');
+  mpaAiDire('💵 Intervention marquée « Payée en main propre »' + (lienEnAttente ? ' ; le lien de paiement en ligne a été annulé.' : '.'), 'info');
   await chargerInterventions();
-  await ouvrirIntervention(i.id);
+  if (document.getElementById('p-compta').classList.contains('active')) await chargerCompta();
+  if (depuisModale) await ouvrirIntervention(i.id);
 }
 
 function copierLienPaiementPrestation(token) {
@@ -2037,9 +2074,8 @@ function ouvrirDemandePaiement() {
   var i = _interventionsCache.find(function(x) { return x.id === _interventionEnCours; });
   if (!i) return;
   if (i.statut === 'payee') { alert('Cette intervention est déjà payée : il n\'y a plus rien à demander. Repassez-la en « Terminée » si vous devez encore encaisser un montant.'); return; }
-  // Un lien est déjà en attente : en créer un autre annule l'ancien ET renvoie un email. On prévient, et on rappelle que « Relancer » existe.
-  var lienEnAttente = (_paiementsIntervention || []).find(function(p) { return p.type === 'solde' && p.statut === 'en_attente'; });
-  if (lienEnAttente && !confirm('Un lien de paiement de ' + eurosMPA(lienEnAttente.montant) + ' est déjà en attente pour ce client.\n\nSi vous continuez, l\'ancien lien sera annulé et le client recevra un NOUVEL email.\n\nPour simplement lui rappeler, utilisez plutôt « Relancer » sous la ligne de paiement (une fois par jour, 2 fois au plus).\n\nCréer quand même un nouveau lien ?')) return;
+  // Un lien est déjà en attente : le bouton est grisé (voir renderPaiementsIntervention) ; ce garde-fou couvre un clic déjà parti.
+  if ((_paiementsIntervention || []).some(function(p) { return p.type === 'solde' && p.statut === 'en_attente' && Date.now() - new Date(p.created_at).getTime() < 14 * 86400000; })) { alert('Un paiement est déjà en attente pour cette intervention : utilisez « Relancer » (ou « Renvoyer le même lien »).'); return; }
   var client = i.mpa_artisans_clients || {};
   var dateAff = new Date(i.date_intervention + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   document.getElementById('dp-resume').textContent = (client.nom || 'Client') + ' — ' + dateAff;
@@ -2092,6 +2128,7 @@ async function confirmerDemandePaiement() {
       body: JSON.stringify({ intervention_id: i.id, montant: montant, description: document.getElementById('dp-description').value, client_email: document.getElementById('dp-email').value.trim(), relance_auto: !!(document.getElementById('dp-relance-auto') && document.getElementById('dp-relance-auto').checked) }),
     });
     var data = await res.json();
+    if (data.error === 'paiement_deja_en_attente') throw new Error('Un paiement est déjà en attente pour cette intervention : utilisez « Relancer » (ou « Renvoyer le même lien »).');
     if (data.error) throw new Error(data.error);
     fermerModale('modal-demander-paiement');
     // Sans prix sur l'intervention, elle compterait pour 0 € dans le chiffre d'affaires et ne pourrait pas être facturée : on le renseigne.
@@ -2229,6 +2266,7 @@ async function signalerRetard(interventionId) {
     var data = await res.json();
     if (data.error) throw new Error(data.error);
     mpaAiDire('⏰ ' + escHtml(client.nom) + ' a été prévenu(e) d\'un retard d\'environ ' + minutes + ' minutes.', 'info');
+    alert('✅ Message envoyé : ' + client.nom + ' (' + client.email + ') a été prévenu(e) d\'un retard d\'environ ' + minutes + ' minutes.');
   } catch (e) {
     if (!traiterErreurPlan(e)) alert('Erreur : ' + e.message);
   }
@@ -2331,6 +2369,11 @@ async function envoyerReponseAvis(avisId) {
   }
 }
 
+// « Payée » ne se choisit plus à la main : elle vient du paiement en ligne ou du bouton « Payé en main propre ». Le choix reste visible seulement pour une intervention déjà payée.
+function masquerOptionPayee(dejaPayee) {
+  var o = document.querySelector('#mi-statut option[value="payee"]');
+  if (o) { o.hidden = !dejaPayee; o.disabled = !dejaPayee; }
+}
 function toggleDatePaiement() {
   var statut = document.getElementById('mi-statut').value;
   var wrap = document.getElementById('mi-date-paiement-wrap');
@@ -2723,24 +2766,26 @@ async function renderRecapInterventions() {
     .sort(function(a, b) { return String(a.date_intervention).localeCompare(String(b.date_intervention)); });
   var titre = '<div style="font-size:14px;font-weight:700;margin-bottom:8px;">📊 Mes interventions ' + (/^[aeiouéèh]/i.test(MOIS_NOMS[_calMois]) ? 'd\'' : 'de ') + MOIS_NOMS[_calMois].toLowerCase() + '</div>';
   if (!lignes.length) { zone.innerHTML = titre + '<p style="font-size:13px;color:var(--mu);margin:0;">Aucune intervention ce mois-ci.</p>'; return; }
-  var rembourse = {};
+  var rembourse = {}, enLigne = {};
   try {
-    var r = await sb.from('paiements_prestations').select('intervention_id, montant_rembourse, statut')
+    var r = await sb.from('paiements_prestations').select('intervention_id, montant_rembourse, statut, type')
       .eq('artisan_id', _artisan.id).in('intervention_id', lignes.map(function(i) { return i.id; }));
+    (r.data || []).forEach(function(p) { if (p.type === 'solde' && ['paye', 'partiellement_rembourse', 'rembourse'].indexOf(p.statut) !== -1) enLigne[p.intervention_id] = true; });
     (r.data || []).forEach(function(p) { if (Number(p.montant_rembourse) > 0) rembourse[p.intervention_id] = (rembourse[p.intervention_id] || 0) + Number(p.montant_rembourse); });
   } catch (e) { /* table absente ou erreur : on affiche le récap sans la mention de remboursement */ }
   if (seq !== _recapIntSeq) return; // le mois a changé entre-temps
   var fait = lignes.filter(function(i) { return i.statut === 'terminee' || i.statut === 'payee'; });
   var total = fait.reduce(function(s, i) { return s + (Number(i.prix) || 0); }, 0);
-  zone.innerHTML = titre + lignes.map(function(i) {
+  zone.innerHTML = titre + '<div style="max-height:280px;overflow-y:auto;border:1px solid var(--brd);border-radius:10px;padding:0 12px;">' + lignes.map(function(i) {
     var nom = (i.artisans_services && i.artisans_services.nom_service) || 'Intervention';
     var date = new Date(i.date_intervention + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
     var badge = rembourse[i.id] ? ' <span style="font-size:11px;font-weight:700;color:#b45309;background:rgba(245,158,11,.12);padding:2px 7px;border-radius:6px;">↩️ remboursée ' + eurosMPA(rembourse[i.id]) + '</span>' : '';
+    if (i.statut === 'payee') badge += ' <span style="font-size:11px;color:var(--mu);">' + (enLigne[i.id] ? '💳 en ligne' : '💵 main propre') + '</span>';
     var fait1 = i.statut === 'terminee' || i.statut === 'payee';
     return '<div onclick="ouvrirIntervention(\'' + i.id + '\')" style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--brd);cursor:pointer;font-size:13px;' + (fait1 ? '' : 'color:var(--mu);') + '">' +
       '<span><span style="color:var(--mu);margin-right:8px;">' + date + '</span>' + escHtml(nom) + badge + '</span>' +
       '<strong>' + (Number(i.prix) > 0 ? eurosMPA(Number(i.prix)) : '—') + '</strong></div>';
-  }).join('') +
+  }).join('') + '</div>' +
   '<div style="margin-top:8px;font-size:12.5px;color:var(--mu2);">' + fait.length + ' réalisée' + (fait.length > 1 ? 's' : '') + ' · Total <strong>' + eurosMPA(total) + '</strong>. Les interventions à venir sont en gris. Le détail par client est dans Ma comptabilité (offre Pro).</div>';
 }
 
@@ -5712,7 +5757,7 @@ async function choisirJourItineraire(dateStr) {
     // Bouton "Retard" discret — uniquement sur la journée en cours, jamais sur un jour futur
     // affiché en avance (prévenir d'un retard n'a de sens que pour aujourd'hui).
     var boutonRetard = (estAujourdhui && estPro())
-      ? '<button onclick="signalerRetard(\'' + i.id + '\')" title="Prévenir le client d\'un retard" style="margin-left:auto;flex-shrink:0;background:none;border:none;color:var(--mu);font-size:13px;cursor:pointer;opacity:.85;padding:2px 6px;">⏰ Retard</button>'
+      ? '<button onclick="signalerRetard(\'' + i.id + '\')" title="Prévenir le client d\'un retard" style="margin-left:auto;flex-shrink:0;background:#fff7ed;border:1.5px solid #f59e0b;color:#b45309;font-size:13px;font-weight:700;cursor:pointer;padding:7px 12px;border-radius:8px;">⏰ Je suis en retard</button>'
       : '';
     morceaux.push('<div style="display:flex;gap:10px;align-items:center;padding:6px 0;font-size:13px;">' +
       '<strong style="width:48px;flex-shrink:0;">' + (i.heure_debut || '—') + '</strong>' +

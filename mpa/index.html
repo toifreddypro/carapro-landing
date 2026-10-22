@@ -1468,9 +1468,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <select id="mi-statut" onchange="toggleDatePaiement()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
 <option value="planifiee">🟠 Planifiée</option>
 <option value="terminee">🔵 Terminée</option>
-<option value="payee">🟢 Payée</option>
+<option value="payee" hidden disabled>🟢 Payée</option>
 <option value="annulee">⚫ Annulée</option>
 </select>
+<div style="font-size:11px;color:var(--mu);margin-top:4px;">« Payée » s'applique toute seule quand le client paie en ligne, ou avec le bouton « 💵 Payé en main propre » d'une intervention terminée.</div>
 </div>
 <div class="modal-field" id="mi-date-paiement-wrap" style="display:none;">
 <label>Date de paiement réelle</label>
@@ -1663,7 +1664,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 <div class="faq-item" data-q="statut planifiée en cours terminée payée couleur" id="faq-q5">
 <div class="faq-q" onclick="toggleFAQItem(this.parentElement)"><span>Que veut dire chaque statut d'intervention ?</span><svg class="faq-chevron" fill="none" height="14" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="14"><polyline points="6 9 12 15 18 9"></polyline></svg></div>
-<div class="faq-a"><strong>Planifiée</strong> (orange) : prévue, pas encore commencée. <strong>En cours</strong> (violet) : vous vous en occupez, utile pour les chantiers qui durent plusieurs jours. <strong>Terminée</strong> (bleu) : le travail est fini, prêt à facturer. <strong>Payée</strong> (vert) : réglée. Cliquez directement sur une intervention pour faire avancer son statut.</div>
+<div class="faq-a"><strong>Planifiée</strong> (orange) : prévue, pas encore commencée. <strong>En cours</strong> (violet) : vous vous en occupez, utile pour les chantiers qui durent plusieurs jours. <strong>Terminée</strong> (bleu) : le travail est fini, prêt à facturer. <strong>Payée</strong> (vert) : réglée, soit en ligne par le client (le statut change tout seul), soit en main propre (espèces, chèque, virement) avec le bouton « 💵 Payé en main propre » d'une intervention terminée. Cliquez directement sur une intervention pour faire avancer son statut.</div>
 </div>
 <div class="faq-item" data-q="bloqué impossible planifier nouvelle intervention non soldée" id="faq-q6">
 <div class="faq-q" onclick="toggleFAQItem(this.parentElement)"><span>Pourquoi je ne peux plus planifier de nouvelle intervention ?</span><svg class="faq-chevron" fill="none" height="14" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="14"><polyline points="6 9 12 15 18 9"></polyline></svg></div>
