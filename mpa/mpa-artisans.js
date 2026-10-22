@@ -2037,6 +2037,9 @@ function ouvrirDemandePaiement() {
   var i = _interventionsCache.find(function(x) { return x.id === _interventionEnCours; });
   if (!i) return;
   if (i.statut === 'payee') { alert('Cette intervention est déjà payée : il n\'y a plus rien à demander. Repassez-la en « Terminée » si vous devez encore encaisser un montant.'); return; }
+  // Un lien est déjà en attente : en créer un autre annule l'ancien ET renvoie un email. On prévient, et on rappelle que « Relancer » existe.
+  var lienEnAttente = (_paiementsIntervention || []).find(function(p) { return p.type === 'solde' && p.statut === 'en_attente'; });
+  if (lienEnAttente && !confirm('Un lien de paiement de ' + eurosMPA(lienEnAttente.montant) + ' est déjà en attente pour ce client.\n\nSi vous continuez, l\'ancien lien sera annulé et le client recevra un NOUVEL email.\n\nPour simplement lui rappeler, utilisez plutôt « Relancer » sous la ligne de paiement (une fois par jour, 2 fois au plus).\n\nCréer quand même un nouveau lien ?')) return;
   var client = i.mpa_artisans_clients || {};
   var dateAff = new Date(i.date_intervention + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   document.getElementById('dp-resume').textContent = (client.nom || 'Client') + ' — ' + dateAff;
@@ -2718,7 +2721,7 @@ async function renderRecapInterventions() {
   var seq = ++_recapIntSeq;
   var lignes = (_interventionsCache || []).filter(function(i) { return i.statut !== 'annulee'; })
     .sort(function(a, b) { return String(a.date_intervention).localeCompare(String(b.date_intervention)); });
-  var titre = '<div style="font-size:14px;font-weight:700;margin-bottom:8px;">📊 Mes interventions de ' + MOIS_NOMS[_calMois].toLowerCase() + '</div>';
+  var titre = '<div style="font-size:14px;font-weight:700;margin-bottom:8px;">📊 Mes interventions ' + (/^[aeiouéèh]/i.test(MOIS_NOMS[_calMois]) ? 'd\'' : 'de ') + MOIS_NOMS[_calMois].toLowerCase() + '</div>';
   if (!lignes.length) { zone.innerHTML = titre + '<p style="font-size:13px;color:var(--mu);margin:0;">Aucune intervention ce mois-ci.</p>'; return; }
   var rembourse = {};
   try {
@@ -5709,7 +5712,7 @@ async function choisirJourItineraire(dateStr) {
     // Bouton "Retard" discret — uniquement sur la journée en cours, jamais sur un jour futur
     // affiché en avance (prévenir d'un retard n'a de sens que pour aujourd'hui).
     var boutonRetard = (estAujourdhui && estPro())
-      ? '<button onclick="signalerRetard(\'' + i.id + '\')" title="Prévenir le client d\'un retard" style="margin-left:auto;flex-shrink:0;background:none;border:none;color:var(--mu);font-size:13px;cursor:pointer;opacity:.6;padding:2px 4px;">⏰</button>'
+      ? '<button onclick="signalerRetard(\'' + i.id + '\')" title="Prévenir le client d\'un retard" style="margin-left:auto;flex-shrink:0;background:none;border:none;color:var(--mu);font-size:13px;cursor:pointer;opacity:.85;padding:2px 6px;">⏰ Retard</button>'
       : '';
     morceaux.push('<div style="display:flex;gap:10px;align-items:center;padding:6px 0;font-size:13px;">' +
       '<strong style="width:48px;flex-shrink:0;">' + (i.heure_debut || '—') + '</strong>' +
