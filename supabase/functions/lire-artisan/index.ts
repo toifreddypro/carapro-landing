@@ -28,7 +28,7 @@ const corsHeaders = {
 //    ce sont des lectures publiques, mieux vaut un service disponible qu'un site bloqué par une panne du limiteur. ──
 const COLONNES_ARTISAN_BASE = "id, nom_entreprise, secteur, commune, bio, photo_profil_url, verifie, rayon_intervention_km, alternance_niveau, stripe_connect_statut, slug_catalogue, code_promo, boutique_en_pause";
 // Du plus complet au plus simple : si une colonne facultative n'existe pas encore (SQL pas lancé), on réessaie avec moins.
-const JEUX_COLONNES_ARTISAN = [`${COLONNES_ARTISAN_BASE}, code_promo_pct, code_promo_fin, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite`, `${COLONNES_ARTISAN_BASE}, frais_deplacement`, COLONNES_ARTISAN_BASE];
+const JEUX_COLONNES_ARTISAN = [`${COLONNES_ARTISAN_BASE}, code_promo_pct, code_promo_fin, code_promo_visible, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, code_promo_pct, code_promo_fin, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite`, `${COLONNES_ARTISAN_BASE}, frais_deplacement`, COLONNES_ARTISAN_BASE];
 const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
 // Produits phares selon l'offre : 1 en gratuit, 4 en Pro (même règle écrite côté base : phares-plan.sql).
@@ -145,7 +145,7 @@ Deno.serve(async (req: Request) => {
     // Boutique mise en pause par l'artisan : même effet, rien n'est mis en avant tant qu'elle est fermée.
     if (artisan.boutique_en_pause === true) { produitsPhares = []; artisan.slug_catalogue = null; artisan.code_promo = null; }
     // Le code promo n'est montré que s'il est réellement utilisable (offre Pro, pourcentage défini, pas expiré).
-    if (!codePromoValide(artisan, lignePlan?.plan)) artisan.code_promo = null;
+    if (!codePromoValide(artisan, lignePlan?.plan) || artisan.code_promo_visible === false) artisan.code_promo = null; // code « partenaire » masqué : jamais montré sur la fiche
 
     const { data: avis } = await sb.from("avis_carapro")
       .select("client_nom, note, commentaire, created_at, reponse_artisan, reponse_le")

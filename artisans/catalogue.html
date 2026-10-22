@@ -245,15 +245,24 @@ function ligneRemisee(l) { var p = (DATA.produits || []).find(function(x) { retu
 function prixLigne(l) { return (PROMO && !ligneRemisee(l)) ? Math.round(l.prix * (1 - PROMO.pct / 100) * 100) / 100 : l.prix; }
 function totalPanier() { return PANIER.reduce(function(s, l) { return s + prixLigne(l) * l.quantite; }, 0); }
 function economiePromo() { return PANIER.reduce(function(s, l) { return s + (l.prix - prixLigne(l)) * l.quantite; }, 0); }
-function appliquerCodePromo() {
+async function appliquerCodePromo() {
   var saisi = (document.getElementById('panier-promo-input').value || '').trim();
   var msg = document.getElementById('panier-promo-msg');
-  var a = DATA.artisan || {};
   if (!saisi) return;
-  if (!a.code_promo || saisi.toLowerCase() !== String(a.code_promo).toLowerCase()) { msg.textContent = T('cat_promo_invalide'); return; }
-  if (!PANIER.some(function(l) { return !ligneRemisee(l); })) { msg.textContent = T('cat_promo_aucun'); return; }
-  PROMO = { code: a.code_promo, pct: Number(a.code_promo_pct) };
-  renderPanier();
+  msg.style.color = 'var(--mu)'; msg.textContent = '…';
+  try {
+    // Le code peut être « secret » (non affiché sur la boutique) : c'est le serveur qui dit s'il est valable.
+    var res = await fetch(SUPABASE_URL + '/functions/v1/verifier-code-promo', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
+      body: JSON.stringify({ artisan_id: DATA.artisan.id, code: saisi }),
+    });
+    var data = await res.json();
+    msg.style.color = '#b91c1c';
+    if (data.error) { msg.textContent = data.error === 'code_invalide' ? T('cat_promo_invalide') : data.error; return; }
+    if (!PANIER.some(function(l) { return !ligneRemisee(l); })) { msg.textContent = T('cat_promo_aucun'); return; }
+    PROMO = { code: data.code, pct: Number(data.pct) };
+    renderPanier();
+  } catch (e) { msg.style.color = '#b91c1c'; msg.textContent = T('cat_promo_invalide'); }
 }
 function retirerCodePromo() { PROMO = null; renderPanier(); }
 function nbArticlesPanier() { return PANIER.reduce(function(s, l) { return s + l.quantite; }, 0); }
@@ -287,7 +296,7 @@ function renderPanier() {
   document.getElementById('panier-total-montant').textContent = totalPanier().toFixed(2) + ' €';
   var zp = document.getElementById('panier-promo');
   if (zp) {
-    var aCode = DATA.artisan && DATA.artisan.code_promo && PANIER.length;
+    var aCode = DATA.artisan && (DATA.artisan.code_promo_actif || DATA.artisan.code_promo) && PANIER.length;
     if (!aCode) zp.innerHTML = '';
     else if (PROMO) zp.innerHTML = '<div style="margin-top:10px;font-size:12.5px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.35);border-radius:9px;padding:8px 11px;">🎁 ' + T('cat_promo_applique') + ' <strong>' + escHtml(PROMO.code) + '</strong> (−' + PROMO.pct + ' % ' + T('cat_promo_sur') + ') · ' + T('cat_promo_eco') + ' <strong>' + economiePromo().toFixed(2) + ' €</strong> <button class="panier-vider" style="margin:0 0 0 6px;" onclick="retirerCodePromo()">' + T('cat_promo_retirer') + '</button></div>';
     else zp.innerHTML = '<div style="display:flex;gap:6px;margin-top:10px;"><input id="panier-promo-input" maxlength="30" placeholder="' + escHtml(T('cat_promo_ph')) + '" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--brd);background:var(--inp);color:var(--tx);font-size:13px;text-transform:uppercase;"><button onclick="appliquerCodePromo()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-weight:700;font-size:13px;cursor:pointer;">' + T('cat_promo_ok') + '</button></div><div id="panier-promo-msg" style="font-size:12px;color:#b91c1c;margin-top:4px;min-height:14px;"></div>';

@@ -4617,6 +4617,8 @@ async function chargerCatalogue() {
   var champPct = document.getElementById('boutique-code-promo-pct'), champFin = document.getElementById('boutique-code-promo-fin');
   if (champPct) champPct.value = _artisan.code_promo_pct || '';
   if (champFin) champFin.value = _artisan.code_promo_fin || '';
+  var champVis = document.getElementById('boutique-code-promo-visible');
+  if (champVis) champVis.checked = _artisan.code_promo_visible !== false;
   afficherStatutCodePromo();
   afficherPauseBoutique();
 
@@ -4632,6 +4634,7 @@ async function chargerCatalogue() {
   renderProduitsStock();
   renderVentesProduits();
   afficherStatutCodePromo();
+  chargerUsageCodePromo();
   renderMonOffre();
   alerterStocksBas();
 }
@@ -4866,8 +4869,33 @@ function afficherStatutCodePromo() {
   if (!(pct >= 1 && pct <= 50)) { z.innerHTML = '⚠️ Indiquez le pourcentage de remise : sans lui, le code n\'est pas proposé à vos clients.'; return; }
   if (fin && String(fin).slice(0, 10) < aujourdhui) { z.innerHTML = '⌛ Ce code a expiré le ' + new Date(fin + 'T12:00:00').toLocaleDateString('fr-FR') + '.'; return; }
   var nbRemises = (_catalogueCache || []).filter(function(c) { return c.promo_pct && c.en_vente !== false; }).length;
-  z.innerHTML = '✅ Actif : <strong>' + escHtml(code) + '</strong> donne −' + pct + ' %' + (fin ? ' jusqu\'au ' + new Date(fin + 'T12:00:00').toLocaleDateString('fr-FR') : '') + '.' +
+  z.innerHTML = '✅ Actif : <strong>' + escHtml(code) + '</strong> donne −' + pct + ' %' + (fin ? ' jusqu\'au ' + new Date(fin + 'T12:00:00').toLocaleDateString('fr-FR') : '') + (_artisan.code_promo_visible === false ? ' · 🔒 non affiché sur CaraLink' : ' · affiché sur CaraLink') + '.' +
     (nbRemises ? ' <span style="color:var(--mu);">' + nbRemises + ' produit' + (nbRemises > 1 ? 's' : '') + ' ' + (nbRemises > 1 ? 'ont' : 'a') + ' déjà une remise : le code ne s\'y applique pas.</span>' : '');
+}
+
+// Combien de fois chaque code a servi : commandes réglées avec ce code, hors commandes entièrement remboursées.
+async function chargerUsageCodePromo() {
+  var z = document.getElementById('code-promo-usage');
+  if (!z || !_artisan) return;
+  try {
+    var { data, error } = await sb.from('commandes_catalogue').select('code_promo, montant_total, montant_rembourse, frais_livraison')
+      .eq('artisan_id', _artisan.id).not('code_promo', 'is', null).in('paiement_statut', STATUTS_COMMANDE_REGLEE);
+    if (error) throw error;
+    var parCode = {};
+    (data || []).forEach(function(c) {
+      if (Number(c.montant_rembourse || 0) >= Number(c.montant_total || 0) && Number(c.montant_total) > 0) return;
+      var k = c.code_promo;
+      if (!parCode[k]) parCode[k] = { n: 0, ca: 0 };
+      parCode[k].n++;
+      parCode[k].ca += Math.max(0, Number(c.montant_total || 0) - Number(c.montant_rembourse || 0) - Number(c.frais_livraison || 0));
+    });
+    var codes = Object.keys(parCode).sort(function(a, b) { return parCode[b].n - parCode[a].n; });
+    if (!codes.length) { z.innerHTML = _artisan.code_promo ? '<span style="color:var(--mu);">📊 Ce code n\'a pas encore été utilisé.</span>' : ''; return; }
+    z.innerHTML = '📊 <strong>Utilisation des codes</strong><br>' + codes.map(function(k) {
+      var u = parCode[k];
+      return '<span style="font-family:monospace;font-weight:700;">' + escHtml(k) + '</span>' + (k === _artisan.code_promo ? ' (actuel)' : '') + ' : ' + u.n + ' commande' + (u.n > 1 ? 's' : '') + ' · ' + eurosMPA(u.ca) + ' de ventes';
+    }).join('<br>');
+  } catch (e) { z.innerHTML = ''; /* colonne pas encore créée (SQL pas lancé) : rien à afficher */ }
 }
 
 async function sauverCodePromo() {
@@ -4882,16 +4910,18 @@ async function sauverCodePromo() {
   if (!code) { pct = null; fin = null; } // pas de code : on efface tout
   var btn = document.getElementById('btn-code-promo');
   btn.disabled = true; btn.textContent = 'Enregistrement…';
-  var maj = { code_promo: code || null, code_promo_pct: pct, code_promo_fin: fin };
+  var visible = document.getElementById('boutique-code-promo-visible').checked;
+  var maj = { code_promo: code || null, code_promo_pct: pct, code_promo_fin: fin, code_promo_visible: code ? visible : true };
   var { error } = await sb.from('artisans').update(maj).eq('id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); }
   else {
-    _artisan.code_promo = maj.code_promo; _artisan.code_promo_pct = maj.code_promo_pct; _artisan.code_promo_fin = maj.code_promo_fin;
+    _artisan.code_promo = maj.code_promo; _artisan.code_promo_pct = maj.code_promo_pct; _artisan.code_promo_fin = maj.code_promo_fin; _artisan.code_promo_visible = maj.code_promo_visible;
     document.getElementById('boutique-code-promo').value = code;
-    mpaAiDire(code ? '🎁 Code promo ' + escHtml(code) + ' enregistré : −' + pct + ' % sur les produits qui n\'ont pas déjà une remise.' : '🎁 Code promo supprimé.', 'info');
+    mpaAiDire(code ? '🎁 Code promo ' + escHtml(code) + ' enregistré : −' + pct + ' % sur les produits qui n\'ont pas déjà une remise' + (visible ? '.' : ' (code partenaire : non affiché sur CaraLink).') : '🎁 Code promo supprimé.', 'info');
   }
   btn.disabled = false; btn.textContent = 'Enregistrer';
   afficherStatutCodePromo();
+  chargerUsageCodePromo();
 }
 
 function renderVentesProduits() {

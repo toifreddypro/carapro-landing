@@ -201,7 +201,7 @@ Deno.serve(async (req: Request) => {
     if (await limiteAtteinte(sb, `dispo-${mode}:` + ipVisiteur(req), mode === "creneaux" ? 30 : 300, 60)) return reponseTropDeRequetes(corsHeaders);
 
     // L'artisan doit exister ET être actif : jamais les horaires ni le code promo d'un artisan désactivé.
-    const { data: artisanPublic, error: errArt } = await sb.from("artisans").select("id, slug_catalogue, code_promo, code_promo_pct, code_promo_fin, stripe_connect_statut, boutique_en_pause, plan").eq("id", artisan_id).eq("actif", true).maybeSingle();
+    const { data: artisanPublic, error: errArt } = await sb.from("artisans").select("id, slug_catalogue, code_promo, code_promo_pct, code_promo_fin, code_promo_visible, stripe_connect_statut, boutique_en_pause, plan").eq("id", artisan_id).eq("actif", true).maybeSingle();
     if (errArt) throw errArt;
     if (!artisanPublic) return json({ error: "Artisan introuvable." }, 404);
     // Règle du 15/10/2026 : sans paiements en ligne actifs, plus de réservation de créneau (deux semaines de grâce, jusqu'au 1er/11/2026).
@@ -220,7 +220,7 @@ Deno.serve(async (req: Request) => {
       services = (svc || []).map((s: any) => s.nom_service).filter(Boolean);
 
       slugCatalogue = artisanPublic.slug_catalogue ?? null;
-      codePromo = codePromoValide(artisanPublic, (artisanPublic as any).plan) ? (artisanPublic.code_promo ?? null) : null;
+      codePromo = (codePromoValide(artisanPublic, (artisanPublic as any).plan) && (artisanPublic as any).code_promo_visible !== false) ? (artisanPublic.code_promo ?? null) : null;
 
       // Produits phares : choisis à la main par l'artisan, sinon repli sur les meilleures
       // ventes (1 en gratuit, 4 en Pro) (jamais un compteur stocké — toujours recalculé sur les commandes réglées).
