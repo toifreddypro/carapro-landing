@@ -78,6 +78,19 @@ function calculerFraisLivraison(base: number, kmInclus: number, prixKm: number, 
   return Math.round((base + (distanceKm - kmInclus) * prixKm) * 100) / 100;
 }
 
+// Un code promo n'est valable que si l'artisan est Pro, qu'il a un code ET un pourcentage (1 à 50), et que la date de fin n'est pas passée (jour de Guadeloupe).
+function codePromoValide(a: any, plan: string | null | undefined): boolean {
+  if (!a || !a.code_promo || !String(a.code_promo).trim()) return false;
+  if (plan !== "pro" && plan !== "pro_offert") return false;
+  const pct = Number(a.code_promo_pct);
+  if (!(pct >= 1 && pct <= 50)) return false;
+  if (a.code_promo_fin) {
+    const aujourdhui = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+    if (String(a.code_promo_fin).slice(0, 10) < aujourdhui) return false;
+  }
+  return true;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
@@ -86,7 +99,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => null);
     if (!body) return json({ error: "Requête invalide." }, 400);
 
-    const { artisan_id, lignes, client_nom, client_telephone, client_email, mode, adresse_livraison, code_postal_livraison, commune_livraison, date_souhaitee, livraison_flexible, notes } = body;
+    const { artisan_id, lignes, client_nom, client_telephone, client_email, mode, adresse_livraison, code_postal_livraison, commune_livraison, date_souhaitee, livraison_flexible, notes, code_promo: codeSaisi } = body;
 
     if (!artisan_id) return json({ error: "Boutique manquante." }, 400);
     if (!Array.isArray(lignes) || !lignes.length) return json({ error: "Le panier est vide." }, 400);
@@ -117,7 +130,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data: artisan, error: errA } = await sb.from("artisans")
-      .select("nom_entreprise, email, latitude, longitude, livraison_forfait_base, livraison_km_inclus, livraison_prix_km_supp, stripe_connect_statut, boutique_en_pause")
+      .select("nom_entreprise, email, plan, code_promo, code_promo_pct, code_promo_fin, latitude, longitude, livraison_forfait_base, livraison_km_inclus, livraison_prix_km_supp, stripe_connect_statut, boutique_en_pause")
       .eq("id", artisan_id).maybeSingle();
     if (errA) throw errA;
     if (!artisan) return json({ error: "Boutique introuvable." }, 404);
@@ -159,9 +172,26 @@ Deno.serve(async (req: Request) => {
 
     // Prix effectif = prix catalogue, remise en cours appliquée — figé ici, jamais recalculé
     // plus tard (même si l'artisan change son prix ou sa remise avant le paiement).
+    // Code promo (offre Pro) : saisi par le client, vérifié ICI (le navigateur n'a pas le dernier mot). Il s'applique uniquement aux produits
+    // qui n'ont pas déjà une remise : jamais de cumul. Un code erroné ou expiré est refusé clairement, jamais ignoré en silence.
+    let pctCode = 0;
+    let codeApplique: string | null = null;
+    const saisi = typeof codeSaisi === "string" ? codeSaisi.trim() : "";
+    if (saisi) {
+      if (!codePromoValide(artisan, (artisan as any).plan) || String((artisan as any).code_promo).trim().toLowerCase() !== saisi.toLowerCase()) {
+        return json({ error: "Ce code promo n'est pas valide ou a expiré." }, 422);
+      }
+      if (!(articles as any[]).some((a) => !a.promo_pct)) {
+        return json({ error: "Ce code ne s'applique pas aux produits déjà en remise de votre panier." }, 422);
+      }
+      pctCode = Number((artisan as any).code_promo_pct);
+      codeApplique = String((artisan as any).code_promo).trim();
+    }
     const lignesAEnregistrer: Array<{ catalogue_id: string; nom_article: string; prix_unitaire: number; quantite: number }> = articles.map((a: any) => {
       const quantite = quantitesDemandees.get(a.id)!;
-      const prixEffectif = a.promo_pct ? Math.round(a.prix * (1 - a.promo_pct / 100) * 100) / 100 : a.prix;
+      const prixEffectif = a.promo_pct
+        ? Math.round(a.prix * (1 - a.promo_pct / 100) * 100) / 100
+        : (pctCode ? Math.round(a.prix * (1 - pctCode / 100) * 100) / 100 : a.prix);
       return { catalogue_id: a.id, nom_article: a.nom, prix_unitaire: prixEffectif, quantite };
     });
     const montantProduits = Math.round(lignesAEnregistrer.reduce((s: number, l) => s + l.prix_unitaire * l.quantite, 0) * 100) / 100;
@@ -213,6 +243,7 @@ Deno.serve(async (req: Request) => {
       livraison_flexible: mode === "livraison" ? !!livraison_flexible : false,
       livraison_fenetre_jours: (mode === "livraison" && livraison_flexible) ? FENETRE_LIVRAISON_FLEXIBLE_JOURS : null,
       notes: notes?.trim() || null,
+      code_promo: codeApplique, code_promo_pct: codeApplique ? pctCode : null,
       paiement_requis: true, // le client DOIT payer en ligne : la commande n'existe pour l'artisan qu'une fois payée (voir stripe-webhook-artisans)
     }).select().single();
     if (errIns) throw errIns;

@@ -128,6 +128,7 @@
     <h3 data-i18n="cat_mon_panier">Mon panier</h3>
     <div id="panier-lignes"></div>
     <div id="panier-suggestions"></div>
+    <div id="panier-promo"></div>
     <div class="panier-total"><span data-i18n="cat_total">Total</span><span id="panier-total-montant">0 €</span></div>
     <button class="panier-vider" onclick="viderPanier()" data-i18n="cat_vider_panier">Vider le panier</button>
     <div class="modal-actions">
@@ -238,7 +239,23 @@ function viderPanier() {
   majBadgePanier();
 }
 
-function totalPanier() { return PANIER.reduce(function(s, l) { return s + l.prix * l.quantite; }, 0); }
+// ── Code promo (offre Pro) : le serveur refait tout le calcul à la commande ; ici on ne fait que l'afficher. Jamais cumulé avec la remise d'un produit. ──
+var PROMO = null; // { code, pct } une fois le code saisi accepté
+function ligneRemisee(l) { var p = (DATA.produits || []).find(function(x) { return x.id === l.catalogue_id; }); return !!(p && p.promo_pct); }
+function prixLigne(l) { return (PROMO && !ligneRemisee(l)) ? Math.round(l.prix * (1 - PROMO.pct / 100) * 100) / 100 : l.prix; }
+function totalPanier() { return PANIER.reduce(function(s, l) { return s + prixLigne(l) * l.quantite; }, 0); }
+function economiePromo() { return PANIER.reduce(function(s, l) { return s + (l.prix - prixLigne(l)) * l.quantite; }, 0); }
+function appliquerCodePromo() {
+  var saisi = (document.getElementById('panier-promo-input').value || '').trim();
+  var msg = document.getElementById('panier-promo-msg');
+  var a = DATA.artisan || {};
+  if (!saisi) return;
+  if (!a.code_promo || saisi.toLowerCase() !== String(a.code_promo).toLowerCase()) { msg.textContent = T('cat_promo_invalide'); return; }
+  if (!PANIER.some(function(l) { return !ligneRemisee(l); })) { msg.textContent = T('cat_promo_aucun'); return; }
+  PROMO = { code: a.code_promo, pct: Number(a.code_promo_pct) };
+  renderPanier();
+}
+function retirerCodePromo() { PROMO = null; renderPanier(); }
 function nbArticlesPanier() { return PANIER.reduce(function(s, l) { return s + l.quantite; }, 0); }
 
 function majBadgePanier() {
@@ -258,7 +275,7 @@ function renderPanier() {
     zone.innerHTML = PANIER.map(function(l) {
       var photo = l.url_photo ? '<img src="' + escHtml(l.url_photo) + '" class="ligne-panier-photo">' : '<div class="ligne-panier-photo" style="display:flex;align-items:center;justify-content:center;">📦</div>';
       return '<div class="ligne-panier">' + photo +
-        '<div class="ligne-panier-info"><div class="ligne-panier-nom">' + escHtml(l.nom) + '</div><div class="ligne-panier-prix">' + l.prix + ' € ' + T('cat_unite') + '</div></div>' +
+        '<div class="ligne-panier-info"><div class="ligne-panier-nom">' + escHtml(l.nom) + '</div><div class="ligne-panier-prix">' + (prixLigne(l) !== l.prix ? '<s>' + l.prix + ' €</s> <strong style="color:#15803d;">' + prixLigne(l).toFixed(2) + ' €</strong>' : l.prix + ' €') + ' ' + T('cat_unite') + '</div></div>' +
         '<div class="qte-controle">' +
           '<button onclick="modifierQuantitePanier(' + jsAttr(l.catalogue_id) + ',-1)">−</button>' +
           '<span>' + l.quantite + '</span>' +
@@ -268,6 +285,13 @@ function renderPanier() {
     }).join('');
   }
   document.getElementById('panier-total-montant').textContent = totalPanier().toFixed(2) + ' €';
+  var zp = document.getElementById('panier-promo');
+  if (zp) {
+    var aCode = DATA.artisan && DATA.artisan.code_promo && PANIER.length;
+    if (!aCode) zp.innerHTML = '';
+    else if (PROMO) zp.innerHTML = '<div style="margin-top:10px;font-size:12.5px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.35);border-radius:9px;padding:8px 11px;">🎁 ' + T('cat_promo_applique') + ' <strong>' + escHtml(PROMO.code) + '</strong> (−' + PROMO.pct + ' % ' + T('cat_promo_sur') + ') · ' + T('cat_promo_eco') + ' <strong>' + economiePromo().toFixed(2) + ' €</strong> <button class="panier-vider" style="margin:0 0 0 6px;" onclick="retirerCodePromo()">' + T('cat_promo_retirer') + '</button></div>';
+    else zp.innerHTML = '<div style="display:flex;gap:6px;margin-top:10px;"><input id="panier-promo-input" maxlength="30" placeholder="' + escHtml(T('cat_promo_ph')) + '" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--brd);background:var(--inp);color:var(--tx);font-size:13px;text-transform:uppercase;"><button onclick="appliquerCodePromo()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-weight:700;font-size:13px;cursor:pointer;">' + T('cat_promo_ok') + '</button></div><div id="panier-promo-msg" style="font-size:12px;color:#b91c1c;margin-top:4px;min-height:14px;"></div>';
+  }
   renderSuggestionsPanier();
 }
 
@@ -360,6 +384,7 @@ async function confirmerCommande() {
         date_souhaitee: mode === 'livraison' ? (document.getElementById('mc-date').value || null) : null,
         livraison_flexible: mode === 'livraison' && document.querySelector('input[name="mc-date-type"]:checked').value === 'flexible',
         notes: document.getElementById('mc-notes').value.trim() || null,
+        code_promo: PROMO ? PROMO.code : null,
       }),
     });
     var data = await res.json();
@@ -510,7 +535,7 @@ function render() {
       boutonPartage +
       selecteurLangue +
     '</div>' +
-    (a.code_promo ? '<div class="wrap"><div class="promo-bandeau">🎁 ' + T('cat_code_promo') + ' <span class="promo-code">' + escHtml(a.code_promo) + '</span></div></div>' : '') +
+    (a.code_promo ? '<div class="wrap"><div class="promo-bandeau">🎁 ' + T('cat_code_promo') + ' <span class="promo-code">' + escHtml(a.code_promo) + '</span>' + (a.code_promo_pct ? ' <strong>−' + escHtml(String(a.code_promo_pct)) + ' %</strong> <span style="font-size:12px;color:var(--mu);">' + T('cat_promo_sur') + '</span>' : '') + '</div></div>' : '') +
     '</header>' +
     '<div class="wrap">';
 

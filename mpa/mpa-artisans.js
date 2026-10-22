@@ -3659,6 +3659,8 @@ function proposerPassagePro(raison) {
     ? '📅 Retrouver votre planning dans Google Agenda, Apple Calendrier ou Outlook, mis à jour automatiquement, fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
     : raison === 'facture_email'
     ? '✉️ L\'envoi de vos factures par email, directement à vos clients, fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Imprimer une facture reste gratuit.' + texteEssai()
+    : raison === 'code_promo'
+    ? '🎁 Le code promo (remise automatique dans le panier de vos clients) fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
     : raison === 'retard'
     ? '⏰ Prévenir un client d\'un retard fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
     : '🔒 Mes fournitures fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : suivi de vos consommables, scan QR code / code-barres et alerte avant la rupture.' + texteEssai();
@@ -4612,6 +4614,10 @@ async function chargerCatalogue() {
   if (champLien) champLien.value = _artisan.slug_catalogue ? 'https://caralink.app/artisans/catalogue.html?s=' + _artisan.slug_catalogue : '—';
   var champPromo = document.getElementById('boutique-code-promo');
   if (champPromo) champPromo.value = _artisan.code_promo || '';
+  var champPct = document.getElementById('boutique-code-promo-pct'), champFin = document.getElementById('boutique-code-promo-fin');
+  if (champPct) champPct.value = _artisan.code_promo_pct || '';
+  if (champFin) champFin.value = _artisan.code_promo_fin || '';
+  afficherStatutCodePromo();
   afficherPauseBoutique();
 
   var { data, error } = await sb.from('artisans_catalogue').select('*').eq('artisan_id', _artisan.id).order('ordre', { ascending: true });
@@ -4625,6 +4631,7 @@ async function chargerCatalogue() {
   renderCatalogueGrille();
   renderProduitsStock();
   renderVentesProduits();
+  afficherStatutCodePromo();
   renderMonOffre();
   alerterStocksBas();
 }
@@ -4848,13 +4855,43 @@ async function basculerPauseBoutique() {
   afficherPauseBoutique();
 }
 
+// Dit à l'artisan, en clair, si son code est en ce moment utilisable par les clients (et pourquoi pas).
+function afficherStatutCodePromo() {
+  var z = document.getElementById('code-promo-statut');
+  if (!z) return;
+  var code = _artisan.code_promo, pct = Number(_artisan.code_promo_pct), fin = _artisan.code_promo_fin;
+  var aujourdhui = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+  if (!code) { z.textContent = 'Aucun code actif.'; return; }
+  if (!estPro()) { z.innerHTML = '⚠️ Réservé à l\'offre Pro : tant que vous n\'êtes pas Pro, votre code n\'est pas proposé à vos clients.'; return; }
+  if (!(pct >= 1 && pct <= 50)) { z.innerHTML = '⚠️ Indiquez le pourcentage de remise : sans lui, le code n\'est pas proposé à vos clients.'; return; }
+  if (fin && String(fin).slice(0, 10) < aujourdhui) { z.innerHTML = '⌛ Ce code a expiré le ' + new Date(fin + 'T12:00:00').toLocaleDateString('fr-FR') + '.'; return; }
+  var nbRemises = (_catalogueCache || []).filter(function(c) { return c.promo_pct && c.en_vente !== false; }).length;
+  z.innerHTML = '✅ Actif : <strong>' + escHtml(code) + '</strong> donne −' + pct + ' %' + (fin ? ' jusqu\'au ' + new Date(fin + 'T12:00:00').toLocaleDateString('fr-FR') : '') + '.' +
+    (nbRemises ? ' <span style="color:var(--mu);">' + nbRemises + ' produit' + (nbRemises > 1 ? 's' : '') + ' ' + (nbRemises > 1 ? 'ont' : 'a') + ' déjà une remise : le code ne s\'y applique pas.</span>' : '');
+}
+
 async function sauverCodePromo() {
+  if (!verifierAccesEcriture()) return;
+  var code = document.getElementById('boutique-code-promo').value.trim().toUpperCase();
+  var pctBrut = document.getElementById('boutique-code-promo-pct').value.trim();
+  var fin = document.getElementById('boutique-code-promo-fin').value || null;
+  if (code && !exigerPro('code_promo')) return;
+  if (code && !/^[A-Z0-9_-]{3,30}$/.test(code)) { alert('Le code doit faire 3 à 30 caractères : lettres, chiffres, tiret ou souligné (sans espace ni accent).'); return; }
+  var pct = pctBrut === '' ? null : parseInt(pctBrut, 10);
+  if (code && (!pct || pct < 1 || pct > 50)) { alert('Indiquez une remise entre 1 % et 50 %.'); return; }
+  if (!code) { pct = null; fin = null; } // pas de code : on efface tout
   var btn = document.getElementById('btn-code-promo');
-  var valeur = document.getElementById('boutique-code-promo').value.trim() || null;
   btn.disabled = true; btn.textContent = 'Enregistrement…';
-  var { error } = await sb.from('artisans').update({ code_promo: valeur }).eq('id', _artisan.id);
-  if (error) { alert('Erreur : ' + error.message); } else { _artisan.code_promo = valeur; }
+  var maj = { code_promo: code || null, code_promo_pct: pct, code_promo_fin: fin };
+  var { error } = await sb.from('artisans').update(maj).eq('id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); }
+  else {
+    _artisan.code_promo = maj.code_promo; _artisan.code_promo_pct = maj.code_promo_pct; _artisan.code_promo_fin = maj.code_promo_fin;
+    document.getElementById('boutique-code-promo').value = code;
+    mpaAiDire(code ? '🎁 Code promo ' + escHtml(code) + ' enregistré : −' + pct + ' % sur les produits qui n\'ont pas déjà une remise.' : '🎁 Code promo supprimé.', 'info');
+  }
   btn.disabled = false; btn.textContent = 'Enregistrer';
+  afficherStatutCodePromo();
 }
 
 function renderVentesProduits() {
@@ -5047,6 +5084,8 @@ async function sauverPromoCatalogue(id) {
   if (error) { alert('Erreur : ' + error.message); return; }
   var item = _catalogueCache.find(function(c) { return c.id === id; });
   if (item) item.promo_pct = valeur;
+  afficherStatutCodePromo();
+  if (valeur != null && _artisan.code_promo && _artisan.code_promo_pct) mpaAiDire('ℹ️ Ce produit a maintenant une remise de ' + valeur + ' % : votre code promo ' + escHtml(_artisan.code_promo) + ' ne s\'y applique pas (jamais les deux à la fois).', 'info');
 }
 
 var _catalogueEnEdition = null;

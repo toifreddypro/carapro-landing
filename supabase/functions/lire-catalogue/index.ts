@@ -35,6 +35,19 @@ function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
+// Un code promo n'est valable que si l'artisan est Pro, qu'il a un code ET un pourcentage (1 à 50), et que la date de fin n'est pas passée (jour de Guadeloupe).
+function codePromoValide(a: any, plan: string | null | undefined): boolean {
+  if (!a || !a.code_promo || !String(a.code_promo).trim()) return false;
+  if (plan !== "pro" && plan !== "pro_offert") return false;
+  const pct = Number(a.code_promo_pct);
+  if (!(pct >= 1 && pct <= 50)) return false;
+  if (a.code_promo_fin) {
+    const aujourdhui = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+    if (String(a.code_promo_fin).slice(0, 10) < aujourdhui) return false;
+  }
+  return true;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -46,7 +59,7 @@ Deno.serve(async (req: Request) => {
     if (!slug) return json({ error: "Lien manquant." }, 400);
 
     const { data: artisan, error } = await sb.from("artisans")
-      .select("id, nom_entreprise, secteur, commune, photo_profil_url, verifie, code_promo, stripe_connect_statut, boutique_en_pause, plan")
+      .select("id, nom_entreprise, secteur, commune, photo_profil_url, verifie, code_promo, code_promo_pct, code_promo_fin, stripe_connect_statut, boutique_en_pause, plan")
       .eq("slug_catalogue", slug)
       .eq("actif", true)
       .maybeSingle();
@@ -153,8 +166,9 @@ Deno.serve(async (req: Request) => {
       complementaires: complementaires.get(p.id) || [],
     }));
 
+    const codeOk = codePromoValide(artisan, artisan.plan);
     return json({
-      artisan: { id: artisan.id, nom_entreprise: artisan.nom_entreprise, secteur: artisan.secteur, commune: artisan.commune, photo_profil_url: artisan.photo_profil_url, verifie: artisan.verifie, code_promo: artisan.code_promo, paiement_actif: artisan.stripe_connect_statut === "actif" },
+      artisan: { id: artisan.id, nom_entreprise: artisan.nom_entreprise, secteur: artisan.secteur, commune: artisan.commune, photo_profil_url: artisan.photo_profil_url, verifie: artisan.verifie, code_promo: codeOk ? artisan.code_promo : null, code_promo_pct: codeOk ? Number(artisan.code_promo_pct) : null, code_promo_fin: codeOk ? (artisan.code_promo_fin ?? null) : null, paiement_actif: artisan.stripe_connect_statut === "actif" },
       produits: produitsAff,
       produits_phares: produitsAff.filter((p: any) => p.est_phare),
     });

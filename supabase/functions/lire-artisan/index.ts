@@ -28,7 +28,7 @@ const corsHeaders = {
 //    ce sont des lectures publiques, mieux vaut un service disponible qu'un site bloqué par une panne du limiteur. ──
 const COLONNES_ARTISAN_BASE = "id, nom_entreprise, secteur, commune, bio, photo_profil_url, verifie, rayon_intervention_km, alternance_niveau, stripe_connect_statut, slug_catalogue, code_promo, boutique_en_pause";
 // Du plus complet au plus simple : si une colonne facultative n'existe pas encore (SQL pas lancé), on réessaie avec moins.
-const JEUX_COLONNES_ARTISAN = [`${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite`, `${COLONNES_ARTISAN_BASE}, frais_deplacement`, COLONNES_ARTISAN_BASE];
+const JEUX_COLONNES_ARTISAN = [`${COLONNES_ARTISAN_BASE}, code_promo_pct, code_promo_fin, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite`, `${COLONNES_ARTISAN_BASE}, frais_deplacement`, COLONNES_ARTISAN_BASE];
 const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
 // Produits phares selon l'offre : 1 en gratuit, 4 en Pro (même règle écrite côté base : phares-plan.sql).
@@ -57,6 +57,19 @@ function json(payload: unknown, status = 200): Response {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+// Un code promo n'est valable que si l'artisan est Pro, qu'il a un code ET un pourcentage (1 à 50), et que la date de fin n'est pas passée (jour de Guadeloupe).
+function codePromoValide(a: any, plan: string | null | undefined): boolean {
+  if (!a || !a.code_promo || !String(a.code_promo).trim()) return false;
+  if (plan !== "pro" && plan !== "pro_offert") return false;
+  const pct = Number(a.code_promo_pct);
+  if (!(pct >= 1 && pct <= 50)) return false;
+  if (a.code_promo_fin) {
+    const aujourdhui = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+    if (String(a.code_promo_fin).slice(0, 10) < aujourdhui) return false;
+  }
+  return true;
 }
 
 Deno.serve(async (req: Request) => {
@@ -131,6 +144,8 @@ Deno.serve(async (req: Request) => {
     if (artisan.stripe_connect_statut !== "actif") { produitsPhares = []; artisan.slug_catalogue = null; }
     // Boutique mise en pause par l'artisan : même effet, rien n'est mis en avant tant qu'elle est fermée.
     if (artisan.boutique_en_pause === true) { produitsPhares = []; artisan.slug_catalogue = null; artisan.code_promo = null; }
+    // Le code promo n'est montré que s'il est réellement utilisable (offre Pro, pourcentage défini, pas expiré).
+    if (!codePromoValide(artisan, lignePlan?.plan)) artisan.code_promo = null;
 
     const { data: avis } = await sb.from("avis_carapro")
       .select("client_nom, note, commentaire, created_at, reponse_artisan, reponse_le")

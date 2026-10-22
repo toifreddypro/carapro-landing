@@ -772,9 +772,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <button class="addb" onclick="copierLienBoutique()" style="flex-shrink:0;">📋 Copier</button>
 <button class="addb" onclick="ouvrirPartageArtisan('boutique')" style="flex-shrink:0;">🔗 Partager / QR code</button>
 </div>
+<div style="border:1px solid var(--brd);border-radius:10px;padding:12px 14px;background:var(--inp);">
+<div style="font-size:13px;font-weight:700;margin-bottom:2px;">🎁 Code promo <span style="font-size:11px;font-weight:700;color:var(--ac);">Offre Pro</span></div>
+<div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.5;">Vos clients le saisissent dans leur panier et la remise est calculée automatiquement. <strong>Il ne s'applique pas aux produits déjà en remise</strong> (la remise « % » de la fiche produit) : les deux ne se cumulent jamais, c'est l'un ou l'autre.</div>
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-<input id="boutique-code-promo" maxlength="30" placeholder="Code promo à afficher (ex : BIENVENUE10)" style="flex:1;min-width:200px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--inp);font-family:'Outfit',sans-serif;font-size:13px;" type="text"/>
+<input id="boutique-code-promo" maxlength="30" placeholder="Code (ex : BIENVENUE10)" style="flex:1;min-width:170px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;text-transform:uppercase;" type="text"/>
+<input id="boutique-code-promo-pct" type="number" min="1" max="50" step="1" placeholder="% (1-50)" style="width:92px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;"/>
+<label style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:5px;">jusqu'au <input id="boutique-code-promo-fin" type="date" style="padding:8px 9px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;"/></label>
 <button class="addb" id="btn-code-promo" onclick="sauverCodePromo()" style="flex-shrink:0;">Enregistrer</button>
+</div>
+<div id="code-promo-statut" style="font-size:12px;color:var(--mu);margin-top:6px;"></div>
 </div>
 </div>
 </div><div id="encart-stripe-connect-catalogue" style="margin-top:16px;"></div><div class="dcard" style="margin-top:16px;">
