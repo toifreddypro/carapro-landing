@@ -120,7 +120,7 @@ Deno.serve(async (req: Request) => {
     // Aperçu des frais de livraison (le client n'a pas fini de remplir le formulaire) : aucune commande créée, aucun email envoyé.
     const apercu = body.apercu === true;
     // L'email est obligatoire : la confirmation de commande et le reçu y sont envoyés.
-    if (!apercu && typeof body.client_email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.client_email.trim()) || body.client_email.length > 200) {
+    if (!apercu && (typeof body.client_email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.client_email.trim()) || body.client_email.length > 200)) {
       return json({ error: "Votre email est obligatoire pour recevoir la confirmation de votre commande." }, 400);
     }
 

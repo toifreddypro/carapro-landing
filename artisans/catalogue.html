@@ -148,17 +148,16 @@
     <div class="modal-field"><label data-i18n="cat_email">Email</label><input type="email" id="mc-email" required autocomplete="email"></div>
     <div class="modal-field">
       <label data-i18n="cat_mode">Mode</label>
-      <select id="mc-mode" onchange="document.getElementById('mc-adresse-bloc').style.display=this.value==='livraison'?'block':'none'; _fraisLivraison=null;">
+      <select id="mc-mode" onchange="document.getElementById('mc-adresse-bloc').style.display=this.value==='livraison'?'block':'none'; _fraisLivraison=null; planifierApercuFrais();">
         <option value="retrait" data-i18n="cat_je_viens_chercher">Je viens chercher</option>
         <option value="livraison" data-i18n="cat_livraison">Livraison</option>
       </select>
     </div>
     <div id="mc-adresse-bloc" style="display:none;">
-      <div class="modal-field"><label data-i18n="cat_adresse">Adresse</label><input type="text" id="mc-adresse"></div>
-      <div class="modal-field"><label data-i18n="cat_code_postal">Code postal</label><input type="text" id="mc-cp"></div>
-      <div class="modal-field"><label data-i18n="cat_commune">Commune</label><input type="text" id="mc-commune" onchange="calculerFraisApercu()"></div>
+      <div class="modal-field"><label data-i18n="cat_adresse">Adresse</label><input type="text" id="mc-adresse" oninput="planifierApercuFrais()"></div>
+      <div class="modal-field"><label data-i18n="cat_code_postal">Code postal</label><input type="text" id="mc-cp" oninput="planifierApercuFrais()"></div>
+      <div class="modal-field"><label data-i18n="cat_commune">Commune</label><input type="text" id="mc-commune" oninput="planifierApercuFrais()"></div>
       <div class="modal-field">
-        <button type="button" class="btn-secondary" id="mc-btn-frais" onclick="calculerFraisApercu()" data-i18n="cat_calculer_frais" style="width:100%;">Calculer les frais de livraison</button>
         <div id="mc-frais" style="margin-top:8px;font-size:13.5px;line-height:1.5;min-height:42px;"></div>
       </div>
       <div class="modal-field">
@@ -377,6 +376,9 @@ function basculerTypeDateLivraison() {
 
 // ── Frais de livraison annoncés AVANT le paiement : aperçu calculé par le serveur (même calcul que la commande réelle). ──
 var _fraisLivraison = null; // { cle, frais, km, produits, total }
+var _minuteurFrais = null;
+// Calcul automatique : un instant après la fin de la saisie de l'adresse (jamais à chaque lettre).
+function planifierApercuFrais() { clearTimeout(_minuteurFrais); _minuteurFrais = setTimeout(calculerFraisApercu, 900); }
 function cleAdresseLivraison() {
   return ['mc-adresse', 'mc-cp', 'mc-commune'].map(function(id) { return document.getElementById(id).value.trim().toLowerCase(); }).join('|') + '|' + PANIER.map(function(l) { return l.catalogue_id + 'x' + l.quantite; }).join(',') + '|' + (PROMO ? PROMO.code : '');
 }
