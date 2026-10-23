@@ -63,14 +63,33 @@ async function geocoderAdresse(adresse: string, cp: string | null, commune: stri
   return null;
 }
 
+// Distance par la route. Trois niveaux, pour qu'une commande ne soit JAMAIS bloquée par une panne d'un service externe :
+//  1. IGN (Géoplateforme) ; 2. OSRM public ; 3. à défaut, distance à vol d'oiseau × 1,4 (la route est toujours plus longue que la ligne droite,
+//  surtout en Guadeloupe). Le niveau utilisé est écrit dans les journaux Supabase pour qu'on voie si IGN répond pour la Guadeloupe.
+function distanceVolOiseauKm(latA: number, lonA: number, latB: number, lonB: number): number {
+  const rad = (d: number) => d * Math.PI / 180;
+  const dLat = rad(latB - latA), dLon = rad(lonB - lonA);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(latA)) * Math.cos(rad(latB)) * Math.sin(dLon / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(h));
+}
 async function distanceTrajetKm(latA: number, lonA: number, latB: number, lonB: number): Promise<number | null> {
   try {
     const url = `https://data.geopf.fr/navigation/itineraire?resource=bdtopo-osrm&profile=car&optimization=fastest&getSteps=false&geometryFormat=polyline&distanceUnit=meter&timeUnit=second&start=${lonA},${latA}&end=${lonB},${latB}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.distance != null) return data.distance / 1000;
-  } catch (e) { console.warn("[soumettre-commande-panier] Calcul de trajet échoué :", e); }
-  return null;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const data = await res.json().catch(() => null);
+    if (res.ok && data?.distance != null) return data.distance / 1000;
+    console.error("[soumettre-commande-panier] IGN sans distance — statut", res.status, JSON.stringify(data)?.slice(0, 300));
+  } catch (e) { console.error("[soumettre-commande-panier] IGN en échec :", e); }
+  try {
+    const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${lonA},${latA};${lonB},${latB}?overview=false`, { signal: AbortSignal.timeout(8000) });
+    const data = await res.json().catch(() => null);
+    const m = data?.routes?.[0]?.distance;
+    if (res.ok && m != null) { console.warn("[soumettre-commande-panier] Distance obtenue par OSRM (IGN indisponible)."); return m / 1000; }
+    console.error("[soumettre-commande-panier] OSRM sans distance — statut", res.status);
+  } catch (e) { console.error("[soumettre-commande-panier] OSRM en échec :", e); }
+  const estimee = Math.round(distanceVolOiseauKm(latA, lonA, latB, lonB) * 1.4 * 10) / 10;
+  console.warn("[soumettre-commande-panier] Distance estimée à vol d'oiseau × 1,4 :", estimee, "km");
+  return estimee;
 }
 
 function calculerFraisLivraison(base: number, kmInclus: number, prixKm: number, distanceKm: number): number {
