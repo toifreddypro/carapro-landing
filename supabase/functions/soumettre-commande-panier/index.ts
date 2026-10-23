@@ -117,8 +117,10 @@ Deno.serve(async (req: Request) => {
   try {
     const body = await req.json().catch(() => null);
     if (!body) return json({ error: "Requête invalide." }, 400);
+    // Aperçu des frais de livraison (le client n'a pas fini de remplir le formulaire) : aucune commande créée, aucun email envoyé.
+    const apercu = body.apercu === true;
     // L'email est obligatoire : la confirmation de commande et le reçu y sont envoyés.
-    if (typeof body.client_email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.client_email.trim()) || body.client_email.length > 200) {
+    if (!apercu && typeof body.client_email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.client_email.trim()) || body.client_email.length > 200) {
       return json({ error: "Votre email est obligatoire pour recevoir la confirmation de votre commande." }, 400);
     }
 
@@ -126,8 +128,8 @@ Deno.serve(async (req: Request) => {
 
     if (!artisan_id) return json({ error: "Boutique manquante." }, 400);
     if (!Array.isArray(lignes) || !lignes.length) return json({ error: "Le panier est vide." }, 400);
-    if (!client_nom?.trim()) return json({ error: "Votre nom est obligatoire." }, 400);
-    if (!client_telephone?.trim()) return json({ error: "Votre téléphone est obligatoire." }, 400);
+    if (!apercu && !client_nom?.trim()) return json({ error: "Votre nom est obligatoire." }, 400);
+    if (!apercu && !client_telephone?.trim()) return json({ error: "Votre téléphone est obligatoire." }, 400);
     if (!["retrait", "livraison"].includes(mode)) return json({ error: "Mode invalide." }, 400);
     if (mode === "livraison" && !adresse_livraison?.trim()) return json({ error: "L'adresse de livraison est obligatoire." }, 400);
 
@@ -142,6 +144,13 @@ Deno.serve(async (req: Request) => {
     const idsArticles = [...quantitesDemandees.keys()];
 
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    if (apercu) {
+      const ip = (req.headers.get("x-forwarded-for") || "inconnue").split(",")[0].trim();
+      try {
+        const { data: ok } = await sb.rpc("limiter_appel", { p_cle: `apercu-livraison:${artisan_id}:${ip}`, p_max: 30, p_fenetre_s: 600 });
+        if (ok === false) return json({ error: "Trop de demandes. Réessayez dans quelques minutes." }, 429);
+      } catch (e) { console.error("[limiter_appel]", e); }
+    }
 
     // Les articles doivent tous appartenir à CET artisan — jamais mélanger le panier de plusieurs boutiques.
     const { data: articles, error: errArt } = await sb.from("artisans_catalogue")
@@ -179,7 +188,7 @@ Deno.serve(async (req: Request) => {
       if (a.quantite_stock == null) continue;
       const demande = quantitesDemandees.get(a.id)!;
       if (a.quantite_stock < demande) {
-        if (artisan.email) {
+        if (artisan.email && !apercu) {
           const html = `<div style="font-family:sans-serif;max-width:480px;">
             <h2 style="color:#B5502F;">✨ MPA AI — une vente vient d'échouer, faute de stock</h2>
             <p><strong>${escHtml(client_nom)}</strong> a tenté de commander <strong>${demande} × ${escHtml(a.nom)}</strong>, mais il n'en restait que <strong>${a.quantite_stock}</strong>.</p>
@@ -225,6 +234,7 @@ Deno.serve(async (req: Request) => {
     // revanche, une adresse de livraison qui ne se géocode pas est bloquante : impossible de
     // livrer un endroit qu'on ne sait pas localiser.
     let fraisLivraison = 0;
+    let distanceKmCalculee: number | null = null;
     if (mode === "livraison" && artisan.latitude != null && artisan.longitude != null && artisan.livraison_forfait_base != null) {
       const pointClient = await geocoderAdresse(adresse_livraison, code_postal_livraison, commune_livraison);
       if (!pointClient) {
@@ -234,6 +244,7 @@ Deno.serve(async (req: Request) => {
       if (distance == null) {
         return json({ error: "Impossible de calculer les frais de livraison pour cette adresse pour le moment. Réessayez dans un instant." }, 422);
       }
+      distanceKmCalculee = distance;
       fraisLivraison = calculerFraisLivraison(
         Number(artisan.livraison_forfait_base) || 0,
         Number(artisan.livraison_km_inclus) || 0,
@@ -243,6 +254,9 @@ Deno.serve(async (req: Request) => {
     }
 
     const montantTotal = Math.round((montantProduits + fraisLivraison) * 100) / 100;
+    if (apercu) {
+      return json({ ok: true, apercu: true, montant_produits: montantProduits, frais_livraison: fraisLivraison, distance_km: distanceKmCalculee != null ? Math.round(distanceKmCalculee * 10) / 10 : null, montant_total: montantTotal });
+    }
     const nbArticlesDistincts = lignesAEnregistrer.length;
     const resumeNom = nbArticlesDistincts === 1
       ? lignesAEnregistrer[0].nom_article
@@ -282,7 +296,7 @@ Deno.serve(async (req: Request) => {
     // n'a simplement aucun effet plutôt que de passer en négatif.
     // Le stock n'est PAS retiré ici et l'artisan n'est PAS prévenu : tant que le client n'a pas payé, la commande n'existe pas pour lui.
     // Au paiement réussi, stripe-webhook-artisans retire le stock (remboursement automatique s'il n'y en a plus) et envoie l'email.
-    return json({ ok: true, commande_id: commande.id, montant_total: montantTotal, frais_livraison: fraisLivraison });
+    return json({ ok: true, commande_id: commande.id, montant_produits: montantProduits, montant_total: montantTotal, frais_livraison: fraisLivraison });
 
   } catch (e) {
     console.error("[soumettre-commande-panier]", e);

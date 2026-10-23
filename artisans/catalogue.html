@@ -131,6 +131,7 @@
     <div id="panier-suggestions"></div>
     <div id="panier-promo"></div>
     <div class="panier-total"><span data-i18n="cat_total">Total</span><span id="panier-total-montant">0 €</span></div>
+    <div style="font-size:11.5px;color:var(--mu);margin-top:4px;" data-i18n="cat_frais_info">Les frais de livraison éventuels sont calculés à l'étape suivante, selon votre adresse.</div>
     <button class="panier-vider" onclick="viderPanier()" data-i18n="cat_vider_panier">Vider le panier</button>
     <div class="modal-actions">
       <button class="btn-primary" onclick="ouvrirModaleCommande()" data-i18n="cat_passer_commande">Passer commande →</button>
@@ -147,7 +148,7 @@
     <div class="modal-field"><label data-i18n="cat_email">Email</label><input type="email" id="mc-email" required autocomplete="email"></div>
     <div class="modal-field">
       <label data-i18n="cat_mode">Mode</label>
-      <select id="mc-mode" onchange="document.getElementById('mc-adresse-bloc').style.display=this.value==='livraison'?'block':'none';">
+      <select id="mc-mode" onchange="document.getElementById('mc-adresse-bloc').style.display=this.value==='livraison'?'block':'none'; _fraisLivraison=null;">
         <option value="retrait" data-i18n="cat_je_viens_chercher">Je viens chercher</option>
         <option value="livraison" data-i18n="cat_livraison">Livraison</option>
       </select>
@@ -155,7 +156,11 @@
     <div id="mc-adresse-bloc" style="display:none;">
       <div class="modal-field"><label data-i18n="cat_adresse">Adresse</label><input type="text" id="mc-adresse"></div>
       <div class="modal-field"><label data-i18n="cat_code_postal">Code postal</label><input type="text" id="mc-cp"></div>
-      <div class="modal-field"><label data-i18n="cat_commune">Commune</label><input type="text" id="mc-commune"></div>
+      <div class="modal-field"><label data-i18n="cat_commune">Commune</label><input type="text" id="mc-commune" onchange="calculerFraisApercu()"></div>
+      <div class="modal-field">
+        <button type="button" class="btn-secondary" id="mc-btn-frais" onclick="calculerFraisApercu()" data-i18n="cat_calculer_frais" style="width:100%;">Calculer les frais de livraison</button>
+        <div id="mc-frais" style="margin-top:8px;font-size:13.5px;line-height:1.5;min-height:42px;"></div>
+      </div>
       <div class="modal-field">
         <label data-i18n="cat_quand_livrer">Quand souhaitez-vous être livré ?</label>
         <div style="display:flex;flex-direction:column;gap:8px;">
@@ -370,6 +375,39 @@ function basculerTypeDateLivraison() {
   champ.title = flexible ? T('cat_pas_avant_le') : T('cat_date_souhaitee');
 }
 
+// ── Frais de livraison annoncés AVANT le paiement : aperçu calculé par le serveur (même calcul que la commande réelle). ──
+var _fraisLivraison = null; // { cle, frais, km, produits, total }
+function cleAdresseLivraison() {
+  return ['mc-adresse', 'mc-cp', 'mc-commune'].map(function(id) { return document.getElementById(id).value.trim().toLowerCase(); }).join('|') + '|' + PANIER.map(function(l) { return l.catalogue_id + 'x' + l.quantite; }).join(',') + '|' + (PROMO ? PROMO.code : '');
+}
+function fmtEur(n) { return Number(n).toFixed(2).replace('.', ',') + ' €'; }
+async function calculerFraisApercu() {
+  var zone = document.getElementById('mc-frais');
+  if (!zone || document.getElementById('mc-mode').value !== 'livraison') return false;
+  var adr = document.getElementById('mc-adresse').value.trim(), cp = document.getElementById('mc-cp').value.trim(), com = document.getElementById('mc-commune').value.trim();
+  if (!adr || !com) return false;
+  var cle = cleAdresseLivraison();
+  zone.style.color = 'var(--mu)'; zone.textContent = '…';
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/soumettre-commande-panier', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
+      body: JSON.stringify({ apercu: true, artisan_id: DATA.artisan.id, lignes: PANIER.map(function(l) { return { catalogue_id: l.catalogue_id, quantite: l.quantite }; }),
+        mode: 'livraison', adresse_livraison: adr, code_postal_livraison: cp, commune_livraison: com, code_promo: PROMO ? PROMO.code : null }),
+    });
+    var d = await res.json();
+    if (d.error) throw new Error(d.error);
+    _fraisLivraison = { cle: cle, frais: d.frais_livraison, km: d.distance_km, produits: d.montant_produits, total: d.montant_total };
+    zone.style.color = 'var(--tx)';
+    zone.innerHTML = '🚚 <strong>' + T('cat_frais_livraison') + ' : ' + (d.frais_livraison > 0 ? fmtEur(d.frais_livraison) + (d.distance_km ? ' <span style="color:var(--mu);font-weight:400;">(≈ ' + String(d.distance_km).replace('.', ',') + ' km)</span>' : '') : T('cat_livraison_offerte')) + '</strong><br>' +
+      T('cat_produits_lbl') + ' ' + fmtEur(d.montant_produits) + ' · <strong>' + T('cat_total') + ' ' + fmtEur(d.montant_total) + '</strong>';
+    return true;
+  } catch (e) {
+    _fraisLivraison = null;
+    zone.style.color = 'var(--danger)'; zone.textContent = e.message || T('cat_frais_echec');
+    return false;
+  }
+}
+
 async function confirmerCommande() {
   var err = document.getElementById('mc-err');
   var nom = document.getElementById('mc-nom').value.trim();
@@ -379,6 +417,13 @@ async function confirmerCommande() {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailSaisi)) { err.textContent = T('cat_email_requis'); err.style.display = 'block'; return; }
 
   var mode = document.getElementById('mc-mode').value;
+  // Livraison : le client doit avoir VU le total avec les frais avant de confirmer (jamais de surprise au paiement).
+  if (mode === 'livraison' && (!_fraisLivraison || _fraisLivraison.cle !== cleAdresseLivraison())) {
+    var ok = await calculerFraisApercu();
+    if (ok) { err.textContent = T('cat_verifier_total'); err.style.display = 'block'; }
+    else { err.textContent = document.getElementById('mc-frais').textContent || T('cat_frais_echec'); err.style.display = 'block'; }
+    return;
+  }
   var btn = document.getElementById('mc-btn-confirmer');
   btn.disabled = true; btn.textContent = T('cat_envoi');
   try {
@@ -410,7 +455,7 @@ async function confirmerCommande() {
 
     // Règle du 07/10 : pas de commande sans paiement en ligne. Le paiement est TOUJOURS l'étape suivante (le serveur refuse
     // d'ailleurs toute commande chez un artisan dont les paiements ne sont pas actifs).
-    await afficherEtapePaiement(data.commande_id);
+    await afficherEtapePaiement(data.commande_id, data);
   } catch (e) {
     err.textContent = e.message;
     err.style.display = 'block';
@@ -433,11 +478,12 @@ function annulerPaiementCommande() {
   _panierEnAttentePaiement = null;
   alert(T('cat_commande_non_finalisee'));
 }
-async function afficherEtapePaiement(commandeId) {
+async function afficherEtapePaiement(commandeId, recap) {
   var boite = document.querySelector('#modal-commande .modal-box');
   boite.innerHTML =
     '<h3>' + T('cat_derniere_etape') + '</h3>' +
-    '<p style="font-size:12.5px;color:var(--mu);margin-bottom:14px;">' + T('cat_paiement_obligatoire_info') + '</p>' +
+    '<p style="font-size:12.5px;color:var(--mu);margin-bottom:10px;">' + T('cat_paiement_obligatoire_info') + '</p>' +
+    (recap && recap.montant_total != null ? '<div style="font-size:13.5px;line-height:1.6;margin-bottom:14px;padding:10px 12px;border-radius:9px;background:var(--inp);">' + T('cat_produits_lbl') + ' : ' + fmtEur(recap.montant_produits != null ? recap.montant_produits : recap.montant_total - (recap.frais_livraison || 0)) + '<br>' + (recap.frais_livraison > 0 ? '🚚 ' + T('cat_frais_livraison') + ' : ' + fmtEur(recap.frais_livraison) + '<br>' : '') + '<strong>' + T('cat_total') + ' : ' + fmtEur(recap.montant_total) + '</strong></div>' : '') +
     '<div id="paiement-element" style="margin-bottom:14px;"></div>' +
     '<div id="paiement-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>' +
     '<div class="modal-actions">' +
