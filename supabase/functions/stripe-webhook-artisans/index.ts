@@ -374,8 +374,9 @@ function emailNouvelleCommande(commande: any, lignes: any[]): string {
   const mode = commande.mode === "livraison"
     ? "🚚 Livraison — " + escHtml(commande.adresse_livraison) + (frais > 0 ? ` (frais de livraison : ${frais.toFixed(2)} €)` : "")
     : "🏠 Retrait sur place";
-  const date = commande.date_souhaitee
-    ? `<p>Date ${commande.livraison_flexible ? "souhaitée au plus tôt" : "souhaitée"} : ${escHtml(commande.date_souhaitee)}${commande.livraison_flexible ? ` (flexible, ${escHtml(commande.livraison_fenetre_jours)} jours)` : ""}</p>`
+  const dateFR = (iso: string) => new Date(iso + "T12:00:00Z").toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "UTC" });
+  const date = commande.livraison_debut && commande.livraison_fin
+    ? `<p>📅 Livraison estimée au client : <strong>entre le ${escHtml(dateFR(commande.livraison_debut))} et le ${escHtml(dateFR(commande.livraison_fin))}</strong>. Passez la commande en « Prête » avant le ${escHtml(dateFR(commande.livraison_debut))} : MPA AI vous proposera alors le meilleur jour pour regrouper vos livraisons.</p>`
     : "";
   return `<div style="font-family:sans-serif;max-width:480px;">
         <h2 style="color:#B5502F;">Nouvelle commande payée — ${Number(commande.montant_total).toFixed(2)} €</h2>

@@ -92,6 +92,19 @@ async function distanceTrajetKm(latA: number, lonA: number, latB: number, lonB: 
   return estimee;
 }
 
+// Fenêtre de livraison annoncée au client : elle commence après le délai de préparation de l'artisan (7 jours par défaut), dure 7 jours,
+// et ne peut pas commencer avant la date « pas avant le » éventuellement demandée par le client. Calculée ICI, jamais par le navigateur.
+function ajouterJours(dateISO: string, n: number): string {
+  const d = new Date(dateISO + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10);
+}
+function fenetreLivraison(delaiJours: number, pasAvant: unknown): { debut: string; fin: string } {
+  const aujourdhui = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10); // jour de Guadeloupe
+  const delai = Number.isFinite(delaiJours) && delaiJours >= 0 && delaiJours <= 30 ? Math.round(delaiJours) : 7;
+  let debut = ajouterJours(aujourdhui, delai);
+  if (typeof pasAvant === "string" && /^\d{4}-\d{2}-\d{2}$/.test(pasAvant) && pasAvant > debut && pasAvant <= ajouterJours(aujourdhui, 90)) debut = pasAvant;
+  return { debut, fin: ajouterJours(debut, FENETRE_LIVRAISON_FLEXIBLE_JOURS - 1) };
+}
+
 function calculerFraisLivraison(base: number, kmInclus: number, prixKm: number, distanceKm: number): number {
   if (distanceKm <= kmInclus) return base;
   return Math.round((base + (distanceKm - kmInclus) * prixKm) * 100) / 100;
@@ -124,7 +137,7 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Votre email est obligatoire pour recevoir la confirmation de votre commande." }, 400);
     }
 
-    const { artisan_id, lignes, client_nom, client_telephone, client_email, mode, adresse_livraison, code_postal_livraison, commune_livraison, date_souhaitee, livraison_flexible, notes, code_promo: codeSaisi } = body;
+    const { artisan_id, lignes, client_nom, client_telephone, client_email, mode, adresse_livraison, code_postal_livraison, commune_livraison, pas_avant: pasAvantSaisi, notes, code_promo: codeSaisi } = body;
 
     if (!artisan_id) return json({ error: "Boutique manquante." }, 400);
     if (!Array.isArray(lignes) || !lignes.length) return json({ error: "Le panier est vide." }, 400);
@@ -162,7 +175,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data: artisan, error: errA } = await sb.from("artisans")
-      .select("nom_entreprise, email, plan, code_promo, code_promo_pct, code_promo_fin, latitude, longitude, livraison_forfait_base, livraison_km_inclus, livraison_prix_km_supp, stripe_connect_statut, boutique_en_pause")
+      .select("nom_entreprise, email, plan, code_promo, code_promo_pct, code_promo_fin, livraison_delai_jours, latitude, longitude, livraison_forfait_base, livraison_km_inclus, livraison_prix_km_supp, stripe_connect_statut, boutique_en_pause")
       .eq("id", artisan_id).maybeSingle();
     if (errA) throw errA;
     if (!artisan) return json({ error: "Boutique introuvable." }, 404);
@@ -254,8 +267,9 @@ Deno.serve(async (req: Request) => {
     }
 
     const montantTotal = Math.round((montantProduits + fraisLivraison) * 100) / 100;
+    const fenetre = mode === "livraison" ? fenetreLivraison(Number((artisan as any).livraison_delai_jours ?? 7), pasAvantSaisi) : null;
     if (apercu) {
-      return json({ ok: true, apercu: true, montant_produits: montantProduits, frais_livraison: fraisLivraison, distance_km: distanceKmCalculee != null ? Math.round(distanceKmCalculee * 10) / 10 : null, montant_total: montantTotal });
+      return json({ ok: true, apercu: true, livraison_debut: fenetre?.debut ?? null, livraison_fin: fenetre?.fin ?? null, montant_produits: montantProduits, frais_livraison: fraisLivraison, distance_km: distanceKmCalculee != null ? Math.round(distanceKmCalculee * 10) / 10 : null, montant_total: montantTotal });
     }
     const nbArticlesDistincts = lignesAEnregistrer.length;
     const resumeNom = nbArticlesDistincts === 1
@@ -276,9 +290,11 @@ Deno.serve(async (req: Request) => {
       adresse_livraison: mode === "livraison" ? adresse_livraison?.trim() : null,
       code_postal_livraison: mode === "livraison" ? code_postal_livraison?.trim() : null,
       commune_livraison: mode === "livraison" ? commune_livraison?.trim() : null,
-      date_souhaitee: date_souhaitee || null,
-      livraison_flexible: mode === "livraison" ? !!livraison_flexible : false,
-      livraison_fenetre_jours: (mode === "livraison" && livraison_flexible) ? FENETRE_LIVRAISON_FLEXIBLE_JOURS : null,
+      date_souhaitee: fenetre?.debut ?? null, // début de la fenêtre (champ conservé : les écrans de planification le lisent)
+      livraison_flexible: mode === "livraison",
+      livraison_fenetre_jours: mode === "livraison" ? FENETRE_LIVRAISON_FLEXIBLE_JOURS : null,
+      livraison_debut: fenetre?.debut ?? null,
+      livraison_fin: fenetre?.fin ?? null,
       notes: notes?.trim() || null,
       code_promo: codeApplique, code_promo_pct: codeApplique ? pctCode : null,
       paiement_requis: true, // le client DOIT payer en ligne : la commande n'existe pour l'artisan qu'une fois payée (voir stripe-webhook-artisans)
@@ -296,7 +312,7 @@ Deno.serve(async (req: Request) => {
     // n'a simplement aucun effet plutôt que de passer en négatif.
     // Le stock n'est PAS retiré ici et l'artisan n'est PAS prévenu : tant que le client n'a pas payé, la commande n'existe pas pour lui.
     // Au paiement réussi, stripe-webhook-artisans retire le stock (remboursement automatique s'il n'y en a plus) et envoie l'email.
-    return json({ ok: true, commande_id: commande.id, montant_produits: montantProduits, montant_total: montantTotal, frais_livraison: fraisLivraison });
+    return json({ ok: true, commande_id: commande.id, livraison_debut: fenetre?.debut ?? null, livraison_fin: fenetre?.fin ?? null, montant_produits: montantProduits, montant_total: montantTotal, frais_livraison: fraisLivraison });
 
   } catch (e) {
     console.error("[soumettre-commande-panier]", e);

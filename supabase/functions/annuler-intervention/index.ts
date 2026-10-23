@@ -100,9 +100,16 @@ Deno.serve(async (req: Request) => {
     if (!maj || maj.length === 0) return json({ error: "Cette intervention vient d'être annulée." }, 409);
 
     // Livraison d'une commande de la boutique ? (l'artisan doit alors décider du remboursement)
+    // (24/10) La commande n'est pas perdue : elle est détachée de la livraison annulée et revient à « Prête, à planifier ».
+    // L'artisan choisit alors : une nouvelle date, ou rembourser la commande.
     const { data: commandes } = await sb.from("commandes_catalogue").select("id")
       .eq("intervention_id", intervention_id).not("statut", "in", "(annulee,terminee)").limit(1);
     const commandeLiee = !!(commandes && commandes.length);
+    const commandeId: string | null = commandeLiee ? commandes![0].id : null;
+    if (commandeId) {
+      const { error: errDet } = await sb.from("commandes_catalogue").update({ intervention_id: null, livraison_prevue_le: null }).eq("id", commandeId);
+      if (errDet) console.error("[annuler-intervention] Détachement de la commande :", errDet.message);
+    }
 
     // Paiements en ligne liés à ce rendez-vous (frais de réservation, solde) : remboursés automatiquement et intégralement.
     let montantRembourse = 0, remboursementEchoue = false;
@@ -138,7 +145,7 @@ Deno.serve(async (req: Request) => {
       clientPrevenu = await envoyerEmail(client.email, `Rendez-vous annulé — ${nomSujet}`, html);
     }
 
-    return json({ ok: true, client_rembourse: montantRembourse, remboursement_echoue: remboursementEchoue, client_prevenu: clientPrevenu, client_sans_email: !client?.email, commande_liee: commandeLiee });
+    return json({ ok: true, client_rembourse: montantRembourse, remboursement_echoue: remboursementEchoue, client_prevenu: clientPrevenu, client_sans_email: !client?.email, commande_liee: commandeLiee, commande_id: commandeId });
   } catch (e) {
     console.error("[annuler-intervention]", e);
     return json({ error: MSG_ERREUR_GENERIQUE }, 500);

@@ -214,6 +214,30 @@ async function verifierAlertesMpaAi() {
       { label: 'Voir mes commandes', action: "switchTab(4);switchSousOnglet('nav-ventes','conteneur-ventes',2)" });
   }
 
+  // 4 bis) Livraisons de boutique : à préparer, en retard. Uniquement ici, à chaque ouverture — jamais d'email à l'artisan.
+  var voirCmd = { label: 'Voir mes commandes', action: "switchTab(4);switchSousOnglet('nav-ventes','conteneur-ventes',2)" };
+  var cmds = (typeof _commandesCache !== 'undefined' && _commandesCache) ? _commandesCache : [];
+  var enRetardCmd = cmds.filter(commandeEnRetard);
+  if (enRetardCmd.length === 1) {
+    var cr = enRetardCmd[0];
+    mpaAiDire('⏰ La commande de ' + escHtml(cr.client_nom) + ' devait être prête le ' + dateCourteFR(cr.livraison_debut) + '. Ce retard m\'empêche de la regrouper avec vos autres interventions. Que voulez-vous faire ?', 'warning', [
+      { label: '📦 Elle est prête', action: "marquerCommandePrete('" + cr.id + "')" },
+      { label: '↩️ Rembourser', action: "ouvrirRemboursement('" + cr.id + "')" },
+      voirCmd ]);
+  } else if (enRetardCmd.length > 1) {
+    mpaAiDire('⏰ ' + enRetardCmd.length + ' commandes à livrer auraient dû être prêtes. Ces retards m\'empêchent de regrouper les livraisons. Pour chacune : la passer en « Prête » dès que possible, ou la rembourser.', 'warning', voirCmd);
+  }
+  var aPreparer = cmds.filter(function(c) {
+    return c.mode === 'livraison' && commandeReglee(c) && c.statut !== 'prete' && c.statut !== 'terminee' && c.statut !== 'annulee' && c.livraison_debut && !commandeEnRetard(c) && c.livraison_debut <= ajouterJoursISO(jourGuadeloupe(), 3);
+  });
+  if (aPreparer.length) {
+    mpaAiDire('📦 ' + aPreparer.length + ' commande' + (aPreparer.length > 1 ? 's' : '') + ' à préparer avant le début de la fenêtre de livraison (' + aPreparer.map(function(c) { return escHtml(c.client_nom) + ' : ' + dateCourteFR(c.livraison_debut); }).join(' ; ') + ').', 'info', voirCmd);
+  }
+  var pretesAPlanifier = cmds.filter(function(c) { return c.mode === 'livraison' && commandeReglee(c) && c.statut === 'prete' && !c.intervention_id; });
+  if (pretesAPlanifier.length) {
+    mpaAiDire('🚚 ' + pretesAPlanifier.length + ' livraison' + (pretesAPlanifier.length > 1 ? 's prêtes attendent' : ' prête attend') + ' d\'être planifiée' + (pretesAPlanifier.length > 1 ? 's' : '') + '.', 'info', { label: 'Voir mes livraisons', action: "switchTab(5)" });
+  }
+
   // 4 bis) Interventions dont la date est passée mais qui ne sont pas encore « terminées » : c'est ce qui fausse le chiffre d'affaires,
   // la facturation et les demandes d'avis (qui partent 48 h après « terminée »). Rappel simple, pour tous les plans, jamais bloquant.
   var nbAClore = await compterInterventionsACloturer();
@@ -2073,6 +2097,7 @@ function copierLienPaiementPrestation(token) {
 function ouvrirDemandePaiement() {
   var i = _interventionsCache.find(function(x) { return x.id === _interventionEnCours; });
   if (!i) return;
+  if ((_commandesCache || []).some(function(c) { return c.intervention_id === i.id; })) { alert('Les frais de cette livraison ont déjà été réglés en ligne avec la commande : il n\'y a rien à demander au client.'); return; }
   if (i.statut === 'payee') { alert('Cette intervention est déjà payée : il n\'y a plus rien à demander. Repassez-la en « Terminée » si vous devez encore encaisser un montant.'); return; }
   // Un lien est déjà en attente : le bouton est grisé (voir renderPaiementsIntervention) ; ce garde-fou couvre un clic déjà parti.
   if ((_paiementsIntervention || []).some(function(p) { return p.type === 'solde' && p.statut === 'en_attente' && Date.now() - new Date(p.created_at).getTime() < 14 * 86400000; })) { alert('Un paiement est déjà en attente pour cette intervention : utilisez « Relancer » (ou « Renvoyer le même lien »).'); return; }
@@ -2220,7 +2245,12 @@ async function confirmerImpossibleHonorer() {
       ? '🚫 Rendez-vous annulé. Votre client a été prévenu par email.'
       : '🚫 Rendez-vous annulé. ' + (data.client_sans_email ? 'Ce client n\'a pas d\'email : pensez à le prévenir directement.' : 'L\'email n\'a pas pu partir : prévenez votre client directement.');
     mpaAiDire(msg, data.client_prevenu ? 'info' : 'warning');
-    if (data.commande_liee) mpaAiDire('📦 Cette intervention était la livraison d\'une commande de votre boutique. Si vous ne pouvez pas la livrer, pensez à rembourser la commande depuis Mes ventes.', 'important');
+    if (data.commande_liee && data.commande_id) {
+      await chargerCommandes(); await chargerLivraisons();
+      mpaAiDire('📦 Cette intervention était la livraison d\'une commande de votre boutique. La commande n\'est pas perdue : elle est revenue à « Prête, à planifier ». Que voulez-vous faire ?', 'important', [
+        { label: '🚚 Choisir une nouvelle date', action: "planifierLivraisonCommande('" + data.commande_id + "')" },
+        { label: '↩️ Rembourser la commande', action: "ouvrirRemboursement('" + data.commande_id + "')" } ]);
+    }
   } catch (e) {
     alert('Erreur : ' + e.message);
     btn.disabled = false; btn.textContent = 'Annuler et prévenir mon client';
@@ -2511,8 +2541,12 @@ async function sauverIntervention() {
   }
 
   var res;
-  var ancienStatut = null;
-  if (_interventionEnCours) { var _ex = _interventionsCache.find(function(x) { return x.id === _interventionEnCours; }); ancienStatut = _ex ? _ex.statut : null; }
+  var ancienStatut = null, _ex = null;
+  if (_interventionEnCours) { _ex = _interventionsCache.find(function(x) { return x.id === _interventionEnCours; }); ancienStatut = _ex ? _ex.statut : null; }
+  // Annuler passe toujours par « Impossible d'honorer » : il prévient le client, rembourse ce qui a été payé et libère une éventuelle commande.
+  if (_ex && maj.statut === 'annulee' && ancienStatut !== 'annulee') { alert('Pour annuler cette intervention, utilisez le bouton « Impossible d\'honorer » : votre client est prévenu et ses paiements en ligne sont remboursés.'); document.getElementById('mi-statut').value = ancienStatut; return; }
+  var changementDate = !!(_ex && ['planifiee', 'en_cours'].indexOf(ancienStatut) !== -1 && ['planifiee', 'en_cours'].indexOf(maj.statut) !== -1 && (_ex.date_intervention !== maj.date_intervention || (_ex.creneau || '') !== (maj.creneau || '') || String(_ex.heure_debut || '').slice(0, 5) !== String(maj.heure_debut || '').slice(0, 5)));
+  var ancienneDate = _ex ? _ex.date_intervention : null;
   if (_interventionEnCours) {
     res = await sb.from('mpa_artisans_interventions').update(maj).eq('id', _interventionEnCours).eq('artisan_id', _artisan.id).select().single();
   } else {
@@ -2532,6 +2566,8 @@ async function sauverIntervention() {
   fermerModale('modal-intervention');
   await chargerInterventions();
   if (maj.statut === 'terminee' && ancienStatut !== 'terminee' && res.data) suiteInterventionTerminee(res.data.id);
+  if (changementDate && res.data) await prevenirClientDeplacement(res.data.id, ancienneDate);
+  if (['terminee', 'payee'].indexOf(maj.statut) !== -1) chargerCommandes(); // une livraison terminée clôture sa commande (la base s'en charge)
   if (maj.statut !== 'annulee') {
     verifierFaisabiliteJour(maj.date_intervention);
     verifierTensionJournee(maj.date_intervention, maj.commune, _interventionEnCours);
@@ -2542,11 +2578,35 @@ async function sauverIntervention() {
     var infoCommande = window._commandeEnLivraison;
     window._commandeEnLivraison = null;
     var { error: errLien } = await sb.from('commandes_catalogue')
-      .update({ intervention_id: res.data.id, statut: 'confirmee' })
+      .update({ intervention_id: res.data.id, livraison_prevue_le: res.data.date_intervention })
       .eq('id', infoCommande.commandeId).eq('artisan_id', _artisan.id);
     if (errLien) console.error('Liaison commande/intervention:', errLien);
+    var probleme = await notifierClientCommande(infoCommande.commandeId, 'livraison_prevue', { date: res.data.date_intervention, creneau: res.data.creneau || null });
     await chargerCommandes();
     await chargerLivraisons();
+    alert(probleme ? '🚚 Livraison planifiée.\n\n⚠️ ' + probleme : '🚚 Livraison planifiée : le client a reçu un email avec le jour prévu.');
+  }
+}
+
+// Intervention déplacée : le client est TOUJOURS prévenu par email (aucun choix — un client doit savoir que la date a changé). MPA-AI en informe l'artisan.
+async function prevenirClientDeplacement(interventionId, ancienneDate) {
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/notifier-intervention-deplacee', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({ intervention_id: interventionId, ancienne_date: ancienneDate }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    if (data.client_prevenu) mpaAiDire('✉️ Le rendez-vous a été déplacé : j\'ai prévenu votre client par email du nouveau jour.', 'info');
+    else mpaAiDire('⚠️ Le rendez-vous a été déplacé, mais ' + (data.client_sans_email ? 'ce client n\'a pas d\'adresse email : prévenez-le directement.' : 'l\'email n\'a pas pu partir : prévenez votre client directement.'), 'warning');
+    if (data.livraison) {
+      await chargerCommandes(); await chargerLivraisons();
+      if (data.hors_fenetre) mpaAiDire('📅 Attention : ce nouveau jour est en dehors de la fenêtre de livraison annoncée au client. Il en a été informé, mais vérifiez que cela lui convient.', 'warning');
+    }
+  } catch (e) {
+    mpaAiDire('⚠️ Le rendez-vous a été déplacé, mais je n\'ai pas pu prévenir votre client par email : prévenez-le directement.', 'warning');
   }
 }
 
@@ -3227,6 +3287,8 @@ function boutonFactureCommande(c) {
     return '<span style="font-size:11.5px;color:#0f9d78;font-weight:700;margin-left:8px;">✓ Facturée' + (_numerosFactures[_facturesCommandes[c.id]] ? ' — n° ' + escHtml(_numerosFactures[_facturesCommandes[c.id]]) : '') + '</span> ' + htmlEnvoiFacture(_facturesCommandes[c.id], true);
   }
   if (c.paiement_statut !== 'paye' || !(montantFacturableCommande(c) > 0)) return '';
+  if (c.statut !== 'terminee') return '<button disabled title="Disponible une fois la commande terminée" style="padding:6px 14px;border-radius:7px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:700;opacity:.35;cursor:not-allowed;margin-left:6px;">🧾 Facturer</button>' +
+    '<button disabled title="Disponible une fois la commande terminée" style="padding:6px 14px;border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;font-weight:700;opacity:.35;cursor:not-allowed;margin-left:6px;">✉️ Facturer et envoyer</button>';
   return '<button onclick="facturerCommande(\'' + c.id + '\')" style="padding:6px 14px;border-radius:7px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">🧾 Facturer</button>' +
     '<button onclick="facturerCommande(\'' + c.id + '\', true)" style="padding:6px 14px;border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">✉️ Facturer et envoyer</button>';
 }
@@ -3242,6 +3304,7 @@ async function _facturerCommande(id, envoyer) {
   var c = _commandesCache.find(function(x) { return x.id === id; });
   if (!c || _facturesCommandes === null) return;
   if (_facturesCommandes[id]) return; // déjà facturée
+  if (c.statut !== 'terminee') { alert('Cette commande pourra être facturée une fois « Terminée » (livrée ou remise au client).'); return; }
   if (c.paiement_statut !== 'paye') { alert('Seule une commande payée en ligne peut être facturée ici.'); return; }
   var montant = montantFacturableCommande(c);
   if (!(montant > 0)) { alert('Cette commande n\'a rien à facturer (les frais de livraison se facturent avec la livraison).'); return; }
@@ -4593,17 +4656,22 @@ async function sauverTarifLivraison() {
   var base = document.getElementById('livraison-base').value;
   var kmInclus = document.getElementById('livraison-km-inclus').value;
   var prixKm = document.getElementById('livraison-prix-km').value;
+  var delaiBrut = document.getElementById('livraison-delai-jours').value;
+  var delai = delaiBrut === '' ? 7 : Math.round(parseFloat(delaiBrut));
+  if (!(delai >= 0 && delai <= 30)) { alert('Le délai de préparation doit être compris entre 0 et 30 jours.'); return; }
   var btn = document.getElementById('btn-livraison-sauver');
   btn.disabled = true; btn.textContent = 'Enregistrement…';
   var { error } = await sb.from('artisans').update({
     livraison_forfait_base: base === '' ? null : parseFloat(base),
     livraison_km_inclus: kmInclus === '' ? null : parseFloat(kmInclus),
     livraison_prix_km_supp: prixKm === '' ? null : parseFloat(prixKm),
+    livraison_delai_jours: delai,
   }).eq('id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); } else {
     _artisan.livraison_forfait_base = base === '' ? null : parseFloat(base);
     _artisan.livraison_km_inclus = kmInclus === '' ? null : parseFloat(kmInclus);
     _artisan.livraison_prix_km_supp = prixKm === '' ? null : parseFloat(prixKm);
+    _artisan.livraison_delai_jours = delai;
   }
   btn.disabled = false; btn.textContent = 'Enregistrer';
 }
@@ -4617,6 +4685,7 @@ async function chargerCatalogue() {
   document.getElementById('livraison-base').value = _artisan.livraison_forfait_base ?? '';
   document.getElementById('livraison-km-inclus').value = _artisan.livraison_km_inclus ?? '';
   document.getElementById('livraison-prix-km').value = _artisan.livraison_prix_km_supp ?? '';
+  document.getElementById('livraison-delai-jours').value = _artisan.livraison_delai_jours ?? 7;
   afficherExempleLivraison();
 
   // Lien de boutique : généré une fois pour toutes si l'artisan n'en a pas encore.
@@ -5249,57 +5318,66 @@ async function chargerLivraisons() {
   var zone = document.getElementById('zone-livraisons');
   if (!zone) return;
 
-  var aujourdhui = new Date().toISOString().slice(0, 10);
+  var aujourdhui = jourGuadeloupe();
   var { data: livraisons, error } = await sb.from('commandes_catalogue')
-    .select('id, client_nom, client_telephone, adresse_livraison, commune_livraison, nom_article, quantite, mpa_artisans_interventions(id, date_intervention, creneau, heure_debut, commune, statut)')
+    .select('id, client_nom, client_telephone, adresse_livraison, commune_livraison, nom_article, quantite, statut, paiement_statut, intervention_id, livraison_debut, livraison_fin, livraison_prevue_le, mpa_artisans_interventions(id, date_intervention, creneau, heure_debut, commune, statut)')
     .eq('artisan_id', _artisan.id)
     .eq('mode', 'livraison')
-    .not('intervention_id', 'is', null);
+    .neq('statut', 'annulee');
   if (error) {
     zone.innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>';
     return;
   }
+  var toutes = (livraisons || []).filter(function(l) { return STATUTS_COMMANDE_REGLEE.indexOf(l.paiement_statut) !== -1 && l.statut !== 'terminee'; });
+  var finSemaine = ajouterJoursISO(aujourdhui, 7);
+  var planifiees = toutes.filter(function(l) { var i = l.mpa_artisans_interventions; return i && i.statut !== 'annulee'; });
+  var duJour = planifiees.filter(function(l) { return l.mpa_artisans_interventions.date_intervention === aujourdhui; });
+  var semaine = planifiees.filter(function(l) { var d = l.mpa_artisans_interventions.date_intervention; return d > aujourdhui && d <= finSemaine; });
+  var aPlanifier = toutes.filter(function(l) { var i = l.mpa_artisans_interventions; return !(i && i.statut !== 'annulee'); })
+    .sort(function(a, b) { return String(a.livraison_debut || '9999').localeCompare(String(b.livraison_debut || '9999')); });
 
-  var duJour = (livraisons || []).filter(function(l) {
-    var i = l.mpa_artisans_interventions;
-    return i && i.date_intervention === aujourdhui && i.statut !== 'annulee';
-  });
-
-  if (!duJour.length) {
-    zone.innerHTML = '<div class="etat-vide-tbl">Aucune livraison prévue aujourd\'hui.</div>';
+  if (!duJour.length && !semaine.length && !aPlanifier.length) {
+    zone.innerHTML = '<div class="etat-vide-tbl">Aucune livraison à venir.</div>';
     return;
   }
 
   // Une livraison est "regroupée" si une AUTRE intervention (prestation ou livraison) a lieu
   // le même jour, dans la même commune — recalculé à chaque affichage, jamais stocké.
-  var { data: interventionsDuJour } = await sb.from('mpa_artisans_interventions')
-    .select('id, commune').eq('artisan_id', _artisan.id).eq('date_intervention', aujourdhui).neq('statut', 'annulee');
+  var { data: interventionsProches } = await sb.from('mpa_artisans_interventions')
+    .select('id, commune, date_intervention').eq('artisan_id', _artisan.id).gte('date_intervention', aujourdhui).lte('date_intervention', finSemaine).neq('statut', 'annulee');
 
-  duJour.sort(function(a, b) {
-    var ha = a.mpa_artisans_interventions.heure_debut || '99:99';
-    var hb = b.mpa_artisans_interventions.heure_debut || '99:99';
-    return ha.localeCompare(hb);
-  });
-
-  zone.innerHTML = duJour.map(function(l) {
+  var heureDe = function(i) { return i.heure_debut || (i.creneau === 'matin' ? 'Matin' : (i.creneau === 'apres_midi' || i.creneau === 'apres-midi') ? 'Après-midi' : '—'); };
+  var titre = function(txt, n) { return '<div style="font-size:12.5px;font-weight:700;margin:14px 0 4px;color:var(--mu2);">' + txt + ' <span style="font-weight:500;color:var(--mu);">(' + n + ')</span></div>'; };
+  var carte = function(l, enteteHtml) {
     var i = l.mpa_artisans_interventions;
-    var heure = i.heure_debut || (i.creneau === 'matin' ? 'Matin' : (i.creneau === 'apres_midi' || i.creneau === 'apres-midi') ? 'Après-midi' : '—');
-    var autresMemeCommune = (interventionsDuJour || []).filter(function(x) {
-      return x.id !== i.id && (x.commune || '').toLowerCase().trim() === (i.commune || '').toLowerCase().trim();
-    }).length;
-    var noteRegroupement = autresMemeCommune > 0
-      ? '<div style="font-size:11.5px;color:#16a34a;margin-top:4px;">🧩 Regroupée — ' + autresMemeCommune + ' autre' + (autresMemeCommune > 1 ? 's' : '') + ' intervention' + (autresMemeCommune > 1 ? 's' : '') + ' dans ' + escHtml(i.commune || 'le même secteur') + ' aujourd\'hui.</div>'
-      : '<div style="font-size:11.5px;color:var(--mu);margin-top:4px;">Livraison isolée ce jour.</div>';
+    var note = '';
+    if (i) {
+      var autres = (interventionsProches || []).filter(function(x) { return x.id !== i.id && x.date_intervention === i.date_intervention && (x.commune || '').toLowerCase().trim() === (i.commune || '').toLowerCase().trim(); }).length;
+      note = autres > 0
+        ? '<div style="font-size:11.5px;color:#16a34a;margin-top:4px;">🧩 Regroupée — ' + autres + ' autre' + (autres > 1 ? 's' : '') + ' intervention' + (autres > 1 ? 's' : '') + ' dans ' + escHtml(i.commune || 'le même secteur') + '.</div>'
+        : '<div style="font-size:11.5px;color:var(--mu);margin-top:4px;">Livraison isolée ce jour.</div>';
+    }
     return '<div style="padding:12px 0;border-bottom:1px solid var(--brd);">' +
-      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">' +
-        '<strong>' + escHtml(heure) + '</strong>' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">' + enteteHtml +
         '<span style="font-size:12px;color:var(--mu);">' + escHtml(l.nom_article) + ' × ' + l.quantite + '</span>' +
       '</div>' +
       '<div style="font-size:13px;margin-top:2px;">' + escHtml(l.client_nom) + ' — ' + escHtml(l.adresse_livraison || '') + (l.commune_livraison ? ', ' + escHtml(l.commune_livraison) : '') + '</div>' +
       '<div style="font-size:12px;color:var(--mu);">📞 ' + escHtml(l.client_telephone || '—') + '</div>' +
-      noteRegroupement +
-    '</div>';
-  }).join('');
+      note + '</div>';
+  };
+  var parHeure = function(a, b) { return (a.mpa_artisans_interventions.heure_debut || '99:99').localeCompare(b.mpa_artisans_interventions.heure_debut || '99:99'); };
+  duJour.sort(parHeure);
+  semaine.sort(function(a, b) { return a.mpa_artisans_interventions.date_intervention.localeCompare(b.mpa_artisans_interventions.date_intervention) || parHeure(a, b); });
+
+  zone.innerHTML =
+    titre('Aujourd\'hui', duJour.length) + (duJour.length ? duJour.map(function(l) { return carte(l, '<strong>' + escHtml(heureDe(l.mpa_artisans_interventions)) + '</strong>'); }).join('') : '<div style="font-size:12.5px;color:var(--mu);">Aucune livraison prévue aujourd\'hui.</div>') +
+    (semaine.length ? titre('Cette semaine', semaine.length) + semaine.map(function(l) { return carte(l, '<strong>' + escHtml(dateCourteFR(l.mpa_artisans_interventions.date_intervention)) + ' · ' + escHtml(heureDe(l.mpa_artisans_interventions)) + '</strong>'); }).join('') : '') +
+    (aPlanifier.length ? titre('À planifier', aPlanifier.length) + aPlanifier.map(function(l) {
+      var enRetard = l.statut !== 'prete' && l.livraison_debut && aujourdhui >= l.livraison_debut;
+      var etat = l.statut === 'prete' ? '<span style="color:#0f9d78;font-weight:700;font-size:12px;">📦 Prête — à planifier</span>' : (enRetard ? '<span style="color:var(--danger);font-weight:700;font-size:12px;">⏰ À préparer (en retard)</span>' : '<span style="color:var(--mu);font-size:12px;">À préparer</span>');
+      var fen = l.livraison_debut && l.livraison_fin ? 'Entre le ' + dateCourteFR(l.livraison_debut) + ' et le ' + dateCourteFR(l.livraison_fin) : 'Date à convenir';
+      return carte(l, '<strong>' + escHtml(fen) + '</strong>').replace(/<\/div>$/, '<div style="margin-top:4px;">' + etat + '</div></div>');
+    }).join('') : '');
 }
 
 // Règle du 07/10 : une commande de la boutique n'existe pour l'artisan qu'une fois PAYÉE. Une commande créée avec « paiement_requis »
@@ -5360,15 +5438,9 @@ function renderCommandes() {
     var modeTxt = c.mode === 'livraison'
       ? '🚚 Livraison — ' + escHtml(c.adresse_livraison || '') + ' ' + escHtml(c.code_postal_livraison || '') + ' ' + escHtml(c.commune_livraison || '')
       : '🏠 Retrait sur place';
-    var dateTxt = c.date_souhaitee ? new Date(c.date_souhaitee).toLocaleDateString('fr-FR') : '—';
     var dateCommandeTxt = dateHeureGuadeloupe(c.created_at);
     var datePaiementTxt = (c.paiement_statut && c.paiement_statut !== 'en_attente' && c.paiement_statut !== 'echoue') ? dateHeureGuadeloupe(c.paiement_traite_le) : '';
-    var boutonSuivant = CYCLE_STATUT_COMMANDE[c.statut]
-      ? '<button onclick="avancerStatutCommande(\'' + c.id + '\')" style="padding:6px 14px;border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;font-weight:700;cursor:pointer;margin-right:6px;">→ ' + LABELS_STATUT_COMMANDE[CYCLE_STATUT_COMMANDE[c.statut]] + '</button>'
-      : '';
-    var boutonLivraison = (c.mode === 'livraison' && !c.intervention_id && c.statut !== 'annulee' && c.statut !== 'terminee')
-      ? '<button onclick="planifierLivraisonCommande(\'' + c.id + '\')" style="padding:6px 14px;border-radius:7px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">🚚 Planifier la livraison</button>'
-      : (c.intervention_id ? '<span style="font-size:11.5px;color:var(--mu);">✓ Dans le planning</span>' : '');
+    var fluxHtml = fluxCommandeHtml(c);
 
     // Règlement en ligne (uniquement si la commande a été payée par carte via CaraLink)
     var total = Number(c.montant_total) || 0, rembourse = Number(c.montant_rembourse) || 0;
@@ -5399,7 +5471,7 @@ function renderCommandes() {
       : '';
 
     var badgeProche = '';
-    if (c.mode === 'livraison' && !c.intervention_id && c.statut !== 'annulee' && c.statut !== 'terminee') {
+    if (c.mode === 'livraison' && !c.intervention_id && c.statut === 'prete') {
       var proche = trouverInterventionProche(c.commune_livraison);
       if (proche) {
         var dateProcheAff = new Date(proche.date_intervention).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
@@ -5423,12 +5495,13 @@ function renderCommandes() {
       '</div>' +
       '<div style="font-size:12px;color:var(--mu);margin-bottom:3px;">🕒 Commandée le ' + dateCommandeTxt + (datePaiementTxt && datePaiementTxt !== dateCommandeTxt ? ' · payée le ' + datePaiementTxt : '') + '</div>' +
       '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:3px;">' + modeTxt + '</div>' +
-      '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:3px;">📅 Souhaitée le ' + dateTxt + '</div>' +
+      (c.mode === 'livraison' ? '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:3px;">📅 ' + texteFenetreCommande(c) + '</div>' : '') +
       '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;">👤 ' + escHtml(c.client_nom) + ' — ' + escHtml(c.client_telephone) + '</div>' +
       (c.notes ? '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;font-style:italic;">« ' + escHtml(c.notes) + ' »</div>' : '') +
       ligneReglement +
       badgeProche +
-      '<div>' + boutonSuivant + boutonLivraison + boutonFactureCommande(c) + boutonRembourser + '</div>' +
+      fluxHtml +
+      '<div style="margin-top:8px;">' + boutonFactureCommande(c) + boutonRembourser + '</div>' +
     '</div>' };
   });
 
@@ -5460,6 +5533,85 @@ function renderCommandes() {
 var _moisCommandesOuverts = null;
 function basculerMoisCommandes(mois, ouvert) { if (!_moisCommandesOuverts) _moisCommandesOuverts = {}; _moisCommandesOuverts[mois] = !!ouvert; }
 
+// ── Parcours d'une commande : toutes les étapes sont visibles, les futures sont grisées avec leur explication, un seul bouton principal. ──
+function ajouterJoursISO(iso, n) { var d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+function jourGuadeloupe() { return new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10); }
+function dateCourteFR(iso) { return new Date(iso + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }); }
+function texteFenetreCommande(c) {
+  if (c.livraison_prevue_le) return 'Livraison prévue le <strong>' + dateCourteFR(c.livraison_prevue_le) + '</strong>';
+  if (c.livraison_debut && c.livraison_fin) return 'Livraison estimée entre le <strong>' + dateCourteFR(c.livraison_debut) + '</strong> et le <strong>' + dateCourteFR(c.livraison_fin) + '</strong>';
+  return c.date_souhaitee ? 'Souhaitée le ' + new Date(c.date_souhaitee).toLocaleDateString('fr-FR') : 'Date de livraison à convenir';
+}
+function commandeReglee(c) { return STATUTS_COMMANDE_REGLEE.indexOf(c.paiement_statut) !== -1; }
+function commandeEnRetard(c) { return c.mode === 'livraison' && commandeReglee(c) && c.statut !== 'prete' && c.statut !== 'terminee' && c.statut !== 'annulee' && !!c.livraison_debut && jourGuadeloupe() >= c.livraison_debut; }
+function fluxCommandeHtml(c) {
+  if (c.statut === 'annulee') return '';
+  if (!commandeReglee(c)) return '';
+  var livraison = c.mode === 'livraison';
+  var prete = c.statut === 'prete' || c.statut === 'terminee', terminee = c.statut === 'terminee', planifiee = !!c.intervention_id;
+  var etapes = livraison
+    ? [['💳 Payée', true], ['📦 Prête', prete], ['🚚 Planifiée', planifiee || terminee], ['🏁 Terminée', terminee], ['🧾 Facturée', !!(_facturesCommandes && _facturesCommandes[c.id])]]
+    : [['💳 Payée', true], ['📦 Prête', prete], ['🤝 Remise', terminee], ['🧾 Facturée', !!(_facturesCommandes && _facturesCommandes[c.id])]];
+  var puces = etapes.map(function(e) {
+    return '<span style="display:inline-block;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700;margin:0 4px 4px 0;' +
+      (e[1] ? 'background:rgba(15,157,120,.12);color:#0f9d78;">✓ ' : 'background:var(--bg2,#f1f5f9);color:var(--mu);opacity:.75;">') + e[0] + '</span>';
+  }).join('');
+  var principal = '', explication = '';
+  var btn = function(txt, action) { return '<button onclick="' + action + '" style="padding:8px 16px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">' + txt + '</button>'; };
+  if (terminee) {
+    explication = livraison ? 'Livrée ✓ — vous pouvez maintenant facturer.' : 'Remise au client ✓ — vous pouvez maintenant facturer.';
+  } else if (!prete) {
+    principal = btn('📦 Marquer comme prête', "marquerCommandePrete('" + c.id + "')");
+    explication = livraison ? 'Une fois prête, vous planifiez la livraison : le client reçoit alors un email avec le jour prévu.' : 'Une fois prête, prévenez votre client qu\'il peut venir la retirer.';
+    if (commandeEnRetard(c)) {
+      principal = '<div style="padding:10px;border-radius:8px;background:rgba(220,38,38,.07);border:1px solid rgba(220,38,38,.25);margin-bottom:8px;font-size:12.5px;"><strong style="color:var(--danger);">⏰ Cette commande aurait dû être prête le ' + dateCourteFR(c.livraison_debut) + '.</strong> Le retard empêche de regrouper la livraison avec vos autres interventions.<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">' +
+        '<button onclick="marquerCommandePrete(\'' + c.id + '\')" style="padding:6px 12px;border-radius:7px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">📦 Elle est prête maintenant</button>' +
+        '<button onclick="ouvrirRemboursement(\'' + c.id + '\')" style="padding:6px 12px;border-radius:7px;border:1px solid var(--danger);background:transparent;color:var(--danger);font-size:12px;font-weight:700;cursor:pointer;">↩️ Rembourser</button></div></div>';
+      explication = '';
+    }
+  } else if (livraison && !planifiee) {
+    principal = btn('🚚 Planifier la livraison', "planifierLivraisonCommande('" + c.id + "')");
+    explication = 'Choisissez le jour dans la fenêtre du client : il recevra un email avec la date. Une fois la livraison terminée, la commande passe toute seule en « Terminée ».';
+  } else if (livraison) {
+    explication = '✓ Dans le planning' + (c.livraison_prevue_le ? ' le ' + dateCourteFR(c.livraison_prevue_le) : '') + ' — quand l\'intervention de livraison sera terminée, cette commande passera automatiquement en « Terminée ».';
+  } else {
+    principal = btn('🤝 Marquer comme remise', "marquerCommandeRemise('" + c.id + "')");
+    explication = 'À cliquer quand le client a récupéré sa commande.';
+  }
+  var aFacturer = !terminee && !(_facturesCommandes && _facturesCommandes[c.id]) ? 'La facture se débloque une fois la commande « Terminée ».' : '';
+  return '<div style="margin:8px 0;">' + puces + '</div>' + principal +
+    (explication ? '<div style="font-size:12px;color:var(--mu);margin:6px 0 2px;">' + explication + '</div>' : '') +
+    (aFacturer ? '<div style="font-size:12px;color:var(--mu);margin:2px 0;opacity:.8;">🔒 ' + aFacturer + '</div>' : '');
+}
+// Email au client (prête / livraison prévue / retard) — la fonction serveur vérifie que la commande est bien à l'artisan connecté.
+async function notifierClientCommande(id, type, extra) {
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    var res = await fetch(SUPABASE_URL + '/functions/v1/notifier-commande-client', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify(Object.assign({ commande_id: id, type: type }, extra || {})),
+    });
+    var data = await res.json();
+    if (data.error) return data.error === 'email_client_manquant' ? 'Ce client n\'a pas laissé d\'adresse email : prévenez-le par téléphone.' : (data.error === 'commande_non_notifiable' ? 'Cette commande ne peut pas être notifiée.' : 'L\'email n\'a pas pu partir (' + data.error + ').');
+    return null;
+  } catch (e) { return 'L\'email n\'a pas pu partir.'; }
+}
+async function marquerCommandePrete(id) {
+  if (!verifierAccesEcriture()) return;
+  var c = _commandesCache.find(function(x) { return x.id === id; });
+  if (!c) return;
+  var { error } = await sb.from('commandes_catalogue').update({ statut: 'prete', prete_le: new Date().toISOString() }).eq('id', id).eq('artisan_id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerCommandes();
+  mpaAiDire('📦 Commande de ' + escHtml(c.client_nom) + ' marquée « Prête ».' + (c.mode === 'livraison' ? ' Vous pouvez maintenant planifier la livraison.' : ' Pensez à prévenir votre client qu\'il peut venir la retirer.'), 'info');
+}
+async function marquerCommandeRemise(id) {
+  if (!verifierAccesEcriture()) return;
+  var { error } = await sb.from('commandes_catalogue').update({ statut: 'terminee' }).eq('id', id).eq('artisan_id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerCommandes();
+}
 async function avancerStatutCommande(id) {
   if (!verifierAccesEcriture()) return;
   var c = _commandesCache.find(function(x) { return x.id === id; });
@@ -5691,50 +5843,44 @@ async function planifierLivraisonCommande(commandeId) {
   var c = _commandesCache.find(function(x) { return x.id === commandeId; });
   if (!c) return;
 
-  // Cherche une intervention à venir, dans la même commune, pour proposer de regrouper.
-  // - Livraison flexible : recherche bornée à la fenêtre choisie par le client (ex : 7 jours à
-  //   partir de la date souhaitée) — l'intérêt même de la flexibilité, trouver le MEILLEUR jour
-  //   dans cette fenêtre plutôt que la première intervention qui traîne, parfois bien plus tard.
-  // - Date précise avec date renseignée : recherche UNIQUEMENT ce jour-là, jamais plus tard —
-  //   proposer de regrouper avec une intervention trois semaines après n'aurait aucun sens pour
-  //   un client qui a demandé une date précise.
-  // - Aucune date renseignée (ancien comportement, avant l'ajout du champ date) : recherche
-  //   ouverte à partir d'aujourd'hui, en repli.
-  var dateSuggestion = c.date_souhaitee || null;
+  // Fenêtre de livraison estimée au client (début → fin) : on cherche, dans cette fenêtre et dans la même commune, une intervention avec laquelle regrouper.
+  // Anciennes commandes (avant la fenêtre) : on repart de la date souhaitée, sur 7 jours.
+  var debutFenetre = c.livraison_debut || c.date_souhaitee || null;
+  var finFenetre = c.livraison_fin || (debutFenetre ? ajouterJoursISO(debutFenetre, 6) : null);
+  var aujourdhuiGP = jourGuadeloupe();
+  if (debutFenetre && debutFenetre < aujourdhuiGP) debutFenetre = aujourdhuiGP; // fenêtre commencée : on cherche à partir d'aujourd'hui
+  var dateSuggestion = debutFenetre;
   var creneauSuggestion = 'matin';
   if (c.commune_livraison) {
-    var aujourdhui = new Date().toISOString().slice(0, 10);
     var requete = sb.from('mpa_artisans_interventions')
       .select('date_intervention, creneau, commune')
       .eq('artisan_id', _artisan.id)
       .ilike('commune', c.commune_livraison.trim())
-      .neq('statut', 'annulee');
-
-    if (c.livraison_flexible && c.livraison_fenetre_jours) {
-      var finFenetre = new Date((c.date_souhaitee || aujourdhui) + 'T12:00:00');
-      finFenetre.setDate(finFenetre.getDate() + c.livraison_fenetre_jours - 1);
-      requete = requete.gte('date_intervention', c.date_souhaitee || aujourdhui).lte('date_intervention', finFenetre.toISOString().slice(0, 10));
-    } else if (c.date_souhaitee) {
-      requete = requete.eq('date_intervention', c.date_souhaitee);
-    } else {
-      requete = requete.gte('date_intervention', aujourdhui);
-    }
-
+      .neq('statut', 'annulee')
+      .gte('date_intervention', debutFenetre || aujourdhuiGP);
+    if (finFenetre && finFenetre >= (debutFenetre || aujourdhuiGP)) requete = requete.lte('date_intervention', finFenetre);
     var { data: proches } = await requete.order('date_intervention', { ascending: true }).limit(1);
     var intervProche = (proches && proches.length) ? proches[0] : null;
   }
 
-  // Crée (ou réutilise) une fiche client pour cette livraison, avec les coordonnées fournies.
-  var { data: client, error: errClient } = await sb.from('mpa_artisans_clients').insert({
-    artisan_id: _artisan.id,
-    nom: c.client_nom,
-    telephone: c.client_telephone,
-    email: c.client_email || null,
-    adresse: c.adresse_livraison,
-    code_postal: c.code_postal_livraison,
-    commune: c.commune_livraison,
-  }).select().single();
-  if (errClient) { alert('Erreur création client : ' + errClient.message); return; }
+  // Fiche client : on réutilise celle qui existe déjà (même email ou même nom) — jamais de doublon à chaque livraison.
+  var nomNormLiv = normaliserNomClient(c.client_nom);
+  var client = (_clientsCache || []).find(function(x) {
+    return (c.client_email && x.email && x.email.toLowerCase() === String(c.client_email).toLowerCase()) || normaliserNomClient(x.nom) === nomNormLiv;
+  });
+  if (!client) {
+    var { data: nouveauClient, error: errClient } = await sb.from('mpa_artisans_clients').insert({
+      artisan_id: _artisan.id,
+      nom: c.client_nom,
+      telephone: c.client_telephone,
+      email: c.client_email || null,
+      adresse: c.adresse_livraison,
+      code_postal: c.code_postal_livraison,
+      commune: c.commune_livraison,
+    }).select().single();
+    if (errClient) { alert('Erreur création client : ' + errClient.message); return; }
+    client = nouveauClient;
+  }
 
   await chargerClients();
   await ouvrirNouvelleIntervention(dateSuggestion || new Date().toISOString().slice(0, 10), creneauSuggestion);

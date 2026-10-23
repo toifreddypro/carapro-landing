@@ -161,18 +161,10 @@
         <div id="mc-frais" style="margin-top:8px;font-size:13.5px;line-height:1.5;min-height:42px;"></div>
       </div>
       <div class="modal-field">
-        <label data-i18n="cat_quand_livrer">Quand souhaitez-vous être livré ?</label>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <label style="display:flex;align-items:center;gap:8px;font-weight:400;font-size:13px;cursor:pointer;">
-            <input type="radio" name="mc-date-type" value="precise" checked onchange="basculerTypeDateLivraison()">
-            <span data-i18n="cat_date_precise">Date précise</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;font-weight:400;font-size:13px;cursor:pointer;">
-            <input type="radio" name="mc-date-type" value="flexible" onchange="basculerTypeDateLivraison()">
-            <span data-i18n="cat_date_flexible">Je suis flexible (dans les 7 jours) — ça aide l'artisan à optimiser sa tournée</span>
-          </label>
-        </div>
-        <input type="date" id="mc-date" style="margin-top:8px;">
+        <label data-i18n="cat_quand_livrer">Quand serez-vous livré ?</label>
+        <div id="mc-fenetre" style="font-size:13.5px;line-height:1.5;min-height:42px;color:var(--mu);"></div>
+        <label for="mc-date" style="margin-top:10px;font-weight:400;font-size:12.5px;"><span data-i18n="cat_pas_avant_le">Pas avant le</span> <span data-i18n="cat_facultatif_court">(facultatif)</span></label>
+        <input type="date" id="mc-date" onchange="planifierApercuFrais()">
       </div>
     </div>
     <div class="modal-field"><label data-i18n="cat_notes_facultatif">Notes (facultatif)</label><textarea id="mc-notes" rows="2"></textarea></div>
@@ -361,17 +353,23 @@ function ouvrirModaleCommande() {
   document.getElementById('mc-tel').value = '';
   document.getElementById('mc-email').value = '';
   document.getElementById('mc-notes').value = '';
+  document.getElementById('mc-date').value = '';
+  initDatePasAvant();
+  var fen = document.getElementById('mc-fenetre'); if (fen) { fen.style.color = 'var(--mu)'; fen.textContent = T('cat_fenetre_apres_adresse'); }
   document.getElementById('mc-err').style.display = 'none';
   document.getElementById('modal-commande').classList.add('show');
 }
 function fermerModaleCommande() { document.getElementById('modal-commande').classList.remove('show'); ouvrirPanier(); }
 
-function basculerTypeDateLivraison() {
-  var flexible = document.querySelector('input[name="mc-date-type"]:checked').value === 'flexible';
+// "Pas avant le" (facultatif) : le client ne choisit plus un jour précis, il peut seulement repousser le début de la fenêtre estimée.
+function initDatePasAvant() {
   var champ = document.getElementById('mc-date');
-  var aujourdhui = new Date().toISOString().slice(0, 10);
-  champ.min = aujourdhui;
-  champ.title = flexible ? T('cat_pas_avant_le') : T('cat_date_souhaitee');
+  champ.min = new Date().toISOString().slice(0, 10);
+  champ.title = T('cat_pas_avant_le');
+}
+function dateLongue(iso) {
+  var loc = { fr: 'fr-FR', en: 'en-GB', es: 'es-ES' }[AT_LANG] || 'fr-FR';
+  return new Date(iso + 'T12:00:00Z').toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 }
 
 // ── Frais de livraison annoncés AVANT le paiement : aperçu calculé par le serveur (même calcul que la commande réelle). ──
@@ -380,7 +378,7 @@ var _minuteurFrais = null;
 // Calcul automatique : un instant après la fin de la saisie de l'adresse (jamais à chaque lettre).
 function planifierApercuFrais() { clearTimeout(_minuteurFrais); _minuteurFrais = setTimeout(calculerFraisApercu, 900); }
 function cleAdresseLivraison() {
-  return ['mc-adresse', 'mc-cp', 'mc-commune'].map(function(id) { return document.getElementById(id).value.trim().toLowerCase(); }).join('|') + '|' + PANIER.map(function(l) { return l.catalogue_id + 'x' + l.quantite; }).join(',') + '|' + (PROMO ? PROMO.code : '');
+  return ['mc-adresse', 'mc-cp', 'mc-commune'].map(function(id) { return document.getElementById(id).value.trim().toLowerCase(); }).join('|') + '|' + PANIER.map(function(l) { return l.catalogue_id + 'x' + l.quantite; }).join(',') + '|' + (PROMO ? PROMO.code : '') + '|' + (document.getElementById('mc-date').value || '');
 }
 function fmtEur(n) { return Number(n).toFixed(2).replace('.', ',') + ' €'; }
 async function calculerFraisApercu() {
@@ -394,11 +392,16 @@ async function calculerFraisApercu() {
     var res = await fetch(SUPABASE_URL + '/functions/v1/soumettre-commande-panier', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
       body: JSON.stringify({ apercu: true, artisan_id: DATA.artisan.id, lignes: PANIER.map(function(l) { return { catalogue_id: l.catalogue_id, quantite: l.quantite }; }),
-        mode: 'livraison', adresse_livraison: adr, code_postal_livraison: cp, commune_livraison: com, code_promo: PROMO ? PROMO.code : null }),
+        mode: 'livraison', adresse_livraison: adr, code_postal_livraison: cp, commune_livraison: com, code_promo: PROMO ? PROMO.code : null, pas_avant: document.getElementById('mc-date').value || null }),
     });
     var d = await res.json();
     if (d.error) throw new Error(d.error);
     _fraisLivraison = { cle: cle, frais: d.frais_livraison, km: d.distance_km, produits: d.montant_produits, total: d.montant_total };
+    var fen = document.getElementById('mc-fenetre');
+    if (fen && d.livraison_debut && d.livraison_fin) {
+      fen.style.color = 'var(--tx)';
+      fen.innerHTML = '📅 <strong>' + T('cat_livraison_estimee').replace('{a}', dateLongue(d.livraison_debut)).replace('{b}', dateLongue(d.livraison_fin)) + '</strong><br><span style="color:var(--mu);font-size:12.5px;">' + T('cat_livraison_estimee_info') + '</span>';
+    }
     zone.style.color = 'var(--tx)';
     zone.innerHTML = '🚚 <strong>' + T('cat_frais_livraison') + ' : ' + (d.frais_livraison > 0 ? fmtEur(d.frais_livraison) + (d.distance_km ? ' <span style="color:var(--mu);font-weight:400;">(≈ ' + String(d.distance_km).replace('.', ',') + ' km)</span>' : '') : T('cat_livraison_offerte')) + '</strong><br>' +
       T('cat_produits_lbl') + ' ' + fmtEur(d.montant_produits) + ' · <strong>' + T('cat_total') + ' ' + fmtEur(d.montant_total) + '</strong>';
@@ -440,8 +443,7 @@ async function confirmerCommande() {
         adresse_livraison: mode === 'livraison' ? document.getElementById('mc-adresse').value.trim() : null,
         code_postal_livraison: mode === 'livraison' ? document.getElementById('mc-cp').value.trim() : null,
         commune_livraison: mode === 'livraison' ? document.getElementById('mc-commune').value.trim() : null,
-        date_souhaitee: mode === 'livraison' ? (document.getElementById('mc-date').value || null) : null,
-        livraison_flexible: mode === 'livraison' && document.querySelector('input[name="mc-date-type"]:checked').value === 'flexible',
+        pas_avant: mode === 'livraison' ? (document.getElementById('mc-date').value || null) : null,
         notes: document.getElementById('mc-notes').value.trim() || null,
         code_promo: PROMO ? PROMO.code : null,
       }),
