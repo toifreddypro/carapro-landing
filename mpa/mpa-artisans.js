@@ -3791,8 +3791,21 @@ async function traiterRetourAbonnement() {
 }
 
 // Carte "Mon offre" en haut de Ma fiche artisan.
+// Offre de l'artisan à côté de son adresse, dans le bandeau du haut : visible sur tous les écrans.
+function majOffreBandeau() {
+  var z = document.getElementById('uplan');
+  if (!z || !_artisan) return;
+  var plan = _artisan.plan || 'gratuit';
+  var texte, couleur;
+  if (plan === 'pro_offert') { texte = 'Pro offert'; couleur = '#0f9d78'; }
+  else if (plan === 'pro') { texte = _artisan.abonnement_statut === 'essai' ? 'Pro (essai)' : 'Pro'; couleur = '#0f9d78'; }
+  else { texte = 'Essentiel'; couleur = 'var(--mu2)'; }
+  z.innerHTML = ' - <strong style="color:' + couleur + ';">' + texte + '</strong>';
+}
+
 function renderMonOffre() {
   var zone = document.getElementById('zone-mon-offre');
+  majOffreBandeau();
   if (!zone || !_artisan) return;
   var plan = _artisan.plan || 'gratuit';
   var fin = dateFR(_artisan.abonnement_echeance);
