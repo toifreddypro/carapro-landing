@@ -810,19 +810,19 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="dctit">🚚 Frais de livraison</div>
 </div>
 <div style="padding:16px;">
-<p style="font-size:12.5px;color:var(--mu);margin-bottom:14px;">Vos kilomètres sont facturés automatiquement au client selon la distance, au moment de la commande. Mettez 0 € pour une livraison gratuite.</p>
+<p style="font-size:12.5px;color:var(--mu);margin-bottom:14px;">Vos kilomètres sont facturés automatiquement au client selon la distance, au moment de la commande. Mettez 0 € pour une livraison gratuite.<br><strong>Exemple :</strong> 0,50 € de forfait, 5 km inclus, 0,50 € par km au-delà. Pour 10 km, le client paie 3,00 € ; pour 30 km, 13,00 €. Gardez en tête que la distance compte à l'aller seulement, par la route.</p>
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
 <div>
 <label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;">Forfait de base (€)</label>
-<input id="livraison-base" min="0" oninput="afficherExempleLivraison()" step="0.5" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--b2);font-size:13px;" type="number"/>
+<input id="livraison-base" placeholder="ex : 0,5" min="0" oninput="afficherExempleLivraison()" step="0.5" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--b2);font-size:13px;" type="number"/>
 </div>
 <div>
 <label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;">Distance incluse (km)</label>
-<input id="livraison-km-inclus" min="0" oninput="afficherExempleLivraison()" step="1" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--b2);font-size:13px;" type="number"/>
+<input id="livraison-km-inclus" placeholder="ex : 5" min="0" oninput="afficherExempleLivraison()" step="1" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--b2);font-size:13px;" type="number"/>
 </div>
 <div>
 <label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;">€/km au-delà</label>
-<input id="livraison-prix-km" min="0" oninput="afficherExempleLivraison()" step="0.1" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--b2);font-size:13px;" type="number"/>
+<input id="livraison-prix-km" placeholder="ex : 0,5" min="0" oninput="afficherExempleLivraison()" step="0.1" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--b2);font-size:13px;" type="number"/>
 </div>
 </div>
 <button id="btn-livraison-sauver" onclick="sauverTarifLivraison()" style="margin-top:12px;padding:8px 16px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">Enregistrer</button>

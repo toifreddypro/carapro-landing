@@ -4579,10 +4579,12 @@ function afficherExempleLivraison() {
   var prixKm = document.getElementById('livraison-prix-km').value;
   var zone = document.getElementById('livraison-exemple');
   if (base === '' || kmInclus === '') { zone.textContent = ''; return; }
-  var texte = '💡 ' + base + '€ jusqu\'à ' + kmInclus + ' km depuis le local de l\'artisan';
-  texte += (prixKm && Number(prixKm) > 0)
-    ? ', puis ' + prixKm + '€ tous les km supplémentaires.'
-    : ', rien au-delà (pas de tarif au km supplémentaire réglé).';
+  var b = Number(base), ki = Number(kmInclus), pk = Number(prixKm) || 0;
+  function frais(km) { return km <= ki ? b : Math.round((b + (km - ki) * pk) * 100) / 100; }
+  function eur(n) { return n.toFixed(2).replace('.', ',') + ' €'; }
+  var texte = '💡 ' + eur(b) + ' jusqu\'à ' + ki + ' km depuis votre local';
+  texte += pk > 0 ? ', puis ' + eur(pk) + ' par km supplémentaire.' : ', rien au-delà (pas de tarif au km supplémentaire réglé).';
+  texte += ' Ce que paierait le client : ' + [5, 10, 20, 30].map(function(km) { return km + ' km → ' + eur(frais(km)); }).join(' · ') + '.';
   zone.textContent = texte;
 }
 

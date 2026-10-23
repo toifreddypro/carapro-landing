@@ -389,7 +389,7 @@ async function calculerFraisApercu() {
   var adr = document.getElementById('mc-adresse').value.trim(), cp = document.getElementById('mc-cp').value.trim(), com = document.getElementById('mc-commune').value.trim();
   if (!adr || !com) return false;
   var cle = cleAdresseLivraison();
-  zone.style.color = 'var(--mu)'; zone.textContent = '…';
+  zone.style.color = 'var(--mu)'; zone.textContent = T('cat_calcul_en_cours');
   try {
     var res = await fetch(SUPABASE_URL + '/functions/v1/soumettre-commande-panier', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
