@@ -98,6 +98,10 @@ Deno.serve(async (req: Request) => {
   try {
     const body = await req.json().catch(() => null);
     if (!body) return json({ error: "Requête invalide." }, 400);
+    // L'email est obligatoire : la confirmation de commande et le reçu y sont envoyés.
+    if (typeof body.client_email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.client_email.trim()) || body.client_email.length > 200) {
+      return json({ error: "Votre email est obligatoire pour recevoir la confirmation de votre commande." }, 400);
+    }
 
     const { artisan_id, lignes, client_nom, client_telephone, client_email, mode, adresse_livraison, code_postal_livraison, commune_livraison, date_souhaitee, livraison_flexible, notes, code_promo: codeSaisi } = body;
 

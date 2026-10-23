@@ -143,7 +143,7 @@
     <h3 id="mc-titre" data-i18n="cat_vos_coordonnees">Vos coordonnées</h3>
     <div class="modal-field"><label data-i18n="cat_votre_nom">Votre nom</label><input type="text" id="mc-nom"></div>
     <div class="modal-field"><label data-i18n="cat_telephone">Téléphone</label><input type="tel" id="mc-tel"></div>
-    <div class="modal-field"><label data-i18n="cat_email_facultatif">Email (facultatif)</label><input type="email" id="mc-email"></div>
+    <div class="modal-field"><label data-i18n="cat_email">Email</label><input type="email" id="mc-email" required autocomplete="email"></div>
     <div class="modal-field">
       <label data-i18n="cat_mode">Mode</label>
       <select id="mc-mode" onchange="document.getElementById('mc-adresse-bloc').style.display=this.value==='livraison'?'block':'none';">
@@ -374,6 +374,8 @@ async function confirmerCommande() {
   var nom = document.getElementById('mc-nom').value.trim();
   var tel = document.getElementById('mc-tel').value.trim();
   if (!nom || !tel) { err.textContent = T('cat_nom_tel_requis'); err.style.display = 'block'; return; }
+  var emailSaisi = document.getElementById('mc-email').value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailSaisi)) { err.textContent = T('cat_email_requis'); err.style.display = 'block'; return; }
 
   var mode = document.getElementById('mc-mode').value;
   var btn = document.getElementById('mc-btn-confirmer');

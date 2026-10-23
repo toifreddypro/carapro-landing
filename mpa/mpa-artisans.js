@@ -5341,7 +5341,7 @@ function renderCommandes() {
     zone.innerHTML = '<p style="font-size:13px;color:var(--mu);">Aucune commande pour l\'instant.</p>';
     return;
   }
-  zone.innerHTML = _commandesCache.map(function(c) {
+  var cartes = _commandesCache.map(function(c) {
     var modeTxt = c.mode === 'livraison'
       ? '🚚 Livraison — ' + escHtml(c.adresse_livraison || '') + ' ' + escHtml(c.code_postal_livraison || '') + ' ' + escHtml(c.commune_livraison || '')
       : '🏠 Retrait sur place';
@@ -5401,7 +5401,7 @@ function renderCommandes() {
         '</div>'
       : '<div><strong>' + escHtml(c.nom_article) + '</strong> × ' + c.quantite + '</div>';
 
-    return '<div style="border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;">' +
+    return { c: c, html: '<div style="border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">' +
         enTeteCommande +
         '<span style="font-size:11px;font-weight:700;color:var(--mu2);flex-shrink:0;margin-left:10px;">' + (LABELS_STATUT_COMMANDE[c.statut] || escHtml(c.statut)) + '</span>' +
@@ -5414,9 +5414,36 @@ function renderCommandes() {
       ligneReglement +
       badgeProche +
       '<div>' + boutonSuivant + boutonLivraison + boutonFactureCommande(c) + boutonRembourser + '</div>' +
-    '</div>';
-  }).join('');
+    '</div>' };
+  });
+
+  // Rangement par mois (la liste devient longue) : le mois en cours et le dernier mois avec commandes sont ouverts, les autres repliés.
+  var groupes = [], parMois = {};
+  cartes.forEach(function(k) {
+    var mois = new Date(new Date(k.c.created_at).getTime() - 4 * 3600 * 1000).toISOString().slice(0, 7);
+    if (!parMois[mois]) { parMois[mois] = { mois: mois, cartes: [] }; groupes.push(parMois[mois]); }
+    parMois[mois].cartes.push(k);
+  });
+  if (!_moisCommandesOuverts) {
+    _moisCommandesOuverts = {};
+    _moisCommandesOuverts[new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 7)] = true;
+    if (groupes.length) _moisCommandesOuverts[groupes[0].mois] = true;
+  }
+  var nouvellesTotal = _commandesCache.filter(function(c) { return c.statut === 'nouvelle'; }).length;
+  zone.innerHTML = (nouvellesTotal ? '<div style="font-size:12.5px;font-weight:700;color:var(--ac);margin-bottom:10px;">🔔 ' + nouvellesTotal + ' commande' + (nouvellesTotal > 1 ? 's' : '') + ' à traiter</div>' : '') +
+    groupes.map(function(g) {
+      var annee = g.mois.slice(0, 4), numMois = parseInt(g.mois.slice(5, 7), 10) - 1;
+      var nom = MOIS_NOMS[numMois]; nom = nom.charAt(0).toUpperCase() + nom.slice(1);
+      var vendu = g.cartes.reduce(function(t, k) { var c = k.c; return t + (STATUTS_COMMANDE_REGLEE.indexOf(c.paiement_statut) !== -1 ? Math.max(0, Number(c.montant_total || 0) - Number(c.montant_rembourse || 0)) : 0); }, 0);
+      var aTraiter = g.cartes.filter(function(k) { return k.c.statut === 'nouvelle'; }).length;
+      return '<details ' + (_moisCommandesOuverts[g.mois] ? 'open ' : '') + 'ontoggle="basculerMoisCommandes(\'' + g.mois + '\', this.open)" style="margin-bottom:12px;">' +
+        '<summary style="cursor:pointer;font-size:14px;font-weight:700;padding:8px 0;border-bottom:1px solid var(--brd);margin-bottom:10px;">' + nom + ' ' + annee +
+        ' <span style="font-weight:500;font-size:12.5px;color:var(--mu);">· ' + g.cartes.length + ' commande' + (g.cartes.length > 1 ? 's' : '') + ' · ' + eurosFR(vendu) + (aTraiter ? ' · <span style="color:var(--ac);font-weight:700;">' + aTraiter + ' à traiter</span>' : '') + '</span></summary>' +
+        g.cartes.map(function(k) { return k.html; }).join('') + '</details>';
+    }).join('');
 }
+var _moisCommandesOuverts = null;
+function basculerMoisCommandes(mois, ouvert) { if (!_moisCommandesOuverts) _moisCommandesOuverts = {}; _moisCommandesOuverts[mois] = !!ouvert; }
 
 async function avancerStatutCommande(id) {
   if (!verifierAccesEcriture()) return;
