@@ -103,7 +103,7 @@
         if (new URLSearchParams(location.search).get('redirect_status') === 'succeeded' || infos.statut === 'paye') afficherSucces(); else message('Paiement déjà réglé', 'Ce paiement a déjà été effectué.', 'neutre');
         return;
       }
-      if (infos.statut === 'expire') { message('Lien expiré', 'Ce lien n\'est plus valable. Refaites votre demande depuis la fiche de l\'artisan sur CaraLink.', 'neutre'); return; }
+      if (infos.statut === 'expire') { message('Lien expiré', infos.type === 'solde' ? 'Ce lien de paiement n\'est plus valable. Contactez ' + infos.artisan + ' : il pourra vous envoyer un nouveau lien.' : 'Ce lien n\'est plus valable. Refaites votre demande depuis la fiche de l\'artisan sur CaraLink.', 'neutre'); return; }
       if (infos.statut === 'annule') { message('Demande annulée', 'Cette demande a été annulée : rien n\'est à payer.', 'neutre'); return; }
       if (new URLSearchParams(location.search).get('redirect_status') === 'succeeded') { message('Paiement en cours de vérification', 'Votre paiement est en cours de traitement. Vous recevrez un email de confirmation dans quelques instants.', 'neutre'); return; }
       afficherPaiement();

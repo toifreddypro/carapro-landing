@@ -156,7 +156,7 @@ Deno.serve(async (req: Request) => {
 
     // ── action « payer » ──
     if (statutEffectif !== "en_attente") {
-      const msg = statutEffectif === "expire" ? "Ce lien a expiré. Refaites votre demande depuis la fiche de l'artisan."
+      const msg = statutEffectif === "expire" ? (p.type === "solde" ? `Ce lien a expiré. Contactez ${artisan.nom_entreprise} : il pourra vous envoyer un nouveau lien.` : "Ce lien a expiré. Refaites votre demande depuis la fiche de l'artisan.")
         : (["paye", "partiellement_rembourse", "rembourse"].includes(statutEffectif) ? "Ce paiement a déjà été réglé." : "Ce paiement a été annulé.");
       return json({ error: msg }, 409);
     }
