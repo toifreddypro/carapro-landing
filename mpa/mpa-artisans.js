@@ -1922,7 +1922,10 @@ function estLivraisonIntervention(i) {
 function libelleServiceIntervention(i, brut) {
   var nom = i.artisans_services && i.artisans_services.nom_service;
   if (nom) return nom;
-  return estLivraisonIntervention(i) ? (brut ? 'Livraison' : '🚚 Livraison') : '(sans service)';
+  if (!estLivraisonIntervention(i)) return '(sans service)';
+  if (brut) return 'Livraison';
+  var cmd = (typeof _commandesCache !== 'undefined' ? _commandesCache || [] : []).find(function(c) { return c.intervention_id === i.id; });
+  return '🚚 Livraison' + (cmd ? (cmd.livraison_confirmee_le ? ' ✓ client prévenu' : ' 🕓 provisoire') : '');
 }
 var CHAMPS_VERROU_LIVRAISON = ['mi-client', 'mi-adr', 'mi-cp', 'mi-com', 'mi-service', 'mi-prix'];
 function majVerrouLivraisonIntervention(commande, nouvelle) {
@@ -1937,7 +1940,11 @@ function majVerrouLivraisonIntervention(commande, nouvelle) {
   if (!commande) { ban.style.display = 'none'; return; }
   ban.innerHTML = '🚚 <strong>Livraison de la commande de ' + escHtml(commande.client_nom) + '</strong> — le client, l\'adresse et le prix (frais de livraison déjà payés) viennent de la commande et ne se modifient pas ici.<br>' +
     (commande.livraison_debut && commande.livraison_fin ? 'Fenêtre annoncée au client : du <strong>' + dateCourteFR(commande.livraison_debut) + '</strong> au <strong>' + dateCourteFR(commande.livraison_fin) + '</strong>. ' : '') +
-    'Choisissez le <strong>jour, le créneau et les heures</strong> : le client sera prévenu par email.';
+    (commande.intervention_id
+      ? (commande.livraison_confirmee_le
+          ? '<br>✉️ <strong>Client prévenu</strong> : déplacer cette livraison lui envoie un nouvel email.'
+          : '<br>🕓 <strong>Livraison provisoire</strong> : le client n\'a encore reçu aucune date (il sera prévenu 2 jours avant). Vous pouvez la déplacer sans rien envoyer.')
+      : 'Choisissez le <strong>jour, le créneau et les heures</strong>.');
   ban.style.display = 'block';
 }
 
@@ -5383,7 +5390,7 @@ async function chargerLivraisons() {
 
   var aujourdhui = jourGuadeloupe();
   var { data: livraisons, error } = await sb.from('commandes_catalogue')
-    .select('id, client_nom, client_telephone, adresse_livraison, commune_livraison, nom_article, quantite, statut, paiement_statut, intervention_id, livraison_debut, livraison_fin, livraison_prevue_le, mpa_artisans_interventions(id, date_intervention, creneau, heure_debut, commune, statut)')
+    .select('id, client_nom, client_telephone, adresse_livraison, commune_livraison, nom_article, quantite, statut, paiement_statut, intervention_id, livraison_debut, livraison_fin, livraison_prevue_le, livraison_confirmee_le, mpa_artisans_interventions(id, date_intervention, creneau, heure_debut, commune, statut)')
     .eq('artisan_id', _artisan.id)
     .eq('mode', 'livraison')
     .neq('statut', 'annulee');
@@ -5426,6 +5433,7 @@ async function chargerLivraisons() {
       '</div>' +
       '<div style="font-size:13px;margin-top:2px;">' + escHtml(l.client_nom) + ' — ' + escHtml(l.adresse_livraison || '') + (l.commune_livraison ? ', ' + escHtml(l.commune_livraison) : '') + '</div>' +
       '<div style="font-size:12px;color:var(--mu);">📞 ' + escHtml(l.client_telephone || '—') + '</div>' +
+      (i ? (l.livraison_confirmee_le ? '<div style="font-size:11.5px;color:#0f9d78;margin-top:4px;font-weight:700;">✉️ Client prévenu</div>' : '<div style="font-size:11.5px;color:#b45309;margin-top:4px;font-weight:700;">🕓 Provisoire — client prévenu le ' + dateCourteFR(ajouterJoursISO(i.date_intervention, -2)) + '</div>') : '') +
       note + '</div>';
   };
   var parHeure = function(a, b) { return (a.mpa_artisans_interventions.heure_debut || '99:99').localeCompare(b.mpa_artisans_interventions.heure_debut || '99:99'); };
