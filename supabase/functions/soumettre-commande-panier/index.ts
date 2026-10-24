@@ -137,7 +137,7 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Votre email est obligatoire pour recevoir la confirmation de votre commande." }, 400);
     }
 
-    const { artisan_id, lignes, client_nom, client_telephone, client_email, mode, adresse_livraison, code_postal_livraison, commune_livraison, pas_avant: pasAvantSaisi, notes, code_promo: codeSaisi } = body;
+    const { artisan_id, lignes, client_nom, client_telephone, client_email, mode, adresse_livraison, code_postal_livraison, commune_livraison, pas_avant: pasAvantSaisi, notes, code_promo: codeSaisi, utiliser_cashback: utiliserCashback, access_token: jetonClient } = body;
 
     if (!artisan_id) return json({ error: "Boutique manquante." }, 400);
     if (!Array.isArray(lignes) || !lignes.length) return json({ error: "Le panier est vide." }, 400);
@@ -175,7 +175,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data: artisan, error: errA } = await sb.from("artisans")
-      .select("nom_entreprise, email, plan, code_promo, code_promo_pct, code_promo_fin, livraison_delai_jours, latitude, longitude, livraison_forfait_base, livraison_km_inclus, livraison_prix_km_supp, stripe_connect_statut, boutique_en_pause")
+      .select("nom_entreprise, email, plan, cashback_pct, code_promo, code_promo_pct, code_promo_fin, livraison_delai_jours, latitude, longitude, livraison_forfait_base, livraison_km_inclus, livraison_prix_km_supp, stripe_connect_statut, boutique_en_pause")
       .eq("id", artisan_id).maybeSingle();
     if (errA) throw errA;
     if (!artisan) return json({ error: "Boutique introuvable." }, 404);
@@ -192,6 +192,21 @@ Deno.serve(async (req: Request) => {
       .eq("artisan_id", artisan_id).eq("paiement_requis", true).eq("statut", "nouvelle")
       .is("paiement_traite_le", null).lt("created_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString());
     if (errMenage) console.warn("[soumettre-commande-panier] Ménage des commandes non payées échoué :", errMenage.message);
+    // Le crédit cashback réservé par une commande abandonnée est rendu au client (jamais bloquant).
+    try { await sb.rpc("cashback_liberer_abandonnees"); } catch (e) { console.warn("[soumettre-commande-panier] Libération cashback échouée :", e); }
+
+    // Client connecté (compte facultatif) : son jeton est vérifié ICI. Sans jeton valide, la commande se passe comme avant, sans compte.
+    let clientUser: { id: string } | null = null;
+    let sessionInvalide = false;
+    if (typeof jetonClient === "string" && jetonClient.length > 20 && jetonClient.length < 4000) {
+      try {
+        const { data: ud } = await sb.auth.getUser(jetonClient);
+        if (ud?.user?.id) clientUser = { id: ud.user.id }; else sessionInvalide = true;
+      } catch (_) { sessionInvalide = true; }
+    }
+    // Le cashback n'est proposé que par un artisan Pro qui a fixé un pourcentage (1 à 10 %).
+    const cashbackPct = ((artisan as any).plan === "pro" || (artisan as any).plan === "pro_offert") && Number((artisan as any).cashback_pct) >= 1 && Number((artisan as any).cashback_pct) <= 10
+      ? Number((artisan as any).cashback_pct) : null;
 
     // Stock insuffisant — refusé proprement, jamais une vente silencieuse de ce qu'il n'y a pas.
     // quantite_stock à null = illimité (ex : une formation), jamais vérifié. L'artisan ne voit
@@ -266,10 +281,19 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const montantTotal = Math.round((montantProduits + fraisLivraison) * 100) / 100;
+    // Crédit cashback de ce client chez CET artisan (les crédits déjà gagnés restent utilisables même si l'artisan a quitté l'offre Pro).
+    let soldeCashback = 0;
+    if (clientUser) {
+      const { data: sd } = await sb.rpc("cashback_solde", { p_user: clientUser.id, p_artisan: artisan_id });
+      soldeCashback = Math.max(0, Number(sd) || 0);
+    }
+    // Utilisable sur les PRODUITS uniquement (jamais sur la livraison), et il reste toujours au moins 0,50 € à payer par carte (minimum Stripe).
+    const plafondCashback = Math.max(0, Math.min(montantProduits, montantProduits + fraisLivraison - 0.5));
+    const cashbackUtilise = (utiliserCashback === true && clientUser) ? Math.floor(Math.min(soldeCashback, plafondCashback) * 100) / 100 : 0;
+    let montantTotal = Math.round((montantProduits + fraisLivraison - cashbackUtilise) * 100) / 100;
     const fenetre = mode === "livraison" ? fenetreLivraison(Number((artisan as any).livraison_delai_jours ?? 7), pasAvantSaisi) : null;
     if (apercu) {
-      return json({ ok: true, apercu: true, livraison_debut: fenetre?.debut ?? null, livraison_fin: fenetre?.fin ?? null, montant_produits: montantProduits, frais_livraison: fraisLivraison, distance_km: distanceKmCalculee != null ? Math.round(distanceKmCalculee * 10) / 10 : null, montant_total: montantTotal });
+      return json({ ok: true, apercu: true, livraison_debut: fenetre?.debut ?? null, livraison_fin: fenetre?.fin ?? null, montant_produits: montantProduits, frais_livraison: fraisLivraison, distance_km: distanceKmCalculee != null ? Math.round(distanceKmCalculee * 10) / 10 : null, montant_total: montantTotal, cashback_pct: cashbackPct, cashback_solde: clientUser ? soldeCashback : null, cashback_utilise: cashbackUtilise, session_invalide: sessionInvalide });
     }
     const nbArticlesDistincts = lignesAEnregistrer.length;
     const resumeNom = nbArticlesDistincts === 1
@@ -297,6 +321,7 @@ Deno.serve(async (req: Request) => {
       livraison_fin: fenetre?.fin ?? null,
       notes: notes?.trim() || null,
       code_promo: codeApplique, code_promo_pct: codeApplique ? pctCode : null,
+      cashback_pct: cashbackPct, cashback_utilise: cashbackUtilise, client_user_id: clientUser?.id ?? null,
       paiement_requis: true, // le client DOIT payer en ligne : la commande n'existe pour l'artisan qu'une fois payée (voir stripe-webhook-artisans)
     }).select().single();
     if (errIns) throw errIns;
@@ -306,13 +331,26 @@ Deno.serve(async (req: Request) => {
     );
     if (errLignes) throw errLignes;
 
+    // Réserve le crédit (les plus proches de l'expiration d'abord). Si une autre commande en a pris entre-temps, on recalcule sans jamais donner du crédit qui n'existe plus.
+    let cashbackFinal = 0;
+    if (cashbackUtilise > 0 && clientUser) {
+      const { data: pris, error: errRes } = await sb.rpc("cashback_reserver", { p_commande: commande.id, p_user: clientUser.id, p_artisan: artisan_id, p_montant: cashbackUtilise });
+      if (errRes) throw errRes;
+      cashbackFinal = Math.round((Number(pris) || 0) * 100) / 100;
+      if (cashbackFinal < cashbackUtilise) {
+        montantTotal = Math.round((montantTotal + (cashbackUtilise - cashbackFinal)) * 100) / 100;
+        const { error: errAj } = await sb.from("commandes_catalogue").update({ montant_total: montantTotal, cashback_utilise: cashbackFinal }).eq("id", commande.id);
+        if (errAj) throw errAj;
+      }
+    }
+
     // Décrémente le stock de chaque article suivi (quantite_stock non nul). Le filtre
     // gte() est un filet de sécurité contre une vente concurrente improbable entre la
     // vérification plus haut et cet instant — si jamais ça arrivait, la mise à jour
     // n'a simplement aucun effet plutôt que de passer en négatif.
     // Le stock n'est PAS retiré ici et l'artisan n'est PAS prévenu : tant que le client n'a pas payé, la commande n'existe pas pour lui.
     // Au paiement réussi, stripe-webhook-artisans retire le stock (remboursement automatique s'il n'y en a plus) et envoie l'email.
-    return json({ ok: true, commande_id: commande.id, livraison_debut: fenetre?.debut ?? null, livraison_fin: fenetre?.fin ?? null, montant_produits: montantProduits, montant_total: montantTotal, frais_livraison: fraisLivraison });
+    return json({ ok: true, commande_id: commande.id, livraison_debut: fenetre?.debut ?? null, livraison_fin: fenetre?.fin ?? null, montant_produits: montantProduits, montant_total: montantTotal, frais_livraison: fraisLivraison, cashback_utilise: cashbackFinal });
 
   } catch (e) {
     console.error("[soumettre-commande-panier]", e);

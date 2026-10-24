@@ -383,6 +383,7 @@ function emailNouvelleCommande(commande: any, lignes: any[]): string {
         <p><strong>${escHtml(commande.client_nom)}</strong> (${escHtml(commande.client_telephone)}) a payé en ligne :</p>
         <ul>${detail}</ul>
         <p>Mode : ${mode}</p>
+        ${Number(commande.cashback_utilise) > 0 ? `<p style="background:#fbf3ee;padding:9px 12px;border-radius:8px;font-size:13px;">🎁 Le client a utilisé <strong>${Number(commande.cashback_utilise).toFixed(2)} €</strong> de son crédit cashback : le montant encaissé est donc de ${Number(commande.montant_total).toFixed(2)} €.</p>` : ""}
         ${date}
         ${commande.notes ? `<p>Précisions : ${escHtml(commande.notes)}</p>` : ""}
         <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Voir dans MPA Artisans →</a></p>

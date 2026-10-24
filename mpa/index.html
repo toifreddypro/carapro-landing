@@ -785,6 +785,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div id="code-promo-statut" style="font-size:12px;color:var(--mu);margin-top:8px;"></div>
 <div id="code-promo-usage" style="font-size:12.5px;margin-top:6px;"></div>
 </div>
+<div style="border:1px solid var(--brd);border-radius:10px;padding:12px 14px;background:var(--inp);margin-top:12px;">
+<div style="font-size:13px;font-weight:700;margin-bottom:2px;">💚 Cashback fidélité <span style="font-size:11px;font-weight:700;color:var(--ac);">Offre Pro</span></div>
+<div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.5;">Offrez un crédit à vos clients ayant un compte CaraLink : <strong>un pourcentage de ce qu'ils paient pour leurs produits</strong> (livraison exclue), gagné quand la commande est livrée ou remise, <strong>valable 12 mois dans votre boutique uniquement</strong>. Ils le déduisent de leur commande suivante (en tout ou partie) : le crédit est financé par vous, vous encaissez simplement un peu moins, et la commission CaraLink se calcule sur ce que vous encaissez réellement. Si vous quittez l'offre Pro, plus aucun nouveau crédit n'est offert, mais ceux déjà gagnés restent utilisables.</div>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+<input id="boutique-cashback-pct" type="number" min="1" max="10" step="1" placeholder="% (1-10)" style="width:110px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;"/>
+<button class="addb" id="btn-cashback" onclick="sauverCashback()" style="flex-shrink:0;">Enregistrer</button>
+<span style="font-size:12px;color:var(--mu);">Vide = pas de cashback.</span>
+</div>
+<div id="cashback-statut" style="font-size:12px;color:var(--mu);margin-top:8px;"></div>
+</div>
 </div>
 </div><div id="encart-stripe-connect-catalogue" style="margin-top:16px;"></div><div class="dcard" style="margin-top:16px;">
 <div class="dchdr">

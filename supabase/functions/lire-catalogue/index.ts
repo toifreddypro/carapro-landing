@@ -59,7 +59,7 @@ Deno.serve(async (req: Request) => {
     if (!slug) return json({ error: "Lien manquant." }, 400);
 
     const { data: artisan, error } = await sb.from("artisans")
-      .select("id, nom_entreprise, secteur, commune, photo_profil_url, verifie, code_promo, code_promo_pct, code_promo_fin, code_promo_visible, stripe_connect_statut, boutique_en_pause, plan")
+      .select("id, nom_entreprise, secteur, commune, photo_profil_url, verifie, code_promo, code_promo_pct, code_promo_fin, code_promo_visible, stripe_connect_statut, boutique_en_pause, plan, cashback_pct")
       .eq("slug_catalogue", slug)
       .eq("actif", true)
       .maybeSingle();
@@ -168,7 +168,7 @@ Deno.serve(async (req: Request) => {
 
     const codeOk = codePromoValide(artisan, artisan.plan);
     return json({
-      artisan: { id: artisan.id, nom_entreprise: artisan.nom_entreprise, secteur: artisan.secteur, commune: artisan.commune, photo_profil_url: artisan.photo_profil_url, verifie: artisan.verifie, code_promo: (codeOk && artisan.code_promo_visible !== false) ? artisan.code_promo : null, code_promo_pct: (codeOk && artisan.code_promo_visible !== false) ? Number(artisan.code_promo_pct) : null, code_promo_fin: (codeOk && artisan.code_promo_visible !== false) ? (artisan.code_promo_fin ?? null) : null, code_promo_actif: codeOk, paiement_actif: artisan.stripe_connect_statut === "actif" },
+      artisan: { id: artisan.id, nom_entreprise: artisan.nom_entreprise, secteur: artisan.secteur, commune: artisan.commune, photo_profil_url: artisan.photo_profil_url, verifie: artisan.verifie, code_promo: (codeOk && artisan.code_promo_visible !== false) ? artisan.code_promo : null, code_promo_pct: (codeOk && artisan.code_promo_visible !== false) ? Number(artisan.code_promo_pct) : null, code_promo_fin: (codeOk && artisan.code_promo_visible !== false) ? (artisan.code_promo_fin ?? null) : null, code_promo_actif: codeOk, cashback_pct: ((artisan.plan === "pro" || artisan.plan === "pro_offert") && Number(artisan.cashback_pct) >= 1) ? Number(artisan.cashback_pct) : null, paiement_actif: artisan.stripe_connect_statut === "actif" },
       produits: produitsAff,
       produits_phares: produitsAff.filter((p: any) => p.est_phare),
     });

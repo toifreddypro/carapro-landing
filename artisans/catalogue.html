@@ -147,9 +147,10 @@
     <div class="modal-field"><label data-i18n="cat_telephone">Téléphone</label><input type="tel" id="mc-tel"></div>
     <div class="modal-field"><label data-i18n="cat_email">Email</label><input type="email" id="mc-email" required autocomplete="email"></div>
     <div id="mc-compte" style="font-size:12.5px;color:var(--mu);margin:-4px 0 12px;"></div>
+    <div id="mc-cashback" style="display:none;margin:0 0 14px;padding:11px 13px;border-radius:10px;background:rgba(181,80,47,.07);border:1px dashed var(--ac);font-size:13px;line-height:1.5;"></div>
     <div class="modal-field">
       <label data-i18n="cat_mode">Mode</label>
-      <select id="mc-mode" onchange="document.getElementById('mc-adresse-bloc').style.display=this.value==='livraison'?'block':'none'; _fraisLivraison=null; planifierApercuFrais();">
+      <select id="mc-mode" onchange="document.getElementById('mc-adresse-bloc').style.display=this.value==='livraison'?'block':'none'; _fraisLivraison=null; planifierApercuFrais(); majCashback();">
         <option value="retrait" data-i18n="cat_je_viens_chercher">Je viens chercher</option>
         <option value="livraison" data-i18n="cat_livraison">Livraison</option>
       </select>
@@ -378,6 +379,7 @@ function ouvrirModaleCommande() {
   document.getElementById('mc-notes').value = '';
   document.getElementById('mc-date').value = '';
   prefillCompteClient();
+  CB.utiliser = false; majCashback();
   initDatePasAvant();
   var fen = document.getElementById('mc-fenetre'); if (fen) { fen.style.color = 'var(--mu)'; fen.textContent = T('cat_fenetre_apres_adresse'); }
   document.getElementById('mc-err').style.display = 'none';
@@ -402,7 +404,58 @@ var _minuteurFrais = null;
 // Calcul automatique : un instant après la fin de la saisie de l'adresse (jamais à chaque lettre).
 function planifierApercuFrais() { clearTimeout(_minuteurFrais); _minuteurFrais = setTimeout(calculerFraisApercu, 900); }
 function cleAdresseLivraison() {
-  return ['mc-adresse', 'mc-cp', 'mc-commune'].map(function(id) { return document.getElementById(id).value.trim().toLowerCase(); }).join('|') + '|' + PANIER.map(function(l) { return l.catalogue_id + 'x' + l.quantite; }).join(',') + '|' + (PROMO ? PROMO.code : '') + '|' + (document.getElementById('mc-date').value || '');
+  return ['mc-adresse', 'mc-cp', 'mc-commune'].map(function(id) { return document.getElementById(id).value.trim().toLowerCase(); }).join('|') + '|' + PANIER.map(function(l) { return l.catalogue_id + 'x' + l.quantite; }).join(',') + '|' + (PROMO ? PROMO.code : '') + '|' + (document.getElementById('mc-date').value || '') + '|cb' + CB.utiliser;
+}
+// ── Cashback (compte client facultatif) ──
+var CB = { utiliser: false, pct: null, solde: 0, connecte: false, session_invalide: false, produits: 0, utilisable: 0 };
+// Le jeton de connexion du client (même site que compte.html). Expiré ? on le renouvelle ; impossible ? on commande comme invité.
+async function jetonClient() {
+  var cle = 'sb-uzgboxfxpxazhysusewv-auth-token';
+  try {
+    var o = JSON.parse(localStorage.getItem(cle) || 'null');
+    if (!o || !o.access_token) return null;
+    if (o.expires_at && o.expires_at * 1000 > Date.now() + 30000) return o.access_token;
+    if (!o.refresh_token) return null;
+    var r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON }, body: JSON.stringify({ refresh_token: o.refresh_token }) });
+    if (!r.ok) return null;
+    var n = await r.json();
+    if (!n.access_token) return null;
+    o.access_token = n.access_token; o.refresh_token = n.refresh_token || o.refresh_token; o.expires_at = n.expires_at || (Math.floor(Date.now() / 1000) + (n.expires_in || 3600)); if (n.user) o.user = n.user;
+    try { localStorage.setItem(cle, JSON.stringify(o)); } catch (e) {}
+    return o.access_token;
+  } catch (e) { return null; }
+}
+async function majCashback() {
+  var zone = document.getElementById('mc-cashback');
+  if (!zone || !DATA || !DATA.artisan) return;
+  var pct = DATA.artisan.cashback_pct;
+  var jeton = await jetonClient();
+  CB.pct = pct || null; CB.connecte = false; CB.solde = 0; CB.utilisable = 0; CB.session_invalide = false;
+  if (!jeton && !pct) { zone.style.display = 'none'; return; }
+  if (jeton) {
+    try {
+      var res = await fetch(SUPABASE_URL + '/functions/v1/soumettre-commande-panier', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
+        body: JSON.stringify({ apercu: true, artisan_id: DATA.artisan.id, lignes: PANIER.map(function(l) { return { catalogue_id: l.catalogue_id, quantite: l.quantite }; }), mode: 'retrait', code_promo: PROMO ? PROMO.code : null, utiliser_cashback: CB.utiliser, access_token: jeton }) });
+      var d = await res.json();
+      if (!d.error) { CB.connecte = d.cashback_solde != null; CB.solde = Number(d.cashback_solde) || 0; CB.session_invalide = !!d.session_invalide; CB.produits = Number(d.montant_produits) || 0; CB.utilisable = Number(d.cashback_utilise) || 0; if (!CB.utiliser) { CB.utilisable = Math.floor(Math.min(CB.solde, Math.max(0, CB.produits - 0.5)) * 100) / 100; } }
+    } catch (e) {}
+  }
+  var html = '';
+  if (CB.connecte && CB.solde > 0) {
+    html += '<label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;"><input type="checkbox" id="mc-cb-utiliser" ' + (CB.utiliser ? 'checked' : '') + ' onchange="CB.utiliser=this.checked;_fraisLivraison=null;majCashback();planifierApercuFrais();" style="margin-top:3px;"><span>🎁 <strong>' + T('cat_cb_utiliser').replace('{m}', fmtEur(CB.solde)) + '</strong>' +
+      (CB.utiliser && CB.utilisable > 0 ? '<br><span style="color:var(--ok,#0f9d78);font-weight:600;">' + T('cat_cb_deduit').replace('{m}', fmtEur(CB.utilisable)) + '</span>' : '') + '</span></label>';
+  }
+  if (pct) {
+    if (CB.connecte) {
+      var base = Math.max(0, CB.produits - (CB.utiliser ? CB.utilisable : 0));
+      var gain = Math.round(base * pct) / 100;
+      if (gain >= 0.01) html += (html ? '<div style="height:6px;"></div>' : '') + '<span style="color:var(--mu2);">' + T('cat_cb_gain_estime').replace('{m}', fmtEur(gain)) + '</span>';
+    } else {
+      html += '<span style="color:var(--mu2);">' + T('cat_cb_invite').replace('{p}', String(pct).replace('.', ',')) + ' <a href="compte.html" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">' + T('cpt_onglet_creer') + '</a></span>';
+    }
+  }
+  if (CB.session_invalide) html += '<div style="margin-top:6px;color:var(--mu2);">' + T('cat_cb_reconnecter') + ' <a href="compte.html" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">' + T('cpt_onglet_connexion') + '</a></div>';
+  zone.innerHTML = html; zone.style.display = html ? 'block' : 'none';
 }
 function fmtEur(n) { return Number(n).toFixed(2).replace('.', ',') + ' €'; }
 async function calculerFraisApercu() {
@@ -416,7 +469,7 @@ async function calculerFraisApercu() {
     var res = await fetch(SUPABASE_URL + '/functions/v1/soumettre-commande-panier', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
       body: JSON.stringify({ apercu: true, artisan_id: DATA.artisan.id, lignes: PANIER.map(function(l) { return { catalogue_id: l.catalogue_id, quantite: l.quantite }; }),
-        mode: 'livraison', adresse_livraison: adr, code_postal_livraison: cp, commune_livraison: com, code_promo: PROMO ? PROMO.code : null, pas_avant: document.getElementById('mc-date').value || null }),
+        mode: 'livraison', adresse_livraison: adr, code_postal_livraison: cp, commune_livraison: com, code_promo: PROMO ? PROMO.code : null, pas_avant: document.getElementById('mc-date').value || null, utiliser_cashback: CB.utiliser, access_token: await jetonClient() }),
     });
     var d = await res.json();
     if (d.error) throw new Error(d.error);
@@ -470,6 +523,7 @@ async function confirmerCommande() {
         pas_avant: mode === 'livraison' ? (document.getElementById('mc-date').value || null) : null,
         notes: document.getElementById('mc-notes').value.trim() || null,
         code_promo: PROMO ? PROMO.code : null,
+        utiliser_cashback: CB.utiliser, access_token: await jetonClient(),
       }),
     });
     var data = await res.json();
@@ -622,6 +676,7 @@ function render() {
       selecteurLangue +
     '</div>' +
     (a.code_promo ? '<div class="wrap"><div class="promo-bandeau">🎁 ' + T('cat_code_promo') + ' <span class="promo-code">' + escHtml(a.code_promo) + '</span>' + (a.code_promo_pct ? ' <strong>−' + escHtml(String(a.code_promo_pct)) + ' %</strong> <span style="font-size:12px;color:var(--mu);">' + T('cat_promo_sur') + '</span>' : '') + '</div></div>' : '') +
+    (a.cashback_pct ? '<div class="wrap"><div class="promo-bandeau">🎁 ' + T('cat_cashback_bandeau').replace('{p}', String(a.cashback_pct).replace('.', ',')) + '</div></div>' : '') +
     '</header>' +
     '<div class="wrap">';
 

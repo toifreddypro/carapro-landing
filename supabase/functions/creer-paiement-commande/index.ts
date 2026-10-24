@@ -138,7 +138,7 @@ Deno.serve(async (req: Request) => {
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { data: commande, error: errC } = await sb.from("commandes_catalogue")
-      .select("id, artisan_id, catalogue_id, nom_article, quantite, paiement_statut, statut, stripe_payment_intent_id, frais_livraison, artisans(stripe_connect_account_id, stripe_connect_statut, nom_entreprise, boutique_en_pause), artisans_catalogue(prix)")
+      .select("id, artisan_id, catalogue_id, nom_article, quantite, paiement_statut, statut, stripe_payment_intent_id, frais_livraison, cashback_utilise, artisans(stripe_connect_account_id, stripe_connect_statut, nom_entreprise, boutique_en_pause), artisans_catalogue(prix)")
       .eq("id", commande_id).maybeSingle();
     if (errC) throw errC;
     if (!commande) return json({ error: "Commande introuvable." }, 404);
@@ -190,6 +190,13 @@ Deno.serve(async (req: Request) => {
     // Frais de livraison : déjà calculés et figés à la commande (jamais recalculés ici, jamais
     // repris d'une valeur envoyée par le client) — juste ajoutés au montant à régler.
     montantTotal += fraisLivraisonCentimes;
+    // Crédit cashback déjà réservé à la commande (figé par soumettre-commande-panier, jamais repris d'une valeur du navigateur) :
+    // il baisse ce que le client paie par carte. La commission se calcule donc sur le montant réellement encaissé.
+    const cashbackCentimes = Math.round((Number((commande as any).cashback_utilise) || 0) * 100);
+    if (cashbackCentimes > 0) {
+      montantTotal -= cashbackCentimes;
+      descriptionStripe += ` (crédit cashback déduit : ${(cashbackCentimes / 100).toFixed(2)} €)`;
+    }
     if (fraisLivraisonCentimes > 0) descriptionStripe += ` (livraison incluse : ${(fraisLivraisonCentimes / 100).toFixed(2)} €)`;
 
     if (!Number.isFinite(montantTotal) || montantTotal < MONTANT_MINIMUM_CENTIMES) {

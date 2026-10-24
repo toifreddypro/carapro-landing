@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
         return res.ok;
       } catch (e) { console.error(`[maintenance-reservations] ${fonction} injoignable :`, e); return false; }
     };
-    const bilan = { expirees: 0, relances: 0, liberees: 0, sans_reponse_remboursees: 0, remboursements_rejoues: 0, livraisons_confirmees: 0, erreurs: 0 };
+    const bilan = { expirees: 0, relances: 0, liberees: 0, sans_reponse_remboursees: 0, remboursements_rejoues: 0, livraisons_confirmees: 0, cashback_rendus: 0, erreurs: 0 };
     const maintenant = Date.now();
     const aujourdhui = new Date(maintenant - DECALAGE_LOCAL_MS).toISOString().slice(0, 10);
 
@@ -137,6 +137,13 @@ Deno.serve(async (req: Request) => {
         else if (!rep.ignoree) bilan.livraisons_confirmees++;
       } catch (e) { bilan.erreurs++; console.error("[maintenance-reservations] Confirmation de livraison :", e); }
     }
+
+    // ── 1 quater. Cashback : le crédit réservé par une commande jamais payée (+ de 24 h) est rendu au client ──
+    try {
+      const { data: nbRendus, error: errCb } = await sb.rpc("cashback_liberer_abandonnees");
+      if (errCb) { bilan.erreurs++; console.error("[maintenance-reservations] Libération cashback :", errCb.message); }
+      else bilan.cashback_rendus = Number(nbRendus) || 0;
+    } catch (e) { bilan.erreurs++; console.error("[maintenance-reservations] Libération cashback :", e); }
 
     // ── 2 + 3. Réservations payées en attente de réponse ──
     const { data: payees } = await sb.from("paiements_prestations").select("*").eq("type", "reservation").eq("statut", "paye").not("demande_id", "is", null);

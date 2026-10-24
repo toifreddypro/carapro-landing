@@ -3450,7 +3450,7 @@ async function imprimerFacture(factureId) {
       return '<tr><td>' + dateCmd + '</td><td>' + escHtml(l.nom) + '</td><td>' + l.qte + '</td><td>' + l.pu.toFixed(2) + '€</td><td>' + (l.pu * l.qte).toFixed(2) + '€</td></tr>';
     }).join('');
     var ecart = Math.round(((Number(facture.montant_total) || 0) - somme) * 100) / 100;
-    if (articles.length && Math.abs(ecart) > 0.004) lignesHtml += '<tr><td>' + dateCmd + '</td><td>Remise / ajustement</td><td>1</td><td>' + ecart.toFixed(2) + '€</td><td>' + ecart.toFixed(2) + '€</td></tr>';
+    if (articles.length && Math.abs(ecart) > 0.004) lignesHtml += '<tr><td>' + dateCmd + '</td><td>' + (cmd && Number(cmd.cashback_utilise) > 0 ? 'Remise / crédit cashback' : 'Remise / ajustement') + '</td><td>1</td><td>' + ecart.toFixed(2) + '€</td><td>' + ecart.toFixed(2) + '€</td></tr>';
   }
 
   document.getElementById('facture-print').innerHTML =
@@ -3794,6 +3794,8 @@ function proposerPassagePro(raison) {
     ? '✉️ L\'envoi de vos factures par email, directement à vos clients, fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Imprimer une facture reste gratuit.' + texteEssai()
     : raison === 'code_promo'
     ? '🎁 Le code promo (remise automatique dans le panier de vos clients) fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
+    : raison === 'cashback'
+    ? '💚 Le cashback fidélité (un crédit offert à vos clients, qu\'ils dépensent à leur commande suivante chez vous) fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
     : raison === 'retard'
     ? '⏰ Prévenir un client d\'un retard fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
     : '🔒 Mes fournitures fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : suivi de vos consommables, scan QR code / code-barres et alerte avant la rupture.' + texteEssai();
@@ -4774,6 +4776,7 @@ async function chargerCatalogue() {
   var champVis = document.getElementById('boutique-code-promo-visible');
   if (champVis) champVis.checked = _artisan.code_promo_visible !== false;
   afficherStatutCodePromo();
+  afficherCashback();
   afficherPauseBoutique();
 
   var { data, error } = await sb.from('artisans_catalogue').select('*').eq('artisan_id', _artisan.id).order('ordre', { ascending: true });
@@ -5050,6 +5053,43 @@ async function chargerUsageCodePromo() {
       return '<span style="font-family:monospace;font-weight:700;">' + escHtml(k) + '</span>' + (k === _artisan.code_promo ? ' (actuel)' : '') + ' : ' + u.n + ' commande' + (u.n > 1 ? 's' : '') + ' · ' + eurosMPA(u.ca) + ' de ventes';
     }).join('<br>');
   } catch (e) { z.innerHTML = ''; /* colonne pas encore créée (SQL pas lancé) : rien à afficher */ }
+}
+
+// ── Cashback fidélité (offre Pro) : pourcentage choisi par l'artisan, crédits financés par lui ──
+async function afficherCashback() {
+  var champ = document.getElementById('boutique-cashback-pct');
+  var z = document.getElementById('cashback-statut');
+  if (!champ || !z) return;
+  champ.value = _artisan.cashback_pct != null ? Math.round(Number(_artisan.cashback_pct)) : '';
+  var pct = Number(_artisan.cashback_pct);
+  if (!(pct >= 1)) { z.innerHTML = ''; }
+  else if (!estPro()) { z.innerHTML = '⚠️ Réglé à ' + pct + ' %, mais <strong>inactif</strong> : le cashback fait partie de l\'offre Pro. Les crédits déjà gagnés par vos clients restent utilisables.'; }
+  else { z.innerHTML = '✅ Actif : vos clients avec un compte gagnent <strong>' + pct + ' %</strong> en crédit sur chaque commande livrée.'; }
+  try {
+    var r = await sb.rpc('cashback_stats_artisan');
+    var st = r.data;
+    if (st && (Number(st.gagne_total) > 0 || Number(st.en_circulation) > 0)) {
+      z.innerHTML += '<div style="margin-top:6px;font-size:12.5px;color:var(--tx);">📊 Crédit en circulation (votre engagement) : <strong>' + eurosFR(st.en_circulation) + '</strong> · offert au total : ' + eurosFR(st.gagne_total) + ' · déjà utilisé : ' + eurosFR(st.utilise_total) + ' · ' + st.nb_clients + ' client' + (st.nb_clients > 1 ? 's' : '') + '</div>';
+    }
+  } catch (e) { /* les statistiques ne bloquent jamais le réglage */ }
+}
+
+async function sauverCashback() {
+  if (!verifierAccesEcriture()) return;
+  var brut = document.getElementById('boutique-cashback-pct').value.trim();
+  var pct = brut === '' ? null : parseInt(brut, 10);
+  if (pct !== null && !exigerPro('cashback')) return;
+  if (pct !== null && (!(pct >= 1) || pct > 10)) { alert('Indiquez un pourcentage entre 1 % et 10 %, ou laissez vide pour ne pas proposer de cashback.'); return; }
+  var btn = document.getElementById('btn-cashback');
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  var { error } = await sb.from('artisans').update({ cashback_pct: pct }).eq('id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); }
+  else {
+    _artisan.cashback_pct = pct;
+    mpaAiDire(pct ? '💚 Cashback réglé à ' + pct + ' % : vos clients avec un compte gagneront du crédit sur chaque commande livrée, valable 12 mois dans votre boutique. Pensez à en parler sur votre boutique et vos réseaux : c\'est un vrai argument pour qu\'ils reviennent.' : '💚 Cashback désactivé. Les crédits déjà gagnés par vos clients restent utilisables.');
+  }
+  btn.disabled = false; btn.textContent = 'Enregistrer';
+  afficherCashback();
 }
 
 async function sauverCodePromo() {
@@ -5517,7 +5557,7 @@ function renderCommandes() {
     var total = Number(c.montant_total) || 0, rembourse = Number(c.montant_rembourse) || 0;
     var ligneReglement = '';
     if (c.paiement_statut === 'paye') {
-      ligneReglement = '<div style="font-size:12.5px;color:#0f9d78;margin-bottom:' + (c.frais_paiement_montant != null ? '2' : '8') + 'px;font-weight:600;">💳 Payée en ligne — ' + eurosFR(total) + '</div>';
+      ligneReglement = '<div style="font-size:12.5px;color:#0f9d78;margin-bottom:' + (c.frais_paiement_montant != null ? '2' : '8') + 'px;font-weight:600;">💳 Payée en ligne — ' + eurosFR(total) + (Number(c.cashback_utilise) > 0 ? ' <span style="font-weight:500;color:var(--mu);">(+ ' + eurosFR(c.cashback_utilise) + ' en crédit cashback utilisé par le client)</span>' : '') + '</div>';
       // Détail de ce que CaraLink retient (commission + frais de paiement) : seulement pour les commandes payées depuis la refacturation des frais.
       if (c.frais_paiement_montant != null && c.commission_montant != null) {
         var retenue = Number(c.commission_montant) || 0, fraisPaiement = Number(c.frais_paiement_montant) || 0, partCommission = Math.round((retenue - fraisPaiement) * 100) / 100;

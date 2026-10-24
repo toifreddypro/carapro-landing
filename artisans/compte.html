@@ -130,11 +130,14 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
   </div>
   <div class="tabs">
     <button class="tab on" id="t-cmd" onclick="ongletApp('cmd')" data-i18n="cpt_onglet_commandes"></button>
+    <button class="tab" id="t-credits" onclick="ongletApp('credits')" data-i18n="cpt_onglet_credits"></button>
     <button class="tab" id="t-rdv" onclick="ongletApp('rdv')" data-i18n="cpt_onglet_rdv"></button>
     <button class="tab" id="t-profil" onclick="ongletApp('profil')" data-i18n="cpt_onglet_profil"></button>
   </div>
 
   <div id="p-cmd"><div class="vide" data-i18n="cpt_chargement"></div></div>
+
+  <div id="p-credits" style="display:none;"><div class="vide" data-i18n="cpt_chargement"></div></div>
 
   <div id="p-rdv" style="display:none;"><div class="vide" data-i18n="cpt_chargement"></div></div>
 
@@ -271,11 +274,13 @@ async function ouvrirEspace(user){
   document.getElementById('p-nom').value = PROFIL.nom || '';
   document.getElementById('p-tel').value = PROFIL.telephone || '';
   document.getElementById('p-email').value = user.email || '';
-  vue('v-app'); ongletApp('cmd'); chargerCommandes(); chargerRdv();
+  vue('v-app'); ongletApp('cmd'); chargerCommandes(); chargerRdv(); chargerCredits();
 }
 function ongletApp(o){
   document.getElementById('p-cmd').style.display = o==='cmd'?'':'none';
   document.getElementById('p-rdv').style.display = o==='rdv'?'':'none';
+  document.getElementById('p-credits').style.display = o==='credits'?'':'none';
+  document.getElementById('t-credits').classList.toggle('on', o==='credits');
   document.getElementById('p-profil').style.display = o==='profil'?'':'none';
   document.getElementById('t-rdv').classList.toggle('on', o==='rdv');
   document.getElementById('t-cmd').classList.toggle('on', o==='cmd');
@@ -314,13 +319,16 @@ function carteCommande(c){
   var art = c.artisan||{};
   var badge = c.paiement_statut==='rembourse' ? '<span class="badge">'+esc(T('cpt_remboursee'))+'</span>'
             : c.paiement_statut==='partiellement_rembourse' ? '<span class="badge">'+esc(fill(T('cpt_remboursee_part'),{m:euros(c.montant_rembourse)}))+'</span>' : '';
+  var cb = '';
+  if (Number(c.cashback_utilise)>0) cb += '<div class="cmd-total">🎁 '+esc(fill(T('cpt_cb_utilise'),{m:euros(c.cashback_utilise)}))+'</div>';
+  if (Number(c.cashback_gagne)>0) cb += '<div class="cmd-info ok">🎁 '+esc(fill(T('cpt_cb_gagne'),{m:euros(c.cashback_gagne)}))+'</div>';
   var livr = (c.mode==='livraison' && Number(c.frais_livraison)>0) ? ' ('+esc(T('cpt_dont_livraison'))+' '+esc(euros(c.frais_livraison))+')' : '';
   var tel = art.telephone ? '<div class="cmd-contact">📞 <a href="tel:'+esc(String(art.telephone).replace(/[^+\d]/g,''))+'">'+esc(fill(T('cpt_contacter'),{nom:art.nom_entreprise||''}))+'</a></div>' : '';
   return '<div class="card"><div class="cmd-tete"><div class="cmd-art">'+esc(art.nom_entreprise||'')+'</div><div class="cmd-date">'+esc(fill(T('cpt_commande_du'),{date:dateLongueGP(c.created_at)}))+'</div></div>'
     + '<div class="cmd-lignes">'+lignes+'</div>'
     + '<div class="cmd-total">'+esc(T('cpt_total'))+' <b>'+esc(euros(c.montant_total))+'</b>'+livr+'</div>'
     + (c.paiement_statut==='rembourse' ? '' : '<div class="steps">'+etapesCommande(c)+'</div>')
-    + infoCommande(c) + badge + tel + '</div>';
+    + cb + infoCommande(c) + badge + tel + '</div>';
 }
 async function chargerCommandes(){
   var zone = document.getElementById('p-cmd');
@@ -385,6 +393,22 @@ async function chargerRdv(){
   var histo = pai.filter(function(p){return p.statut!=='en_attente';});
   if (histo.length) html += '<h2 style="margin:18px 0 10px;">'+esc(T('cpt_paiements_titre'))+'</h2>' + histo.map(cartePaiement).join('');
   zone.innerHTML = html || '<div class="vide">'+esc(T('cpt_rdv_aucun'))+'</div>';
+}
+
+// ── Crédits cashback (par boutique, jamais de total global) ──
+async function chargerCredits(){
+  var zone = document.getElementById('p-credits');
+  var r = await sb.rpc('mes_credits');
+  if (r.error) { zone.innerHTML = '<div class="vide">'+esc(T('cpt_err_generique'))+'</div>'; return; }
+  var l = r.data || [];
+  var t = document.getElementById('t-credits');
+  t.textContent = T('cpt_onglet_credits') + (l.length ? ' (' + l.length + ')' : '');
+  if (!l.length) { zone.innerHTML = '<div class="vide">'+esc(T('cpt_credits_aucun'))+'</div><p class="sub" style="text-align:center;">'+esc(T('cpt_credits_info'))+'</p>'; return; }
+  zone.innerHTML = '<p class="sub">'+esc(T('cpt_credits_info'))+'</p>' + l.map(function(c){
+    var exp = (Number(c.montant_expirant) > 0 && c.expire_le) ? '<div class="hint">'+esc(fill(T('cpt_credit_expire'),{m:euros(c.montant_expirant),d:dateLongueGP(c.expire_le)}))+'</div>' : '';
+    var lien = c.slug ? '<a class="btn sec" style="display:block;text-align:center;text-decoration:none;margin-top:12px;" href="catalogue.html?s='+encodeURIComponent(c.slug)+'">'+esc(T('cpt_credit_voir'))+'</a>' : '';
+    return '<div class="card"><div class="cmd-tete"><div class="cmd-art">'+esc(c.nom_entreprise||'')+'</div><div style="font-family:Fraunces,serif;font-size:22px;font-weight:700;color:var(--ok);">'+esc(euros(c.solde))+'</div></div>'+exp+lien+'</div>';
+  }).join('');
 }
 
 // ── Profil ──
