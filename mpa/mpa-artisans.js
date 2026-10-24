@@ -717,7 +717,7 @@ function renderCreneauHtml(creneau, dateStr, liste) {
 
   var pills = visibles.map(function(i) {
     var client = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '';
-    var service = i.artisans_services ? i.artisans_services.nom_service : '(sans service)';
+    var service = libelleServiceIntervention(i);
     var heure = i.heure_debut ? i.heure_debut.slice(0,5) : '';
     var statut = classeStatut(i.statut);
     var statutSuivant = CYCLE_STATUT[statut] || 'planifiee';
@@ -760,7 +760,7 @@ function ouvrirDetailJourMobile(dateStr) {
   var liste = interDuJour.length
     ? interDuJour.map(function(i) {
         var client = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '—';
-        var service = i.artisans_services ? i.artisans_services.nom_service : '(sans service)';
+        var service = libelleServiceIntervention(i);
         var heure = i.heure_debut ? i.heure_debut.slice(0,5) : '';
         var statut = classeStatut(i.statut);
         return '<div onclick="fermerModale(\'modal-jour-mobile\');ouvrirIntervention(\'' + i.id + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--brd);cursor:pointer;">' +
@@ -889,7 +889,7 @@ function messageSuiteTerminee(ids) {
   } else {
     boutons.push({ label: 'Aller à Mes factures', action: "switchTab(7);switchSousOnglet('nav-compta','conteneur-compta',1)" });
   }
-  var resteAPayer = paiementsEnLigneActifs() && i.statut !== 'payee';
+  var resteAPayer = paiementsEnLigneActifs() && i.statut !== 'payee' && !estLivraisonIntervention(i);
   if (resteAPayer) boutons.push({ label: '💶 Demander un paiement', action: "demanderPaiementDepuisMessage('" + i.id + "')" });
   mpaAiDire('✅ Intervention chez ' + nomClient + ' terminée (' + eurosMPA(i.prix) + '). On ' + (estPro() ? 'facture ?' : 'pense à la facturer ? (Avec l\'offre Pro, un seul clic suffit.)') + (resteAPayer ? ' Vous pouvez aussi lui envoyer un lien de paiement par carte.' : ''), 'info', boutons);
   ouvrirPanneauMpaAi();
@@ -1915,6 +1915,15 @@ function majVerrouClientIntervention(existante) {
 }
 
 // Intervention de LIVRAISON d'une commande : tout vient de la commande (client, adresse, prix = frais déjà payés). Seuls le jour, le créneau et les heures se choisissent.
+// Une intervention de LIVRAISON n'a pas de service : on l'affiche comme telle (jamais « sans service »), et ses frais sont déjà réglés avec la commande.
+function estLivraisonIntervention(i) {
+  return !!i && (/^Livraison\b/i.test(i.notes || '') || (typeof _commandesCache !== 'undefined' && (_commandesCache || []).some(function(c) { return c.intervention_id === i.id; })));
+}
+function libelleServiceIntervention(i, brut) {
+  var nom = i.artisans_services && i.artisans_services.nom_service;
+  if (nom) return nom;
+  return estLivraisonIntervention(i) ? (brut ? 'Livraison' : '🚚 Livraison') : '(sans service)';
+}
 var CHAMPS_VERROU_LIVRAISON = ['mi-client', 'mi-adr', 'mi-cp', 'mi-com', 'mi-service', 'mi-prix'];
 function majVerrouLivraisonIntervention(commande, nouvelle) {
   CHAMPS_VERROU_LIVRAISON.forEach(function(id) { var el = document.getElementById(id); if (el) el.disabled = !!commande; });
@@ -2027,11 +2036,13 @@ function renderPaiementsIntervention(i) {
     var reste = Number(p.montant_rembourse) > 0 ? ' (remboursé : ' + eurosMPA(p.montant_rembourse) + ')' : '';
     return '<div style="font-size:12.5px;margin-bottom:6px;">💶 ' + nom + ' : <strong>' + eurosMPA(p.montant) + '</strong> — ' + (libelleStatut[p.statut] || escHtml(p.statut)) + datePaye + reste + actions + detailAttente + '</div>';
   }).join('');
-  var peutDemander = paiementsEnLigneActifs() && ['annulee'].indexOf(i.statut) === -1;
+  var livraisonCommande = estLivraisonIntervention(i);
+  var peutDemander = !livraisonCommande && paiementsEnLigneActifs() && ['annulee'].indexOf(i.statut) === -1;
   var dejaPayee = i.statut === 'payee';
   var payeEnLigne = _paiementsIntervention.some(function(p) { return p.type === 'solde' && ['paye', 'partiellement_rembourse', 'rembourse'].indexOf(p.statut) !== -1; });
+  var noteLivraison = livraisonCommande ? '<div style="font-size:12.5px;margin-top:8px;text-align:center;color:var(--mu);">🚚 Livraison : les frais ont déjà été réglés en ligne avec la commande. Rien à demander au client.</div>' : '';
   var etatPaye = dejaPayee ? '<div style="font-size:12.5px;margin-top:8px;text-align:center;">' + (payeEnLigne ? '🟢 Payée en ligne via CaraLink' : '🟢 Payée en main propre <span style="color:var(--mu);">(hors CaraLink)</span>') + '</div>' : '';
-  var blocPropre = (i.statut === 'terminee')
+  var blocPropre = (i.statut === 'terminee' && !livraisonCommande)
     ? '<div style="text-align:center;margin-top:10px;"><button type="button" onclick="payerEnMainPropre(null, true)" style="padding:9px 18px;border-radius:8px;border:1.5px solid #16a34a;background:rgba(34,197,94,.08);color:#15803d;font-size:13px;font-weight:700;cursor:pointer;">💵 Payé en main propre</button><div style="font-size:11px;color:var(--mu);margin-top:5px;">Espèces, chèque, virement… tout paiement reçu hors CaraLink.</div></div>'
     : '';
   var enAttente = _paiementsIntervention.some(function(p) { return p.type === 'solde' && p.statut === 'en_attente' && Date.now() - new Date(p.created_at).getTime() < 14 * 86400000; });
@@ -2042,7 +2053,7 @@ function renderPaiementsIntervention(i) {
       ? '<div style="text-align:center;margin-top:6px;"><button type="button" disabled aria-disabled="true" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--b2);background:var(--bg);color:var(--mu);font-size:13px;font-weight:700;cursor:not-allowed;opacity:.65;">💶 Demander un paiement</button><div style="font-size:11px;color:var(--mu);margin-top:5px;">⏳ Une demande de paiement est déjà en attente. Utilisez « Relancer » ci-dessus pour rappeler votre client.</div></div>'
       : peutDemander
       ? '<div style="text-align:center;margin-top:6px;"><button type="button" onclick="ouvrirDemandePaiement()" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--ac);background:var(--ac);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">💶 Demander un paiement</button><div style="font-size:11px;color:var(--mu);margin-top:5px;">Envoie à votre client un lien de paiement par carte pour le montant de votre devis.</div></div>'
-      : (lignes ? '' : '<div style="font-size:11.5px;color:var(--mu);text-align:center;">Activez vos paiements en ligne (Mon profil) pour pouvoir demander un paiement à vos clients.</div>')) + blocPropre + etatPaye;
+      : (lignes ? '' : '<div style="font-size:11.5px;color:var(--mu);text-align:center;">Activez vos paiements en ligne (Mon profil) pour pouvoir demander un paiement à vos clients.</div>')) + blocPropre + etatPaye + noteLivraison;
 }
 
 // ── Relances d'un lien de paiement non réglé ──
@@ -2777,7 +2788,7 @@ async function chargerLignesCA(debut, finExclue) {
       fam: liv[i.id] ? 'livraisons' : 'interventions',
       client: (i.mpa_artisans_clients && i.mpa_artisans_clients.nom) || '(sans client)',
       montant: Number(i.prix) || 0,
-      libelle: (i.artisans_services && i.artisans_services.nom_service) || 'Intervention', statut: i.statut, factureId: i.facture_id || null,
+      libelle: (i.artisans_services && i.artisans_services.nom_service) || (estLivraisonIntervention(i) ? 'Livraison' : 'Intervention'), statut: i.statut, factureId: i.facture_id || null,
       dProd: fait ? _dateJour(i.date_intervention) : null,
       dReel: (i.statut === 'payee' && i.date_paiement) ? _dateJour(i.date_paiement) : null
     });
@@ -2889,7 +2900,7 @@ async function renderRecapInterventions() {
   var fait = lignes.filter(function(i) { return i.statut === 'terminee' || i.statut === 'payee'; });
   var total = fait.reduce(function(s, i) { return s + (Number(i.prix) || 0); }, 0);
   zone.innerHTML = titre + '<div style="max-height:280px;overflow-y:auto;border:1px solid var(--brd);border-radius:10px;padding:0 12px;">' + lignes.map(function(i) {
-    var nom = (i.artisans_services && i.artisans_services.nom_service) || 'Intervention';
+    var nom = (i.artisans_services && i.artisans_services.nom_service) || (estLivraisonIntervention(i) ? 'Livraison' : 'Intervention');
     var date = new Date(i.date_intervention + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
     var badge = rembourse[i.id] ? ' <span style="font-size:11px;font-weight:700;color:#b45309;background:rgba(245,158,11,.12);padding:2px 7px;border-radius:6px;">↩️ remboursée ' + eurosMPA(rembourse[i.id]) + '</span>' : '';
     if (i.statut === 'payee') badge += ' <span style="font-size:11px;color:var(--mu);">' + (enLigne[i.id] ? '💳 en ligne' : '💵 main propre') + '</span>';
@@ -3101,7 +3112,7 @@ async function chargerPanierClient() {
 
   zone.innerHTML =
     _panierActuel.map(function(i) {
-      var service = i.artisans_services ? i.artisans_services.nom_service : '(sans service)';
+      var service = libelleServiceIntervention(i);
       var dateAff = new Date(i.date_intervention).toLocaleDateString('fr-FR', { day:'numeric', month:'short', year:'numeric' });
       return '<label class="panier-item">' +
         '<input type="checkbox" class="panier-check" data-id="' + i.id + '" data-prix="' + (i.prix||0) + '" checked onchange="recalculerPanier()">' +
@@ -3409,7 +3420,7 @@ async function imprimerFacture(factureId) {
   var dateEcheanceAff = dateEcheance.toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
 
   var lignesHtml = (lignes||[]).map(function(l) {
-    var service = l.artisans_services ? l.artisans_services.nom_service : '(sans service)';
+    var service = libelleServiceIntervention(l, true);
     var dateAff = new Date(l.date_intervention).toLocaleDateString('fr-FR', { day:'numeric', month:'short', year:'numeric' });
     var montant = l.prix || 0;
     return '<tr><td>' + dateAff + '</td><td>' + escHtml(service) + (l.notes ? ' — ' + escHtml(l.notes) : '') + '</td><td>1</td><td>' + montant.toFixed(2) + '€</td><td>' + montant.toFixed(2) + '€</td></tr>';
