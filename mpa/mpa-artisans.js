@@ -1835,6 +1835,7 @@ async function ouvrirNouvelleIntervention(dateStr, creneau) {
   }
   window._commandeEnLivraison = null;
   await remplirSelectsIntervention();
+  majVerrouLivraisonIntervention(null);
   _interventionEnCours = null;
   document.getElementById('mi-titre').textContent = 'Nouvelle intervention';
   document.getElementById('mi-date').value = dateStr;
@@ -1883,12 +1884,31 @@ function majVerrouClientIntervention(existante) {
   var note = document.getElementById('mi-client-note'); if (note) note.style.display = verrou ? 'block' : 'none';
 }
 
+// Intervention de LIVRAISON d'une commande : tout vient de la commande (client, adresse, prix = frais déjà payés). Seuls le jour, le créneau et les heures se choisissent.
+var CHAMPS_VERROU_LIVRAISON = ['mi-client', 'mi-adr', 'mi-cp', 'mi-com', 'mi-service', 'mi-prix'];
+function majVerrouLivraisonIntervention(commande, nouvelle) {
+  CHAMPS_VERROU_LIVRAISON.forEach(function(id) { var el = document.getElementById(id); if (el) el.disabled = !!commande; });
+  var st = document.getElementById('mi-statut'); if (st && nouvelle !== undefined && commande && nouvelle) st.disabled = true; else if (st) st.disabled = false;
+  var ban = document.getElementById('mi-liv-banner');
+  if (!ban) {
+    ban = document.createElement('div'); ban.id = 'mi-liv-banner';
+    ban.style.cssText = 'display:none;margin:0 0 12px;padding:10px 12px;border-radius:8px;background:rgba(181,80,47,.08);border:1px solid rgba(181,80,47,.25);font-size:12.5px;line-height:1.5;';
+    var titre = document.getElementById('mi-titre'); titre.parentNode.insertBefore(ban, titre.nextSibling);
+  }
+  if (!commande) { ban.style.display = 'none'; return; }
+  ban.innerHTML = '🚚 <strong>Livraison de la commande de ' + escHtml(commande.client_nom) + '</strong> — le client, l\'adresse et le prix (frais de livraison déjà payés) viennent de la commande et ne se modifient pas ici.<br>' +
+    (commande.livraison_debut && commande.livraison_fin ? 'Fenêtre annoncée au client : du <strong>' + dateCourteFR(commande.livraison_debut) + '</strong> au <strong>' + dateCourteFR(commande.livraison_fin) + '</strong>. ' : '') +
+    'Choisissez le <strong>jour, le créneau et les heures</strong> : le client sera prévenu par email.';
+  ban.style.display = 'block';
+}
+
 async function ouvrirIntervention(id) {
   await remplirSelectsIntervention();
   var i = _interventionsCache.find(function(x) { return x.id === id; });
   if (!i) return;
   _interventionEnCours = id;
   document.getElementById('mi-titre').textContent = 'Modifier l\'intervention';
+  var _commandeLiee = (_commandesCache || []).find(function(c) { return c.intervention_id === id; }) || null;
   document.getElementById('mi-date').value = i.date_intervention;
   document.getElementById('mi-creneau').value = i.creneau || 'matin';
   document.getElementById('mi-heure-debut').value = i.heure_debut ? i.heure_debut.slice(0,5) : '';
@@ -1908,6 +1928,7 @@ async function ouvrirIntervention(id) {
   document.getElementById('mi-statut').value = i.statut || 'planifiee';
   document.getElementById('mi-date-paiement').value = i.date_paiement || '';
   toggleDatePaiement();
+  majVerrouLivraisonIntervention(_commandeLiee, false);
   document.getElementById('mi-delete-wrap').style.display = 'block';
   document.getElementById('mi-impossible-wrap').style.display = ['planifiee', 'en_cours'].indexOf(i.statut || 'planifiee') !== -1 ? 'block' : 'none';
   renderZoneAvisIntervention(i);
@@ -5896,6 +5917,7 @@ async function planifierLivraisonCommande(commandeId) {
     (c.frais_livraison ? ' (frais de livraison : ' + c.frais_livraison.toFixed(2) + ' €)' : '') +
     (c.notes ? ' — ' + c.notes : '');
   await calculerCreneaux();
+  majVerrouLivraisonIntervention(c, true); // client, adresse, prix et statut verrouillés : seuls jour, créneau et heures se choisissent
 
   // Lie la commande à cette future intervention dès l'ouverture — sera bien réelle une fois "Enregistrer" cliqué.
   window._commandeEnLivraison = { commandeId: commandeId };
