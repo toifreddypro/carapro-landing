@@ -234,19 +234,37 @@ async function verifierAlertesMpaAi() {
     mpaAiDire('📦 ' + aPreparer.length + ' commande' + (aPreparer.length > 1 ? 's' : '') + ' à préparer avant le début de la fenêtre de livraison (' + aPreparer.map(function(c) { return escHtml(c.client_nom) + ' : ' + dateCourteFR(c.livraison_debut); }).join(' ; ') + ').', 'info', voirCmd);
   }
   var pretesAPlanifier = cmds.filter(function(c) { return c.mode === 'livraison' && commandeReglee(c) && c.statut === 'prete' && !c.intervention_id; });
-  // Temps 2 : à l'échéance (veille du début de fenêtre ou après), MPA-AI regroupe avec le reste du planning et propose le meilleur jour en un clic.
+  // MPA-AI cherche en continu le meilleur jour : si vous êtes déjà dans la commune un jour de la fenêtre, elle le propose (un clic).
+  // À l'échéance (veille du début de fenêtre ou après), elle propose le meilleur jour même sans regroupement.
   var veille = ajouterJoursISO(jourGuadeloupe(), 1);
-  var echues = pretesAPlanifier.filter(function(c) { return c.livraison_debut && c.livraison_debut <= veille; });
-  var autres = pretesAPlanifier.filter(function(c) { return echues.indexOf(c) === -1; });
-  if (autres.length) {
-    mpaAiDire('🚚 ' + autres.length + ' livraison' + (autres.length > 1 ? 's prêtes attendent' : ' prête attend') + ' d\'être planifiée' + (autres.length > 1 ? 's' : '') + '. Je vous proposerai le meilleur jour à l\'approche de la fenêtre.', 'info', { label: 'Voir mes livraisons', action: "switchTab(5)" });
-  }
-  echues.forEach(function(c) {
+  var sansAnalyse = 0;
+  pretesAPlanifier.forEach(function(c) {
+    var echue = c.livraison_debut && c.livraison_debut <= veille;
     analyserJoursLivraison(c).then(function(an) {
-      if (!an.meilleur) { mpaAiDire('🚚 La livraison de ' + escHtml(c.client_nom) + ' est à planifier, mais aucun jour libre dans sa fenêtre. Choisissez un jour à la main.', 'warning', { label: 'Planifier', action: "planifierLivraisonCommande('" + c.id + "')" }); return; }
-      mpaAiDire('🚚 C\'est le moment de planifier la livraison de ' + escHtml(c.client_nom) + ' (' + escHtml(c.commune_livraison || '') + '). Meilleur jour : <strong>' + dateCourteFR(an.meilleur.date) + '</strong> — ' + resumeJourLivraison(an.meilleur, c.commune_livraison) + '.', 'info', [
-        { label: '✅ Valider ce jour', action: "validerJourProposeLivraison('" + c.id + "','" + an.meilleur.date + "')" },
-        { label: 'Choisir un autre jour', action: "planifierLivraisonCommande('" + c.id + "')" } ]);
+      var m = an.meilleur;
+      if (m && (m.memeCommune > 0 || echue)) {
+        mpaAiDire('🚚 ' + (echue ? 'C\'est le moment de planifier' : 'Bonne occasion pour planifier') + ' la livraison de ' + escHtml(c.client_nom) + ' (' + escHtml(c.commune_livraison || '') + '). Meilleur jour : <strong>' + dateCourteFR(m.date) + '</strong> — ' + resumeJourLivraison(m, c.commune_livraison) + '. Le client ne sera prévenu que 2 jours avant.', 'info', [
+          { label: '✅ Valider ce jour', action: "validerJourProposeLivraison('" + c.id + "','" + m.date + "')" },
+          { label: 'Choisir un autre jour', action: "planifierLivraisonCommande('" + c.id + "')" } ]);
+      } else if (!m && echue) {
+        mpaAiDire('🚚 La livraison de ' + escHtml(c.client_nom) + ' est à planifier, mais aucun jour libre dans sa fenêtre. Choisissez un jour à la main.', 'warning', { label: 'Planifier', action: "planifierLivraisonCommande('" + c.id + "')" });
+      } else { sansAnalyse++; if (sansAnalyse === pretesAPlanifier.length) mpaAiDire('🚚 ' + sansAnalyse + ' livraison' + (sansAnalyse > 1 ? 's prêtes attendent' : ' prête attend') + ' d\'être planifiée' + (sansAnalyse > 1 ? 's' : '') + '. Je vous proposerai un jour dès qu\'il y aura un regroupement possible.', 'info', { label: 'Voir mes livraisons', action: "switchTab(5)" }); }
+    });
+  });
+  // Livraisons planifiées mais PROVISOIRES (client pas encore prévenu) : MPA-AI cherche mieux, et rappelle quand le mail partira.
+  var provisoires = cmds.filter(function(c) { return c.mode === 'livraison' && commandeReglee(c) && c.intervention_id && !c.livraison_confirmee_le && c.livraison_prevue_le && c.statut !== 'terminee' && c.statut !== 'annulee'; });
+  provisoires.forEach(function(c) {
+    analyserJoursLivraison(c, c.intervention_id).then(function(an) {
+      var actuel = an.jours.find(function(x) { return x.date === c.livraison_prevue_le; });
+      var m = an.meilleur;
+      var gainCommune = m && m.date !== c.livraison_prevue_le && m.memeCommune > ((actuel && actuel.memeCommune) || 0);
+      if (gainCommune) {
+        mpaAiDire('🧩 Mieux pour la livraison de ' + escHtml(c.client_nom) + ' : vous serez déjà à ' + escHtml(c.commune_livraison || 'proximité') + ' le <strong>' + dateCourteFR(m.date) + '</strong> (au lieu du ' + dateCourteFR(c.livraison_prevue_le) + '). Le client n\'a encore reçu aucune date : je déplace sans rien envoyer.', 'info', [
+          { label: '✅ Déplacer au ' + dateCourteFR(m.date), action: "deplacerLivraisonProvisoire('" + c.id + "','" + m.date + "')" },
+          { label: 'Garder le ' + dateCourteFR(c.livraison_prevue_le), action: "" } ]);
+      } else if (c.livraison_prevue_le <= ajouterJoursISO(jourGuadeloupe(), 4)) {
+        mpaAiDire('📅 Livraison de ' + escHtml(c.client_nom) + ' le ' + dateCourteFR(c.livraison_prevue_le) + ' : pas de meilleur jour. ' + (c.livraison_prevue_le <= ajouterJoursISO(jourGuadeloupe(), 2) ? 'Le client va être prévenu automatiquement.' : 'Le client sera prévenu le ' + dateCourteFR(ajouterJoursISO(c.livraison_prevue_le, -2)) + '.'), 'info', { label: '✉️ Prévenir maintenant', action: "prevenirClientLivraisonMaintenant('" + c.id + "')" });
+      }
     });
   });
 
@@ -2632,6 +2650,7 @@ async function prevenirClientDeplacement(interventionId, ancienneDate) {
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error);
+    if (data.provisoire) { mpaAiDire('📅 Livraison déplacée au ' + dateCourteFR(data.date) + '. Le client n\'a encore reçu aucune date : il sera prévenu le ' + dateCourteFR(ajouterJoursISO(data.date, -2)) + '.', 'info'); await chargerCommandes(); await chargerLivraisons(); return; }
     if (data.client_prevenu) mpaAiDire('✉️ Le rendez-vous a été déplacé : j\'ai prévenu votre client par email du nouveau jour.', 'info');
     else mpaAiDire('⚠️ Le rendez-vous a été déplacé, mais ' + (data.client_sans_email ? 'ce client n\'a pas d\'adresse email : prévenez-le directement.' : 'l\'email n\'a pas pu partir : prévenez votre client directement.'), 'warning');
     if (data.livraison) {
@@ -5606,7 +5625,12 @@ function fluxCommandeHtml(c) {
     principal = btn('🚚 Planifier la livraison', "planifierLivraisonCommande('" + c.id + "')");
     explication = 'Choisissez le jour dans la fenêtre du client : il recevra un email avec la date. Une fois la livraison terminée, la commande passe toute seule en « Terminée ».';
   } else if (livraison) {
-    explication = '✓ Dans le planning' + (c.livraison_prevue_le ? ' le ' + dateCourteFR(c.livraison_prevue_le) : '') + ' — quand l\'intervention de livraison sera terminée, cette commande passera automatiquement en « Terminée ».';
+    if (c.livraison_confirmee_le) {
+      explication = '✓ Client prévenu : livraison le ' + dateCourteFR(c.livraison_prevue_le) + '. Quand l\'intervention de livraison sera terminée, cette commande passera automatiquement en « Terminée ».';
+    } else {
+      principal = '<button onclick="prevenirClientLivraisonMaintenant(\'' + c.id + '\')" style="padding:8px 16px;border-radius:8px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:12.5px;font-weight:700;cursor:pointer;">✉️ Prévenir le client maintenant</button>';
+      explication = '🕓 Livraison <strong>provisoire</strong> le ' + (c.livraison_prevue_le ? dateCourteFR(c.livraison_prevue_le) : '—') + ' : le client sera prévenu le ' + (c.livraison_prevue_le ? dateCourteFR(ajouterJoursISO(c.livraison_prevue_le, -2)) : '—') + ' (2 jours avant). D\'ici là vous pouvez la déplacer sans rien envoyer.';
+    }
   } else {
     principal = btn('🤝 Marquer comme remise', "marquerCommandeRemise('" + c.id + "')");
     explication = 'À cliquer quand le client a récupéré sa commande.';
@@ -5638,6 +5662,14 @@ async function marquerCommandePrete(id) {
   if (error) { alert('Erreur : ' + error.message); return; }
   await chargerCommandes();
   mpaAiDire('📦 Commande de ' + escHtml(c.client_nom) + ' marquée « Prête ».' + (c.mode === 'livraison' ? ' Vous pouvez maintenant planifier la livraison.' : ' Pensez à prévenir votre client qu\'il peut venir la retirer.'), 'info');
+}
+async function prevenirClientLivraisonMaintenant(id) {
+  var c = _commandesCache.find(function(x) { return x.id === id; });
+  if (!c) return;
+  if (!confirm('Envoyer dès maintenant à ' + c.client_nom + ' le mail « livraison prévue le ' + dateCourteFR(c.livraison_prevue_le) + ' » ?\n\nLa date devient ferme : la déplacer ensuite lui enverrait un nouveau mail.')) return;
+  var probleme = await notifierClientCommande(id, 'livraison_prevue');
+  await chargerCommandes(); await chargerLivraisons();
+  mpaAiDire(probleme ? '⚠️ ' + probleme : '✉️ ' + escHtml(c.client_nom) + ' est prévenu : livraison le ' + dateCourteFR(c.livraison_prevue_le) + '.', probleme ? 'warning' : 'info');
 }
 async function marquerCommandeRemise(id) {
   if (!verifierAccesEcriture()) return;
@@ -5873,7 +5905,7 @@ async function confirmerCartePrestations() {
 
 // ── Planifier la livraison d'une commande : fenêtre dédiée (l'intervention est créée en coulisses, l'artisan ne voit que ce qui compte). ──
 // Analyse chaque jour de la fenêtre promise au client : indisponible, non travaillé, déjà chargé, ou « déjà dans le secteur » (regroupement).
-async function analyserJoursLivraison(c) {
+async function analyserJoursLivraison(c, sansInterventionId) {
   var aujourdhui = jourGuadeloupe();
   var debut = c.livraison_debut || c.date_souhaitee || aujourdhui;
   var fin = c.livraison_fin || ajouterJoursISO(debut, 6);
@@ -5881,10 +5913,10 @@ async function analyserJoursLivraison(c) {
   if (debut < aujourdhui) debut = aujourdhui;
   if (fin < debut) { fin = ajouterJoursISO(debut, 6); horsFenetre = true; } // fenêtre entièrement passée : on propose la semaine à venir
   var [rI, rX] = await Promise.all([
-    sb.from('mpa_artisans_interventions').select('date_intervention, commune, statut').eq('artisan_id', _artisan.id).gte('date_intervention', debut).lte('date_intervention', fin).neq('statut', 'annulee'),
+    sb.from('mpa_artisans_interventions').select('id, date_intervention, commune, statut').eq('artisan_id', _artisan.id).gte('date_intervention', debut).lte('date_intervention', fin).neq('statut', 'annulee'),
     sb.from('artisans_indisponibilites').select('date_debut, date_fin').eq('artisan_id', _artisan.id).lte('date_debut', fin).gte('date_fin', debut),
   ]);
-  var interv = rI.data || [], indis = rX.data || [];
+  var interv = (rI.data || []).filter(function(i) { return i.id !== sansInterventionId; }), indis = rX.data || [];
   var communeNorm = (c.commune_livraison || '').trim().toLowerCase();
   var jours = [];
   for (var d = debut; d <= fin; d = ajouterJoursISO(d, 1)) {
@@ -5946,8 +5978,8 @@ async function planifierLivraisonCommande(commandeId) {
       '<div class="modal-field" style="flex:1;"><label>Créneau</label><select id="pl-creneau" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-size:13px;"><option value="matin">Matin</option><option value="apres_midi">Après-midi</option></select></div>' +
       '<div class="modal-field" style="flex:1;"><label>Heure (facultatif)</label><input id="pl-heure" type="time"/></div>' +
     '</div>' +
-    '<div id="pl-note" style="font-size:12px;color:var(--mu);margin:4px 0 10px;">' + (c.client_email ? '✉️ Votre client recevra un email avec le jour prévu.' : '⚠️ Ce client n\'a pas d\'adresse email : prévenez-le directement.') + '</div>' +
-    '<div class="modal-actions"><button id="pl-valider" class="btn-primary" onclick="confirmerPlanificationLivraison()"' + (_planifLivraison.jourChoisi ? '' : ' disabled') + '>Valider et prévenir le client</button>' +
+    '<div id="pl-note" style="font-size:12px;color:var(--mu);margin:4px 0 10px;">' + (c.client_email ? '✉️ Le jour reste provisoire : votre client en est prévenu par email 2 jours avant (tout de suite si c\'est dans moins de 2 jours). D\'ici là, vous pouvez le déplacer sans rien envoyer.' : '⚠️ Ce client n\'a pas d\'adresse email : prévenez-le directement.') + '</div>' +
+    '<div class="modal-actions"><button id="pl-valider" class="btn-primary" onclick="confirmerPlanificationLivraison()"' + (_planifLivraison.jourChoisi ? '' : ' disabled') + '>Valider ce jour</button>' +
     '<button class="btn-secondary" onclick="fermerModale(\'modal-planif-livraison\')">Retour</button></div>';
   ouvrirModale('modal-planif-livraison');
 }
@@ -5985,16 +6017,19 @@ async function creerLivraisonCommande(commandeId, date, creneau, heure) {
   if (res.error) return { erreur: res.error.message };
   var { error: errLien } = await sb.from('commandes_catalogue').update({ intervention_id: res.data.id, livraison_prevue_le: date }).eq('id', commandeId).eq('artisan_id', _artisan.id);
   if (errLien) return { erreur: 'Liaison avec la commande : ' + errLien.message };
-  var probleme = await notifierClientCommande(commandeId, 'livraison_prevue', { date: date, creneau: creneau });
+  // Livraison PROVISOIRE : le client n'est prévenu qu'à J-2 (par MPA-AI ou, à défaut, par le serveur) pour que l'artisan puisse encore optimiser.
+  // Si le jour choisi est dans moins de 2 jours, plus de temps à perdre : le mail part tout de suite.
+  var immediat = date <= ajouterJoursISO(jourGuadeloupe(), 2);
+  var probleme = immediat ? await notifierClientCommande(commandeId, 'livraison_prevue') : null;
   await chargerCommandes(); await chargerLivraisons(); chargerInterventions();
-  return { ok: true, probleme: probleme };
+  return { ok: true, probleme: probleme, immediat: immediat };
 }
 async function confirmerPlanificationLivraison() {
   if (!_planifLivraison || !_planifLivraison.jourChoisi) return;
   var btn = document.getElementById('pl-valider'); btn.disabled = true; btn.textContent = 'Enregistrement…';
   var r = await creerLivraisonCommande(_planifLivraison.commandeId, _planifLivraison.jourChoisi, document.getElementById('pl-creneau').value, document.getElementById('pl-heure').value);
   if (r.erreur) {
-    btn.disabled = false; btn.textContent = 'Valider et prévenir le client';
+    btn.disabled = false; btn.textContent = 'Valider ce jour';
     if (String(r.erreur).indexOf('COMMISSION_CARTE_REQUISE') >= 0) {
       if (confirm('Pour planifier une nouvelle intervention venue de CaraLink, il faut d\'abord enregistrer une carte bancaire (ou régler la commission restée impayée).\n\nElle n\'est débitée qu\'au-delà du seuil gratuit. Ouvrir l\'enregistrement de la carte ?')) { fermerModale('modal-planif-livraison'); ouvrirCartePrestations(); }
       return;
@@ -6002,14 +6037,29 @@ async function confirmerPlanificationLivraison() {
     alert('Erreur : ' + r.erreur); return;
   }
   fermerModale('modal-planif-livraison');
-  mpaAiDire(r.probleme ? '🚚 Livraison planifiée, mais ' + r.probleme : '🚚 Livraison planifiée le ' + dateCourteFR(_planifLivraison.jourChoisi) + ' : j\'ai prévenu votre client par email.', r.probleme ? 'warning' : 'info');
+  mpaAiDire(messageLivraisonPlanifiee(_planifLivraison.jourChoisi, r), r.probleme ? 'warning' : 'info');
+}
+function messageLivraisonPlanifiee(date, r) {
+  if (r.immediat) return r.probleme ? '🚚 Livraison planifiée le ' + dateCourteFR(date) + ', mais ' + r.probleme : '🚚 Livraison planifiée le ' + dateCourteFR(date) + ' : c\'est dans moins de 2 jours, j\'ai donc prévenu votre client par email tout de suite.';
+  return '🚚 Livraison planifiée le ' + dateCourteFR(date) + ' (provisoire). Votre client sera prévenu par email le ' + dateCourteFR(ajouterJoursISO(date, -2)) + ' (2 jours avant). D\'ici là, je surveille s\'il y a un meilleur jour.';
+}
+// Déplace en silence une livraison provisoire (le client n'a encore reçu aucune date).
+async function deplacerLivraisonProvisoire(commandeId, date) {
+  if (!verifierAccesEcriture()) return;
+  var c = _commandesCache.find(function(x) { return x.id === commandeId; });
+  if (!c || !c.intervention_id || c.livraison_confirmee_le) return;
+  var ancienne = c.livraison_prevue_le;
+  var { error } = await sb.from('mpa_artisans_interventions').update({ date_intervention: date }).eq('id', c.intervention_id).eq('artisan_id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await prevenirClientDeplacement(c.intervention_id, ancienne);
+  chargerInterventions();
 }
 // Un clic depuis MPA-AI : valide le jour qu'elle propose (créneau du matin, modifiable ensuite dans le planning).
 async function validerJourProposeLivraison(commandeId, date) {
   if (!verifierAccesEcriture()) return;
   var r = await creerLivraisonCommande(commandeId, date, 'matin', null);
   if (r.erreur) { alert('Erreur : ' + r.erreur); return; }
-  mpaAiDire(r.probleme ? '🚚 Livraison planifiée le ' + dateCourteFR(date) + ', mais ' + r.probleme : '🚚 Livraison planifiée le ' + dateCourteFR(date) + ' (matin) : j\'ai prévenu votre client par email.', r.probleme ? 'warning' : 'info');
+  mpaAiDire(messageLivraisonPlanifiee(date, r), r.probleme ? 'warning' : 'info');
 }
 
 function appliquerRegroupementLivraison(date, creneau) {

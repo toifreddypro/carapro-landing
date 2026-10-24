@@ -8,7 +8,8 @@
 // POST { intervention_id, ancienne_date: "AAAA-MM-JJ" }   (à déployer avec --no-verify-jwt : le jeton de l'artisan est vérifié ici)
 //
 // - Prestation : email « votre rendez-vous est déplacé au … ».
-// - Livraison d'une commande de la boutique : email « votre livraison est prévue le … » et la commande garde le nouveau jour.
+// - Livraison d'une commande de la boutique : si le client n'a pas encore reçu de date (livraison provisoire), déplacement silencieux
+//   (mail seulement si le nouveau jour est dans moins de 2 jours) ; sinon email « votre livraison est prévue le … ».
 // Réponse : { ok, client_prevenu, client_sans_email, hors_fenetre }.
 // Sécurité : seul l'artisan propriétaire ; intervention encore « Planifiée » / « En cours » ; 6 envois par intervention et par jour ;
 // tout texte est échappé ; aucune erreur interne n'est détaillée.
@@ -79,13 +80,30 @@ Deno.serve(async (req: Request) => {
     if (await limiteAtteinte(sb, `deplacee:${inter.id}`, 6, 86400)) return json({ error: "Trop d'envois pour cette intervention aujourd'hui." }, 429);
 
     // Livraison d'une commande de la boutique ? Elle garde le nouveau jour, et on vérifie qu'il reste dans la fenêtre promise.
-    const { data: commandes } = await sb.from("commandes_catalogue").select("id, livraison_debut, livraison_fin, adresse_livraison, commune_livraison, code_postal_livraison")
+    const { data: commandes } = await sb.from("commandes_catalogue").select("id, livraison_debut, livraison_fin, livraison_confirmee_le, adresse_livraison, commune_livraison, code_postal_livraison")
       .eq("intervention_id", inter.id).eq("artisan_id", artisan.id).limit(1);
     const commande = commandes && commandes.length ? commandes[0] : null;
     let horsFenetre = false;
     if (commande) {
       await sb.from("commandes_catalogue").update({ livraison_prevue_le: inter.date_intervention }).eq("id", commande.id);
       if (commande.livraison_debut && commande.livraison_fin) horsFenetre = inter.date_intervention < commande.livraison_debut || inter.date_intervention > commande.livraison_fin;
+    }
+
+    // Livraison encore PROVISOIRE (le client n'a reçu aucune date) : on déplace en silence. Si le nouveau jour est dans moins de 2 jours,
+    // plus de temps à perdre : le mail « livraison prévue le … » part tout de suite.
+    if (commande && !commande.livraison_confirmee_le) {
+      const aujourdhui = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+      const dans2j = new Date(new Date(aujourdhui + "T12:00:00Z").getTime() + 2 * 86400000).toISOString().slice(0, 10);
+      if (inter.date_intervention <= dans2j) {
+        let envoye = false;
+        try {
+          const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/notifier-commande-client`, { method: "POST", headers: { "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json" }, body: JSON.stringify({ commande_id: commande.id, auto: true }) });
+          const rep = await res.json().catch(() => ({}));
+          envoye = res.ok && !rep.ignoree;
+        } catch (e) { console.error("[notifier-intervention-deplacee] Envoi immédiat :", e); }
+        return json({ ok: true, livraison: true, provisoire: false, client_prevenu: envoye, client_sans_email: false, hors_fenetre: horsFenetre });
+      }
+      return json({ ok: true, livraison: true, provisoire: true, date: inter.date_intervention, client_prevenu: false, client_sans_email: false, hors_fenetre: horsFenetre });
     }
 
     const client = (inter as any).mpa_artisans_clients;

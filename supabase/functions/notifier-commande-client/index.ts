@@ -7,7 +7,12 @@
 // Appelée par l'artisan depuis MPA Artisans (session connectée), à déployer avec --no-verify-jwt
 // (la fonction vérifie elle-même le jeton de l'artisan).
 //
-// POST { commande_id, type: "livraison_prevue", date: "AAAA-MM-JJ", creneau? }
+// POST { commande_id, type: "livraison_prevue" }            (artisan connecté : bouton « Prévenir le client maintenant »)
+// POST { commande_id, auto: true }                           (maintenance automatique, clé de service : J-2 sans clic de l'artisan)
+//
+// (24/10) La date envoyée est TOUJOURS celle de l'intervention de livraison liée à la commande (jamais une date fournie par l'appelant).
+// Une livraison reste « provisoire » (aucun mail, l'artisan peut la déplacer librement, MPA-AI cherche le meilleur jour) jusqu'à
+// ce mail ; l'envoi marque la commande « livraison_confirmee_le ». En mode auto, rien n'est envoyé si c'est déjà fait.
 //
 // Sécurités : seul l'artisan propriétaire de la commande peut l'appeler ; la commande doit être payée et non annulée ;
 // 6 envois par commande et par jour au plus ; aucune erreur interne n'est détaillée ; tout texte est échappé.
@@ -22,6 +27,11 @@ const corsHeaders = {
 const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const REGEX_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TYPES = ["livraison_prevue"];
+function egalConstant(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let e = 0; for (let i = 0; i < a.length; i++) e |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return e === 0;
+}
 const CRENEAUX: Record<string, string> = { matin: "le matin", apres_midi: "l'après-midi", "après-midi": "l'après-midi", journee: "dans la journée" };
 const REGLEES = ["paye", "partiellement_rembourse"];
 const MSG_ERREUR = "Une erreur est survenue. Réessayez dans un instant.";
@@ -60,41 +70,53 @@ Deno.serve(async (req: Request) => {
   try {
     const jeton = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
     if (!jeton) return json({ error: "Non authentifié." }, 401);
-    const sbAnon = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!);
-    const { data: u } = await sbAnon.auth.getUser(jeton);
-    if (!u?.user) return json({ error: "Session invalide." }, 401);
+    const cleService = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Requête invalide." }, 400);
     if (typeof body.commande_id !== "string" || !REGEX_UUID.test(body.commande_id)) return json({ error: "Commande invalide." }, 400);
-    if (typeof body.type !== "string" || !TYPES.includes(body.type)) return json({ error: "Type d'email invalide." }, 400);
-    const date = typeof body.date === "string" && REGEX_DATE.test(body.date) ? body.date : null;
-    const creneau = typeof body.creneau === "string" ? CRENEAUX[body.creneau] || null : null;
-    if (!date) return json({ error: "Date de livraison manquante." }, 400);
+    const auto = body.auto === true;
+    let userId: string | null = null;
+    if (auto) {
+      if (!egalConstant(jeton, cleService)) return json({ error: "Non autorisé." }, 403);
+    } else {
+      if (typeof body.type !== "string" || !TYPES.includes(body.type)) return json({ error: "Type d'email invalide." }, 400);
+      const sbAnon = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!);
+      const { data: u } = await sbAnon.auth.getUser(jeton);
+      if (!u?.user) return json({ error: "Session invalide." }, 401);
+      userId = u.user.id;
+    }
 
-    const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const sb = createClient(Deno.env.get("SUPABASE_URL")!, cleService);
     const { data: c, error: errC } = await sb.from("commandes_catalogue").select("*").eq("id", body.commande_id).maybeSingle();
     if (errC) throw errC;
     if (!c) return json({ error: "Commande introuvable." }, 404);
+    const ignorer = (raison: string) => auto ? json({ ok: true, ignoree: true, raison }) : json({ error: raison }, 409);
     const { data: artisan } = await sb.from("artisans").select("id, user_id, nom_entreprise, email, telephone").eq("id", c.artisan_id).maybeSingle();
-    if (!artisan || artisan.user_id !== u.user.id) return json({ error: "Commande introuvable." }, 404);
-    if (!REGLEES.includes(c.paiement_statut) || c.statut === "annulee") return json({ error: "commande_non_notifiable" }, 409);
-    if (!c.client_email) return json({ error: "email_client_manquant" }, 400);
-    if (await limiteAtteinte(sb, `notifier-commande:${c.id}`, 6, 86400)) return json({ error: "Trop d'envois pour cette commande aujourd'hui." }, 429);
+    if (!artisan || (!auto && artisan.user_id !== userId)) return json({ error: "Commande introuvable." }, 404);
+    if (!REGLEES.includes(c.paiement_statut) || ["annulee", "terminee"].includes(c.statut)) return ignorer("commande_non_notifiable");
+    if (auto && c.livraison_confirmee_le) return ignorer("deja_confirmee");
+    if (!c.client_email) return auto ? json({ ok: true, ignoree: true, raison: "email_client_manquant" }) : json({ error: "email_client_manquant" }, 400);
+
+    // La date vient de l'intervention de livraison liée (source de vérité).
+    if (!c.intervention_id) return ignorer("livraison_non_planifiee");
+    const { data: inter } = await sb.from("mpa_artisans_interventions").select("date_intervention, creneau, heure_debut, statut").eq("id", c.intervention_id).maybeSingle();
+    if (!inter || !["planifiee", "en_cours"].includes(inter.statut)) return ignorer("livraison_non_planifiee");
+    const date = inter.date_intervention as string;
+    const creneau = CRENEAUX[inter.creneau || ""] || null;
+    const heure = inter.heure_debut ? String(inter.heure_debut).slice(0, 5) : null;
+    if (await limiteAtteinte(sb, `notifier-commande:${c.id}`, 6, 86400)) return auto ? json({ ok: true, ignoree: true, raison: "limite" }) : json({ error: "Trop d'envois pour cette commande aujourd'hui." }, 429);
 
     const nomArtisan = artisan.nom_entreprise || "votre artisan";
     const contact = [artisan.telephone ? `📞 ${escHtml(artisan.telephone)}` : "", artisan.email ? `✉️ ${escHtml(artisan.email)}` : ""].filter(Boolean).join(" &nbsp; ");
     const bas = contact ? `<p style="font-size:12.5px;color:#475569;">Une question ? ${contact}</p>` : "";
-    const bonjour = `<p>Bonjour ${escHtml(c.client_nom || "")},</p>`;
-    const enveloppe = (titre: string, corps: string) => `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#B5502F;">${titre}</h2>${bonjour}${corps}${bas}</div>`;
-    let sujet = "", html = "";
-
-    sujet = `Votre livraison est prévue le ${dateFR(date!)}`;
-    html = enveloppe("Votre livraison est prévue 🚚", `<p><strong>${escHtml(nomArtisan)}</strong> vous livrera <strong>le ${escHtml(dateFR(date!))}</strong>${creneau ? `, ${escHtml(creneau)}` : ""}${c.adresse_livraison ? ` à l'adresse : ${escHtml(c.adresse_livraison)} ${escHtml(c.code_postal_livraison || "")} ${escHtml(c.commune_livraison || "")}` : ""}.</p><p>Merci d'être joignable ce jour-là.</p>`);
+    const sujet = `Votre livraison est prévue le ${dateFR(date)}`;
+    const html = `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#B5502F;">Votre livraison est prévue 🚚</h2><p>Bonjour ${escHtml(c.client_nom || "")},</p><p><strong>${escHtml(nomArtisan)}</strong> vous livrera <strong>le ${escHtml(dateFR(date))}</strong>${heure ? ` vers ${escHtml(heure)}` : creneau ? `, ${escHtml(creneau)}` : ""}${c.adresse_livraison ? ` à l'adresse : ${escHtml(c.adresse_livraison)} ${escHtml(c.code_postal_livraison || "")} ${escHtml(c.commune_livraison || "")}` : ""}.</p><p>Merci d'être joignable ce jour-là.</p>${bas}</div>`;
 
     const envoye = await envoyerEmail(c.client_email, artisan.email || null, sujet, html);
     if (!envoye) return json({ error: "envoi_impossible" }, 502);
-    return json({ ok: true });
+    await sb.from("commandes_catalogue").update({ livraison_confirmee_le: new Date().toISOString(), livraison_prevue_le: date }).eq("id", c.id);
+    return json({ ok: true, date });
   } catch (e) {
     console.error("[notifier-commande-client]", e);
     return json({ error: MSG_ERREUR }, 500);

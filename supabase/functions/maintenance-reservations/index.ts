@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
         return res.ok;
       } catch (e) { console.error(`[maintenance-reservations] ${fonction} injoignable :`, e); return false; }
     };
-    const bilan = { expirees: 0, relances: 0, liberees: 0, sans_reponse_remboursees: 0, remboursements_rejoues: 0, erreurs: 0 };
+    const bilan = { expirees: 0, relances: 0, liberees: 0, sans_reponse_remboursees: 0, remboursements_rejoues: 0, livraisons_confirmees: 0, erreurs: 0 };
     const maintenant = Date.now();
     const aujourdhui = new Date(maintenant - DECALAGE_LOCAL_MS).toISOString().slice(0, 10);
 
@@ -122,6 +122,20 @@ Deno.serve(async (req: Request) => {
         if (!res.ok) { bilan.erreurs++; console.error("[maintenance-reservations] relancer-paiement a répondu", res.status, rep); }
         else if (!rep.ignoree) bilan.relances++;
       } catch (e) { bilan.erreurs++; console.error("[maintenance-reservations] Relance :", e); }
+    }
+
+    // ── 1 ter. Livraisons de la boutique : à J-2, le client reçoit le mail « livraison prévue le … » même si l'artisan n'a pas cliqué ──
+    // La fonction notifier-commande-client relit la date de l'intervention et ne renvoie jamais un mail déjà envoyé.
+    const dans2j = new Date(new Date(aujourdhui + "T12:00:00Z").getTime() + 2 * 86400000).toISOString().slice(0, 10);
+    const { data: livraisonsAConfirmer } = await sb.from("commandes_catalogue").select("id").eq("mode", "livraison").not("intervention_id", "is", null)
+      .is("livraison_confirmee_le", null).not("statut", "in", "(annulee,terminee)").lte("livraison_prevue_le", dans2j).limit(200);
+    for (const l of livraisonsAConfirmer || []) {
+      try {
+        const res = await fetch(`${base}/functions/v1/notifier-commande-client`, { method: "POST", headers: { "Authorization": `Bearer ${cleService}`, "Content-Type": "application/json" }, body: JSON.stringify({ commande_id: l.id, auto: true }) });
+        const rep = await res.json().catch(() => ({}));
+        if (!res.ok) { bilan.erreurs++; console.error("[maintenance-reservations] notifier-commande-client a répondu", res.status, rep); }
+        else if (!rep.ignoree) bilan.livraisons_confirmees++;
+      } catch (e) { bilan.erreurs++; console.error("[maintenance-reservations] Confirmation de livraison :", e); }
     }
 
     // ── 2 + 3. Réservations payées en attente de réponse ──
