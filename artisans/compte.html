@@ -130,10 +130,13 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
   </div>
   <div class="tabs">
     <button class="tab on" id="t-cmd" onclick="ongletApp('cmd')" data-i18n="cpt_onglet_commandes"></button>
+    <button class="tab" id="t-rdv" onclick="ongletApp('rdv')" data-i18n="cpt_onglet_rdv"></button>
     <button class="tab" id="t-profil" onclick="ongletApp('profil')" data-i18n="cpt_onglet_profil"></button>
   </div>
 
   <div id="p-cmd"><div class="vide" data-i18n="cpt_chargement"></div></div>
+
+  <div id="p-rdv" style="display:none;"><div class="vide" data-i18n="cpt_chargement"></div></div>
 
   <div id="p-profil" style="display:none;">
     <div class="card">
@@ -268,11 +271,13 @@ async function ouvrirEspace(user){
   document.getElementById('p-nom').value = PROFIL.nom || '';
   document.getElementById('p-tel').value = PROFIL.telephone || '';
   document.getElementById('p-email').value = user.email || '';
-  vue('v-app'); ongletApp('cmd'); chargerCommandes();
+  vue('v-app'); ongletApp('cmd'); chargerCommandes(); chargerRdv();
 }
 function ongletApp(o){
   document.getElementById('p-cmd').style.display = o==='cmd'?'':'none';
+  document.getElementById('p-rdv').style.display = o==='rdv'?'':'none';
   document.getElementById('p-profil').style.display = o==='profil'?'':'none';
+  document.getElementById('t-rdv').classList.toggle('on', o==='rdv');
   document.getElementById('t-cmd').classList.toggle('on', o==='cmd');
   document.getElementById('t-profil').classList.toggle('on', o==='profil');
 }
@@ -323,6 +328,63 @@ async function chargerCommandes(){
   if (r.error) { zone.innerHTML = '<div class="vide">'+esc(T('cpt_err_generique'))+'</div>'; return; }
   var l = r.data || [];
   zone.innerHTML = l.length ? l.map(carteCommande).join('') : '<div class="vide">'+esc(T('cpt_aucune_commande'))+'</div>';
+}
+
+// ── Rendez-vous et paiements ──
+var BASE_PAGES = 'https://caralink.app/artisans/';
+function badgePaiement(p, nature){
+  if (!p) return '';
+  var t, cls = '';
+  if (p.statut==='paye') t = T('cpt_pay_paye');
+  else if (p.statut==='en_attente') { t = T('cpt_pay_attente'); cls = ' att'; }
+  else if (p.statut==='rembourse') t = T('cpt_pay_rembourse');
+  else if (p.statut==='partiellement_rembourse') t = fill(T('cpt_pay_rembourse_part'),{m:euros(p.montant_rembourse)});
+  else return '';
+  return '<div class="cmd-total">'+esc(nature)+' <b>'+esc(euros(p.montant))+'</b> — '+esc(t)+'</div>';
+}
+function carteRdv(r){
+  var art = r.artisan||{}, p = r.paiement, aDate = !!r.date_intervention;
+  var titre = aDate ? T(r.type_intervention==='visite'?'cpt_rdv_visite':'cpt_rdv_intervention') : T('cpt_rdv_devis_titre');
+  var quand = aDate ? '<div class="cmd-lignes">📅 '+esc(fill(T('cpt_rdv_le'),{date:dateCourte(r.date_intervention),h:String(r.heure_debut||'').replace(':','h')}))+(r.commune?' — '+esc(r.commune):'')+'</div>'
+                    : '<div class="cmd-lignes">'+esc(r.description||'')+'</div>';
+  var etat, ok = false;
+  var annule = (p && p.annule_par) || r.statut==='creneau_refuse';
+  if (!aDate) etat = T('cpt_rdv_devis');
+  else if (r.statut==='creneau_refuse') etat = (p && p.annule_par==='client') ? T('cpt_rdv_annule') : T('cpt_rdv_refuse');
+  else if (annule) etat = T('cpt_rdv_annule');
+  else if (r.passe) etat = T('cpt_rdv_passe');
+  else if (r.statut==='creneau_confirme') { etat = T('cpt_rdv_confirme'); ok = true; }
+  else etat = T('cpt_rdv_attente');
+  var nature = T(r.type_intervention==='visite'?'cpt_rdv_frais_visite':'cpt_rdv_frais');
+  var actions = '';
+  if (p && p.statut==='en_attente' && !annule && !r.passe)
+    actions += '<a class="btn" style="display:block;text-align:center;text-decoration:none;margin-top:10px;" href="'+BASE_PAGES+'payer-prestation.html?token='+encodeURIComponent(p.token)+'">'+esc(T('cpt_btn_payer'))+'</a>';
+  if (r.annulable)
+    actions += '<a class="btn sec" style="display:block;text-align:center;text-decoration:none;margin-top:8px;" href="'+BASE_PAGES+'annuler-reservation.html?token='+encodeURIComponent(p.token)+'">'+esc(T('cpt_btn_annuler_rdv'))+'</a>';
+  var tel = art.telephone ? '<div class="cmd-contact">📞 <a href="tel:'+esc(String(art.telephone).replace(/[^+\d]/g,''))+'">'+esc(fill(T('cpt_contacter'),{nom:art.nom_entreprise||''}))+'</a></div>' : '';
+  return '<div class="card"><div class="cmd-tete"><div class="cmd-art">'+esc(art.nom_entreprise||'')+'</div><div class="cmd-date">'+esc(titre)+'</div></div>'
+    + quand + badgePaiement(p, nature)
+    + '<div class="cmd-info'+(ok?' ok':'')+'">'+esc(etat)+'</div>' + actions + tel + '</div>';
+}
+function cartePaiement(p){
+  var t = p.statut==='paye' ? T('cpt_pay_paye') : p.statut==='en_attente' ? T('cpt_pay_attente') : p.statut==='rembourse' ? T('cpt_pay_rembourse') : fill(T('cpt_pay_rembourse_part'),{m:euros(p.montant_rembourse)});
+  var lien = p.statut==='en_attente' ? '<a class="btn" style="display:block;text-align:center;text-decoration:none;margin-top:10px;" href="'+BASE_PAGES+'payer-prestation.html?token='+encodeURIComponent(p.token)+'">'+esc(T('cpt_btn_payer'))+'</a>' : '';
+  return '<div class="card"><div class="cmd-tete"><div class="cmd-art">'+esc(p.artisan||'')+'</div><div class="cmd-date">'+esc(dateLongueGP(p.created_at))+'</div></div>'
+    + '<div class="cmd-lignes">'+esc(p.description||T('cpt_paiement_solde'))+'</div>'
+    + '<div class="cmd-total">'+esc(T('cpt_total'))+' <b>'+esc(euros(p.montant))+'</b> — '+esc(t)+'</div>'+lien+'</div>';
+}
+async function chargerRdv(){
+  var zone = document.getElementById('p-rdv');
+  var r = await sb.rpc('mes_rendez_vous');
+  if (r.error || !r.data) { zone.innerHTML = '<div class="vide">'+esc(T('cpt_err_generique'))+'</div>'; return; }
+  var rdv = r.data.rdv||[], pai = r.data.paiements||[];
+  var html = '';
+  var aPayer = pai.filter(function(p){return p.statut==='en_attente';});
+  if (aPayer.length) html += '<h2 style="margin:0 0 10px;">'+esc(T('cpt_paiements_titre'))+'</h2>' + aPayer.map(cartePaiement).join('');
+  html += rdv.map(carteRdv).join('');
+  var histo = pai.filter(function(p){return p.statut!=='en_attente';});
+  if (histo.length) html += '<h2 style="margin:18px 0 10px;">'+esc(T('cpt_paiements_titre'))+'</h2>' + histo.map(cartePaiement).join('');
+  zone.innerHTML = html || '<div class="vide">'+esc(T('cpt_rdv_aucun'))+'</div>';
 }
 
 // ── Profil ──
