@@ -2661,7 +2661,7 @@ async function prevenirClientDeplacement(interventionId, ancienneDate) {
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error);
-    if (data.provisoire) { mpaAiDire('📅 Livraison déplacée au ' + dateCourteFR(data.date) + '. Le client n\'a encore reçu aucune date : il sera prévenu le ' + dateCourteFR(ajouterJoursISO(data.date, -2)) + '.', 'info'); await chargerCommandes(); await chargerLivraisons(); return; }
+    if (data.provisoire) { mpaAiDire('📅 Livraison déplacée au ' + dateCourteFR(data.date) + '. Le client n\'a encore reçu aucune date : il sera prévenu le ' + dateCourteFR(ajouterJoursISO(data.date, -2)) + '.', 'info'); await chargerCommandes(); await chargerLivraisons(); if (data.hors_fenetre) mpaAiDire('📅 Attention : ce nouveau jour est en dehors de la fenêtre de livraison annoncée au client. Vérifiez qu\'il pourra le recevoir ce jour-là.', 'warning'); return; }
     if (data.client_prevenu) mpaAiDire('✉️ Le rendez-vous a été déplacé : j\'ai prévenu votre client par email du nouveau jour.', 'info');
     else mpaAiDire('⚠️ Le rendez-vous a été déplacé, mais ' + (data.client_sans_email ? 'ce client n\'a pas d\'adresse email : prévenez-le directement.' : 'l\'email n\'a pas pu partir : prévenez votre client directement.'), 'warning');
     if (data.livraison) {
