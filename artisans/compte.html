@@ -170,8 +170,11 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
 const SUPABASE_URL  = 'https://uzgboxfxpxazhysusewv.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+function messageMdp(err){ return /different|same|identique/i.test((err&&err.message)||'') ? T('cpt_err_mdp_identique') : T('cpt_err_generique'); }
 const CGU_VERSION = '2026-10-14';
-var mode = 'login', USER = null, PROFIL = null, MODE_RESET = false;
+var mode = 'login', USER = null, PROFIL = null;
+// À lire AVANT que Supabase ne consomme le lien (il efface l'adresse) : est-on arrivé par « mot de passe oublié » ?
+var MODE_RESET = /type=recovery/.test(location.hash + location.search);
 
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
 function fill(t, o){ return String(t).replace(/\{(\w+)\}/g,function(_,k){return o&&o[k]!=null?o[k]:'';}); }
@@ -241,7 +244,7 @@ async function validerReset(){
   var b=document.getElementById('btn-reset'); b.disabled=true;
   var r = await sb.auth.updateUser({password:mdp});
   b.disabled=false;
-  if (r.error) { show('reset-err', T('cpt_err_generique')); return; }
+  if (r.error) { show('reset-err', messageMdp(r.error)); return; }
   MODE_RESET=false; history.replaceState(null,'',location.pathname);
   var u = (await sb.auth.getUser()).data.user; await ouvrirEspace(u);
 }
@@ -338,7 +341,7 @@ async function changerMdp(){
   var m = document.getElementById('p-mdp').value;
   if (m.length<8) { show('mdp-err', T('cpt_err_mdp')); return; }
   var r = await sb.auth.updateUser({password:m});
-  if (r.error) { show('mdp-err', T('cpt_err_generique')); return; }
+  if (r.error) { show('mdp-err', messageMdp(r.error)); return; }
   document.getElementById('p-mdp').value=''; show('mdp-ok', T('cpt_mdp_change'));
 }
 async function supprimerCompte(){
@@ -360,9 +363,10 @@ async function supprimerCompte(){
   appliquerTraductionsStatiques();
   modeAuth('login');
   // Lien « mot de passe oublié » : Supabase ouvre une session de récupération → on demande le nouveau mot de passe.
-  sb.auth.onAuthStateChange(function(ev){ if (ev==='PASSWORD_RECOVERY') { MODE_RESET=true; vue('v-reset'); } });
+  sb.auth.onAuthStateChange(function(ev){ if (ev==='PASSWORD_RECOVERY') { MODE_RESET=true; vue('v-reset'); }
+    else if (MODE_RESET && ev==='SIGNED_IN') { vue('v-reset'); } });
   var s = (await sb.auth.getSession()).data.session;
-  if (MODE_RESET || /type=recovery/.test(location.hash+location.search)) { vue('v-reset'); return; }
+  if (MODE_RESET) { vue('v-reset'); return; }
   if (s) await ouvrirEspace(s.user); else vue('v-auth');
 })();
 </script>

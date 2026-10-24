@@ -305,6 +305,7 @@ function renderNav() {
       nav-wrap passe à la ligne naturellement (flex-wrap) s'il n'y a pas la
       place — aucun code personnalisé, comportement natif du navigateur. */
       '<div class="nav-links">' +
+        '<a href="/artisans/compte.html" style="padding:6px 14px;border-radius:8px;border:1px solid var(--brd);color:var(--tx);font-weight:600;text-decoration:none;white-space:nowrap;">👤 ' + T('cpt_mon_compte') + '</a>' +
         '<a href="https://caralink.app/mpa/" style="padding:6px 14px;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;text-decoration:none;white-space:nowrap;">' + T('nav_mon_espace') + '</a>' +
         '<a href="/artisans/inscription.html" style="padding:6px 14px;border-radius:8px;border:1px solid var(--brd);color:var(--tx);font-weight:600;text-decoration:none;white-space:nowrap;">' + T('nav_devenir_artisan') + '</a>' +
       '</div>' +
