@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mon compte — CaraLink</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{ --bg:#faf7f3; --paper:#ffffff; --ink:#13223c; --mute:#6b7c96; --clay:#B5502F; --clay-dark:#8F3D22; --line:#e3eaf4; --danger:#B3261E; --ok:#0f9d78; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Work Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
+h1,h2,h3{font-family:'Fraunces',serif;font-weight:600;}
+nav{padding:18px 24px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+.logo{font-family:'Fraunces',serif;font-size:20px;font-weight:700;text-decoration:none;color:var(--ink);}
+.logo span{color:var(--clay);}
+.langs button{background:none;border:1px solid var(--line);border-radius:6px;padding:4px 9px;font-size:12px;font-weight:600;color:var(--mute);cursor:pointer;margin-left:4px;}
+.langs button.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 3px rgba(19,34,60,.08);padding:26px;margin-bottom:16px;}
+.card h1{font-size:22px;margin-bottom:6px;} .card h2{font-size:17px;margin-bottom:12px;}
+.sub{font-size:13px;color:var(--mute);margin-bottom:18px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px;}
+.field input{width:100%;padding:11px 13px;border-radius:8px;border:1.5px solid var(--line);font-family:inherit;font-size:14px;}
+.field input:focus{outline:2px solid var(--clay);outline-offset:1px;border-color:var(--clay);}
+.field input:disabled{background:#f3f5f9;color:var(--mute);}
+.hint{font-size:11.5px;color:var(--mute);margin-top:4px;}
+.btn{width:100%;padding:13px;border-radius:9px;border:none;background:var(--clay);color:#fff;font-family:inherit;font-size:14.5px;font-weight:700;cursor:pointer;}
+.btn:hover{background:var(--clay-dark);} .btn:disabled{opacity:.6;cursor:not-allowed;}
+.btn.sec{background:#fff;color:var(--ink);border:1.5px solid var(--line);}
+.btn.sec:hover{background:#f3f5f9;}
+.btn.danger{background:#fff;color:var(--danger);border:1.5px solid rgba(179,38,30,.4);}
+.msg{padding:11px 13px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none;}
+.msg.show{display:block;}
+.msg.err{background:rgba(179,38,30,.08);border:1px solid rgba(179,38,30,.3);color:var(--danger);}
+.msg.ok{background:rgba(15,157,120,.08);border:1px solid rgba(15,157,120,.3);color:var(--ok);}
+.tabs{display:flex;gap:6px;margin-bottom:18px;border-bottom:1px solid var(--line);}
+.tab{background:none;border:none;border-bottom:3px solid transparent;padding:10px 14px;font-family:inherit;font-size:14px;font-weight:600;color:var(--mute);cursor:pointer;}
+.tab.on{color:var(--clay);border-bottom-color:var(--clay);}
+.lien{background:none;border:none;color:var(--mute);font-size:13px;cursor:pointer;text-decoration:underline;font-family:inherit;margin-top:14px;display:block;width:100%;text-align:center;}
+.cgu{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--mute);margin-bottom:14px;}
+.cgu input{margin-top:3px;flex-shrink:0;} .cgu a{color:var(--clay);}
+.haut{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px;}
+.haut h1{font-size:21px;} .haut button{width:auto;padding:8px 14px;font-size:13px;}
+.cmd-tete{display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:4px;}
+.cmd-art{font-family:'Fraunces',serif;font-weight:600;font-size:16px;}
+.cmd-date{font-size:12px;color:var(--mute);}
+.cmd-lignes{font-size:13.5px;margin:8px 0;color:var(--ink);}
+.cmd-total{font-size:13px;color:var(--mute);margin-bottom:12px;} .cmd-total b{color:var(--ink);}
+.steps{display:flex;gap:4px;margin:12px 0 8px;}
+.step{flex:1;text-align:center;font-size:11.5px;font-weight:600;color:var(--mute);}
+.step i{display:block;height:5px;border-radius:3px;background:var(--line);margin-bottom:5px;}
+.step.fait{color:var(--ok);} .step.fait i{background:var(--ok);}
+.step.cours{color:var(--clay);} .step.cours i{background:var(--clay);}
+.cmd-info{background:#fbf3ee;border-radius:9px;padding:10px 12px;font-size:13px;margin-top:6px;}
+.cmd-info.ok{background:rgba(15,157,120,.08);color:var(--ok);font-weight:600;}
+.badge{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:rgba(179,38,30,.1);color:var(--danger);margin-top:8px;}
+.cmd-contact{margin-top:10px;font-size:13px;} .cmd-contact a{color:var(--clay);font-weight:600;text-decoration:none;}
+.vide{text-align:center;color:var(--mute);font-size:14px;padding:30px 10px;}
+.pw{position:relative;} .pw input{padding-right:42px;} .pw button{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:4px;}
+.zone-danger{border-top:1px solid var(--line);margin-top:22px;padding-top:18px;}
+</style>
+</head>
+<body>
+<nav>
+  <a href="/artisans/" class="logo">CaraLink <span>Artisans</span></a>
+  <div class="langs"><button data-l="fr">FR</button><button data-l="en">EN</button><button data-l="es">ES</button></div>
+</nav>
+<main>
+
+<!-- ÉCRAN 1 : connexion / création -->
+<div id="v-auth" style="display:none;">
+  <div class="card">
+    <h1 data-i18n="cpt_titre">Mon compte</h1>
+    <p class="sub" data-i18n="cpt_sous_titre"></p>
+    <div class="tabs">
+      <button class="tab on" id="t-login" onclick="modeAuth('login')" data-i18n="cpt_onglet_connexion"></button>
+      <button class="tab" id="t-signup" onclick="modeAuth('signup')" data-i18n="cpt_onglet_creer"></button>
+    </div>
+    <div id="auth-err" class="msg err"></div>
+    <div id="auth-ok" class="msg ok"></div>
+    <form id="form-auth" onsubmit="event.preventDefault();soumettreAuth();">
+      <div class="field" id="g-nom" style="display:none;"><label for="f-nom" data-i18n="cpt_nom"></label><input type="text" id="f-nom" autocomplete="name" maxlength="100"></div>
+      <div class="field"><label for="f-email" data-i18n="cpt_email"></label><input type="email" id="f-email" required autocomplete="email"></div>
+      <div class="field" id="g-tel" style="display:none;"><label for="f-tel" data-i18n="cpt_tel"></label><input type="tel" id="f-tel" autocomplete="tel" maxlength="30"></div>
+      <div class="field"><label for="f-mdp" data-i18n="cpt_mdp"></label>
+        <div class="pw"><input type="password" id="f-mdp" required autocomplete="current-password"><button type="button" onclick="voirMdp('f-mdp',this)">👁</button></div>
+        <div class="hint" id="h-mdp" style="display:none;" data-i18n="cpt_mdp_aide"></div>
+      </div>
+      <label class="cgu" id="g-cgu" style="display:none;"><input type="checkbox" id="f-cgu"><span><span data-i18n="cpt_cgu_pre"></span> <a href="https://caralink.app/artisans/?legal=cgu" target="_blank" rel="noopener" data-i18n="cpt_cgu_lien"></a></span></label>
+      <button type="submit" class="btn" id="btn-auth" data-i18n="cpt_btn_connexion"></button>
+    </form>
+    <button class="lien" id="lien-oubli" onclick="montrerOubli()" data-i18n="cpt_oubli"></button>
+  </div>
+
+  <div class="card" id="carte-oubli" style="display:none;">
+    <h2 data-i18n="cpt_oubli_titre"></h2>
+    <p class="sub" data-i18n="cpt_oubli_aide"></p>
+    <div id="oubli-err" class="msg err"></div>
+    <div id="oubli-ok" class="msg ok"></div>
+    <form onsubmit="event.preventDefault();envoyerOubli();">
+      <div class="field"><input type="email" id="f-email-oubli" required autocomplete="email"></div>
+      <button type="submit" class="btn" id="btn-oubli" data-i18n="cpt_envoyer_lien"></button>
+    </form>
+  </div>
+</div>
+
+<!-- ÉCRAN 2 : nouveau mot de passe (lien reçu par email) -->
+<div id="v-reset" style="display:none;">
+  <div class="card">
+    <h1 data-i18n="cpt_reset_titre"></h1>
+    <p class="sub"></p>
+    <div id="reset-err" class="msg err"></div>
+    <form onsubmit="event.preventDefault();validerReset();">
+      <div class="field"><label for="f-reset" data-i18n="cpt_mdp_nouveau"></label>
+        <div class="pw"><input type="password" id="f-reset" required autocomplete="new-password"><button type="button" onclick="voirMdp('f-reset',this)">👁</button></div>
+        <div class="hint" data-i18n="cpt_mdp_aide"></div></div>
+      <button type="submit" class="btn" id="btn-reset" data-i18n="cpt_enregistrer"></button>
+    </form>
+  </div>
+</div>
+
+<!-- ÉCRAN 3 : espace connecté -->
+<div id="v-app" style="display:none;">
+  <div class="haut">
+    <h1 id="bonjour"></h1>
+    <button class="btn sec" onclick="seDeconnecter()" data-i18n="cpt_deconnexion"></button>
+  </div>
+  <div class="tabs">
+    <button class="tab on" id="t-cmd" onclick="ongletApp('cmd')" data-i18n="cpt_onglet_commandes"></button>
+    <button class="tab" id="t-profil" onclick="ongletApp('profil')" data-i18n="cpt_onglet_profil"></button>
+  </div>
+
+  <div id="p-cmd"><div class="vide" data-i18n="cpt_chargement"></div></div>
+
+  <div id="p-profil" style="display:none;">
+    <div class="card">
+      <h2 data-i18n="cpt_profil_titre"></h2>
+      <div id="prof-err" class="msg err"></div><div id="prof-ok" class="msg ok"></div>
+      <form onsubmit="event.preventDefault();sauverProfil();">
+        <div class="field"><label for="p-nom" data-i18n="cpt_nom"></label><input type="text" id="p-nom" maxlength="100"></div>
+        <div class="field"><label for="p-email" data-i18n="cpt_email"></label><input type="email" id="p-email" disabled><div class="hint" data-i18n="cpt_email_fixe"></div></div>
+        <div class="field"><label for="p-tel" data-i18n="cpt_tel"></label><input type="tel" id="p-tel" maxlength="30"></div>
+        <button type="submit" class="btn" id="btn-prof" data-i18n="cpt_enregistrer"></button>
+      </form>
+    </div>
+    <div class="card">
+      <h2 data-i18n="cpt_mdp_titre"></h2>
+      <div id="mdp-err" class="msg err"></div><div id="mdp-ok" class="msg ok"></div>
+      <form onsubmit="event.preventDefault();changerMdp();">
+        <div class="field"><label for="p-mdp" data-i18n="cpt_mdp_nouveau"></label>
+          <div class="pw"><input type="password" id="p-mdp" required autocomplete="new-password"><button type="button" onclick="voirMdp('p-mdp',this)">👁</button></div>
+          <div class="hint" data-i18n="cpt_mdp_aide"></div></div>
+        <button type="submit" class="btn sec" id="btn-mdp" data-i18n="cpt_enregistrer"></button>
+      </form>
+      <div class="zone-danger">
+        <div id="sup-err" class="msg err"></div>
+        <p class="sub" data-i18n="cpt_supprimer_info"></p>
+        <button class="btn danger" id="btn-sup" onclick="supprimerCompte()" data-i18n="cpt_supprimer"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+<script src="tr-artisans.js"></script>
+<script>
+const SUPABASE_URL  = 'https://uzgboxfxpxazhysusewv.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+const CGU_VERSION = '2026-10-14';
+var mode = 'login', USER = null, PROFIL = null, MODE_RESET = false;
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function fill(t, o){ return String(t).replace(/\{(\w+)\}/g,function(_,k){return o&&o[k]!=null?o[k]:'';}); }
+function show(id, txt){ var e=document.getElementById(id); if(!e) return; if(txt){e.textContent=txt;e.classList.add('show');} else {e.classList.remove('show');} }
+function vue(v){ ['v-auth','v-reset','v-app'].forEach(function(x){ document.getElementById(x).style.display = (x===v)?'block':'none'; }); }
+function voirMdp(id, b){ var i=document.getElementById(id); i.type = i.type==='password'?'text':'password'; }
+function euros(n){ return Number(n||0).toLocaleString(AT_LANG==='en'?'en-GB':AT_LANG==='es'?'es-ES':'fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
+function dateCourte(d){ if(!d) return ''; var x=new Date(String(d).slice(0,10)+'T12:00:00Z'); return x.toLocaleDateString(AT_LANG==='en'?'en-GB':AT_LANG==='es'?'es-ES':'fr-FR',{day:'numeric',month:'long',timeZone:'UTC'}); }
+function dateLongueGP(d){ if(!d) return ''; return new Date(d).toLocaleDateString(AT_LANG==='en'?'en-GB':AT_LANG==='es'?'es-ES':'fr-FR',{day:'numeric',month:'long',year:'numeric',timeZone:'America/Guadeloupe'}); }
+
+// Langue
+document.querySelectorAll('.langs button').forEach(function(b){
+  if (b.dataset.l===AT_LANG) b.classList.add('on');
+  b.onclick=function(){ try{localStorage.setItem('at_lang',b.dataset.l);}catch(e){} location.reload(); };
+});
+document.documentElement.lang = AT_LANG;
+
+// ── Connexion / création ──
+function modeAuth(m){
+  mode = m; show('auth-err'); show('auth-ok');
+  var s = (m==='signup');
+  document.getElementById('t-login').classList.toggle('on',!s); document.getElementById('t-signup').classList.toggle('on',s);
+  ['g-nom','g-tel','g-cgu','h-mdp'].forEach(function(id){ document.getElementById(id).style.display = s?'':'none'; });
+  document.getElementById('lien-oubli').style.display = s?'none':'';
+  document.getElementById('f-mdp').autocomplete = s?'new-password':'current-password';
+  document.getElementById('btn-auth').textContent = T(s?'cpt_btn_creer':'cpt_btn_connexion');
+}
+async function soumettreAuth(){
+  show('auth-err'); show('auth-ok');
+  var email = document.getElementById('f-email').value.trim(), mdp = document.getElementById('f-mdp').value;
+  var btn = document.getElementById('btn-auth'); btn.disabled = true;
+  try {
+    if (mode==='login') {
+      var r = await sb.auth.signInWithPassword({email:email, password:mdp});
+      if (r.error) { show('auth-err', T('cpt_err_identifiants')); return; }
+      await ouvrirEspace(r.data.user);
+    } else {
+      var nom = document.getElementById('f-nom').value.trim(), tel = document.getElementById('f-tel').value.trim();
+      if (!nom) { show('auth-err', T('cpt_err_nom')); return; }
+      if (mdp.length < 8) { show('auth-err', T('cpt_err_mdp')); return; }
+      if (!document.getElementById('f-cgu').checked) { show('auth-err', T('cpt_err_cgu')); return; }
+      var s = await sb.auth.signUp({ email:email, password:mdp, options:{
+        emailRedirectTo: location.origin + location.pathname,
+        data:{ nom:nom, telephone:tel||null, cgu_acceptees_le:new Date().toISOString(), cgu_version:CGU_VERSION, type_compte:'client' } } });
+      if (s.error) { show('auth-err', /registered|exists/i.test(s.error.message)?T('cpt_err_existe'):T('cpt_err_generique')); return; }
+      // Supabase renvoie un utilisateur sans identité quand l'email existe déjà (anti-énumération).
+      if (s.data.user && s.data.user.identities && s.data.user.identities.length===0) { show('auth-err', T('cpt_err_existe')); return; }
+      if (s.data.session) { await ouvrirEspace(s.data.user); } else { show('auth-ok', T('cpt_confirmer_email')); }
+    }
+  } catch(e){ show('auth-err', T('cpt_err_generique')); }
+  finally { btn.disabled = false; }
+}
+function montrerOubli(){ document.getElementById('carte-oubli').style.display='block'; document.getElementById('f-email-oubli').value=document.getElementById('f-email').value; document.getElementById('f-email-oubli').focus(); }
+async function envoyerOubli(){
+  show('oubli-err'); show('oubli-ok');
+  var b=document.getElementById('btn-oubli'); b.disabled=true;
+  try {
+    var r = await sb.auth.resetPasswordForEmail(document.getElementById('f-email-oubli').value.trim(), { redirectTo: location.origin + location.pathname });
+    if (r.error) show('oubli-err', T('cpt_err_generique')); else show('oubli-ok', T('cpt_oubli_ok'));
+  } catch(e){ show('oubli-err', T('cpt_err_generique')); }
+  b.disabled=false;
+}
+async function validerReset(){
+  show('reset-err');
+  var mdp=document.getElementById('f-reset').value;
+  if (mdp.length<8) { show('reset-err', T('cpt_err_mdp')); return; }
+  var b=document.getElementById('btn-reset'); b.disabled=true;
+  var r = await sb.auth.updateUser({password:mdp});
+  b.disabled=false;
+  if (r.error) { show('reset-err', T('cpt_err_generique')); return; }
+  MODE_RESET=false; history.replaceState(null,'',location.pathname);
+  var u = (await sb.auth.getUser()).data.user; await ouvrirEspace(u);
+}
+async function seDeconnecter(){ await sb.auth.signOut(); USER=null; PROFIL=null; vue('v-auth'); modeAuth('login'); }
+
+// ── Espace connecté ──
+async function ouvrirEspace(user){
+  if (!user) { vue('v-auth'); return; }
+  USER = user;
+  var meta = user.user_metadata || {};
+  // Profil : créé au premier passage à partir des infos données à l'inscription.
+  var p = await sb.from('comptes_clients').select('nom,telephone').eq('user_id', user.id).maybeSingle();
+  if (!p.data) {
+    var neuf = { user_id:user.id, nom:(meta.nom||'').slice(0,100)||null, telephone:(meta.telephone||'').slice(0,30)||null };
+    await sb.from('comptes_clients').insert(neuf);
+    PROFIL = neuf;
+  } else { PROFIL = p.data; }
+  // Rattache les anciennes commandes passées avec cet email (le serveur vérifie que l'email est confirmé).
+  try { await sb.rpc('rattacher_mes_commandes'); } catch(e){}
+  document.getElementById('bonjour').textContent = fill(T('cpt_bonjour'), {nom: PROFIL.nom || user.email});
+  document.getElementById('p-nom').value = PROFIL.nom || '';
+  document.getElementById('p-tel').value = PROFIL.telephone || '';
+  document.getElementById('p-email').value = user.email || '';
+  vue('v-app'); ongletApp('cmd'); chargerCommandes();
+}
+function ongletApp(o){
+  document.getElementById('p-cmd').style.display = o==='cmd'?'':'none';
+  document.getElementById('p-profil').style.display = o==='profil'?'':'none';
+  document.getElementById('t-cmd').classList.toggle('on', o==='cmd');
+  document.getElementById('t-profil').classList.toggle('on', o==='profil');
+}
+
+function etapesCommande(c){
+  var liv = c.mode==='livraison';
+  var noms = liv ? [T('cpt_etape_payee'),T('cpt_etape_prete'),T('cpt_etape_livraison'),T('cpt_etape_livree')]
+                 : [T('cpt_etape_payee'),T('cpt_etape_prete'),T('cpt_etape_remise')];
+  var fait; // nombre d'étapes terminées
+  if (c.statut==='terminee') fait = noms.length;
+  else if (c.statut==='prete') fait = 2;
+  else fait = 1;
+  var cours = (fait < noms.length) ? fait : -1;
+  if (liv && c.statut==='prete' && c.livraison_prevue_le) cours = 2; // livraison planifiée et confirmée
+  return noms.map(function(n,i){ return '<div class="step '+(i<fait?'fait':(i===cours?'cours':''))+'"><i></i>'+esc(n)+'</div>'; }).join('');
+}
+function infoCommande(c){
+  var rembourse = c.paiement_statut==='rembourse';
+  if (rembourse) return '';
+  if (c.statut==='terminee') return '<div class="cmd-info ok">'+esc(T(c.mode==='livraison'?'cpt_livree':'cpt_remise'))+'</div>';
+  if (c.mode!=='livraison') return '<div class="cmd-info">'+esc(T(c.statut==='prete'?'cpt_prete_retrait':'cpt_en_preparation'))+'</div>';
+  if (c.livraison_prevue_le) {
+    var h = c.creneau==='apres_midi'?T('cpt_apres_midi'):T('cpt_matin');
+    var t = fill(T('cpt_liv_prevue'),{a:dateCourte(c.livraison_prevue_le)}) + ' — ' + (c.heure ? fill(T('cpt_vers'),{h:String(c.heure).slice(0,5).replace(':','h')}) : h);
+    return '<div class="cmd-info ok">🚚 '+esc(t)+'</div>';
+  }
+  var txt = (c.livraison_debut && c.livraison_fin) ? fill(T('cpt_liv_estimee'),{a:dateCourte(c.livraison_debut),b:dateCourte(c.livraison_fin)}) : '';
+  var etat = T(c.statut==='prete'?'cpt_prete_livraison':'cpt_en_preparation');
+  return '<div class="cmd-info">'+(txt?'🚚 '+esc(txt)+'<br>':'')+esc(etat)+'</div>';
+}
+function carteCommande(c){
+  var lignes = (c.lignes&&c.lignes.length ? c.lignes : [{nom_article:c.nom_article,quantite:c.quantite}])
+    .map(function(l){ return esc(l.quantite>1?l.quantite+' × '+l.nom_article:l.nom_article); }).join('<br>');
+  var art = c.artisan||{};
+  var badge = c.paiement_statut==='rembourse' ? '<span class="badge">'+esc(T('cpt_remboursee'))+'</span>'
+            : c.paiement_statut==='partiellement_rembourse' ? '<span class="badge">'+esc(fill(T('cpt_remboursee_part'),{m:euros(c.montant_rembourse)}))+'</span>' : '';
+  var livr = (c.mode==='livraison' && Number(c.frais_livraison)>0) ? ' ('+esc(T('cpt_dont_livraison'))+' '+esc(euros(c.frais_livraison))+')' : '';
+  var tel = art.telephone ? '<div class="cmd-contact">📞 <a href="tel:'+esc(String(art.telephone).replace(/[^+\d]/g,''))+'">'+esc(fill(T('cpt_contacter'),{nom:art.nom_entreprise||''}))+'</a></div>' : '';
+  return '<div class="card"><div class="cmd-tete"><div class="cmd-art">'+esc(art.nom_entreprise||'')+'</div><div class="cmd-date">'+esc(fill(T('cpt_commande_du'),{date:dateLongueGP(c.created_at)}))+'</div></div>'
+    + '<div class="cmd-lignes">'+lignes+'</div>'
+    + '<div class="cmd-total">'+esc(T('cpt_total'))+' <b>'+esc(euros(c.montant_total))+'</b>'+livr+'</div>'
+    + (c.paiement_statut==='rembourse' ? '' : '<div class="steps">'+etapesCommande(c)+'</div>')
+    + infoCommande(c) + badge + tel + '</div>';
+}
+async function chargerCommandes(){
+  var zone = document.getElementById('p-cmd');
+  var r = await sb.rpc('mes_commandes');
+  if (r.error) { zone.innerHTML = '<div class="vide">'+esc(T('cpt_err_generique'))+'</div>'; return; }
+  var l = r.data || [];
+  zone.innerHTML = l.length ? l.map(carteCommande).join('') : '<div class="vide">'+esc(T('cpt_aucune_commande'))+'</div>';
+}
+
+// ── Profil ──
+async function sauverProfil(){
+  show('prof-err'); show('prof-ok');
+  var nom = document.getElementById('p-nom').value.trim(), tel = document.getElementById('p-tel').value.trim();
+  if (!nom) { show('prof-err', T('cpt_err_nom')); return; }
+  var r = await sb.from('comptes_clients').update({nom:nom, telephone:tel||null, updated_at:new Date().toISOString()}).eq('user_id', USER.id);
+  if (r.error) { show('prof-err', T('cpt_err_generique')); return; }
+  PROFIL.nom = nom; PROFIL.telephone = tel||null;
+  document.getElementById('bonjour').textContent = fill(T('cpt_bonjour'), {nom:nom});
+  show('prof-ok', T('cpt_enregistre'));
+}
+async function changerMdp(){
+  show('mdp-err'); show('mdp-ok');
+  var m = document.getElementById('p-mdp').value;
+  if (m.length<8) { show('mdp-err', T('cpt_err_mdp')); return; }
+  var r = await sb.auth.updateUser({password:m});
+  if (r.error) { show('mdp-err', T('cpt_err_generique')); return; }
+  document.getElementById('p-mdp').value=''; show('mdp-ok', T('cpt_mdp_change'));
+}
+async function supprimerCompte(){
+  show('sup-err');
+  if (!confirm(T('cpt_supprimer_confirm'))) return;
+  var b=document.getElementById('btn-sup'); b.disabled=true;
+  try {
+    var s = (await sb.auth.getSession()).data.session;
+    var res = await fetch(SUPABASE_URL+'/functions/v1/supprimer-mon-compte-client', { method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON,'Authorization':'Bearer '+s.access_token}, body:'{}' });
+    var j = await res.json().catch(function(){return {};});
+    if (!res.ok) { show('sup-err', j.error==='artisan' ? T('cpt_supprimer_artisan') : (j.error||T('cpt_err_generique'))); b.disabled=false; return; }
+    await sb.auth.signOut(); location.reload();
+  } catch(e){ show('sup-err', T('cpt_err_generique')); b.disabled=false; }
+}
+
+// ── Démarrage ──
+(async function(){
+  appliquerTraductionsStatiques();
+  modeAuth('login');
+  // Lien « mot de passe oublié » : Supabase ouvre une session de récupération → on demande le nouveau mot de passe.
+  sb.auth.onAuthStateChange(function(ev){ if (ev==='PASSWORD_RECOVERY') { MODE_RESET=true; vue('v-reset'); } });
+  var s = (await sb.auth.getSession()).data.session;
+  if (MODE_RESET || /type=recovery/.test(location.hash+location.search)) { vue('v-reset'); return; }
+  if (s) await ouvrirEspace(s.user); else vue('v-auth');
+})();
+</script>
+</body>
+</html>

@@ -146,6 +146,7 @@
     <div class="modal-field"><label data-i18n="cat_votre_nom">Votre nom</label><input type="text" id="mc-nom"></div>
     <div class="modal-field"><label data-i18n="cat_telephone">Téléphone</label><input type="tel" id="mc-tel"></div>
     <div class="modal-field"><label data-i18n="cat_email">Email</label><input type="email" id="mc-email" required autocomplete="email"></div>
+    <div id="mc-compte" style="font-size:12.5px;color:var(--mu);margin:-4px 0 12px;"></div>
     <div class="modal-field">
       <label data-i18n="cat_mode">Mode</label>
       <select id="mc-mode" onchange="document.getElementById('mc-adresse-bloc').style.display=this.value==='livraison'?'block':'none'; _fraisLivraison=null; planifierApercuFrais();">
@@ -344,6 +345,28 @@ function renderSuggestionsPanier() {
 function ouvrirPanier() { renderPanier(); document.getElementById('modal-panier').classList.add('show'); }
 function fermerModalePanier() { document.getElementById('modal-panier').classList.remove('show'); }
 
+// Compte client FACULTATIF : si le client est déjà connecté (session partagée, même site), on préremplit ses coordonnées ;
+// sinon on propose simplement de créer un compte. La commande reste possible sans compte.
+function prefillCompteClient() {
+  var zone = document.getElementById('mc-compte');
+  if (!zone) return;
+  var u = null;
+  try {
+    var raw = localStorage.getItem('sb-uzgboxfxpxazhysusewv-auth-token');
+    var o = raw ? JSON.parse(raw) : null;
+    u = o && o.user && (!o.expires_at || o.expires_at * 1000 > Date.now()) ? o.user : null;
+  } catch (e) { u = null; }
+  if (u && u.email) {
+    var m = u.user_metadata || {};
+    document.getElementById('mc-email').value = u.email;
+    if (m.nom) document.getElementById('mc-nom').value = m.nom;
+    if (m.telephone) document.getElementById('mc-tel').value = m.telephone;
+    zone.textContent = '✓ ' + T('cpt_connecte_pre');
+  } else {
+    zone.innerHTML = T('cpt_compte_avantages') + ' <a href="compte.html" target="_blank" rel="noopener" style="color:var(--clay,#B5502F);font-weight:600;">' + T('cpt_onglet_creer') + '</a>';
+  }
+}
+
 function ouvrirModaleCommande() {
   if (!PANIER.length) return;
   fermerModalePanier();
@@ -354,6 +377,7 @@ function ouvrirModaleCommande() {
   document.getElementById('mc-email').value = '';
   document.getElementById('mc-notes').value = '';
   document.getElementById('mc-date').value = '';
+  prefillCompteClient();
   initDatePasAvant();
   var fen = document.getElementById('mc-fenetre'); if (fen) { fen.style.color = 'var(--mu)'; fen.textContent = T('cat_fenetre_apres_adresse'); }
   document.getElementById('mc-err').style.display = 'none';
