@@ -269,13 +269,15 @@ Deno.serve(async (req: Request) => {
     const dateFinHorizon = new Date(aujourdhui);
     dateFinHorizon.setDate(dateFinHorizon.getDate() + HORIZON_PAGINATION_JOURS);
 
-    const { data: interventions, error: errI } = await sb.from("mpa_artisans_interventions")
+    const { data: interventionsBrutes, error: errI } = await sb.from("mpa_artisans_interventions")
       .select("date_intervention, heure_debut, heure_fin, latitude, longitude")
       .eq("artisan_id", artisan_id)
       .neq("statut", "annulee")
       .gte("date_intervention", dateDebut)
       .lte("date_intervention", dateISO(dateFinHorizon));
     if (errI) throw errI;
+    // Une intervention sans heure (saisie incomplète, livraison à date seule…) ne doit jamais faire tomber toute la vignette : on l'ignore pour le calcul des créneaux.
+    const interventions = (interventionsBrutes || []).filter((x: any) => typeof x.heure_debut === "string" && typeof x.heure_fin === "string" && x.heure_debut.includes(":") && x.heure_fin.includes(":"));
 
     // Si la colonne « type_fermeture » n'existe pas encore (SQL pas encore lancé), on relit sans elle :
     // les journées bloquées doivent continuer à bloquer les réservations quoi qu'il arrive.
