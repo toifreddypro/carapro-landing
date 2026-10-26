@@ -79,8 +79,10 @@ const JOURS_NOMS = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi
 const MOIS_NOMS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
 
 function heureVersMin(hhmmss: string): number {
-  const [h, m] = hhmmss.split(":");
-  return parseInt(h, 10) * 60 + parseInt(m, 10);
+  // Une heure absente ou illisible ne doit jamais faire tomber la fonction : elle compte pour minuit.
+  const [h, m] = String(hhmmss ?? "").split(":");
+  const v = parseInt(h, 10) * 60 + parseInt(m, 10);
+  return Number.isFinite(v) ? v : 0;
 }
 function minVersHeure(min: number): string {
   min = Math.max(0, Math.round(min));
@@ -190,6 +192,8 @@ Deno.serve(async (req: Request) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
   );
 
+  // Ce qui a déjà été lu pour la vignette : si le calcul des créneaux échoue ensuite, on renvoie quand même services, photos phares et lien boutique.
+  let apercuPartiel: any = null;
   try {
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object" || Array.isArray(body) || !body.artisan_id) return json({ error: "artisan_id manquant." }, 400);
@@ -248,6 +252,8 @@ Deno.serve(async (req: Request) => {
     if (artisanPublic.stripe_connect_statut !== "actif") { produitsPhares = []; slugCatalogue = null; codePromo = null; }
     // Boutique mise en pause par l'artisan : rien n'est mis en avant tant qu'elle est fermée.
     if (artisanPublic.boutique_en_pause === true) { produitsPhares = []; slugCatalogue = null; codePromo = null; }
+
+    if (mode === "apercu") apercuPartiel = { services, produits_phares: produitsPhares, slug_catalogue: slugCatalogue, code_promo: codePromo };
 
     const { data: horaires, error: errH } = await sb.from("artisans_horaires")
       .select("*").eq("artisan_id", artisan_id).order("heure_debut", { ascending: true });
@@ -465,6 +471,7 @@ Deno.serve(async (req: Request) => {
 
   } catch (e) {
     console.error("[verifier-disponibilite-artisan]", e);
+    if (apercuPartiel) return json({ prochaine_date: null, label: null, semaine: [], ...apercuPartiel, message: "Disponibilités momentanément indisponibles." });
     return json({ error: MSG_ERREUR_GENERIQUE }, 500); // le détail reste dans les journaux
   }
 });
