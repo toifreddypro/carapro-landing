@@ -422,8 +422,8 @@ var _pauseBesoinAlternancePublic = false;
 function htmlBesoinAlternancePublic(b) {
   return (
     '<a href="https://learnlogicstudio.com/connect.html?besoin=' + b.code + '#section-calculateur" target="_blank" rel="noopener" id="besoin-alternance-lien-public" style="display:block;text-decoration:none;color:inherit;">' +
-      '<div style="font-size:15px;font-weight:700;color:var(--tx);line-height:1.35;margin-bottom:4px;">' + b.phrase + '</div>' +
-      '<div style="font-size:14px;font-weight:700;color:var(--ac);line-height:1.35;margin-bottom:10px;">' + b.metier + ' →</div>' +
+      '<div style="font-size:15px;font-weight:700;color:var(--tx);line-height:1.35;min-height:2.7em;margin-bottom:4px;">' + b.phrase + '</div>' +
+      '<div style="font-size:14px;font-weight:700;color:var(--ac);line-height:1.35;min-height:2.7em;margin-bottom:10px;">' + b.metier + ' →</div>' +
       '<img src="' + b.img + '" alt="" width="540" height="770" decoding="async" style="display:block;width:100%;height:auto;aspect-ratio:54/77;object-fit:cover;border-radius:12px;background:var(--inp);box-shadow:0 6px 18px rgba(19,34,60,.18);">' +
     '</a>'
   );
