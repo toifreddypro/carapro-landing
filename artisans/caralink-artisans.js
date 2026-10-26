@@ -481,6 +481,41 @@ function renderPartnerPanel() {
   }, 6000);
 }
 
+// ── Version téléphone de la pub alternance : UNE carte compacte glissée dans la liste (après la 3e fiche), jamais en haut de page ──
+var _indexBesoinMobile = 0;
+var _timerBesoinMobile = null;
+function htmlPubAlternanceMobile() {
+  var b = BESOINS_ALTERNANCE_PUBLIC[_indexBesoinMobile];
+  return (
+    '<a href="https://learnlogicstudio.com/connect.html?besoin=' + b.code + '#section-calculateur" target="_blank" rel="noopener" style="display:flex;gap:14px;align-items:center;text-decoration:none;color:inherit;">' +
+      '<img src="' + b.img + '" alt="" width="540" height="770" loading="lazy" decoding="async" style="flex:none;width:88px;height:125px;object-fit:cover;border-radius:10px;background:var(--inp);">' +
+      '<div style="min-width:0;">' +
+        '<div style="font-size:10.5px;font-weight:700;color:var(--mu2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px;">Vous êtes artisan ?</div>' +
+        '<div style="font-size:14px;font-weight:700;color:var(--tx);line-height:1.35;margin-bottom:3px;">' + b.phrase + '</div>' +
+        '<div style="font-size:13.5px;font-weight:700;color:var(--ac);line-height:1.35;">' + b.metier + ' →</div>' +
+      '</div>' +
+    '</a>'
+  );
+}
+function demarrerPubAlternanceMobile() {
+  if (_timerBesoinMobile) { clearInterval(_timerBesoinMobile); _timerBesoinMobile = null; }
+  if (!document.getElementById('pub-alt-mobile')) return;
+  if (!document.getElementById('pub-alt-mobile-style')) {
+    var st = document.createElement('style'); st.id = 'pub-alt-mobile-style';
+    st.textContent = '.pub-alt-mobile{display:none;} @media(max-width:900px){.pub-alt-mobile{display:block;background:var(--panel);border:1px solid var(--brd);border-radius:14px;padding:12px;margin:0 0 14px;box-shadow:0 1px 3px rgba(19,34,60,.05);transition:opacity .35s;}}';
+    document.head.appendChild(st);
+  }
+  var calme = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  _timerBesoinMobile = setInterval(function() {
+    var z = document.getElementById('pub-alt-mobile');
+    if (!z) { clearInterval(_timerBesoinMobile); _timerBesoinMobile = null; return; }
+    if (document.hidden) return;
+    var changer = function() { _indexBesoinMobile = (_indexBesoinMobile + 1) % BESOINS_ALTERNANCE_PUBLIC.length; z.innerHTML = htmlPubAlternanceMobile(); z.style.opacity = '1'; };
+    if (calme) { changer(); return; }
+    z.style.opacity = '0'; setTimeout(changer, 350);
+  }, 7000);
+}
+
 function initCarte() {
   var el = document.getElementById('leaflet-map');
   if (!el || _map) return;
@@ -547,11 +582,14 @@ async function chargerArtisans() {
 
     if (zoneCount) zoneCount.textContent = artisans.length + ' ' + (artisans.length > 1 ? T('artisan_plusieurs') : T('artisan_un'));
 
+    var cartesHtml = artisans.map(renderArtisanCard);
+    if (cartesHtml.length >= 2) cartesHtml.splice(Math.min(3, cartesHtml.length), 0, '<div class="pub-alt-mobile" id="pub-alt-mobile">' + htmlPubAlternanceMobile() + '</div>');
     zoneListe.innerHTML = artisans.length
-      ? artisans.map(renderArtisanCard).join('')
+      ? cartesHtml.join('')
       : '<div class="etat-vide"><div class="etat-vide-titre">' + T('aucun_artisan_titre') + '</div>' + T('aucun_artisan_texte') + '</div>';
 
     artisans.forEach(function(a) { chargerApercuCarte(a.id); });
+    demarrerPubAlternanceMobile();
 
     mettreAJourCarte(artisans);
 
