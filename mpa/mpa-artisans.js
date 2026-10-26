@@ -5078,8 +5078,8 @@ var COULEURS_BOUTIQUE = { terre: '#B5502F', bleu: '#2563A8', vert: '#2F7D4F', ro
 var NOMS_COULEURS = { terre: 'Terre cuite', bleu: 'Bleu', vert: 'Vert', rose: 'Rose', violet: 'Violet', ocre: 'Ocre' };
 var _accentChoisi = null;
 var _fondChoisi = 'clair';
-var NOMS_FONDS = { clair: 'Clair', creme: 'Crème', sombre: 'Sombre' };
-var APERCU_FONDS = { clair: ['#ffffff', '#13223c'], creme: ['#f6efe4', '#2a2118'], sombre: ['#0f1115', '#f3f1ec'] };
+var NOMS_FONDS = { clair: 'Clair', creme: 'Crème', terre: 'Terre cuite pâle', bleu: 'Bleu pâle', vert: 'Vert pâle', rose: 'Rose pâle', violet: 'Violet pâle', ocre: 'Ocre pâle', sombre: 'Sombre' };
+var APERCU_FONDS = { clair: ['#ffffff', '#13223c'], creme: ['#f6efe4', '#2a2118'], terre: ['#f8ebe4', '#13223c'], bleu: ['#e6eff9', '#13223c'], vert: ['#e5f2e9', '#13223c'], rose: ['#fae6f1', '#13223c'], violet: ['#ece7f8', '#13223c'], ocre: ['#f8efd9', '#13223c'], sombre: ['#0f1115', '#f3f1ec'] };
 function afficherPersonnalisation() {
   var ap = document.getElementById('pers-apercu');
   if (!ap || !_artisan) return;

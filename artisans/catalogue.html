@@ -14,8 +14,14 @@
   }
   /* Fond de boutique choisi par l'artisan : on change seulement les variables. Les fenêtres (panier, paiement) restent claires : le formulaire de carte Stripe est clair. */
   :root.fond-creme{--bg:#f6efe4;--panel:#fffdf8;--brd:#e6dccb;--b2:#e6dccb;--inp:#faf5ec;--tx:#2a2118;--mu:#7a6c5b;--mu2:#5b4d3d;}
+  :root.fond-terre{--bg:#f8ebe4;--panel:#fffaf7;--brd:#ecd5c9;--b2:#ecd5c9;--inp:#fbf1ec;}
+  :root.fond-bleu{--bg:#e6eff9;--panel:#f9fbfe;--brd:#cddcee;--b2:#cddcee;--inp:#eef4fb;}
+  :root.fond-vert{--bg:#e5f2e9;--panel:#f9fcfa;--brd:#cbe3d2;--b2:#cbe3d2;--inp:#eef7f1;}
+  :root.fond-rose{--bg:#fae6f1;--panel:#fffafd;--brd:#efcade;--b2:#efcade;--inp:#fcf0f6;}
+  :root.fond-violet{--bg:#ece7f8;--panel:#fbfaff;--brd:#d9d0ef;--b2:#d9d0ef;--inp:#f3f0fb;}
+  :root.fond-ocre{--bg:#f8efd9;--panel:#fffdf6;--brd:#ecdcb4;--b2:#ecdcb4;--inp:#fbf5e4;}
   :root.fond-sombre{--bg:#0f1115;--panel:#1a1d24;--brd:#2c313c;--b2:#2c313c;--inp:#232732;--tx:#f3f1ec;--mu:#9ba4b3;--mu2:#c5ccd8;--ok:#34d399;--gold:#f0b44c;color-scheme:dark;}
-  :root.fond-creme .modal-overlay,:root.fond-sombre .modal-overlay{--bg:#f7f8fb;--panel:#ffffff;--brd:#e3eaf4;--b2:#c9d8ef;--inp:#f6f9fe;--tx:#13223c;--mu:#6b7c96;--mu2:#4a5c78;--ok:#059669;--gold:#b45309;color-scheme:light;}
+  :root[class*="fond-"] .modal-overlay{--bg:#f7f8fb;--panel:#ffffff;--brd:#e3eaf4;--b2:#c9d8ef;--inp:#f6f9fe;--tx:#13223c;--mu:#6b7c96;--mu2:#4a5c78;--ok:#059669;--gold:#b45309;color-scheme:light;}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);line-height:1.5;padding-bottom:60px;}
   .wrap{max-width:1100px;margin:0 auto;padding:0 20px;}
@@ -680,7 +686,7 @@ function render() {
 
   // ── Personnalisation de l'artisan : couleur d'accent, image de fond, coordonnées et texte choisis par lui ──
   var COULEURS = { terre: '#B5502F', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
-  if (a.boutique_fond === 'sombre' || a.boutique_fond === 'creme') {
+  if (['creme', 'sombre', 'terre', 'bleu', 'vert', 'rose', 'violet', 'ocre'].indexOf(a.boutique_fond) >= 0) {
     document.documentElement.classList.add('fond-' + a.boutique_fond);
     if (a.boutique_fond === 'sombre') COULEURS = { terre: '#D0623B', bleu: '#3F86D6', vert: '#2F9A62', rose: '#D0449A', violet: '#8061DB', ocre: '#C48A1F' };
   }
