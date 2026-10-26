@@ -513,7 +513,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><line x1="12" x2="12" y1="1" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
     Ma comptabilité
   </button>
-<button class="nav-adapter" onclick="ouvrirQuestionActivites()" title="Choisir les onglets dont vous vous servez">⚙ Mes activités</button>
+<button class="nav-adapter" id="btn-tous-onglets" onclick="basculerTousLesOnglets()" style="display:none;margin-left:auto;">Afficher tous les onglets</button>
+<button class="nav-adapter" onclick="ouvrirQuestionActivites()" title="Choisir les onglets dont vous vous servez" style="margin-left:8px;">⚙ Mes activités</button>
 </div>
 <div id="content">
 <!-- PLANNING -->
@@ -771,6 +772,32 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <input id="boutique-lien" readonly="" style="flex:1;min-width:220px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--inp);font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mu2);" type="text"/>
 <button class="addb" onclick="copierLienBoutique()" style="flex-shrink:0;">📋 Copier</button>
 <button class="addb" onclick="ouvrirPartageArtisan('boutique')" style="flex-shrink:0;">🔗 Partager / QR code</button>
+</div>
+<div style="border:1px solid var(--brd);border-radius:10px;padding:12px 14px;background:var(--inp);margin-bottom:12px;">
+<div style="font-size:13px;font-weight:700;margin-bottom:2px;">🎨 Personnaliser ma boutique <span style="font-size:11px;font-weight:700;color:var(--ok,#059669);">Gratuit</span></div>
+<div style="font-size:12px;color:var(--mu);margin-bottom:10px;line-height:1.5;">Votre boutique est votre vitrine : donnez-lui votre image. Le <strong>logo</strong> se change dans « Mon profil ».</div>
+<div id="pers-apercu" style="height:96px;border-radius:9px;background:linear-gradient(135deg,#e9eef7,#d5dff0);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:12px;margin-bottom:8px;">Pas encore d'image de fond</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
+<button class="addb" id="btn-banniere" onclick="document.getElementById('banniere-input').click()" style="flex-shrink:0;">🖼️ Choisir une image de fond</button>
+<button class="addb" id="btn-banniere-retirer" onclick="retirerBanniere()" style="flex-shrink:0;display:none;">Retirer</button>
+<input accept="image/jpeg,image/png,image/webp" id="banniere-input" onchange="uploaderBanniere()" style="display:none;" type="file"/>
+<span style="font-size:11.5px;color:var(--mu);">Format paysage conseillé (ex. photo de votre vitrine ou de vos créations). Recadrée automatiquement.</span>
+</div>
+<div style="font-size:12.5px;font-weight:700;margin-bottom:5px;">Coordonnées affichées sur la boutique</div>
+<label style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;margin-bottom:4px;cursor:pointer;"><input type="checkbox" id="pers-adresse" style="margin-top:3px;"><span>Adresse : <span id="pers-adresse-val" style="color:var(--mu);">—</span></span></label>
+<label style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;margin-bottom:4px;cursor:pointer;"><input type="checkbox" id="pers-tel" style="margin-top:3px;"><span>Téléphone : <span id="pers-tel-val" style="color:var(--mu);">—</span></span></label>
+<label style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;margin-bottom:4px;cursor:pointer;"><input type="checkbox" id="pers-email" style="margin-top:3px;"><span>Email : <span id="pers-email-val" style="color:var(--mu);">—</span></span></label>
+<div style="font-size:11.5px;color:var(--mu);margin-bottom:12px;">Ces informations viennent de « Mon profil ». Rien n'est publié tant que vous ne cochez pas.</div>
+<div style="font-size:12.5px;font-weight:700;margin-bottom:5px;">Votre texte de présentation</div>
+<textarea id="pers-texte" maxlength="600" rows="4" placeholder="Ex : Fleuriste à Capesterre depuis 2015. Compositions sur mesure, mariages, deuils. Ouvert du mardi au samedi…" style="width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;resize:vertical;" oninput="document.getElementById('pers-compteur').textContent=this.value.length"></textarea>
+<div style="font-size:11.5px;color:var(--mu);margin-bottom:12px;"><span id="pers-compteur">0</span>/600 · texte simple (pas de lien ni de mise en forme).</div>
+<div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">Couleur de votre boutique</div>
+<div id="pers-couleurs" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;"></div>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+<button class="addb" id="btn-pers" onclick="sauverPersonnalisation()" style="flex-shrink:0;">Enregistrer</button>
+<a id="pers-voir" href="#" target="_blank" rel="noopener" style="font-size:12.5px;font-weight:700;color:var(--ac);text-decoration:none;">Voir ma boutique →</a>
+</div>
+<div id="pers-statut" style="font-size:12px;color:var(--mu);margin-top:8px;"></div>
 </div>
 <div style="border:1px solid var(--brd);border-radius:10px;padding:12px 14px;background:var(--inp);">
 <div style="font-size:13px;font-weight:700;margin-bottom:2px;">🎁 Code promo <span style="font-size:11px;font-weight:700;color:var(--ac);">Offre Pro</span></div>

@@ -20,6 +20,17 @@
   header{background:var(--panel);border-bottom:1px solid var(--brd);padding:28px 0;margin-bottom:24px;}
   .header-inner{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
   .avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;flex-shrink:0;background:rgba(181,80,47,.1);color:var(--ac);display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:700;}
+  /* Personnalisation : image de fond façon Facebook, logo qui la chevauche, infos pratiques */
+  .bandeau-couv{height:200px;background-color:var(--b2);background-size:cover;background-position:center;}
+  header.avec-couv{padding-top:0;}
+  header.avec-couv .header-inner{align-items:flex-end;}
+  .avatar.sur-banniere{width:88px;height:88px;margin-top:-44px;border:4px solid var(--panel);box-shadow:0 2px 10px rgba(0,0,0,.12);}
+  .bloc-infos{display:flex;gap:28px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--brd);border-radius:14px;padding:18px 22px;margin-bottom:22px;}
+  .info-colonne{flex:1;min-width:230px;}
+  .info-titre{font-size:11.5px;font-weight:700;color:var(--mu2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px;}
+  .info-texte{white-space:pre-line;font-size:14px;line-height:1.6;color:var(--tx);overflow-wrap:anywhere;}
+  .info-ligne{font-size:14px;margin-bottom:5px;overflow-wrap:anywhere;} .info-ligne a{color:var(--tx);text-decoration:none;font-weight:500;} .info-ligne a:hover{color:var(--ac);text-decoration:underline;}
+  @media(max-width:600px){.bandeau-couv{height:130px;} .avatar.sur-banniere{width:72px;height:72px;margin-top:-36px;}}
   .boutique-nom{font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   .boutique-meta{font-size:13.5px;color:var(--mu);margin-top:3px;}
   .badge-verifie{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(5,150,105,.1);color:var(--ok);}
@@ -663,11 +674,30 @@ function render() {
 
   var boutonPartage = '<button type="button" onclick="partagerBoutique()" aria-label="' + escHtml(T('partage_titre_boutique')) + '" style="padding:6px 13px;border-radius:20px;border:1px solid var(--brd);background:transparent;color:var(--mu2);font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;white-space:nowrap;">🔗 ' + T('partage_bouton') + '</button>';
 
+  // ── Personnalisation de l'artisan : couleur d'accent, image de fond, coordonnées et texte choisis par lui ──
+  var COULEURS = { terre: '#B5502F', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
+  if (a.boutique_accent && COULEURS[a.boutique_accent]) {
+    document.documentElement.style.setProperty('--ac', COULEURS[a.boutique_accent]);
+    document.documentElement.style.setProperty('--ac2', COULEURS[a.boutique_accent]);
+  }
+  var urlBanniere = (a.boutique_banniere_url && /^https:\/\/[a-z0-9.-]+\.supabase\.co\/storage\//i.test(a.boutique_banniere_url)) ? a.boutique_banniere_url : null;
+  var banniere = urlBanniere ? '<div class="bandeau-couv" style="background-image:url(&quot;' + escHtml(urlBanniere) + '&quot;);" role="img" aria-label="' + escHtml(a.nom_entreprise) + '"></div>' : '';
+  if (urlBanniere) photo = photo.replace('class="avatar"', 'class="avatar sur-banniere"').replace('<div class="avatar">', '<div class="avatar sur-banniere">');
+  var lignesContact = '';
+  if (a.contact_adresse) lignesContact += '<div class="info-ligne">📍 <a href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(a.contact_adresse) + '" target="_blank" rel="noopener">' + escHtml(a.contact_adresse) + '</a></div>';
+  if (a.contact_telephone) lignesContact += '<div class="info-ligne">📞 <a href="tel:' + escHtml(String(a.contact_telephone).replace(/[^+\d]/g, '')) + '">' + escHtml(a.contact_telephone) + '</a></div>';
+  if (a.contact_email) lignesContact += '<div class="info-ligne">✉️ <a href="mailto:' + escHtml(a.contact_email) + '">' + escHtml(a.contact_email) + '</a></div>';
+  var texteLibre = a.boutique_texte ? '<div class="info-texte">' + escHtml(a.boutique_texte) + '</div>' : '';
+  var blocInfos = (lignesContact || texteLibre)
+    ? '<div class="wrap"><div class="bloc-infos">' + (texteLibre ? '<div class="info-colonne">' + '<div class="info-titre">' + T('cat_a_propos') + '</div>' + texteLibre + '</div>' : '') + (lignesContact ? '<div class="info-colonne"><div class="info-titre">' + T('cat_infos_pratiques') + '</div>' + lignesContact + '</div>' : '') + '</div></div>'
+    : '';
+
   var html =
     '<div style="background:var(--inp);border-bottom:1px solid var(--brd);padding:8px 0;">' +
       '<div class="wrap"><a href="https://caralink.app/artisans/" style="font-size:12.5px;font-weight:600;color:var(--mu2);text-decoration:none;">← ' + T('cat_retour_annuaire') + '</a><a href="compte.html" style="float:right;font-size:12.5px;font-weight:600;color:var(--ac);text-decoration:none;">👤 ' + T('nav_compte_client') + '</a></div>' +
     '</div>' +
-    '<header><div class="wrap header-inner">' + photo +
+    banniere +
+    '<header' + (urlBanniere ? ' class="avec-couv"' : '') + '><div class="wrap header-inner">' + photo +
       '<div style="flex:1;">' +
         '<div class="boutique-nom">' + escHtml(a.nom_entreprise) + (a.verifie ? '<span class="badge-verifie">✅ ' + T('cat_verifie') + '</span>' : '') + '</div>' +
         '<div class="boutique-meta">📍 ' + escHtml(a.commune) + '</div>' +
@@ -678,6 +708,7 @@ function render() {
     (a.code_promo ? '<div class="wrap"><div class="promo-bandeau">🎁 ' + T('cat_code_promo') + ' <span class="promo-code">' + escHtml(a.code_promo) + '</span>' + (a.code_promo_pct ? ' <strong>−' + escHtml(String(a.code_promo_pct)) + ' %</strong> <span style="font-size:12px;color:var(--mu);">' + T('cat_promo_sur') + '</span>' : '') + '</div></div>' : '') +
     (a.cashback_pct ? '<div class="wrap"><div class="promo-bandeau">🎁 ' + T('cat_cashback_bandeau').replace('{p}', String(a.cashback_pct).replace('.', ',')) + '</div></div>' : '') +
     '</header>' +
+    blocInfos +
     '<div class="wrap">';
 
   if (DATA.produits.length) {

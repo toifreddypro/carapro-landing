@@ -356,7 +356,7 @@ var TAB_BOUTONS  = ['nt-planning', 'nt-profil', 'nt-planning', 'nt-interventions
 function switchTab(i) {
   document.querySelectorAll('#nav .ntab').forEach(function(b) { b.classList.remove('active'); });
   var bouton = document.getElementById(TAB_BOUTONS[i]);
-  if (bouton) bouton.classList.add('active');
+  if (bouton) { bouton.classList.add('active'); if (bouton.style.display === 'none') bouton.style.display = ''; } // un onglet masqué qu'on ouvre quand même (lien de MPA-AI…) réapparaît
   var actifs = (i === 0 || i === 2) ? ['p-journee', 'p0'] : [TAB_PANNEAUX[i]];
   document.querySelectorAll('#content > .pnl').forEach(function(p) { p.classList.toggle('active', actifs.indexOf(p.id) >= 0); });
   // La compta peut devenir périmée par une action faite depuis un autre onglet (ex : marquer une
@@ -368,7 +368,7 @@ function switchTab(i) {
 
 // ── Activités de l'artisan : intervention, boutique, livraison ──
 // artisans.activites (liste) : vide = l'artisan n'a pas encore répondu → TOUS les onglets restent normaux.
-// Sinon, les onglets dont il ne se sert pas sont estompés (jamais bloqués : un clic les ouvre quand même).
+// Sinon, les onglets dont il ne se sert pas DISPARAISSENT (jamais supprimés ni bloqués : « Afficher tous les onglets » les ramène, et un lien de MPA-AI vers l'un d'eux l'affiche).
 // Planning, Mon profil et Ma comptabilité sont toujours en pleine couleur. Mon stock sert aux interventions (fournitures) ET à la boutique (produits).
 function appliquerActivites() {
   var act = (_artisan && Array.isArray(_artisan.activites) && _artisan.activites.length) ? _artisan.activites : null;
@@ -379,11 +379,28 @@ function appliquerActivites() {
     'nt-livraisons': a('livraison'),
     'nt-stock': a('interventions') || a('boutique')
   };
+  var voirTout = false;
+  try { voirTout = localStorage.getItem('mpa_tous_onglets') === '1'; } catch (e) {}
+  var nbMasques = 0;
   Object.keys(etat).forEach(function(id) {
     var b = document.getElementById(id); if (!b) return;
-    b.classList.toggle('inactif', !etat[id]);
-    if (etat[id]) b.removeAttribute('title'); else b.title = 'Vous n\'avez pas indiqué cette activité. Cliquez pour l\'ouvrir quand même.';
+    var masque = !etat[id] && !voirTout;
+    if (masque) nbMasques++;
+    b.style.display = masque ? 'none' : '';
+    b.classList.toggle('inactif', !etat[id] && voirTout); // affichés sur demande : on les garde estompés pour s'y retrouver
+    b.removeAttribute('title');
   });
+  var bt = document.getElementById('btn-tous-onglets');
+  if (bt) {
+    var aDesInactifs = Object.keys(etat).some(function(id) { return !etat[id]; });
+    bt.style.display = aDesInactifs ? '' : 'none';
+    bt.textContent = voirTout ? 'Masquer les onglets inutilisés' : 'Afficher tous les onglets';
+  }
+}
+function basculerTousLesOnglets() {
+  var voirTout = false;
+  try { voirTout = localStorage.getItem('mpa_tous_onglets') === '1'; localStorage.setItem('mpa_tous_onglets', voirTout ? '0' : '1'); } catch (e) {}
+  appliquerActivites();
 }
 function ouvrirQuestionActivites() {
   var act = (_artisan && Array.isArray(_artisan.activites)) ? _artisan.activites : [];
@@ -404,7 +421,7 @@ async function repondreQuestionActivites() {
   // La question est traitée : on la retire de la liste de MPA-AI et on la remplace par une confirmation.
   _mpaAiFeed = _mpaAiFeed.filter(function(m) { return !(m.cta && m.cta.action === 'ouvrirQuestionActivites()'); });
   var panneau = document.getElementById('mpa-ai-panel'); if (panneau) panneau.classList.remove('open');
-  mpaAiDire('C\'est noté. Les onglets dont vous ne vous servez pas sont estompés, mais ils restent ouverts si vous en avez besoin. Pour changer : « ⚙ Mes activités », à droite des onglets.', 'info');
+  mpaAiDire('C\'est noté. Les onglets dont vous ne vous servez pas sont masqués (rien n\'est supprimé) : « Afficher tous les onglets » les ramène à tout moment. Pour changer vos choix : « ⚙ Mes activités », à droite des onglets.', 'info');
   // Ensuite : la question sur l'impôt (si pas encore répondu), puis celle sur la visite d'estimation.
   if (regimeAPoser()) { window._questionRegimeDite = true; ouvrirQuestionRegime(); return; }
   await suiteApresQuestionsDebut();
@@ -4777,6 +4794,7 @@ async function chargerCatalogue() {
   if (champVis) champVis.checked = _artisan.code_promo_visible !== false;
   afficherStatutCodePromo();
   afficherCashback();
+  afficherPersonnalisation();
   afficherPauseBoutique();
 
   var { data, error } = await sb.from('artisans_catalogue').select('*').eq('artisan_id', _artisan.id).order('ordre', { ascending: true });
@@ -5053,6 +5071,116 @@ async function chargerUsageCodePromo() {
       return '<span style="font-family:monospace;font-weight:700;">' + escHtml(k) + '</span>' + (k === _artisan.code_promo ? ' (actuel)' : '') + ' : ' + u.n + ' commande' + (u.n > 1 ? 's' : '') + ' · ' + eurosMPA(u.ca) + ' de ventes';
     }).join('<br>');
   } catch (e) { z.innerHTML = ''; /* colonne pas encore créée (SQL pas lancé) : rien à afficher */ }
+}
+
+// ── Personnalisation de la boutique (gratuite) : image de fond, coordonnées choisies, texte libre, couleur d'accent ──
+var COULEURS_BOUTIQUE = { terre: '#B5502F', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
+var NOMS_COULEURS = { terre: 'Terre cuite', bleu: 'Bleu', vert: 'Vert', rose: 'Rose', violet: 'Violet', ocre: 'Ocre' };
+var _accentChoisi = null;
+function afficherPersonnalisation() {
+  var ap = document.getElementById('pers-apercu');
+  if (!ap || !_artisan) return;
+  if (_artisan.boutique_banniere_url) { ap.style.backgroundImage = 'url("' + _artisan.boutique_banniere_url + '")'; ap.textContent = ''; }
+  else { ap.style.backgroundImage = ''; ap.textContent = 'Pas encore d\'image de fond'; }
+  document.getElementById('btn-banniere-retirer').style.display = _artisan.boutique_banniere_url ? '' : 'none';
+  var adr = [_artisan.adresse, [_artisan.code_postal, _artisan.commune].filter(Boolean).join(' ')].filter(function(x) { return x && String(x).trim(); }).join(', ');
+  document.getElementById('pers-adresse-val').textContent = adr || 'non renseignée (à compléter dans Mon profil)';
+  document.getElementById('pers-tel-val').textContent = _artisan.telephone || 'non renseigné (à compléter dans Mon profil)';
+  document.getElementById('pers-email-val').textContent = _artisan.email || 'non renseigné (à compléter dans Mon profil)';
+  document.getElementById('pers-adresse').checked = _artisan.boutique_affiche_adresse === true;
+  document.getElementById('pers-tel').checked = _artisan.boutique_affiche_telephone === true;
+  document.getElementById('pers-email').checked = _artisan.boutique_affiche_email === true;
+  document.getElementById('pers-texte').value = _artisan.boutique_texte || '';
+  document.getElementById('pers-compteur').textContent = (_artisan.boutique_texte || '').length;
+  _accentChoisi = _artisan.boutique_accent || 'terre';
+  dessinerCouleursBoutique();
+  var voir = document.getElementById('pers-voir');
+  if (voir) { if (_artisan.slug_catalogue) voir.href = 'https://caralink.app/artisans/catalogue.html?s=' + encodeURIComponent(_artisan.slug_catalogue); else voir.style.display = 'none'; }
+}
+function dessinerCouleursBoutique() {
+  var z = document.getElementById('pers-couleurs'); if (!z) return;
+  z.innerHTML = Object.keys(COULEURS_BOUTIQUE).map(function(k) {
+    var sel = k === _accentChoisi;
+    return '<button type="button" title="' + NOMS_COULEURS[k] + '" aria-label="' + NOMS_COULEURS[k] + '" onclick="choisirCouleurBoutique(\'' + k + '\')" style="width:34px;height:34px;border-radius:50%;border:3px solid ' + (sel ? 'var(--tx)' : 'transparent') + ';background:' + COULEURS_BOUTIQUE[k] + ';cursor:pointer;box-shadow:0 0 0 1px var(--brd);"></button>';
+  }).join('');
+}
+function choisirCouleurBoutique(k) { _accentChoisi = k; dessinerCouleursBoutique(); }
+
+// Réduit l'image dans le navigateur (3:1, 1600 px de large, JPEG) : boutique rapide, même avec une photo de 12 Mo prise au téléphone.
+function preparerBanniere(fichier) {
+  return new Promise(function(resolve, reject) {
+    var url = URL.createObjectURL(fichier), img = new Image();
+    img.onload = function() {
+      var W = 1600, H = 533, c = document.createElement('canvas'); c.width = W; c.height = H;
+      var ratio = Math.max(W / img.width, H / img.height), w = img.width * ratio, h = img.height * ratio;
+      c.getContext('2d').drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+      URL.revokeObjectURL(url);
+      c.toBlob(function(b) { b ? resolve(b) : reject(new Error('Image illisible.')); }, 'image/jpeg', 0.85);
+    };
+    img.onerror = function() { URL.revokeObjectURL(url); reject(new Error('Cette image ne peut pas être lue. Utilisez une photo JPG, PNG ou WebP.')); };
+    img.src = url;
+  });
+}
+async function uploaderBanniere() {
+  if (!verifierAccesEcriture()) return;
+  var input = document.getElementById('banniere-input'), fichier = input.files[0];
+  if (!fichier) return;
+  var btn = document.getElementById('btn-banniere'), txt = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    var blob = await preparerBanniere(fichier);
+    var chemin = _artisan.user_id + '/banniere_' + Date.now() + '.jpg';
+    var up = await sb.storage.from('artisans-photos').upload(chemin, blob, { contentType: 'image/jpeg' });
+    if (up.error) throw new Error(up.error.message);
+    var { data: pub } = sb.storage.from('artisans-photos').getPublicUrl(chemin);
+    var ancienne = _artisan.boutique_banniere_url;
+    var { error } = await sb.from('artisans').update({ boutique_banniere_url: pub.publicUrl }).eq('id', _artisan.id);
+    if (error) throw error;
+    _artisan.boutique_banniere_url = pub.publicUrl;
+    supprimerAncienneBanniere(ancienne);
+    afficherPersonnalisation();
+    document.getElementById('pers-statut').textContent = '✓ Image enregistrée.';
+  } catch (e) { alert('Erreur : ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = txt; input.value = ''; }
+}
+// Ménage : l'ancienne image est effacée du stockage (jamais bloquant, jamais un autre fichier que celui de cet artisan).
+function supprimerAncienneBanniere(url) {
+  try {
+    var marque = '/artisans-photos/';
+    if (!url || url.indexOf(marque) < 0) return;
+    var chemin = decodeURIComponent(url.split(marque)[1]);
+    if (chemin.indexOf(_artisan.user_id + '/banniere_') !== 0) return;
+    sb.storage.from('artisans-photos').remove([chemin]);
+  } catch (e) { /* sans importance */ }
+}
+async function retirerBanniere() {
+  if (!verifierAccesEcriture()) return;
+  var ancienne = _artisan.boutique_banniere_url;
+  var { error } = await sb.from('artisans').update({ boutique_banniere_url: null }).eq('id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  _artisan.boutique_banniere_url = null;
+  supprimerAncienneBanniere(ancienne);
+  afficherPersonnalisation();
+}
+async function sauverPersonnalisation() {
+  if (!verifierAccesEcriture()) return;
+  var texte = document.getElementById('pers-texte').value.trim();
+  if (texte.length > 600) { alert('Le texte est limité à 600 caractères.'); return; }
+  if (/https?:\/\/|www\./i.test(texte)) { alert('Les liens ne sont pas autorisés dans ce texte. Pour renvoyer vers votre site, renseignez-le dans « Mon profil ».'); return; }
+  var maj = {
+    boutique_texte: texte || null,
+    boutique_accent: _accentChoisi && _accentChoisi !== 'terre' ? _accentChoisi : null,
+    boutique_affiche_adresse: document.getElementById('pers-adresse').checked,
+    boutique_affiche_telephone: document.getElementById('pers-tel').checked,
+    boutique_affiche_email: document.getElementById('pers-email').checked,
+  };
+  var btn = document.getElementById('btn-pers');
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  var { error } = await sb.from('artisans').update(maj).eq('id', _artisan.id);
+  btn.disabled = false; btn.textContent = 'Enregistrer';
+  if (error) { alert('Erreur : ' + error.message); return; }
+  Object.keys(maj).forEach(function(k) { _artisan[k] = maj[k]; });
+  document.getElementById('pers-statut').textContent = '✓ Boutique mise à jour : visible dès maintenant par vos clients.';
 }
 
 // ── Cashback fidélité (offre Pro) : pourcentage choisi par l'artisan, crédits financés par lui ──
