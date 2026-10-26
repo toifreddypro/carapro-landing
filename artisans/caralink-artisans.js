@@ -408,41 +408,77 @@ function renderResults() {
 }
 
 // ── Panneau croisé vers CaraLink Alternance — "Espace partenaire" réutilisé ──
+// Un besoin à la fois : phrase d'accroche, métier, puis la photo (cliquable). Il tourne tout seul, s'arrête quand on le survole.
 var BESOINS_ALTERNANCE_PUBLIC = [
-  { code: 'commercial', phrase: 'Un artisan a aussi besoin de prospecter.', metier: 'Il vous faut un commercial.' },
-  { code: 'communication', phrase: 'Un artisan a aussi besoin de se faire connaître.', metier: 'Il vous faut de la communication.' },
-  { code: 'administratif', phrase: 'Un artisan a aussi besoin de gérer sa paperasse.', metier: 'Il vous faut un assistant administratif.' },
-  { code: 'comptable', phrase: 'Un artisan a aussi besoin de chiffrer.', metier: 'Il vous faut un comptable.' },
+  { code: 'commercial', phrase: 'Un artisan a aussi besoin de prospecter.', metier: 'Il vous faut un commercial.', img: '/artisans/img/alt-commercial.webp' },
+  { code: 'communication', phrase: 'Un artisan a aussi besoin de se faire connaître.', metier: 'Il vous faut de la communication.', img: '/artisans/img/alt-communication.webp' },
+  { code: 'administratif', phrase: 'Un artisan a aussi besoin de gérer sa paperasse.', metier: 'Il vous faut un assistant administratif.', img: '/artisans/img/alt-administratif.webp' },
+  { code: 'comptable', phrase: 'Un artisan a aussi besoin de chiffrer.', metier: 'Il vous faut un comptable.', img: '/artisans/img/alt-comptable.webp' },
 ];
 var _indexBesoinAlternancePublic = 0;
 var _timerBesoinAlternancePublic = null;
+var _pauseBesoinAlternancePublic = false;
+
+function htmlBesoinAlternancePublic(b) {
+  return (
+    '<a href="https://learnlogicstudio.com/connect.html?besoin=' + b.code + '#section-calculateur" target="_blank" rel="noopener" id="besoin-alternance-lien-public" style="display:block;text-decoration:none;color:inherit;">' +
+      '<div style="font-size:15px;font-weight:700;color:var(--tx);line-height:1.35;margin-bottom:4px;">' + b.phrase + '</div>' +
+      '<div style="font-size:14px;font-weight:700;color:var(--ac);line-height:1.35;margin-bottom:10px;">' + b.metier + ' →</div>' +
+      '<img src="' + b.img + '" alt="" width="540" height="770" decoding="async" style="display:block;width:100%;height:auto;aspect-ratio:54/77;object-fit:cover;border-radius:12px;background:var(--inp);box-shadow:0 6px 18px rgba(19,34,60,.18);">' +
+    '</a>'
+  );
+}
+
+function htmlPointsBesoinAlternancePublic() {
+  return BESOINS_ALTERNANCE_PUBLIC.map(function(b, i) {
+    var actif = i === _indexBesoinAlternancePublic;
+    return '<button type="button" onclick="allerBesoinAlternancePublic(' + i + ')" aria-label="' + escHtml(b.metier) + '" aria-current="' + (actif ? 'true' : 'false') + '" style="width:' + (actif ? '22px' : '9px') + ';height:9px;padding:0;border:none;border-radius:9px;cursor:pointer;background:' + (actif ? 'var(--ac)' : 'var(--brd)') + ';transition:all .3s;"></button>';
+  }).join('');
+}
 
 function htmlPartnerPanel() {
-  var b = BESOINS_ALTERNANCE_PUBLIC[_indexBesoinAlternancePublic];
   return (
     '<div style="font-size:11px;font-weight:700;color:var(--mu2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px;">Vous êtes artisan ?</div>' +
-    '<a href="https://learnlogicstudio.com/connect.html?besoin=' + b.code + '#section-calculateur" target="_blank" rel="noopener" id="besoin-alternance-lien-public" style="display:block;text-decoration:none;color:inherit;padding-bottom:10px;border-bottom:1px solid var(--brd);margin-bottom:10px;transition:opacity .4s;">' +
-      '<div style="font-size:12.5px;color:var(--mu);line-height:1.5;">' + b.phrase + '</div>' +
-      '<div style="font-size:13px;font-weight:700;color:var(--ac);">' + b.metier + ' →</div>' +
-    '</a>' +
-    '<div style="font-size:13px;color:var(--mu);line-height:1.6;margin-bottom:10px;">Voyez pourquoi un alternant peut vous coûter très peu en Guadeloupe.</div>' +
-    '<a href="https://learnlogicstudio.com/connect.html#section-calculateur" target="_blank" rel="noopener" style="display:inline-block;padding:8px 14px;border-radius:8px;background:var(--ac);color:#fff;font-size:12px;font-weight:700;text-decoration:none;">Calculez votre coût réel →</a>'
+    '<div id="besoin-alternance-zone-public" style="transition:opacity .35s;">' + htmlBesoinAlternancePublic(BESOINS_ALTERNANCE_PUBLIC[_indexBesoinAlternancePublic]) + '</div>' +
+    '<div id="besoin-alternance-points-public" style="display:flex;justify-content:center;align-items:center;gap:6px;margin:12px 0 14px;">' + htmlPointsBesoinAlternancePublic() + '</div>' +
+    '<div style="border-top:1px solid var(--brd);padding-top:12px;">' +
+      '<div style="font-size:13px;color:var(--mu);line-height:1.6;margin-bottom:10px;">Voyez pourquoi un alternant peut vous coûter très peu en Guadeloupe.</div>' +
+      '<a href="https://learnlogicstudio.com/connect.html#section-calculateur" target="_blank" rel="noopener" style="display:inline-block;padding:9px 14px;border-radius:8px;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;text-decoration:none;">Calculez votre coût réel →</a>' +
+    '</div>'
   );
+}
+
+// Change de besoin avec un fondu (sans fondu si la personne a demandé moins d'animations).
+function allerBesoinAlternancePublic(i) {
+  var zone = document.getElementById('besoin-alternance-zone-public');
+  var points = document.getElementById('besoin-alternance-points-public');
+  if (!zone || !points) return;
+  _indexBesoinAlternancePublic = (i + BESOINS_ALTERNANCE_PUBLIC.length) % BESOINS_ALTERNANCE_PUBLIC.length;
+  var calme = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function remplacer() {
+    zone.innerHTML = htmlBesoinAlternancePublic(BESOINS_ALTERNANCE_PUBLIC[_indexBesoinAlternancePublic]);
+    points.innerHTML = htmlPointsBesoinAlternancePublic();
+    zone.style.opacity = '1';
+  }
+  if (calme) { remplacer(); return; }
+  zone.style.opacity = '0';
+  setTimeout(remplacer, 350);
 }
 
 function renderPartnerPanel() {
   var zone = document.getElementById('partner-panel');
   if (!zone) return;
   zone.innerHTML = htmlPartnerPanel();
+  BESOINS_ALTERNANCE_PUBLIC.forEach(function(b) { var im = new Image(); im.src = b.img; }); // les 4 photos sont prêtes avant d'être affichées
+  zone.onmouseenter = function() { _pauseBesoinAlternancePublic = true; };
+  zone.onmouseleave = function() { _pauseBesoinAlternancePublic = false; };
+  zone.onfocusin = function() { _pauseBesoinAlternancePublic = true; };
+  zone.onfocusout = function() { _pauseBesoinAlternancePublic = false; };
   if (_timerBesoinAlternancePublic) clearInterval(_timerBesoinAlternancePublic);
   _timerBesoinAlternancePublic = setInterval(function() {
-    var lien = document.getElementById('besoin-alternance-lien-public');
-    if (lien) lien.style.opacity = '0';
-    setTimeout(function() {
-      _indexBesoinAlternancePublic = (_indexBesoinAlternancePublic + 1) % BESOINS_ALTERNANCE_PUBLIC.length;
-      zone.innerHTML = htmlPartnerPanel();
-    }, 400);
-  }, 5000);
+    if (_pauseBesoinAlternancePublic || document.hidden) return;
+    allerBesoinAlternancePublic(_indexBesoinAlternancePublic + 1);
+  }, 6000);
 }
 
 function initCarte() {
