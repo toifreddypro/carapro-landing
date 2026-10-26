@@ -59,7 +59,7 @@ Deno.serve(async (req: Request) => {
     if (!slug) return json({ error: "Lien manquant." }, 400);
 
     const { data: artisan, error } = await sb.from("artisans")
-      .select("id, nom_entreprise, secteur, commune, photo_profil_url, verifie, code_promo, code_promo_pct, code_promo_fin, code_promo_visible, stripe_connect_statut, boutique_en_pause, plan, cashback_pct, boutique_banniere_url, boutique_texte, boutique_accent, boutique_affiche_adresse, boutique_affiche_telephone, boutique_affiche_email, adresse, code_postal, telephone, email")
+      .select("id, nom_entreprise, secteur, commune, photo_profil_url, verifie, code_promo, code_promo_pct, code_promo_fin, code_promo_visible, stripe_connect_statut, boutique_en_pause, plan, cashback_pct, boutique_banniere_url, boutique_texte, boutique_accent, boutique_fond, boutique_affiche_adresse, boutique_affiche_telephone, boutique_affiche_email, adresse, code_postal, telephone, email")
       .eq("slug_catalogue", slug)
       .eq("actif", true)
       .maybeSingle();
@@ -168,7 +168,7 @@ Deno.serve(async (req: Request) => {
 
     const codeOk = codePromoValide(artisan, artisan.plan);
     return json({
-      artisan: { id: artisan.id, nom_entreprise: artisan.nom_entreprise, secteur: artisan.secteur, commune: artisan.commune, photo_profil_url: artisan.photo_profil_url, verifie: artisan.verifie, code_promo: (codeOk && artisan.code_promo_visible !== false) ? artisan.code_promo : null, code_promo_pct: (codeOk && artisan.code_promo_visible !== false) ? Number(artisan.code_promo_pct) : null, code_promo_fin: (codeOk && artisan.code_promo_visible !== false) ? (artisan.code_promo_fin ?? null) : null, code_promo_actif: codeOk, boutique_banniere_url: artisan.boutique_banniere_url ?? null, boutique_texte: (artisan.boutique_texte ?? "").trim() || null, boutique_accent: artisan.boutique_accent ?? null,
+      artisan: { id: artisan.id, nom_entreprise: artisan.nom_entreprise, secteur: artisan.secteur, commune: artisan.commune, photo_profil_url: artisan.photo_profil_url, verifie: artisan.verifie, code_promo: (codeOk && artisan.code_promo_visible !== false) ? artisan.code_promo : null, code_promo_pct: (codeOk && artisan.code_promo_visible !== false) ? Number(artisan.code_promo_pct) : null, code_promo_fin: (codeOk && artisan.code_promo_visible !== false) ? (artisan.code_promo_fin ?? null) : null, code_promo_actif: codeOk, boutique_banniere_url: artisan.boutique_banniere_url ?? null, boutique_texte: (artisan.boutique_texte ?? "").trim() || null, boutique_accent: artisan.boutique_accent ?? null, boutique_fond: artisan.boutique_fond ?? null,
         // Coordonnées : publiées UNIQUEMENT si l'artisan a coché la case correspondante dans MPA.
         contact_adresse: artisan.boutique_affiche_adresse === true ? ([artisan.adresse, [artisan.code_postal, artisan.commune].filter(Boolean).join(" ")].map((x: any) => String(x ?? "").trim()).filter(Boolean).join(", ") || null) : null,
         contact_telephone: artisan.boutique_affiche_telephone === true ? (String(artisan.telephone ?? "").trim() || null) : null,

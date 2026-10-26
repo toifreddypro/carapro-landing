@@ -12,6 +12,10 @@
     --ac:#B5502F;--ac2:#B5502F;--tx:#13223c;--mu:#6b7c96;--mu2:#4a5c78;
     --inp:#f6f9fe;--ok:#059669;--gold:#b45309;--danger:#dc2626;
   }
+  /* Fond de boutique choisi par l'artisan : on change seulement les variables. Les fenêtres (panier, paiement) restent claires : le formulaire de carte Stripe est clair. */
+  :root.fond-creme{--bg:#f6efe4;--panel:#fffdf8;--brd:#e6dccb;--b2:#e6dccb;--inp:#faf5ec;--tx:#2a2118;--mu:#7a6c5b;--mu2:#5b4d3d;}
+  :root.fond-sombre{--bg:#0f1115;--panel:#1a1d24;--brd:#2c313c;--b2:#2c313c;--inp:#232732;--tx:#f3f1ec;--mu:#9ba4b3;--mu2:#c5ccd8;--ok:#34d399;--gold:#f0b44c;color-scheme:dark;}
+  :root.fond-creme .modal-overlay,:root.fond-sombre .modal-overlay{--bg:#f7f8fb;--panel:#ffffff;--brd:#e3eaf4;--b2:#c9d8ef;--inp:#f6f9fe;--tx:#13223c;--mu:#6b7c96;--mu2:#4a5c78;--ok:#059669;--gold:#b45309;color-scheme:light;}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);line-height:1.5;padding-bottom:60px;}
   .wrap{max-width:1100px;margin:0 auto;padding:0 20px;}
@@ -21,7 +25,7 @@
   .header-inner{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
   .avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;flex-shrink:0;background:rgba(181,80,47,.1);color:var(--ac);display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:700;}
   /* Personnalisation : image de fond façon Facebook, logo qui la chevauche, infos pratiques */
-  .bandeau-couv{height:200px;background-color:var(--b2);background-size:cover;background-position:center;}
+  .banniere-wrap{padding-top:16px;} .bandeau-couv{aspect-ratio:3/1;width:100%;background-color:var(--b2);background-size:cover;background-position:center;border-radius:14px;}
   header.avec-couv{padding-top:0;}
   header.avec-couv .header-inner{align-items:flex-end;}
   .avatar.sur-banniere{width:88px;height:88px;margin-top:-44px;border:4px solid var(--panel);box-shadow:0 2px 10px rgba(0,0,0,.12);}
@@ -30,7 +34,7 @@
   .info-titre{font-size:11.5px;font-weight:700;color:var(--mu2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px;}
   .info-texte{white-space:pre-line;font-size:14px;line-height:1.6;color:var(--tx);overflow-wrap:anywhere;}
   .info-ligne{font-size:14px;margin-bottom:5px;overflow-wrap:anywhere;} .info-ligne a{color:var(--tx);text-decoration:none;font-weight:500;} .info-ligne a:hover{color:var(--ac);text-decoration:underline;}
-  @media(max-width:600px){.bandeau-couv{height:130px;} .avatar.sur-banniere{width:72px;height:72px;margin-top:-36px;}}
+  @media(max-width:600px){.bandeau-couv{border-radius:10px;} .avatar.sur-banniere{width:72px;height:72px;margin-top:-36px;}}
   .boutique-nom{font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   .boutique-meta{font-size:13.5px;color:var(--mu);margin-top:3px;}
   .badge-verifie{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(5,150,105,.1);color:var(--ok);}
@@ -55,8 +59,7 @@
   .vue-petites .prix-barre{font-size:11.5px;}
   .vue-petites .btn-commander{padding:7px;font-size:12px;margin-top:5px;border-radius:8px;}
   .vue-petites .photo-vide{font-size:28px;}
-  .vue-petites .badge-remise,.vue-petites .badge-phare,.vue-petites .badge-nouveaute{top:6px;font-size:10px;padding:3px 7px;}
-  .vue-petites .badge-remise{right:6px;} .vue-petites .badge-phare,.vue-petites .badge-nouveaute{left:6px;}
+  .vue-petites .bandeau-badges{min-height:28px;padding:4px 8px;} .vue-petites .badge-remise,.vue-petites .badge-phare,.vue-petites .badge-nouveaute{font-size:10px;padding:2px 7px;}
   .vue-petites .delai-sur-commande{font-size:10.5px;}
   .grille.vue-liste{grid-template-columns:1fr;gap:10px;}
   .vue-liste .carte-produit{flex-direction:row;align-items:stretch;border-radius:11px;}
@@ -65,8 +68,7 @@
   .vue-liste .carte-corps{padding:10px 14px;gap:3px;justify-content:center;}
   .vue-liste .produit-desc{flex:0 0 auto;-webkit-line-clamp:1;font-size:12px;}
   .vue-liste .btn-commander{width:auto;align-self:flex-start;padding:7px 16px;font-size:12.5px;margin-top:5px;}
-  .vue-liste .badge-remise,.vue-liste .badge-phare,.vue-liste .badge-nouveaute{top:5px;font-size:9.5px;padding:2px 6px;}
-  .vue-liste .badge-remise{right:5px;} .vue-liste .badge-phare,.vue-liste .badge-nouveaute{left:5px;}
+  .vue-liste .bandeau-badges{display:none;}
   .btn-vue{width:34px;height:32px;border:1px solid var(--brd);background:transparent;color:var(--tx);cursor:pointer;font-size:15px;line-height:1;padding:0;}
   .btn-vue:first-child{border-radius:8px 0 0 8px;} .btn-vue:last-child{border-radius:0 8px 8px 0;} .btn-vue + .btn-vue{border-left:none;}
   .btn-vue.actif{background:var(--ac);border-color:var(--ac);color:#fff;}
@@ -75,9 +77,10 @@
   .photo-wrap{position:relative;aspect-ratio:1;background:var(--inp);overflow:hidden;min-height:0;flex-shrink:0;}
   .photo-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
   .photo-vide{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;}
-  .badge-remise{position:absolute;top:10px;right:10px;background:#1a1a1a;color:#fff;font-size:12px;font-weight:700;padding:5px 10px;border-radius:20px;}
-  .badge-phare{position:absolute;top:10px;left:10px;background:var(--gold);color:#fff;font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:20px;}
-  .badge-nouveaute{position:absolute;top:10px;left:10px;background:var(--ok);color:#fff;font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:20px;}
+  /* Pastilles : sur une bande AU-DESSUS de la photo, jamais dessus (la photo reste entière). */
+  .bandeau-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:34px;padding:6px 10px;border-bottom:1px solid var(--brd);}
+  .badge-remise,.badge-phare,.badge-nouveaute{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;color:#fff;white-space:nowrap;}
+  .badge-remise{background:#be123c;margin-left:auto;} .badge-phare{background:#b45309;} .badge-nouveaute{background:#059669;}
 
   .carte-corps{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1;}
   .produit-nom{font-weight:700;font-size:15px;}
@@ -630,11 +633,15 @@ async function confirmerPaiementCommande() {
   alert(T('cat_paiement_confirme') + escHtml(DATA.artisan.nom_entreprise) + T('cat_va_preparer_commande'));
 }
 
+var _BADGES_PRESENTS = false; // vrai si au moins un produit affiché porte une pastille : toutes les photos restent alignées
 function carteProduit(p) {
   var promo = p.prix != null && p.promo_pct ? Math.round(p.prix * (1 - p.promo_pct / 100) * 100) / 100 : null;
   var badgeCoin = p.est_nouveaute
     ? '<span class="badge-nouveaute">✨ ' + T('cat_nouveau') + '</span>'
     : (p.est_phare ? '<span class="badge-phare">⭐ ' + T('cat_bestseller') + '</span>' : '');
+  var badgeRemise = p.promo_pct ? '<span class="badge-remise">-' + p.promo_pct + '%</span>' : '';
+  var bandeauBadges = (badgeCoin || badgeRemise || _BADGES_PRESENTS)
+    ? '<div class="bandeau-badges">' + badgeCoin + badgeRemise + '</div>' : '';
   var photo = p.url_photo
     ? '<img src="' + escHtml(p.url_photo) + '" alt="' + escHtml(p.nom) + '" loading="lazy">'
     : '<div class="photo-vide">📦</div>';
@@ -643,11 +650,8 @@ function carteProduit(p) {
       '<span class="prix-actuel">' + (promo != null ? promo : p.prix) + ' €</span>' +
       (promo != null ? '<span class="prix-barre">' + p.prix + ' €</span>' : '') +
     '</div>';
-  return '<div class="carte-produit">' +
-    '<div class="photo-wrap">' + photo +
-      (p.promo_pct ? '<span class="badge-remise">-' + p.promo_pct + '%</span>' : '') +
-      badgeCoin +
-    '</div>' +
+  return '<div class="carte-produit">' + bandeauBadges +
+    '<div class="photo-wrap">' + photo + '</div>' +
     '<div class="carte-corps">' +
       '<div class="produit-nom">' + escHtml(p.nom) + '</div>' +
       (p.description ? '<div class="produit-desc">' + escHtml(p.description) + '</div>' : '') +
@@ -676,12 +680,16 @@ function render() {
 
   // ── Personnalisation de l'artisan : couleur d'accent, image de fond, coordonnées et texte choisis par lui ──
   var COULEURS = { terre: '#B5502F', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
+  if (a.boutique_fond === 'sombre' || a.boutique_fond === 'creme') {
+    document.documentElement.classList.add('fond-' + a.boutique_fond);
+    if (a.boutique_fond === 'sombre') COULEURS = { terre: '#D0623B', bleu: '#3F86D6', vert: '#2F9A62', rose: '#D0449A', violet: '#8061DB', ocre: '#C48A1F' };
+  }
   if (a.boutique_accent && COULEURS[a.boutique_accent]) {
     document.documentElement.style.setProperty('--ac', COULEURS[a.boutique_accent]);
     document.documentElement.style.setProperty('--ac2', COULEURS[a.boutique_accent]);
   }
   var urlBanniere = (a.boutique_banniere_url && /^https:\/\/[a-z0-9.-]+\.supabase\.co\/storage\//i.test(a.boutique_banniere_url)) ? a.boutique_banniere_url : null;
-  var banniere = urlBanniere ? '<div class="bandeau-couv" style="background-image:url(&quot;' + escHtml(urlBanniere) + '&quot;);" role="img" aria-label="' + escHtml(a.nom_entreprise) + '"></div>' : '';
+  var banniere = urlBanniere ? '<div class="wrap banniere-wrap"><div class="bandeau-couv" style="background-image:url(&quot;' + escHtml(urlBanniere) + '&quot;);" role="img" aria-label="' + escHtml(a.nom_entreprise) + '"></div></div>' : '';
   if (urlBanniere) photo = photo.replace('class="avatar"', 'class="avatar sur-banniere"').replace('<div class="avatar">', '<div class="avatar sur-banniere">');
   var lignesContact = '';
   if (a.contact_adresse) lignesContact += '<div class="info-ligne">📍 <a href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(a.contact_adresse) + '" target="_blank" rel="noopener">' + escHtml(a.contact_adresse) + '</a></div>';
@@ -805,7 +813,7 @@ function rerenderGrillePrincipale() {
   var grille = document.getElementById('grille-principale');
   grille.className = 'grille' + (_vueGrille === 'petites' ? ' vue-petites' : (_vueGrille === 'liste' ? ' vue-liste' : ''));
   grille.innerHTML = liste.length
-    ? liste.map(carteProduit).join('')
+    ? (_BADGES_PRESENTS = liste.some(function(p) { return p.est_nouveaute || p.est_phare || p.promo_pct; }), liste.map(carteProduit).join(''))
     : '<p style="grid-column:1/-1;color:var(--mu);padding:30px 0;text-align:center;">' + T('cat_aucun_produit_categorie') + '</p>';
 }
 

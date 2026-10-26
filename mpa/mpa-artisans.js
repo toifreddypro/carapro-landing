@@ -5077,6 +5077,9 @@ async function chargerUsageCodePromo() {
 var COULEURS_BOUTIQUE = { terre: '#B5502F', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
 var NOMS_COULEURS = { terre: 'Terre cuite', bleu: 'Bleu', vert: 'Vert', rose: 'Rose', violet: 'Violet', ocre: 'Ocre' };
 var _accentChoisi = null;
+var _fondChoisi = 'clair';
+var NOMS_FONDS = { clair: 'Clair', creme: 'Crème', sombre: 'Sombre' };
+var APERCU_FONDS = { clair: ['#ffffff', '#13223c'], creme: ['#f6efe4', '#2a2118'], sombre: ['#0f1115', '#f3f1ec'] };
 function afficherPersonnalisation() {
   var ap = document.getElementById('pers-apercu');
   if (!ap || !_artisan) return;
@@ -5094,6 +5097,8 @@ function afficherPersonnalisation() {
   document.getElementById('pers-compteur').textContent = (_artisan.boutique_texte || '').length;
   _accentChoisi = _artisan.boutique_accent || 'terre';
   dessinerCouleursBoutique();
+  _fondChoisi = _artisan.boutique_fond || 'clair';
+  dessinerFondsBoutique();
   var voir = document.getElementById('pers-voir');
   if (voir) { if (_artisan.slug_catalogue) voir.href = 'https://caralink.app/artisans/catalogue.html?s=' + encodeURIComponent(_artisan.slug_catalogue); else voir.style.display = 'none'; }
 }
@@ -5104,6 +5109,14 @@ function dessinerCouleursBoutique() {
     return '<button type="button" title="' + NOMS_COULEURS[k] + '" aria-label="' + NOMS_COULEURS[k] + '" onclick="choisirCouleurBoutique(\'' + k + '\')" style="width:34px;height:34px;border-radius:50%;border:3px solid ' + (sel ? 'var(--tx)' : 'transparent') + ';background:' + COULEURS_BOUTIQUE[k] + ';cursor:pointer;box-shadow:0 0 0 1px var(--brd);"></button>';
   }).join('');
 }
+function dessinerFondsBoutique() {
+  var z = document.getElementById('pers-fonds'); if (!z) return;
+  z.innerHTML = Object.keys(NOMS_FONDS).map(function(k) {
+    var sel = k === _fondChoisi, c = APERCU_FONDS[k];
+    return '<button type="button" onclick="choisirFondBoutique(\'' + k + '\')" aria-pressed="' + sel + '" style="padding:9px 16px;border-radius:9px;border:3px solid ' + (sel ? 'var(--ac)' : 'var(--brd)') + ';background:' + c[0] + ';color:' + c[1] + ';font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;">' + NOMS_FONDS[k] + '</button>';
+  }).join('');
+}
+function choisirFondBoutique(k) { _fondChoisi = k; dessinerFondsBoutique(); }
 function choisirCouleurBoutique(k) { _accentChoisi = k; dessinerCouleursBoutique(); }
 
 // Réduit l'image dans le navigateur (3:1, 1600 px de large, JPEG) : boutique rapide, même avec une photo de 12 Mo prise au téléphone.
@@ -5170,6 +5183,7 @@ async function sauverPersonnalisation() {
   var maj = {
     boutique_texte: texte || null,
     boutique_accent: _accentChoisi && _accentChoisi !== 'terre' ? _accentChoisi : null,
+    boutique_fond: _fondChoisi && _fondChoisi !== 'clair' ? _fondChoisi : null,
     boutique_affiche_adresse: document.getElementById('pers-adresse').checked,
     boutique_affiche_telephone: document.getElementById('pers-tel').checked,
     boutique_affiche_email: document.getElementById('pers-email').checked,
