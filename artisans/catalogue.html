@@ -21,6 +21,16 @@
   :root.fond-violet{--bg:#ece7f8;--panel:#fbfaff;--brd:#d9d0ef;--b2:#d9d0ef;--inp:#f3f0fb;}
   :root.fond-ocre{--bg:#f8efd9;--panel:#fffdf6;--brd:#ecdcb4;--b2:#ecdcb4;--inp:#fbf5e4;}
   :root.fond-sombre{--bg:#0f1115;--panel:#1a1d24;--brd:#2c313c;--b2:#2c313c;--inp:#232732;--tx:#f3f1ec;--mu:#9ba4b3;--mu2:#c5ccd8;--ok:#34d399;--gold:#f0b44c;color-scheme:dark;}
+  /* Fonds photo : l'image est posée derrière (fixe, ne défile pas), voilée pour garder le texte lisible ; les cartes restent pleines. */
+  :root.fond-plage{--bg:#e8f5f7;--panel:#ffffff;--brd:#cfe3e8;--b2:#cfe3e8;--inp:#f0f8fa;}
+  :root.fond-sable{--bg:#f7efe2;--panel:#fffdf8;--brd:#e8dcc8;--b2:#e8dcc8;--inp:#faf4ea;}
+  :root.fond-motif{--bg:#0f1115;--panel:#1a1d24;--brd:#2c313c;--b2:#2c313c;--inp:#232732;--tx:#f3f1ec;--mu:#9ba4b3;--mu2:#c5ccd8;--ok:#34d399;--gold:#f0b44c;color-scheme:dark;}
+  :root.fond-plage body,:root.fond-sable body,:root.fond-motif body{background:transparent;}
+  :root.fond-plage,:root.fond-sable,:root.fond-motif{background:var(--bg);}
+  :root.fond-plage body::before,:root.fond-sable body::before,:root.fond-motif body::before{content:'';position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center;}
+  :root.fond-plage body::before{background-image:linear-gradient(rgba(255,255,255,.62),rgba(255,255,255,.62)),url('img/fond-plage.webp');}
+  :root.fond-sable body::before{background-image:linear-gradient(rgba(255,255,255,.55),rgba(255,255,255,.55)),url('img/fond-sable.webp');}
+  :root.fond-motif body::before{background-image:linear-gradient(rgba(15,17,21,.74),rgba(15,17,21,.74)),url('img/fond-motif.webp');}
   :root[class*="fond-"] .modal-overlay{--bg:#f7f8fb;--panel:#ffffff;--brd:#e3eaf4;--b2:#c9d8ef;--inp:#f6f9fe;--tx:#13223c;--mu:#6b7c96;--mu2:#4a5c78;--ok:#059669;--gold:#b45309;color-scheme:light;}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);line-height:1.5;padding-bottom:60px;}
@@ -686,9 +696,9 @@ function render() {
 
   // ── Personnalisation de l'artisan : couleur d'accent, image de fond, coordonnées et texte choisis par lui ──
   var COULEURS = { terre: '#B5502F', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
-  if (['creme', 'sombre', 'terre', 'bleu', 'vert', 'rose', 'violet', 'ocre'].indexOf(a.boutique_fond) >= 0) {
+  if (['creme', 'sombre', 'terre', 'bleu', 'vert', 'rose', 'violet', 'ocre', 'plage', 'sable', 'motif'].indexOf(a.boutique_fond) >= 0) {
     document.documentElement.classList.add('fond-' + a.boutique_fond);
-    if (a.boutique_fond === 'sombre') COULEURS = { terre: '#D0623B', bleu: '#3F86D6', vert: '#2F9A62', rose: '#D0449A', violet: '#8061DB', ocre: '#C48A1F' };
+    if (a.boutique_fond === 'sombre' || a.boutique_fond === 'motif') COULEURS = { terre: '#D0623B', bleu: '#3F86D6', vert: '#2F9A62', rose: '#D0449A', violet: '#8061DB', ocre: '#C48A1F' };
   }
   if (a.boutique_accent && COULEURS[a.boutique_accent]) {
     document.documentElement.style.setProperty('--ac', COULEURS[a.boutique_accent]);
