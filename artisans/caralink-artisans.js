@@ -413,7 +413,7 @@ var BESOINS_ALTERNANCE_PUBLIC = [
   { code: 'commercial', phrase: 'Un artisan a aussi besoin de prospecter.', metier: 'Il vous faut un commercial.', img: '/artisans/img/alt-commercial.webp' },
   { code: 'communication', phrase: 'Un artisan a aussi besoin de se faire connaître.', metier: 'Il vous faut de la communication.', img: '/artisans/img/alt-communication.webp' },
   { code: 'administratif', phrase: 'Un artisan a aussi besoin de gérer sa paperasse.', metier: 'Il vous faut un assistant administratif.', img: '/artisans/img/alt-administratif.webp' },
-  { code: 'comptable', phrase: 'Un artisan a aussi besoin de chiffrer.', metier: 'Il vous faut un comptable.', img: '/artisans/img/alt-comptable.webp' },
+  { code: 'comptable', phrase: 'Un artisan a aussi besoin de chiffrer.', metier: 'Il vous faut un gestionnaire comptable.', img: '/artisans/img/alt-comptable.webp' },
 ];
 var _indexBesoinAlternancePublic = 0;
 var _timerBesoinAlternancePublic = null;
