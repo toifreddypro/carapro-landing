@@ -25,12 +25,22 @@
   :root.fond-plage{--bg:#e8f5f7;--panel:#ffffff;--brd:#cfe3e8;--b2:#cfe3e8;--inp:#f0f8fa;}
   :root.fond-sable{--bg:#f7efe2;--panel:#fffdf8;--brd:#e8dcc8;--b2:#e8dcc8;--inp:#faf4ea;}
   :root.fond-motif{--bg:#0f1115;--panel:#1a1d24;--brd:#2c313c;--b2:#2c313c;--inp:#232732;--tx:#f3f1ec;--mu:#9ba4b3;--mu2:#c5ccd8;--ok:#34d399;--gold:#f0b44c;color-scheme:dark;}
-  :root.fond-plage body,:root.fond-sable body,:root.fond-motif body{background:transparent;}
-  :root.fond-plage,:root.fond-sable,:root.fond-motif{background:var(--bg);}
-  :root.fond-plage body::before,:root.fond-sable body::before,:root.fond-motif body::before{content:'';position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center;}
+  :root.fond-emeraude{--bg:#0c1f19;--panel:#13302a;--brd:#25493f;--b2:#25493f;--inp:#183a32;--tx:#f3f1ec;--mu:#9fb8ae;--mu2:#c9ddd3;--ok:#34d399;--gold:#e3b95a;color-scheme:dark;}
+  :root.fond-soie{--bg:#f7efec;--panel:#fffdfb;--brd:#eadfd8;--b2:#eadfd8;--inp:#fbf5f2;}
+  :root.fond-couleurs{--bg:#faf6ee;--panel:#ffffff;--brd:#eadfca;--b2:#eadfca;--inp:#fcf8f0;}
+  :root.fond-bois{--bg:#efe3d0;--panel:#fffaf2;--brd:#e3d3ba;--b2:#e3d3ba;--inp:#f9f1e3;}
+  :root.fond-jungle{--bg:#e6f0e2;--panel:#fbfefa;--brd:#cfe0c8;--b2:#cfe0c8;--inp:#f1f8ee;}
+  :root.fond-plage body,:root.fond-sable body,:root.fond-motif body,:root.fond-emeraude body,:root.fond-soie body,:root.fond-couleurs body,:root.fond-bois body,:root.fond-jungle body{background:transparent;}
+  :root.fond-plage,:root.fond-sable,:root.fond-motif,:root.fond-emeraude,:root.fond-soie,:root.fond-couleurs,:root.fond-bois,:root.fond-jungle{background:var(--bg);}
+  :root.fond-plage body::before,:root.fond-sable body::before,:root.fond-motif body::before,:root.fond-emeraude body::before,:root.fond-soie body::before,:root.fond-couleurs body::before,:root.fond-bois body::before,:root.fond-jungle body::before{content:'';position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center;}
   :root.fond-plage body::before{background-image:linear-gradient(rgba(255,255,255,.62),rgba(255,255,255,.62)),url('img/fond-plage.webp');}
   :root.fond-sable body::before{background-image:linear-gradient(rgba(255,255,255,.55),rgba(255,255,255,.55)),url('img/fond-sable.webp');}
-  :root.fond-motif body::before{background-image:linear-gradient(rgba(15,17,21,.74),rgba(15,17,21,.74)),url('img/fond-motif.webp');}
+  :root.fond-motif body::before{background-image:linear-gradient(rgba(15,17,21,.22),rgba(15,17,21,.22)),url('img/fond-motif.webp');}
+  :root.fond-emeraude body::before{background-image:linear-gradient(rgba(8,24,19,.55),rgba(8,24,19,.55)),url('img/fond-emeraude.webp');}
+  :root.fond-soie body::before{background-image:linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,.35)),url('img/fond-soie.webp');}
+  :root.fond-couleurs body::before{background-image:linear-gradient(rgba(255,255,255,.6),rgba(255,255,255,.6)),url('img/fond-couleurs.webp');}
+  :root.fond-bois body::before{background-image:linear-gradient(rgba(255,255,255,.62),rgba(255,255,255,.62)),url('img/fond-bois.webp');}
+  :root.fond-jungle body::before{background-image:linear-gradient(rgba(255,255,255,.6),rgba(255,255,255,.6)),url('img/fond-jungle.webp');}
   :root[class*="fond-"] .modal-overlay{--bg:#f7f8fb;--panel:#ffffff;--brd:#e3eaf4;--b2:#c9d8ef;--inp:#f6f9fe;--tx:#13223c;--mu:#6b7c96;--mu2:#4a5c78;--ok:#059669;--gold:#b45309;color-scheme:light;}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);line-height:1.5;padding-bottom:60px;}
@@ -98,7 +108,7 @@
 
   h2.section-titre{font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:800;margin:44px 0 20px;}
   /* Sur un fond photo, le titre de section est posé sur une pastille pleine : toujours lisible, quelle que soit la partie de l'image derrière. */
-  :root.fond-plage h2.section-titre,:root.fond-sable h2.section-titre,:root.fond-motif h2.section-titre{display:inline-block;background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:6px 18px;}
+  :root.fond-plage h2.section-titre,:root.fond-sable h2.section-titre,:root.fond-motif h2.section-titre,:root.fond-emeraude h2.section-titre,:root.fond-soie h2.section-titre,:root.fond-couleurs h2.section-titre,:root.fond-bois h2.section-titre,:root.fond-jungle h2.section-titre{display:inline-block;background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:6px 18px;}
 
   .grille{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
   @media(min-width:1150px){.grille{grid-template-columns:repeat(4,1fr);gap:26px;}}
@@ -131,7 +141,7 @@
   .btn-vue.actif{background:var(--ac);border-color:var(--ac);color:#fff;}
 
   .carte-produit{background:var(--panel);border:1px solid transparent;box-shadow:0 2px 12px rgba(19,34,60,.08);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;}
-  :root.fond-sombre .carte-produit,:root.fond-motif .carte-produit,:root.fond-sombre .bloc-infos,:root.fond-motif .bloc-infos{border-color:var(--brd);box-shadow:none;}
+  :root.fond-sombre .carte-produit,:root.fond-motif .carte-produit,:root.fond-emeraude .carte-produit,:root.fond-sombre .bloc-infos,:root.fond-motif .bloc-infos,:root.fond-emeraude .bloc-infos{border-color:var(--brd);box-shadow:none;}
   .photo-wrap{position:relative;aspect-ratio:1;background:var(--inp);overflow:hidden;min-height:0;flex-shrink:0;}
   .photo-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
   .photo-vide{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;}
@@ -899,15 +909,15 @@ function render() {
 
   // ── Personnalisation de l'artisan : couleur d'accent, image de fond, coordonnées et texte choisis par lui ──
   var COULEURS = { terre: '#B5502F', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
-  if (['creme', 'sombre', 'terre', 'bleu', 'vert', 'rose', 'violet', 'ocre', 'plage', 'sable', 'motif'].indexOf(a.boutique_fond) >= 0) {
+  if (['creme', 'sombre', 'terre', 'bleu', 'vert', 'rose', 'violet', 'ocre', 'plage', 'sable', 'motif', 'emeraude', 'soie', 'couleurs', 'bois', 'jungle'].indexOf(a.boutique_fond) >= 0) {
     document.documentElement.classList.add('fond-' + a.boutique_fond);
-    if (a.boutique_fond === 'sombre' || a.boutique_fond === 'motif') COULEURS = { terre: '#D0623B', bleu: '#3F86D6', vert: '#2F9A62', rose: '#D0449A', violet: '#8061DB', ocre: '#C48A1F' };
+    if (a.boutique_fond === 'sombre' || a.boutique_fond === 'motif' || a.boutique_fond === 'emeraude') COULEURS = { terre: '#D0623B', bleu: '#3F86D6', vert: '#2F9A62', rose: '#D0449A', violet: '#8061DB', ocre: '#C48A1F' };
   }
   if (a.boutique_accent && COULEURS[a.boutique_accent]) {
     document.documentElement.style.setProperty('--ac', COULEURS[a.boutique_accent]);
     document.documentElement.style.setProperty('--ac2', COULEURS[a.boutique_accent]);
   }
-  var estSombre = a.boutique_fond === 'sombre' || a.boutique_fond === 'motif';
+  var estSombre = a.boutique_fond === 'sombre' || a.boutique_fond === 'motif' || a.boutique_fond === 'emeraude';
   if (/^#[0-9a-f]{6}$/.test(a.boutique_accent_libre || '')) {
     var accL = ajusterAccent(a.boutique_accent_libre, estSombre);
     document.documentElement.style.setProperty('--ac', accL);
