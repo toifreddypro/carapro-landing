@@ -5119,16 +5119,16 @@ function dessinerFondsBoutique() {
 function choisirFondBoutique(k) { _fondChoisi = k; dessinerFondsBoutique(); }
 function choisirCouleurBoutique(k) { _accentChoisi = k; dessinerCouleursBoutique(); }
 
-// Réduit l'image dans le navigateur (3:1, 1600 px de large, JPEG) : boutique rapide, même avec une photo de 12 Mo prise au téléphone.
+// Réduit l'image dans le navigateur (3:1, 2400 px de large, JPEG : reste net sur un grand écran) : boutique rapide, même avec une photo de 12 Mo prise au téléphone.
 function preparerBanniere(fichier) {
   return new Promise(function(resolve, reject) {
     var url = URL.createObjectURL(fichier), img = new Image();
     img.onload = function() {
-      var W = 1600, H = 533, c = document.createElement('canvas'); c.width = W; c.height = H;
+      var W = 2400, H = 800, c = document.createElement('canvas'); c.width = W; c.height = H;
       var ratio = Math.max(W / img.width, H / img.height), w = img.width * ratio, h = img.height * ratio;
       c.getContext('2d').drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
       URL.revokeObjectURL(url);
-      c.toBlob(function(b) { b ? resolve(b) : reject(new Error('Image illisible.')); }, 'image/jpeg', 0.85);
+      c.toBlob(function(b) { b ? resolve(b) : reject(new Error('Image illisible.')); }, 'image/jpeg', 0.82);
     };
     img.onerror = function() { URL.revokeObjectURL(url); reject(new Error('Cette image ne peut pas être lue. Utilisez une photo JPG, PNG ou WebP.')); };
     img.src = url;
