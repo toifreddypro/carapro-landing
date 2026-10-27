@@ -54,15 +54,35 @@
   /* Écran large : le nom, le logo, Partager et les langues se posent sur l'image, avec un voile sombre pour rester lisibles quelle que soit la photo. */
   @media(min-width:701px){
     .hero .bandeau-couv{min-height:230px;}
-    .hero-entete{position:absolute;left:0;right:0;bottom:0;margin:0;padding:80px 0 24px;background:linear-gradient(to top,rgba(10,16,28,.8),rgba(10,16,28,0));color:#fff;}
-    .hero-entete .avatar.sur-banniere{width:96px;height:96px;margin-top:0;border:4px solid #fff;background:#fff;}
-    .hero-entete .boutique-nom{font-size:clamp(28px,3.4vw,44px);color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.4);}
-    .hero-entete .boutique-meta{color:rgba(255,255,255,.9);}
-    .hero-entete .badge-verifie{background:rgba(255,255,255,.95);color:#047857;}
-    .hero-entete .btn-partage{border-color:rgba(255,255,255,.75)!important;color:#fff!important;background:rgba(255,255,255,.14)!important;}
-    .hero-entete .btn-langue{border-color:rgba(255,255,255,.6)!important;color:#fff!important;background:transparent!important;}
-    .hero-entete .btn-langue.actif{background:#fff!important;color:#13223c!important;border-color:#fff!important;}
+    .hero.disp-image .hero-entete{position:absolute;left:0;right:0;bottom:0;margin:0;padding:80px 0 24px;background:linear-gradient(to top,rgba(10,16,28,.8),rgba(10,16,28,0));color:#fff;}
+    .hero.disp-image .hero-entete .avatar.sur-banniere{width:96px;height:96px;margin-top:0;border:4px solid #fff;background:#fff;}
+    .hero.disp-image .hero-entete .boutique-nom{font-size:clamp(28px,3.4vw,44px);color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.4);}
+    .hero.disp-image .hero-entete .boutique-meta{color:rgba(255,255,255,.9);}
+    .hero.disp-image .hero-entete .badge-verifie{background:rgba(255,255,255,.95);color:#047857;}
+    .hero.disp-image .hero-entete .btn-partage{border-color:rgba(255,255,255,.75)!important;color:#fff!important;background:rgba(255,255,255,.14)!important;}
+    .hero.disp-image .hero-entete .btn-langue{border-color:rgba(255,255,255,.6)!important;color:#fff!important;background:transparent!important;}
+    .hero.disp-image .hero-entete .btn-langue.actif{background:#fff!important;color:#13223c!important;border-color:#fff!important;}
+    .hero.disp-image .hero-entete .accroche{color:rgba(255,255,255,.92);text-shadow:0 1px 8px rgba(0,0,0,.35);}
+    .hero.disp-image .hero-entete .reseau{color:#fff;border-color:rgba(255,255,255,.7);background:rgba(255,255,255,.14);}
+    .hero.disp-image .hero-entete .reseau:hover{background:#fff;color:#13223c;}
   }
+  /* Style choisi par l'artisan : accroche, réseaux, annonce, dispositions, cartes, police */
+  .accroche{font-size:15px;line-height:1.4;color:var(--mu2);margin-top:4px;}
+  .reseaux{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .reseau{width:36px;height:36px;border-radius:50%;border:1px solid var(--brd);display:inline-flex;align-items:center;justify-content:center;color:var(--mu2);text-decoration:none;transition:.15s;}
+  .reseau:hover{color:var(--ac);border-color:var(--ac);}
+  .btn-wa{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:20px;background:#128c4a;color:#fff;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap;}
+  .btn-wa:hover{background:#0e7a40;}
+  .annonce{background:var(--ac);color:#fff;text-align:center;font-size:14px;font-weight:600;padding:10px 16px;line-height:1.4;}
+  .hero.disp-dessous .boutique-nom,.hero.disp-centre .boutique-nom{font-size:30px;}
+  .hero.disp-centre .header-inner{flex-direction:column;align-items:center;text-align:center;gap:10px;}
+  .hero.disp-centre .header-inner>div{flex:none!important;}
+  .hero.disp-centre .boutique-nom,.hero.disp-centre .reseaux{justify-content:center;}
+  .hero.disp-centre .avatar.sur-banniere{width:104px;height:104px;margin-top:-52px;}
+  .cartes-carre .carte-produit,.cartes-carre .bloc-infos,.cartes-carre .promo-bandeau{border-radius:4px;}
+  .cartes-sobre .carte-produit,.cartes-sobre .bloc-infos{box-shadow:none;border-color:var(--brd);}
+  .police-perso .boutique-nom,.police-perso h2.section-titre,.police-perso .produit-nom{font-family:var(--police-titre),sans-serif;}
+  .police-manuscrit .boutique-nom{font-size:1.25em;}
   .bloc-infos{display:flex;gap:28px;flex-wrap:wrap;background:var(--panel);border:1px solid transparent;box-shadow:0 2px 12px rgba(19,34,60,.07);border-radius:16px;padding:22px 26px;margin:22px 0 10px;}
   .info-colonne{flex:1;min-width:230px;}
   .info-titre{font-size:11.5px;font-weight:700;color:var(--mu2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px;}
@@ -698,6 +718,40 @@ function carteProduit(p) {
   '</div>';
 }
 
+// ── Style de la boutique : tout ce que l'artisan a choisi est revérifié ici (liste fermée, caractères sûrs), jamais pris tel quel ──
+var POLICES = { classique: ['Playfair+Display:wght@600;700', 'Playfair Display'], elegant: ['Cormorant+Garamond:wght@600;700', 'Cormorant Garamond'], moderne: ['Poppins:wght@600;700', 'Poppins'], manuscrit: ['Caveat:wght@600;700', 'Caveat'], arrondi: ['Fredoka:wght@500;600', 'Fredoka'] };
+var ICONES_RESEAUX = {
+  instagram: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>',
+  facebook: '<path d="M14 8h3V4h-3a4 4 0 0 0-4 4v2H7v4h3v7h4v-7h3l1-4h-4V8z"/>',
+  tiktok: '<path d="M14 3v11a3.5 3.5 0 1 1-3.5-3.5"/><path d="M14 3c.3 2.5 2 4 4.5 4.2"/>',
+  whatsapp: '<path d="M20 11.5a8 8 0 0 1-11.9 7L4 20l1.5-4A8 8 0 1 1 20 11.5z"/><path d="M9 9c0 3 3 6 6 6l1.2-1.4-2-1-.8.7c-.8-.3-1.8-1.3-2.1-2.1l.7-.8-1-2L9 9z"/>'
+};
+function svgReseau(k, taille) { return '<svg width="' + (taille || 18) + '" height="' + (taille || 18) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONES_RESEAUX[k] + '</svg>'; }
+function liensReseaux(a) {
+  var l = [];
+  if (/^[A-Za-z0-9._]{1,30}$/.test(a.boutique_instagram || '')) l.push({ nom: 'Instagram', k: 'instagram', href: 'https://www.instagram.com/' + a.boutique_instagram });
+  if (/^[A-Za-z0-9.\-]{1,80}$/.test(a.boutique_facebook || '')) l.push({ nom: 'Facebook', k: 'facebook', href: 'https://www.facebook.com/' + a.boutique_facebook });
+  if (/^[A-Za-z0-9._]{1,30}$/.test(a.boutique_tiktok || '')) l.push({ nom: 'TikTok', k: 'tiktok', href: 'https://www.tiktok.com/@' + a.boutique_tiktok });
+  if (/^[0-9]{8,15}$/.test(a.boutique_whatsapp || '')) l.push({ nom: 'WhatsApp', k: 'whatsapp', href: 'https://wa.me/' + a.boutique_whatsapp });
+  return l;
+}
+function luminance(hex) {
+  var v = [1, 3, 5].map(function(i) { var x = parseInt(hex.substr(i, 2), 16) / 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); });
+  return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+}
+function contraste(h1, h2) { var a = luminance(h1), b = luminance(h2); return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); }
+function melange(hex, cible, t) { // t de 0 (hex) à 1 (cible : '#rrggbb')
+  return '#' + [1, 3, 5].map(function(i) { var x = Math.round(parseInt(hex.substr(i, 2), 16) * (1 - t) + parseInt(cible.substr(i, 2), 16) * t); return ('0' + x.toString(16)).slice(-2); }).join('');
+}
+// Couleur libre : on l'assombrit (fond clair) ou l'éclaircit (fond sombre) juste assez pour que le texte reste lisible.
+function ajusterAccent(hex, sombre) {
+  var c = hex.toLowerCase(), ref = sombre ? '#1a1d24' : '#ffffff', cible = sombre ? '#ffffff' : '#000000', t = 0;
+  var seuil = sombre ? 3.5 : 4.5;
+  while (contraste(c, ref) < seuil && t < 1) { t += 0.05; c = melange(hex.toLowerCase(), cible, t); }
+  return c;
+}
+function aujourdhuiLocal() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+
 function render() {
   var a = DATA.artisan;
   var photo = a.photo_profil_url
@@ -724,6 +778,25 @@ function render() {
     document.documentElement.style.setProperty('--ac', COULEURS[a.boutique_accent]);
     document.documentElement.style.setProperty('--ac2', COULEURS[a.boutique_accent]);
   }
+  var estSombre = a.boutique_fond === 'sombre' || a.boutique_fond === 'motif';
+  if (/^#[0-9a-f]{6}$/.test(a.boutique_accent_libre || '')) {
+    var accL = ajusterAccent(a.boutique_accent_libre, estSombre);
+    document.documentElement.style.setProperty('--ac', accL);
+    document.documentElement.style.setProperty('--ac2', accL);
+  }
+  if (Object.prototype.hasOwnProperty.call(POLICES, a.boutique_police || '')) {
+    var pf = POLICES[a.boutique_police], lien = document.createElement('link');
+    lien.rel = 'stylesheet'; lien.href = 'https://fonts.googleapis.com/css2?family=' + pf[0] + '&display=swap';
+    document.head.appendChild(lien);
+    document.documentElement.style.setProperty('--police-titre', "'" + pf[1] + "'");
+    document.documentElement.classList.add('police-perso', 'police-' + a.boutique_police);
+  }
+  if (a.boutique_cartes === 'carre' || a.boutique_cartes === 'sobre') document.documentElement.classList.add('cartes-' + a.boutique_cartes);
+  var dispo = (a.boutique_disposition === 'dessous' || a.boutique_disposition === 'centre') ? a.boutique_disposition : 'image';
+  var reseaux = liensReseaux(a), wa = reseaux.filter(function(r) { return r.k === 'whatsapp'; })[0];
+  var annonceHtml = (a.boutique_annonce && (!a.boutique_annonce_fin || String(a.boutique_annonce_fin) >= aujourdhuiLocal())) ? '<div class="annonce" role="status" style="color:' + (contraste(getComputedStyle(document.documentElement).getPropertyValue('--ac').trim().replace(/^(#[0-9a-f]{3})$/i, function(m){return '#' + m[1]+m[1]+m[2]+m[2]+m[3]+m[3];}) || '#B5502F', '#ffffff') >= 4.5 ? '#ffffff' : '#0f1115') + ';">' + escHtml(a.boutique_annonce) + '</div>' : '';
+  var blocReseaux = reseaux.length ? '<div class="reseaux">' + reseaux.map(function(r) { return '<a class="reseau" href="' + escHtml(r.href) + '" target="_blank" rel="noopener noreferrer" aria-label="' + r.nom + '" title="' + r.nom + '">' + svgReseau(r.k) + '</a>'; }).join('') + '</div>' : '';
+  var boutonWa = wa ? '<a class="btn-wa" href="' + escHtml(wa.href + '?text=' + encodeURIComponent(T('cat_whatsapp_msg'))) + '" target="_blank" rel="noopener noreferrer">' + svgReseau('whatsapp', 16) + ' ' + T('cat_whatsapp_question') + '</a>' : '';
   var urlBanniere = (a.boutique_banniere_url && /^https:\/\/[a-z0-9.-]+\.supabase\.co\/storage\//i.test(a.boutique_banniere_url)) ? a.boutique_banniere_url : null;
   photo = photo.replace('class="avatar"', 'class="avatar sur-banniere"').replace('<div class="avatar">', '<div class="avatar sur-banniere">');
   var lignesContact = '';
@@ -735,17 +808,20 @@ function render() {
     ? '<div class="wrap"><div class="bloc-infos">' + (texteLibre ? '<div class="info-colonne">' + '<div class="info-titre">' + T('cat_a_propos') + '</div>' + texteLibre + '</div>' : '') + (lignesContact ? '<div class="info-colonne"><div class="info-titre">' + T('cat_infos_pratiques') + '</div>' + lignesContact + '</div>' : '') + '</div></div>'
     : '';
 
-  var html =
+  var html = annonceHtml +
     '<div style="background:var(--inp);border-bottom:1px solid var(--brd);padding:8px 0;">' +
       '<div class="wrap"><a href="https://caralink.app/artisans/" style="font-size:12.5px;font-weight:600;color:var(--mu2);text-decoration:none;">← ' + T('cat_retour_annuaire') + '</a><a href="compte.html" style="float:right;font-size:12.5px;font-weight:600;color:var(--ac);text-decoration:none;">👤 ' + T('nav_compte_client') + '</a></div>' +
     '</div>' +
-    '<div class="hero' + (urlBanniere ? '' : ' sans-image') + '">' +
+    '<div class="hero disp-' + dispo + (urlBanniere ? '' : ' sans-image') + '">' +
       '<div class="bandeau-couv"' + (urlBanniere ? ' style="background-image:url(&quot;' + escHtml(urlBanniere) + '&quot;);" role="img" aria-label="' + escHtml(a.nom_entreprise) + '"' : '') + '></div>' +
       '<header class="avec-couv hero-entete"><div class="wrap header-inner">' + photo +
         '<div style="flex:1;">' +
           '<div class="boutique-nom">' + escHtml(a.nom_entreprise) + (a.verifie ? '<span class="badge-verifie">✅ ' + T('cat_verifie') + '</span>' : '') + '</div>' +
           (a.contact_adresse ? '' : '<div class="boutique-meta">📍 ' + escHtml(a.commune) + '</div>') +
+          (a.boutique_accroche ? '<div class="accroche">' + escHtml(a.boutique_accroche) + '</div>' : '') +
+          blocReseaux +
         '</div>' +
+        boutonWa +
         boutonPartage +
         selecteurLangue +
       '</div></header>' +

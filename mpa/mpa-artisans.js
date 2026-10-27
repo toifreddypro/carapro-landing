@@ -5100,6 +5100,7 @@ function afficherPersonnalisation() {
   dessinerCouleursBoutique();
   _fondChoisi = _artisan.boutique_fond || 'clair';
   dessinerFondsBoutique();
+  afficherStyleBoutique();
   var voir = document.getElementById('pers-voir');
   if (voir) { if (_artisan.slug_catalogue) voir.href = 'https://caralink.app/artisans/catalogue.html?s=' + encodeURIComponent(_artisan.slug_catalogue); else voir.style.display = 'none'; }
 }
@@ -5118,6 +5119,86 @@ function dessinerFondsBoutique() {
   }).join('');
 }
 function choisirFondBoutique(k) { _fondChoisi = k; dessinerFondsBoutique(); }
+// ── Style de la boutique : police, disposition, cartes, couleur libre, accroche, annonce, réseaux ──
+var _policeChoisie = null, _dispoChoisie = null, _cartesChoisies = null;
+var POLICES_BOUTIQUE = { '': ['Par défaut', 'Bricolage Grotesque'], classique: ['Classique', 'Playfair Display'], elegant: ['Élégante', 'Cormorant Garamond'], moderne: ['Moderne', 'Poppins'], manuscrit: ['Manuscrite', 'Caveat'], arrondi: ['Arrondie', 'Fredoka'] };
+var DISPOS_BOUTIQUE = { '': 'Nom sur l\'image', dessous: 'Nom sous l\'image', centre: 'Centré sous l\'image' };
+var CARTES_BOUTIQUE = { '': 'Arrondies', carre: 'Carrées', sobre: 'Sobres (sans ombre)' };
+function chargerPolicesApercu() {
+  if (document.getElementById('polices-apercu')) return;
+  var l = document.createElement('link'); l.id = 'polices-apercu'; l.rel = 'stylesheet';
+  l.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Cormorant+Garamond:wght@600&family=Poppins:wght@600&family=Caveat:wght@600&family=Fredoka:wght@500&display=swap';
+  document.head.appendChild(l);
+}
+function boutonsChoix(idZone, options, courant, fnChoix, styleLabel) {
+  var z = document.getElementById(idZone); if (!z) return;
+  z.innerHTML = Object.keys(options).map(function(k) {
+    var sel = (courant || '') === k, nom = typeof options[k] === 'string' ? options[k] : options[k][0], st = styleLabel ? styleLabel(k) : '';
+    return '<button type="button" onclick="' + fnChoix + '(\'' + k + '\')" aria-pressed="' + sel + '" style="padding:9px 16px;border-radius:9px;border:3px solid ' + (sel ? 'var(--ac)' : 'var(--brd)') + ';background:var(--bg);color:var(--tx);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;' + st + '">' + nom + '</button>';
+  }).join('');
+}
+function dessinerStyleBoutique() {
+  chargerPolicesApercu();
+  boutonsChoix('pers-polices', POLICES_BOUTIQUE, _policeChoisie, 'choisirPolice', function(k) { return "font-family:'" + POLICES_BOUTIQUE[k][1] + "',sans-serif;font-size:" + (k === 'manuscrit' ? 17 : 14) + 'px;'; });
+  boutonsChoix('pers-dispo', DISPOS_BOUTIQUE, _dispoChoisie, 'choisirDispo');
+  boutonsChoix('pers-cartes', CARTES_BOUTIQUE, _cartesChoisies, 'choisirCartes');
+}
+function choisirPolice(k) { _policeChoisie = k || null; dessinerStyleBoutique(); }
+function choisirDispo(k) { _dispoChoisie = k || null; dessinerStyleBoutique(); }
+function choisirCartes(k) { _cartesChoisies = k || null; dessinerStyleBoutique(); }
+function lumRel(hex) { var v = [1, 3, 5].map(function(i) { var x = parseInt(hex.substr(i, 2), 16) / 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; }
+function contrasteCouleurs(a, b) { var x = lumRel(a), y = lumRel(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+function majCouleurLibre() {
+  var on = document.getElementById('pers-libre-on').checked, v = document.getElementById('pers-libre').value, info = document.getElementById('pers-libre-info');
+  if (!on) { info.textContent = 'Vous gardez la couleur choisie dans la liste ci-dessus.'; return; }
+  info.textContent = contrasteCouleurs(v, '#ffffff') < 4.5 ? 'Cette couleur est un peu claire : elle sera légèrement assombrie dans la boutique pour que les boutons restent lisibles.' : 'Cette couleur sera utilisée pour les boutons et les accents de votre boutique.';
+}
+// L'artisan peut écrire un pseudo, un @pseudo ou coller l'adresse entière : on garde seulement l'identifiant.
+function nettoyerReseau(txt, domaine) {
+  var s = String(txt || '').trim();
+  if (!s) return '';
+  var i = s.toLowerCase().indexOf(domaine);
+  if (i >= 0) s = s.slice(i + domaine.length);
+  s = s.replace(/^\/+/, '').replace(/^@/, '').split(/[/?#]/)[0].replace(/\s+/g, '');
+  return s;
+}
+function nettoyerWhatsapp(txt) {
+  var d = String(txt || '').replace(/[^\d+]/g, '');
+  if (!d) return '';
+  if (d.charAt(0) === '+') return d.slice(1).replace(/\D/g, '');
+  d = d.replace(/\D/g, '');
+  if (d.indexOf('00') === 0) return d.slice(2);
+  if (/^0[67]\d{8}$/.test(d)) return (/^069[01]/.test(d) ? '590' : '33') + d.slice(1);
+  return d;
+}
+function afficherStyleBoutique() {
+  _policeChoisie = _artisan.boutique_police || null; _dispoChoisie = _artisan.boutique_disposition || null; _cartesChoisies = _artisan.boutique_cartes || null;
+  dessinerStyleBoutique();
+  document.getElementById('pers-libre-on').checked = !!_artisan.boutique_accent_libre;
+  if (_artisan.boutique_accent_libre) document.getElementById('pers-libre').value = _artisan.boutique_accent_libre;
+  majCouleurLibre();
+  document.getElementById('pers-accroche').value = _artisan.boutique_accroche || '';
+  document.getElementById('pers-accroche-cpt').textContent = (_artisan.boutique_accroche || '').length;
+  document.getElementById('pers-annonce').value = _artisan.boutique_annonce || '';
+  document.getElementById('pers-annonce-cpt').textContent = (_artisan.boutique_annonce || '').length;
+  document.getElementById('pers-annonce-fin').value = _artisan.boutique_annonce_fin || '';
+  document.getElementById('pers-instagram').value = _artisan.boutique_instagram || '';
+  document.getElementById('pers-facebook').value = _artisan.boutique_facebook || '';
+  document.getElementById('pers-tiktok').value = _artisan.boutique_tiktok || '';
+  document.getElementById('pers-whatsapp').value = _artisan.boutique_whatsapp ? '+' + _artisan.boutique_whatsapp : '';
+  majInfoWhatsapp();
+  if (!document.getElementById('pers-accroche')._lie) {
+    document.getElementById('pers-accroche')._lie = true;
+    document.getElementById('pers-accroche').addEventListener('input', function() { document.getElementById('pers-accroche-cpt').textContent = this.value.length; });
+    document.getElementById('pers-annonce').addEventListener('input', function() { document.getElementById('pers-annonce-cpt').textContent = this.value.length; });
+    document.getElementById('pers-whatsapp').addEventListener('input', majInfoWhatsapp);
+  }
+}
+function majInfoWhatsapp() {
+  var n = nettoyerWhatsapp(document.getElementById('pers-whatsapp').value), z = document.getElementById('pers-wa-info');
+  z.textContent = n ? (/^[0-9]{8,15}$/.test(n) ? 'Numéro utilisé pour WhatsApp : +' + n + ' (vérifiez qu\'il est correct).' : 'Ce numéro ne semble pas valide.') : '';
+}
+
 function choisirCouleurBoutique(k) { _accentChoisi = k; dessinerCouleursBoutique(); }
 
 // ── Image de fond : l'artisan choisit comment elle remplit le cadre 3:1, avec un aperçu identique au résultat ──
@@ -5249,7 +5330,22 @@ async function sauverPersonnalisation() {
   var texte = document.getElementById('pers-texte').value.trim();
   if (texte.length > 600) { alert('Le texte est limité à 600 caractères.'); return; }
   if (/https?:\/\/|www\./i.test(texte)) { alert('Les liens ne sont pas autorisés dans ce texte. Pour renvoyer vers votre site, renseignez-le dans « Mon profil ».'); return; }
+  var accroche = document.getElementById('pers-accroche').value.trim(), annonce = document.getElementById('pers-annonce').value.trim();
+  if (accroche.length > 90 || annonce.length > 140) { alert('L\'accroche est limitée à 90 caractères et l\'annonce à 140.'); return; }
+  if (/https?:|www\./i.test(accroche + ' ' + annonce)) { alert('Les liens ne sont pas autorisés dans l\'accroche ni dans l\'annonce.'); return; }
+  var insta = nettoyerReseau(document.getElementById('pers-instagram').value, 'instagram.com'), tik = nettoyerReseau(document.getElementById('pers-tiktok').value, 'tiktok.com'),
+      fb = nettoyerReseau(document.getElementById('pers-facebook').value, 'facebook.com'), wa = nettoyerWhatsapp(document.getElementById('pers-whatsapp').value);
+  if (insta && !/^[A-Za-z0-9._]{1,30}$/.test(insta)) { alert('Instagram : écrivez seulement votre nom d\'utilisateur (lettres, chiffres, point, tiret bas).'); return; }
+  if (tik && !/^[A-Za-z0-9._]{1,30}$/.test(tik)) { alert('TikTok : écrivez seulement votre nom d\'utilisateur (lettres, chiffres, point, tiret bas).'); return; }
+  if (fb && !/^[A-Za-z0-9.\-]{1,80}$/.test(fb)) { alert('Facebook : écrivez seulement le nom de votre page (lettres, chiffres, point, tiret).'); return; }
+  if (wa && !/^[0-9]{8,15}$/.test(wa)) { alert('WhatsApp : numéro non valide. Exemple : 0690 12 34 56, ou +590 690 12 34 56.'); return; }
+  var finAnn = document.getElementById('pers-annonce-fin').value || null;
+  var libre = document.getElementById('pers-libre-on').checked ? document.getElementById('pers-libre').value.toLowerCase() : null;
   var maj = {
+    boutique_police: _policeChoisie, boutique_disposition: _dispoChoisie, boutique_cartes: _cartesChoisies,
+    boutique_accroche: accroche || null, boutique_annonce: annonce || null, boutique_annonce_fin: annonce ? finAnn : null,
+    boutique_instagram: insta || null, boutique_facebook: fb || null, boutique_tiktok: tik || null, boutique_whatsapp: wa || null,
+    boutique_accent_libre: libre,
     boutique_texte: texte || null,
     boutique_accent: _accentChoisi && _accentChoisi !== 'terre' ? _accentChoisi : null,
     boutique_fond: _fondChoisi && _fondChoisi !== 'clair' ? _fondChoisi : null,
@@ -5263,6 +5359,7 @@ async function sauverPersonnalisation() {
   btn.disabled = false; btn.textContent = 'Enregistrer';
   if (error) { alert('Erreur : ' + error.message); return; }
   Object.keys(maj).forEach(function(k) { _artisan[k] = maj[k]; });
+  afficherStyleBoutique();
   document.getElementById('pers-statut').textContent = '✓ Boutique mise à jour : visible dès maintenant par vos clients.';
 }
 
