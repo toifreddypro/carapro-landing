@@ -35,6 +35,8 @@
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);line-height:1.5;padding-bottom:60px;}
   .wrap{max-width:1100px;margin:0 auto;padding:0 20px;}
+  /* Grand écran : la page respire sur toute la largeur au lieu d'une colonne étroite façon réseau social. */
+  @media(min-width:1200px){.wrap{max-width:1400px;padding:0 40px;}}
 
   /* En-tête boutique */
   /* En-tête sans grande barre pleine largeur : le nom et les langues se posent directement sous la bannière, alignés sur le reste de la page. */
@@ -42,16 +44,31 @@
   .header-inner{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
   .avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;flex-shrink:0;background:rgba(181,80,47,.1);color:var(--ac);display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:700;}
   /* Personnalisation : image de fond façon Facebook, logo qui la chevauche, infos pratiques */
-  .banniere-wrap{padding-top:16px;} .bandeau-couv{aspect-ratio:3/1;width:100%;background-color:var(--b2);background-size:cover;background-position:center;border-radius:14px;}
+  .hero{position:relative;}
+  .hero .bandeau-couv{width:100%;aspect-ratio:3/1;max-height:460px;min-height:130px;background-color:var(--b2);background-size:cover;background-position:center;border-radius:0;}
+  .hero.sans-image .bandeau-couv{background-image:linear-gradient(135deg,var(--ac),#13223c);aspect-ratio:auto;height:150px;}
+  @media(min-width:701px){.hero.sans-image .bandeau-couv{height:250px;}}
   header.avec-couv{padding-top:0;}
   header.avec-couv .header-inner{align-items:flex-end;}
   .avatar.sur-banniere{width:88px;height:88px;margin-top:-44px;border:4px solid var(--panel);box-shadow:0 2px 10px rgba(0,0,0,.12);}
-  .bloc-infos{display:flex;gap:28px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--brd);border-radius:14px;padding:18px 22px;margin-bottom:22px;}
+  /* Écran large : le nom, le logo, Partager et les langues se posent sur l'image, avec un voile sombre pour rester lisibles quelle que soit la photo. */
+  @media(min-width:701px){
+    .hero .bandeau-couv{min-height:230px;}
+    .hero-entete{position:absolute;left:0;right:0;bottom:0;margin:0;padding:80px 0 24px;background:linear-gradient(to top,rgba(10,16,28,.8),rgba(10,16,28,0));color:#fff;}
+    .hero-entete .avatar.sur-banniere{width:96px;height:96px;margin-top:0;border:4px solid #fff;background:#fff;}
+    .hero-entete .boutique-nom{font-size:clamp(28px,3.4vw,44px);color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.4);}
+    .hero-entete .boutique-meta{color:rgba(255,255,255,.9);}
+    .hero-entete .badge-verifie{background:rgba(255,255,255,.95);color:#047857;}
+    .hero-entete .btn-partage{border-color:rgba(255,255,255,.75)!important;color:#fff!important;background:rgba(255,255,255,.14)!important;}
+    .hero-entete .btn-langue{border-color:rgba(255,255,255,.6)!important;color:#fff!important;background:transparent!important;}
+    .hero-entete .btn-langue.actif{background:#fff!important;color:#13223c!important;border-color:#fff!important;}
+  }
+  .bloc-infos{display:flex;gap:28px;flex-wrap:wrap;background:var(--panel);border:1px solid transparent;box-shadow:0 2px 12px rgba(19,34,60,.07);border-radius:16px;padding:22px 26px;margin:22px 0 10px;}
   .info-colonne{flex:1;min-width:230px;}
   .info-titre{font-size:11.5px;font-weight:700;color:var(--mu2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px;}
   .info-texte{white-space:pre-line;font-size:14px;line-height:1.6;color:var(--tx);overflow-wrap:anywhere;}
   .info-ligne{font-size:14px;margin-bottom:5px;overflow-wrap:anywhere;} .info-ligne a{color:var(--tx);text-decoration:none;font-weight:500;} .info-ligne a:hover{color:var(--ac);text-decoration:underline;}
-  @media(max-width:600px){.bandeau-couv{border-radius:10px;} .avatar.sur-banniere{width:72px;height:72px;margin-top:-36px;}}
+  @media(max-width:600px){.avatar.sur-banniere{width:72px;height:72px;margin-top:-36px;}}
   .boutique-nom{font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   .boutique-meta{font-size:13.5px;color:var(--mu);margin-top:3px;}
   .badge-verifie{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(5,150,105,.1);color:var(--ok);}
@@ -59,9 +76,10 @@
   .promo-bandeau{background:rgba(181,80,47,.08);border:1px dashed var(--ac);border-radius:12px;padding:12px 18px;margin-top:18px;display:flex;align-items:center;gap:10px;font-size:14px;}
   .promo-code{font-family:'JetBrains Mono',monospace;font-weight:700;background:var(--panel);border:1px solid var(--ac);border-radius:7px;padding:3px 10px;color:var(--ac);letter-spacing:.03em;}
 
-  h2.section-titre{font-family:'Bricolage Grotesque',sans-serif;font-size:19px;font-weight:700;margin:32px 0 16px;}
+  h2.section-titre{font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:800;margin:44px 0 20px;}
 
   .grille{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+  @media(min-width:1150px){.grille{grid-template-columns:repeat(4,1fr);gap:26px;}}
   @media(max-width:760px){.grille{grid-template-columns:repeat(2,1fr);}}
   @media(max-width:480px){.grille{grid-template-columns:1fr;}}
 
@@ -90,7 +108,8 @@
   .btn-vue:first-child{border-radius:8px 0 0 8px;} .btn-vue:last-child{border-radius:0 8px 8px 0;} .btn-vue + .btn-vue{border-left:none;}
   .btn-vue.actif{background:var(--ac);border-color:var(--ac);color:#fff;}
 
-  .carte-produit{background:var(--panel);border:1px solid var(--brd);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;}
+  .carte-produit{background:var(--panel);border:1px solid transparent;box-shadow:0 2px 12px rgba(19,34,60,.08);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;}
+  :root.fond-sombre .carte-produit,:root.fond-motif .carte-produit,:root.fond-sombre .bloc-infos,:root.fond-motif .bloc-infos{border-color:var(--brd);box-shadow:none;}
   .photo-wrap{position:relative;aspect-ratio:1;background:var(--inp);overflow:hidden;min-height:0;flex-shrink:0;}
   .photo-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
   .photo-vide{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;}
@@ -689,11 +708,11 @@ function render() {
     '<div style="display:flex;gap:6px;">' +
       ['fr', 'en', 'es'].map(function(code) {
         var actif = AT_LANG === code;
-        return '<button onclick="changerLangueCatalogue(' + jsAttr(code) + ')" style="padding:4px 9px;border-radius:6px;border:1px solid ' + (actif ? 'var(--ac)' : 'var(--brd)') + ';background:' + (actif ? 'var(--ac)' : 'transparent') + ';color:' + (actif ? '#fff' : 'var(--mu)') + ';font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;">' + code + '</button>';
+        return '<button class="btn-langue' + (actif ? ' actif' : '') + '" onclick="changerLangueCatalogue(' + jsAttr(code) + ')" style="padding:4px 9px;border-radius:6px;border:1px solid ' + (actif ? 'var(--ac)' : 'var(--brd)') + ';background:' + (actif ? 'var(--ac)' : 'transparent') + ';color:' + (actif ? '#fff' : 'var(--mu)') + ';font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;">' + code + '</button>';
       }).join('') +
     '</div>';
 
-  var boutonPartage = '<button type="button" onclick="partagerBoutique()" aria-label="' + escHtml(T('partage_titre_boutique')) + '" style="padding:6px 13px;border-radius:20px;border:1px solid var(--brd);background:transparent;color:var(--mu2);font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;white-space:nowrap;">🔗 ' + T('partage_bouton') + '</button>';
+  var boutonPartage = '<button type="button" class="btn-partage" onclick="partagerBoutique()" aria-label="' + escHtml(T('partage_titre_boutique')) + '" style="padding:6px 13px;border-radius:20px;border:1px solid var(--brd);background:transparent;color:var(--mu2);font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;white-space:nowrap;">🔗 ' + T('partage_bouton') + '</button>';
 
   // ── Personnalisation de l'artisan : couleur d'accent, image de fond, coordonnées et texte choisis par lui ──
   var COULEURS = { terre: '#B5502F', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
@@ -706,8 +725,7 @@ function render() {
     document.documentElement.style.setProperty('--ac2', COULEURS[a.boutique_accent]);
   }
   var urlBanniere = (a.boutique_banniere_url && /^https:\/\/[a-z0-9.-]+\.supabase\.co\/storage\//i.test(a.boutique_banniere_url)) ? a.boutique_banniere_url : null;
-  var banniere = urlBanniere ? '<div class="wrap banniere-wrap"><div class="bandeau-couv" style="background-image:url(&quot;' + escHtml(urlBanniere) + '&quot;);" role="img" aria-label="' + escHtml(a.nom_entreprise) + '"></div></div>' : '';
-  if (urlBanniere) photo = photo.replace('class="avatar"', 'class="avatar sur-banniere"').replace('<div class="avatar">', '<div class="avatar sur-banniere">');
+  photo = photo.replace('class="avatar"', 'class="avatar sur-banniere"').replace('<div class="avatar">', '<div class="avatar sur-banniere">');
   var lignesContact = '';
   if (a.contact_adresse) lignesContact += '<div class="info-ligne">📍 <a href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(a.contact_adresse) + '" target="_blank" rel="noopener">' + escHtml(a.contact_adresse) + '</a></div>';
   if (a.contact_telephone) lignesContact += '<div class="info-ligne">📞 <a href="tel:' + escHtml(String(a.contact_telephone).replace(/[^+\d]/g, '')) + '">' + escHtml(a.contact_telephone) + '</a></div>';
@@ -721,18 +739,19 @@ function render() {
     '<div style="background:var(--inp);border-bottom:1px solid var(--brd);padding:8px 0;">' +
       '<div class="wrap"><a href="https://caralink.app/artisans/" style="font-size:12.5px;font-weight:600;color:var(--mu2);text-decoration:none;">← ' + T('cat_retour_annuaire') + '</a><a href="compte.html" style="float:right;font-size:12.5px;font-weight:600;color:var(--ac);text-decoration:none;">👤 ' + T('nav_compte_client') + '</a></div>' +
     '</div>' +
-    banniere +
-    '<header' + (urlBanniere ? ' class="avec-couv"' : '') + '><div class="wrap header-inner">' + photo +
-      '<div style="flex:1;">' +
-        '<div class="boutique-nom">' + escHtml(a.nom_entreprise) + (a.verifie ? '<span class="badge-verifie">✅ ' + T('cat_verifie') + '</span>' : '') + '</div>' +
-        (a.contact_adresse ? '' : '<div class="boutique-meta">📍 ' + escHtml(a.commune) + '</div>') +
-      '</div>' +
-      boutonPartage +
-      selecteurLangue +
+    '<div class="hero' + (urlBanniere ? '' : ' sans-image') + '">' +
+      '<div class="bandeau-couv"' + (urlBanniere ? ' style="background-image:url(&quot;' + escHtml(urlBanniere) + '&quot;);" role="img" aria-label="' + escHtml(a.nom_entreprise) + '"' : '') + '></div>' +
+      '<header class="avec-couv hero-entete"><div class="wrap header-inner">' + photo +
+        '<div style="flex:1;">' +
+          '<div class="boutique-nom">' + escHtml(a.nom_entreprise) + (a.verifie ? '<span class="badge-verifie">✅ ' + T('cat_verifie') + '</span>' : '') + '</div>' +
+          (a.contact_adresse ? '' : '<div class="boutique-meta">📍 ' + escHtml(a.commune) + '</div>') +
+        '</div>' +
+        boutonPartage +
+        selecteurLangue +
+      '</div></header>' +
     '</div>' +
     (a.code_promo ? '<div class="wrap"><div class="promo-bandeau">🎁 ' + T('cat_code_promo') + ' <span class="promo-code">' + escHtml(a.code_promo) + '</span>' + (a.code_promo_pct ? ' <strong>−' + escHtml(String(a.code_promo_pct)) + ' %</strong> <span style="font-size:12px;color:var(--mu);">' + T('cat_promo_sur') + '</span>' : '') + '</div></div>' : '') +
     (a.cashback_pct ? '<div class="wrap"><div class="promo-bandeau">🎁 ' + T('cat_cashback_bandeau').replace('{p}', String(a.cashback_pct).replace('.', ',')) + '</div></div>' : '') +
-    '</header>' +
     blocInfos +
     '<div class="wrap">';
 
