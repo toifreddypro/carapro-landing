@@ -30,6 +30,9 @@ module.exports = async function handler(req, res) {
   const slug = String((req.query && req.query.s) || "");
   const slugOk = /^[A-Za-z0-9_-]{1,100}$/.test(slug);
   const cible = slugOk ? SITE + "/artisans/catalogue.html?s=" + encodeURIComponent(slug) : SITE + "/artisans/";
+  // Adresse de CETTE page de partage : c'est elle (et non la boutique) qu'on déclare comme adresse officielle (og:url / canonical).
+  // Sinon Facebook et WhatsApp vont relire la page de la boutique, qui n'a pas de balises d'aperçu, et n'affichent rien.
+  const adressePartage = slugOk ? SITE + "/api/b?s=" + encodeURIComponent(slug) : SITE + "/artisans/";
 
   // Valeurs par défaut (boutique introuvable, fermée, ou lecture impossible) : le lien marche quand même.
   let titre = "Boutique — CaraLink Artisans";
@@ -67,20 +70,20 @@ module.exports = async function handler(req, res) {
     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" +
     "<title>" + esc(titre) + "</title>" +
     "<meta name=\"description\" content=\"" + esc(description) + "\">" +
-    "<link rel=\"canonical\" href=\"" + esc(cible) + "\">" +
+    "<link rel=\"canonical\" href=\"" + esc(adressePartage) + "\">" +
     "<meta property=\"og:type\" content=\"website\">" +
     "<meta property=\"og:site_name\" content=\"CaraLink Artisans\">" +
     "<meta property=\"og:locale\" content=\"fr_FR\">" +
     "<meta property=\"og:title\" content=\"" + esc(titre) + "\">" +
     "<meta property=\"og:description\" content=\"" + esc(description) + "\">" +
-    "<meta property=\"og:url\" content=\"" + esc(cible) + "\">" +
+    "<meta property=\"og:url\" content=\"" + esc(adressePartage) + "\">" +
     (image ? "<meta property=\"og:image\" content=\"" + esc(image) + "\">" : "") +
     "<meta name=\"twitter:card\" content=\"" + (image ? "summary_large_image" : "summary") + "\">" +
     "<meta name=\"twitter:title\" content=\"" + esc(titre) + "\">" +
     "<meta name=\"twitter:description\" content=\"" + esc(description) + "\">" +
     (image ? "<meta name=\"twitter:image\" content=\"" + esc(image) + "\">" : "") +
-    // Visiteur normal : redirection immédiate. (Les robots de partage ne suivent pas ceci et lisent les balises ci-dessus.)
-    "<meta http-equiv=\"refresh\" content=\"0;url=" + esc(cible) + "\">" +
+    // Visiteur normal : redirection immédiate par script. Volontairement PAS de « meta refresh » : Facebook et WhatsApp le suivent
+    // et iraient lire la boutique à la place de cette page (donc aucun aperçu). Les robots n'exécutent pas de script.
     "<script>location.replace(" + JSON.stringify(cible).replace(/</g, "\\u003c") + ");</script>" +
     "</head><body style=\"font-family:sans-serif;padding:24px;\"><p><a href=\"" + esc(cible) + "\">Ouvrir la boutique</a></p></body></html>";
 
