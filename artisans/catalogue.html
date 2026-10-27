@@ -97,6 +97,8 @@
   .promo-code{font-family:'JetBrains Mono',monospace;font-weight:700;background:var(--panel);border:1px solid var(--ac);border-radius:7px;padding:3px 10px;color:var(--ac);letter-spacing:.03em;}
 
   h2.section-titre{font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:800;margin:44px 0 20px;}
+  /* Sur un fond photo, le titre de section est posé sur une pastille pleine : toujours lisible, quelle que soit la partie de l'image derrière. */
+  :root.fond-plage h2.section-titre,:root.fond-sable h2.section-titre,:root.fond-motif h2.section-titre{display:inline-block;background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:6px 18px;}
 
   .grille{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
   @media(min-width:1150px){.grille{grid-template-columns:repeat(4,1fr);gap:26px;}}
@@ -133,6 +135,29 @@
   .photo-wrap{position:relative;aspect-ratio:1;background:var(--inp);overflow:hidden;min-height:0;flex-shrink:0;}
   .photo-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
   .photo-vide{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;}
+  /* Photo cliquable : ouvre la galerie (plusieurs photos, zoom). */
+  .photo-wrap.cliquable{cursor:zoom-in;}
+  .photo-wrap.cliquable:focus-visible{outline:3px solid var(--ac);outline-offset:-3px;}
+  .badge-photos{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.62);color:#fff;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:20px;pointer-events:none;}
+  .galerie{position:fixed;inset:0;z-index:10030;background:rgba(8,10,14,.97);display:flex;flex-direction:column;color:#fff;font-family:'Outfit',sans-serif;}
+  .galerie-haut{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;}
+  .galerie-titre{font-weight:700;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .galerie-btn{background:rgba(255,255,255,.14);border:none;color:#fff;border-radius:50%;width:42px;height:42px;font-size:20px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+  .galerie-btn:hover{background:rgba(255,255,255,.28);}
+  .galerie-btn:focus-visible,.galerie-mini:focus-visible{outline:3px solid #fff;outline-offset:2px;}
+  .galerie-scene{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;}
+  .galerie-vue{position:absolute;inset:0;overflow:auto;display:flex;touch-action:pan-x pan-y pinch-zoom;}
+  .galerie-vue img{margin:auto;max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-in;display:block;}
+  .galerie-vue.zoom img{max-width:none;max-height:none;width:220%;cursor:zoom-out;margin:0;}
+  .galerie-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;}
+  .galerie-nav.prec{left:10px;}.galerie-nav.suiv{right:10px;}
+  .galerie-bas{padding:10px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+  .galerie-minis{display:flex;gap:8px;overflow-x:auto;max-width:100%;padding:2px;}
+  .galerie-mini{width:56px;height:56px;border-radius:8px;border:2px solid transparent;padding:0;background:none;cursor:pointer;opacity:.6;flex-shrink:0;overflow:hidden;}
+  .galerie-mini img{width:100%;height:100%;object-fit:cover;display:block;}
+  .galerie-mini.actif{border-color:#fff;opacity:1;}
+  .galerie-infos{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center;font-size:14px;}
+  .galerie-infos .btn-commander{width:auto;margin:0;padding:9px 20px;}
   /* Pastilles : sur une bande AU-DESSUS de la photo, jamais dessus (la photo reste entière). */
   .bandeau-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:34px;padding:6px 10px;border-bottom:1px solid var(--brd);}
   .badge-remise,.badge-phare,.badge-nouveaute{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;color:#fff;white-space:nowrap;}
@@ -320,14 +345,23 @@ async function appliquerCodePromo() {
   if (!saisi) return;
   msg.style.color = 'var(--mu)'; msg.textContent = '…';
   try {
+    // Un code promo demande un compte client connecté (une seule utilisation par client) : sans lui, on le dit tout de suite, avec le lien pour se connecter.
+    var jeton = await jetonClient();
+    if (!jeton) { msg.style.color = '#b91c1c'; msg.innerHTML = escHtml(T('cat_promo_connexion')) + ' <a href="compte.html" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">' + escHtml(T('cat_promo_connexion_lien')) + '</a>'; return; }
     // Le code peut être « secret » (non affiché sur la boutique) : c'est le serveur qui dit s'il est valable.
     var res = await fetch(SUPABASE_URL + '/functions/v1/verifier-code-promo', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
-      body: JSON.stringify({ artisan_id: DATA.artisan.id, code: saisi }),
+      body: JSON.stringify({ artisan_id: DATA.artisan.id, code: saisi, access_token: jeton }),
     });
     var data = await res.json();
     msg.style.color = '#b91c1c';
-    if (data.error) { msg.textContent = data.error === 'code_invalide' ? T('cat_promo_invalide') : data.error; return; }
+    if (data.error) {
+      msg.textContent = data.error === 'code_invalide' ? T('cat_promo_invalide')
+        : data.error === 'code_deja_utilise' ? T('cat_promo_deja')
+        : data.error === 'connexion_requise' ? T('cat_promo_connexion')
+        : data.error;
+      return;
+    }
     if (!PANIER.some(function(l) { return !ligneRemisee(l); })) { msg.textContent = T('cat_promo_aucun'); return; }
     PROMO = { code: data.code, pct: Number(data.pct) };
     renderPanier();
@@ -706,8 +740,12 @@ function carteProduit(p) {
       '<span class="prix-actuel">' + (promo != null ? promo : p.prix) + ' €</span>' +
       (promo != null ? '<span class="prix-barre">' + p.prix + ' €</span>' : '') +
     '</div>';
+  var nbPhotos = p.url_photo ? 1 + ((p.photos_sup || []).length) : 0;
+  var photoWrap = p.url_photo
+    ? '<div class="photo-wrap cliquable" role="button" tabindex="0" aria-label="' + escHtml(T('cat_galerie_zoom')) + ' — ' + escHtml(p.nom) + '" onclick="ouvrirGalerie(' + jsAttr(p.id) + ')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();ouvrirGalerie(' + jsAttr(p.id) + ');}">' + photo + (nbPhotos > 1 ? '<span class="badge-photos" aria-hidden="true">📷 ' + nbPhotos + '</span>' : '') + '</div>'
+    : '<div class="photo-wrap">' + photo + '</div>';
   return '<div class="carte-produit">' + bandeauBadges +
-    '<div class="photo-wrap">' + photo + '</div>' +
+    photoWrap +
     '<div class="carte-corps">' +
       '<div class="produit-nom">' + escHtml(p.nom) + '</div>' +
       (p.description ? '<div class="produit-desc">' + escHtml(p.description) + '</div>' : '') +
@@ -716,6 +754,97 @@ function carteProduit(p) {
       '<button class="btn-commander" onclick="ajouterAuPanier(' + jsAttr(p.id) + ')" id="btn-add-' + escHtml(p.id) + '">' + T('cat_ajouter_panier') + '</button>' +
     '</div>' +
   '</div>';
+}
+
+// ── Galerie d'un produit : toutes les photos, flèches / miniatures / glissement, zoom au clic. Les adresses viennent du serveur (stockage CaraLink). ──
+var _gal = null; // { p, photos, i, retour }
+function photosProduit(p) {
+  var l = []; if (p.url_photo) l.push(p.url_photo);
+  (p.photos_sup || []).forEach(function(u) { if (typeof u === 'string' && /^https:\/\//.test(u)) l.push(u); });
+  return l;
+}
+function ouvrirGalerie(id) {
+  var p = (DATA.produits || []).find(function(x) { return x.id === id; });
+  if (!p) return;
+  var photos = photosProduit(p); if (!photos.length) return;
+  fermerGalerie();
+  _gal = { p: p, photos: photos, i: 0, retour: document.activeElement };
+  var div = document.createElement('div');
+  div.className = 'galerie'; div.id = 'galerie'; div.setAttribute('role', 'dialog'); div.setAttribute('aria-modal', 'true'); div.setAttribute('aria-label', p.nom || '');
+  div.innerHTML =
+    '<div class="galerie-haut"><div class="galerie-titre" id="galerie-titre"></div>' +
+      '<button type="button" class="galerie-btn" id="galerie-fermer" aria-label="' + escHtml(T('cat_galerie_fermer')) + '">✕</button></div>' +
+    '<div class="galerie-scene">' +
+      '<button type="button" class="galerie-btn galerie-nav prec" id="galerie-prec" aria-label="' + escHtml(T('cat_galerie_prec')) + '">‹</button>' +
+      '<div class="galerie-vue" id="galerie-vue"><img id="galerie-img" alt=""></div>' +
+      '<button type="button" class="galerie-btn galerie-nav suiv" id="galerie-suiv" aria-label="' + escHtml(T('cat_galerie_suiv')) + '">›</button>' +
+    '</div>' +
+    '<div class="galerie-bas"><div class="galerie-minis" id="galerie-minis"></div><div class="galerie-infos" id="galerie-infos"></div></div>';
+  document.body.appendChild(div);
+  document.body.style.overflow = 'hidden';
+  document.getElementById('galerie-titre').textContent = p.nom || '';
+  var minis = document.getElementById('galerie-minis');
+  photos.forEach(function(u, k) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'galerie-mini'; b.setAttribute('aria-label', T('cat_galerie_photo').replace('{n}', k + 1).replace('{t}', photos.length));
+    var im = document.createElement('img'); im.src = u; im.alt = ''; im.loading = 'lazy'; b.appendChild(im);
+    b.addEventListener('click', function() { galerieVers(k); }); minis.appendChild(b);
+  });
+  if (photos.length < 2) { minis.style.display = 'none'; document.getElementById('galerie-prec').style.display = 'none'; document.getElementById('galerie-suiv').style.display = 'none'; }
+  // Infos + bouton panier (le prix reste celui du serveur à la commande : ici c'est seulement l'affichage)
+  var infos = document.getElementById('galerie-infos');
+  if (p.prix != null) {
+    var prix = p.promo_pct ? Math.round(p.prix * (1 - p.promo_pct / 100) * 100) / 100 : p.prix;
+    var sp = document.createElement('strong'); sp.textContent = prix + ' €'; infos.appendChild(sp);
+  }
+  var add = document.createElement('button'); add.type = 'button'; add.className = 'btn-commander'; add.textContent = T('cat_ajouter_panier');
+  add.addEventListener('click', function() { ajouterAuPanier(p.id); add.textContent = '✓ ' + T('cat_ajouter_panier'); setTimeout(function() { add.textContent = T('cat_ajouter_panier'); }, 1200); });
+  infos.appendChild(add);
+  // Zoom : un clic agrandit (l'image devient défilable, donc déplaçable au doigt), un second clic revient.
+  var vue = document.getElementById('galerie-vue'), img = document.getElementById('galerie-img');
+  img.addEventListener('click', function(e) {
+    if (vue.classList.contains('zoom')) { vue.classList.remove('zoom'); return; }
+    var r = img.getBoundingClientRect(), fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height;
+    vue.classList.add('zoom');
+    var w = img.getBoundingClientRect();
+    vue.scrollLeft = Math.max(0, fx * w.width - vue.clientWidth / 2); vue.scrollTop = Math.max(0, fy * w.height - vue.clientHeight / 2);
+  });
+  // Glissement gauche / droite (téléphone), seulement quand l'image n'est pas zoomée
+  var x0 = null;
+  vue.addEventListener('touchstart', function(e) { x0 = (e.touches.length === 1 && !vue.classList.contains('zoom')) ? e.touches[0].clientX : null; }, { passive: true });
+  vue.addEventListener('touchend', function(e) { if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 50) galerieVers(_gal.i + (dx < 0 ? 1 : -1)); }, { passive: true });
+  document.getElementById('galerie-fermer').addEventListener('click', fermerGalerie);
+  document.getElementById('galerie-prec').addEventListener('click', function() { galerieVers(_gal.i - 1); });
+  document.getElementById('galerie-suiv').addEventListener('click', function() { galerieVers(_gal.i + 1); });
+  div.addEventListener('click', function(e) { if (e.target === div || e.target.id === 'galerie-vue') fermerGalerie(); });
+  document.addEventListener('keydown', galerieClavier);
+  galerieVers(0);
+  document.getElementById('galerie-fermer').focus();
+}
+function galerieVers(k) {
+  if (!_gal) return;
+  var n = _gal.photos.length; _gal.i = ((k % n) + n) % n;
+  var img = document.getElementById('galerie-img'), vue = document.getElementById('galerie-vue');
+  vue.classList.remove('zoom'); img.src = _gal.photos[_gal.i]; img.alt = (_gal.p.nom || '') + ' — ' + T('cat_galerie_photo').replace('{n}', _gal.i + 1).replace('{t}', n);
+  Array.prototype.forEach.call(document.querySelectorAll('#galerie-minis .galerie-mini'), function(b, j) { b.classList.toggle('actif', j === _gal.i); b.setAttribute('aria-current', j === _gal.i ? 'true' : 'false'); });
+}
+function galerieClavier(e) {
+  if (!_gal) return;
+  if (e.key === 'Escape') { e.preventDefault(); fermerGalerie(); }
+  else if (e.key === 'ArrowLeft') galerieVers(_gal.i - 1);
+  else if (e.key === 'ArrowRight') galerieVers(_gal.i + 1);
+  else if (e.key === 'Tab') { // le focus reste dans la galerie
+    var el = Array.prototype.slice.call(document.querySelectorAll('#galerie button')).filter(function(b) { return b.offsetParent !== null; });
+    if (!el.length) return; var prem = el[0], der = el[el.length - 1];
+    if (e.shiftKey && document.activeElement === prem) { e.preventDefault(); der.focus(); }
+    else if (!e.shiftKey && document.activeElement === der) { e.preventDefault(); prem.focus(); }
+  }
+}
+function fermerGalerie() {
+  var d = document.getElementById('galerie'); if (d) d.remove();
+  document.removeEventListener('keydown', galerieClavier);
+  document.body.style.overflow = '';
+  if (_gal && _gal.retour && _gal.retour.focus) { try { _gal.retour.focus(); } catch (e) {} }
+  _gal = null;
 }
 
 // ── Style de la boutique : tout ce que l'artisan a choisi est revérifié ici (liste fermée, caractères sûrs), jamais pris tel quel ──
@@ -939,7 +1068,8 @@ function changerLangueCatalogue(code) {
 }
 
 // ── Partager la boutique : menu de partage du téléphone, sinon une petite fenêtre (copier le lien, WhatsApp, Facebook, email) ──
-function urlBoutiquePartage() { return location.origin + location.pathname + '?s=' + encodeURIComponent(new URLSearchParams(location.search).get('s') || ''); }
+// Le lien partagé passe par /api/b : WhatsApp et Facebook y trouvent le nom, la bannière et l'accroche de la boutique (aperçu), puis le visiteur est envoyé ici.
+function urlBoutiquePartage() { return location.origin + '/api/b?s=' + encodeURIComponent(new URLSearchParams(location.search).get('s') || ''); }
 async function partagerBoutique() {
   if (!DATA || !DATA.artisan) return;
   var nom = DATA.artisan.nom_entreprise, url = urlBoutiquePartage(), texte = T('partage_boutique_1') + nom + T('partage_texte_2');

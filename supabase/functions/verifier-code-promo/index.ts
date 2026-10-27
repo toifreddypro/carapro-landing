@@ -6,7 +6,10 @@
 // « secret » (non affiché sur CaraLink : code partenaire, vidéo, affiche…), donc le navigateur ne peut pas le comparer lui-même.
 // La remise réellement appliquée est recalculée par soumettre-commande-panier au moment de la commande : ceci n'est qu'un aperçu.
 //
-// POST { artisan_id, code }  →  { ok: true, code, pct }   ou   { error: "code_invalide" } (même réponse pour un code faux, expiré ou d'un artisan non Pro)
+// POST { artisan_id, code, access_token }  →  { ok: true, code, pct }
+//   ou { error: "code_invalide" } (même réponse pour un code faux, expiré ou d'un artisan non Pro)
+//   ou { error: "connexion_requise" } (pas de compte client connecté : le code n'est même pas regardé)
+//   ou { error: "code_deja_utilise" } (une seule utilisation par client et par boutique)
 // Limite : 15 essais / 10 minutes par visiteur et par boutique (on ne peut pas deviner un code par essais répétés).
 // À déployer avec --no-verify-jwt (appelée par le navigateur du client).
 // ════════════════════════════════════════════════════════════════
@@ -56,10 +59,26 @@ Deno.serve(async (req: Request) => {
     const ip = (req.headers.get("x-forwarded-for") || "inconnue").split(",")[0].trim();
     if (await limiteAtteinte(sb, `code-promo:${artisanId}:${ip}`, 15, 600)) return json({ error: "Trop d'essais. Réessayez dans quelques minutes." }, 429);
 
+    // Un code promo n'est utilisable qu'avec un COMPTE CLIENT connecté (règle du 23/10 : une seule utilisation par client).
+    // Contrôlé AVANT de regarder le code : sans compte, la réponse est toujours la même, qu'il soit bon ou faux
+    // (sinon un visiteur pourrait deviner un code secret en voyant la réponse changer).
+    let clientId: string | null = null;
+    if (typeof body.access_token === "string" && body.access_token.length > 20 && body.access_token.length < 4000) {
+      try {
+        const { data: ud } = await sb.auth.getUser(body.access_token);
+        if (ud?.user?.id) clientId = ud.user.id;
+      } catch (_) { /* jeton invalide : traité comme « pas connecté » */ }
+    }
+    if (!clientId) return json({ error: "connexion_requise" }, 401);
+
     const { data: a } = await sb.from("artisans")
       .select("plan, code_promo, code_promo_pct, code_promo_fin, stripe_connect_statut, boutique_en_pause, actif").eq("id", artisanId).maybeSingle();
     if (!a || a.actif === false || a.stripe_connect_statut !== "actif" || a.boutique_en_pause === true) return json({ error: "code_invalide" }, 422);
     if (!codePromoValide(a, a.plan) || String(a.code_promo).trim().toLowerCase() !== saisi.toLowerCase()) return json({ error: "code_invalide" }, 422);
+    // Une seule utilisation par client et par boutique (une commande payée avec un code, non remboursée en totalité).
+    const { data: dejaUtilise, error: errUtilise } = await sb.rpc("code_promo_deja_utilise", { p_user: clientId, p_artisan: artisanId });
+    if (errUtilise) throw errUtilise;
+    if (dejaUtilise === true) return json({ error: "code_deja_utilise" }, 422);
     return json({ ok: true, code: String(a.code_promo).trim(), pct: Number(a.code_promo_pct) });
   } catch (e) {
     console.error("[verifier-code-promo]", e);

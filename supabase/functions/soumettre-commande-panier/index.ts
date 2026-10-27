@@ -244,6 +244,15 @@ Deno.serve(async (req: Request) => {
       if (!(articles as any[]).some((a) => !a.promo_pct)) {
         return json({ error: "Ce code ne s'applique pas aux produits déjà en remise de votre panier." }, 422);
       }
+      // Règle du 23/10 : un code promo n'est utilisable qu'avec un compte client connecté, et une seule fois par client et par boutique.
+      if (!clientUser) {
+        return json({ error: "Pour utiliser un code promo, connectez-vous à votre compte client." }, 401);
+      }
+      const { data: dejaUtilise, error: errUtilise } = await sb.rpc("code_promo_deja_utilise", { p_user: clientUser.id, p_artisan: artisan_id });
+      if (errUtilise) throw errUtilise;
+      if (dejaUtilise === true) {
+        return json({ error: "Vous avez déjà utilisé le code promo de cette boutique : il n'est valable qu'une fois par client." }, 422);
+      }
       pctCode = Number((artisan as any).code_promo_pct);
       codeApplique = String((artisan as any).code_promo).trim();
     }

@@ -4028,7 +4028,7 @@ var BESOINS_ALTERNANCE = [
   { code: 'commercial', phrase: 'Un artisan a aussi besoin de prospecter.', metier: 'Il vous faut un commercial.' },
   { code: 'communication', phrase: 'Un artisan a aussi besoin de se faire connaître.', metier: 'Il vous faut de la communication.' },
   { code: 'administratif', phrase: 'Un artisan a aussi besoin de gérer sa paperasse.', metier: 'Il vous faut un assistant administratif.' },
-  { code: 'comptable', phrase: 'Un artisan a aussi besoin de chiffrer.', metier: 'Il vous faut un comptable.' },
+  { code: 'comptable', phrase: 'Un artisan a aussi besoin de chiffrer.', metier: 'Il vous faut un gestionnaire comptable.' },
 ];
 var _indexBesoinAlternance = 0;
 var _timerBesoinAlternance = null;
@@ -4784,7 +4784,8 @@ async function chargerCatalogue() {
     if (!errSlug) _artisan.slug_catalogue = slug;
   }
   var champLien = document.getElementById('boutique-lien');
-  if (champLien) champLien.value = _artisan.slug_catalogue ? 'https://caralink.app/artisans/catalogue.html?s=' + _artisan.slug_catalogue : '—';
+  // Lien à partager : passe par /api/b, qui donne à WhatsApp/Facebook le nom, la bannière et l'accroche (aperçu), puis ouvre la boutique.
+  if (champLien) champLien.value = _artisan.slug_catalogue ? 'https://caralink.app/api/b?s=' + _artisan.slug_catalogue : '—';
   var champPromo = document.getElementById('boutique-code-promo');
   if (champPromo) champPromo.value = _artisan.code_promo || '';
   var champPct = document.getElementById('boutique-code-promo-pct'), champFin = document.getElementById('boutique-code-promo-fin');
@@ -4868,7 +4869,7 @@ async function calculerVentesCatalogue(ids) {
 var _partageArtisan = null; // { quoi, url, nom, texte }
 function lienPartageArtisan(quoi) {
   if (!_artisan) return null;
-  if (quoi === 'boutique') return _artisan.slug_catalogue ? 'https://caralink.app/artisans/catalogue.html?s=' + encodeURIComponent(_artisan.slug_catalogue) : null;
+  if (quoi === 'boutique') return _artisan.slug_catalogue ? 'https://caralink.app/api/b?s=' + encodeURIComponent(_artisan.slug_catalogue) : null; // /api/b = lien avec aperçu (nom, bannière, accroche) dans WhatsApp et Facebook
   return 'https://caralink.app/artisans/?artisan=' + encodeURIComponent(_artisan.id);
 }
 // ════════════════════════════════════════
@@ -5256,6 +5257,14 @@ function ouvrirEditeurBanniere() {
     var ratio = img.naturalWidth / img.naturalHeight;
     _ban = { img: img, url: url, mode: ratio >= 2.0 ? 'remplir' : 'entiere', px: 50, py: 50 };
     document.getElementById('ban-editeur').style.display = '';
+    // Image trop petite : la bannière couvre toute la largeur d'un écran d'ordinateur, elle paraîtrait floue. On prévient, sans bloquer.
+    var alerte = document.getElementById('ban-alerte');
+    if (alerte) {
+      if (img.naturalWidth < 1600) {
+        alerte.textContent = 'Cette image est petite (' + img.naturalWidth + ' × ' + img.naturalHeight + ' px) : sur un grand écran elle risque d\'être floue. Une photo d\'au moins 1600 px de large donne un meilleur résultat.';
+        alerte.style.display = '';
+      } else { alerte.style.display = 'none'; alerte.textContent = ''; }
+    }
     banRafraichir();
     if (_ban.mode === 'entiere') document.getElementById('ban-aide').textContent = 'Votre image n\'est pas en format panoramique : elle est affichée entière. Choisissez « Remplir le cadre » pour la recadrer.';
   };
@@ -5265,6 +5274,7 @@ function ouvrirEditeurBanniere() {
 function annulerBanniere() {
   if (_ban && _ban.url) URL.revokeObjectURL(_ban.url);
   _ban = null; document.getElementById('banniere-input').value = '';
+  var al = document.getElementById('ban-alerte'); if (al) { al.style.display = 'none'; al.textContent = ''; }
   document.getElementById('ban-editeur').style.display = 'none';
 }
 function initGlisserBanniere() {
@@ -5637,6 +5647,7 @@ function openAjouterCatalogue() {
   document.getElementById('cat-stock').value = '';
   document.getElementById('cat-seuil').value = '';
   document.getElementById('cat-photo-input').value = '';
+  reinitialiserPhotosSup(null);
   ouvrirModale('modal-catalogue');
 }
 
@@ -5656,7 +5667,112 @@ function ouvrirModifierCatalogue(id) {
   document.getElementById('cat-stock').value = c.quantite_stock != null ? c.quantite_stock : '';
   document.getElementById('cat-seuil').value = c.seuil_alerte != null ? c.seuil_alerte : '';
   document.getElementById('cat-photo-input').value = '';
+  reinitialiserPhotosSup(id);
   ouvrirModale('modal-catalogue');
+}
+
+// ── Photos supplémentaires d'un produit (jusqu'à 4, en plus de la photo principale) ──
+// Elles sont gardées en mémoire dans la fenêtre, puis enregistrées avec le produit. Chaque photo est réduite (1400 px max) avant l'envoi :
+// une photo de téléphone de 8 Mo devient ~300 Ko, donc une boutique qui s'affiche vite.
+var MAX_PHOTOS_SUP = 4;
+var _photosSup = [];          // { id, url, blob, apercu }
+var _photosSupASupprimer = []; // lignes déjà enregistrées, à supprimer à l'enregistrement
+var _photosSupDispo = true;   // faux si la table n'existe pas encore (SQL pas lancé) : la section est alors masquée
+function redimensionnerImage(fichier, maxPx, qualite) {
+  return new Promise(function(resolve) {
+    var url = URL.createObjectURL(fichier), img = new Image();
+    img.onload = function() {
+      try {
+        var r = Math.min(1, maxPx / Math.max(img.naturalWidth, img.naturalHeight));
+        var w = Math.max(1, Math.round(img.naturalWidth * r)), h = Math.max(1, Math.round(img.naturalHeight * r));
+        var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        var ctx = cv.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); // fond blanc : un PNG transparent ne devient pas noir en JPEG
+        ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        cv.toBlob(function(b) { resolve(b && b.size < fichier.size * 1.2 ? b : fichier); }, 'image/jpeg', qualite);
+      } catch (e) { URL.revokeObjectURL(url); resolve(fichier); }
+    };
+    img.onerror = function() { URL.revokeObjectURL(url); resolve(fichier); }; // format non lisible ici : on garde le fichier tel quel
+    img.src = url;
+  });
+}
+function reinitialiserPhotosSup(catalogueId) {
+  _photosSup.forEach(function(x) { if (x.apercu) URL.revokeObjectURL(x.apercu); });
+  _photosSup = []; _photosSupASupprimer = [];
+  var inp = document.getElementById('cat-photos-sup-input'); if (inp) inp.value = '';
+  var msg = document.getElementById('cat-photos-sup-msg'); if (msg) msg.textContent = '';
+  renderPhotosSup();
+  if (!catalogueId) return;
+  sb.from('artisans_catalogue_photos').select('id, url, ordre').eq('catalogue_id', catalogueId).order('ordre', { ascending: true }).then(function(res) {
+    if (_catalogueEnEdition !== catalogueId) return; // l'artisan a changé de produit entre-temps
+    if (res.error) { _photosSupDispo = false; renderPhotosSup(); return; }
+    _photosSupDispo = true;
+    _photosSup = (res.data || []).map(function(r) { return { id: r.id, url: r.url, blob: null, apercu: null }; });
+    renderPhotosSup();
+  });
+}
+function renderPhotosSup() {
+  var wrap = document.getElementById('cat-photos-sup-wrap'); if (!wrap) return;
+  wrap.style.display = _photosSupDispo ? '' : 'none';
+  var zone = document.getElementById('cat-photos-sup'); if (!zone) return;
+  zone.innerHTML = '';
+  _photosSup.forEach(function(x, k) {
+    var d = document.createElement('div'); d.style.cssText = 'position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid var(--brd);';
+    var im = document.createElement('img'); im.src = x.apercu || x.url; im.alt = 'Photo supplémentaire ' + (k + 1); im.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+    var b = document.createElement('button'); b.type = 'button'; b.textContent = '✕'; b.setAttribute('aria-label', 'Retirer la photo supplémentaire ' + (k + 1));
+    b.style.cssText = 'position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:6px;border:none;background:rgba(0,0,0,.62);color:#fff;font-size:12px;cursor:pointer;';
+    b.addEventListener('click', function() { retirerPhotoSup(k); });
+    d.appendChild(im); d.appendChild(b); zone.appendChild(d);
+  });
+  var inp = document.getElementById('cat-photos-sup-input');
+  if (inp) inp.disabled = _photosSup.length >= MAX_PHOTOS_SUP;
+}
+function ajouterPhotosSup() {
+  var inp = document.getElementById('cat-photos-sup-input'), msg = document.getElementById('cat-photos-sup-msg');
+  var fichiers = Array.prototype.slice.call(inp.files || []); msg.textContent = '';
+  var place = MAX_PHOTOS_SUP - _photosSup.length;
+  fichiers.slice(0, Math.max(0, place)).forEach(function(f) {
+    if (!/^image\//.test(f.type)) return;
+    _photosSup.push({ id: null, url: null, blob: f, apercu: URL.createObjectURL(f) });
+  });
+  if (fichiers.length > place) msg.textContent = 'Maximum ' + MAX_PHOTOS_SUP + ' photos supplémentaires : les autres n\'ont pas été ajoutées.';
+  inp.value = ''; renderPhotosSup();
+}
+function retirerPhotoSup(k) {
+  var x = _photosSup[k]; if (!x) return;
+  if (x.apercu) URL.revokeObjectURL(x.apercu);
+  if (x.id) _photosSupASupprimer.push(x);
+  _photosSup.splice(k, 1); renderPhotosSup();
+}
+// Enregistre les photos supplémentaires d'un produit déjà créé. Un échec ici n'annule pas le produit : on le dit simplement.
+async function enregistrerPhotosSup(catalogueId) {
+  if (!_photosSupDispo) return null;
+  var echec = null;
+  try {
+    for (var i = 0; i < _photosSupASupprimer.length; i++) {
+      var x = _photosSupASupprimer[i];
+      var { error: eDel } = await sb.from('artisans_catalogue_photos').delete().eq('id', x.id).eq('artisan_id', _artisan.id);
+      if (eDel) throw eDel;
+      var m = /\/object\/public\/artisans-photos\/(.+)$/.exec(x.url || '');
+      if (m) { try { await sb.storage.from('artisans-photos').remove([decodeURIComponent(m[1])]); } catch (e) { /* le fichier reste, sans conséquence */ } }
+    }
+    for (var k = 0; k < _photosSup.length; k++) {
+      var p = _photosSup[k];
+      if (p.id) { // déjà enregistrée : on met seulement l'ordre à jour
+        await sb.from('artisans_catalogue_photos').update({ ordre: k }).eq('id', p.id).eq('artisan_id', _artisan.id);
+        continue;
+      }
+      var blob = await redimensionnerImage(p.blob, 1400, 0.85);
+      var ext = blob.type === 'image/jpeg' ? 'jpg' : (String(p.blob.name || '').split('.').pop().replace(/[^a-zA-Z0-9]/g, '').slice(0, 5) || 'jpg');
+      var chemin = _artisan.user_id + '/catalogue-sup-' + Date.now() + '-' + k + '-' + Math.random().toString(36).slice(2, 7) + '.' + ext;
+      var up = await sb.storage.from('artisans-photos').upload(chemin, blob, { contentType: blob.type || undefined });
+      if (up.error) throw new Error(up.error.message);
+      var { data: pub } = sb.storage.from('artisans-photos').getPublicUrl(chemin);
+      var { error: eIns } = await sb.from('artisans_catalogue_photos').insert({ catalogue_id: catalogueId, artisan_id: _artisan.id, url: pub.publicUrl, ordre: k });
+      if (eIns) throw eIns;
+    }
+  } catch (e) { echec = e.message || String(e); }
+  return echec;
 }
 
 async function sauverCatalogue() {
@@ -5670,8 +5786,10 @@ async function sauverCatalogue() {
     var urlPhoto = null;
     var fichier = document.getElementById('cat-photo-input').files[0];
     if (fichier) {
-      var chemin = _artisan.user_id + '/catalogue-' + Date.now() + '_' + fichier.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      var up = await sb.storage.from('artisans-photos').upload(chemin, fichier);
+      var aEnvoyer = await redimensionnerImage(fichier, 1400, 0.85); // réduite avant l'envoi : boutique plus rapide (une photo de téléphone pèse 5 à 10 Mo)
+      var nomFichier = aEnvoyer === fichier ? fichier.name.replace(/[^a-zA-Z0-9._-]/g, '_') : fichier.name.replace(/\.[^.]*$/, '').replace(/[^a-zA-Z0-9._-]/g, '_') + '.jpg';
+      var chemin = _artisan.user_id + '/catalogue-' + Date.now() + '_' + nomFichier;
+      var up = await sb.storage.from('artisans-photos').upload(chemin, aEnvoyer, { contentType: aEnvoyer.type || undefined });
       if (up.error) throw new Error(up.error.message);
       var { data: pub } = sb.storage.from('artisans-photos').getPublicUrl(chemin);
       urlPhoto = pub.publicUrl;
@@ -5690,6 +5808,7 @@ async function sauverCatalogue() {
     };
     if (urlPhoto) champs.url_photo = urlPhoto; // garde la photo existante si aucune nouvelle n'est choisie
 
+    var idProduit = _catalogueEnEdition;
     if (_catalogueEnEdition) {
       var { error } = await sb.from('artisans_catalogue').update(champs).eq('id', _catalogueEnEdition).eq('artisan_id', _artisan.id);
       if (error) throw error;
@@ -5697,10 +5816,14 @@ async function sauverCatalogue() {
       // Un produit tout juste créé depuis "Mes produits" n'est pas mis en vente tout seul — il
       // faut explicitement le choisir depuis "Mon catalogue" (voir openChoisirProduitAVendre).
       var nouveau = Object.assign({ artisan_id: _artisan.id, ordre: _catalogueCache.length, en_vente: false }, champs);
-      var { error } = await sb.from('artisans_catalogue').insert(nouveau);
+      var { data: cree, error } = await sb.from('artisans_catalogue').insert(nouveau).select('id').single();
       if (error) throw error;
+      idProduit = cree && cree.id;
     }
+    // Photos supplémentaires : le produit est déjà enregistré, un souci ici ne l'annule pas (on le signale).
+    var echecPhotos = idProduit ? await enregistrerPhotosSup(idProduit) : null;
     fermerModale('modal-catalogue');
+    if (echecPhotos) alert('Votre produit est enregistré, mais certaines photos supplémentaires n\'ont pas pu l\'être (' + echecPhotos + '). Rouvrez le produit pour les ajouter à nouveau.');
     await chargerCatalogue();
     if (!_catalogueEnEdition && !estPro() && _catalogueCache.length >= LIMITE_PRODUITS_ESSENTIEL) afficherLimiteProduits(false);
     else if (!_catalogueEnEdition) rappelerPaiementsBoutique('creation');

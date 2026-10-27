@@ -157,9 +157,26 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Photos supplémentaires de chaque produit (la principale reste url_photo). Jamais bloquant : si la table n'existe pas encore ou
+    // si la lecture échoue, la boutique s'affiche comme avant, avec la seule photo principale.
+    const photosSup = new Map<string, string[]>();
+    if (idsPresents.length) {
+      try {
+        const { data: lignesPhotos, error: errPh } = await sb.from("artisans_catalogue_photos")
+          .select("catalogue_id, url, ordre").in("catalogue_id", idsPresents).order("ordre", { ascending: true });
+        if (errPh) console.warn("[lire-catalogue] photos supplémentaires indisponibles :", errPh.message);
+        (lignesPhotos || []).forEach((l: any) => {
+          if (typeof l.url !== "string" || !l.url.startsWith("https://")) return;
+          if (!photosSup.has(l.catalogue_id)) photosSup.set(l.catalogue_id, []);
+          photosSup.get(l.catalogue_id)!.push(l.url);
+        });
+      } catch (e) { console.warn("[lire-catalogue] photos supplémentaires :", e); }
+    }
+
     const seuilNouveaute = Date.now() - JOURS_NOUVEAUTE * 86400000;
     const produitsAff = liste.map((p: any) => ({
       id: p.id, nom: p.nom, description: p.description, prix: p.prix, url_photo: p.url_photo,
+      photos_sup: photosSup.get(p.id) || [],
       type: p.type, delai_preparation: p.delai_preparation, promo_pct: p.promo_pct, categorie: p.categorie,
       est_phare: idsPhares.has(p.id),
       est_nouveaute: new Date(p.created_at).getTime() >= seuilNouveaute,
