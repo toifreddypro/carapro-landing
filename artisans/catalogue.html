@@ -37,7 +37,8 @@
   .wrap{max-width:1100px;margin:0 auto;padding:0 20px;}
 
   /* En-tête boutique */
-  header{background:var(--panel);border-bottom:1px solid var(--brd);padding:28px 0;margin-bottom:24px;}
+  /* En-tête sans grande barre pleine largeur : le nom et les langues se posent directement sous la bannière, alignés sur le reste de la page. */
+  header{background:transparent;border-bottom:none;padding:18px 0 6px;margin-bottom:18px;}
   .header-inner{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
   .avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;flex-shrink:0;background:rgba(181,80,47,.1);color:var(--ac);display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:700;}
   /* Personnalisation : image de fond façon Facebook, logo qui la chevauche, infos pratiques */
@@ -724,7 +725,7 @@ function render() {
     '<header' + (urlBanniere ? ' class="avec-couv"' : '') + '><div class="wrap header-inner">' + photo +
       '<div style="flex:1;">' +
         '<div class="boutique-nom">' + escHtml(a.nom_entreprise) + (a.verifie ? '<span class="badge-verifie">✅ ' + T('cat_verifie') + '</span>' : '') + '</div>' +
-        '<div class="boutique-meta">📍 ' + escHtml(a.commune) + '</div>' +
+        (a.contact_adresse ? '' : '<div class="boutique-meta">📍 ' + escHtml(a.commune) + '</div>') +
       '</div>' +
       boutonPartage +
       selecteurLangue +

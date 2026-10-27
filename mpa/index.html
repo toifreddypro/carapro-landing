@@ -762,7 +762,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="dcbdy" id="zone-catalogue" style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;">Chargement…</div>
 <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 <strong>Disponible</strong> : prêt à vendre tout de suite. <strong>Sur commande</strong> : nécessite un délai de préparation (ex : gâteau). Marquez vos produits phares avec ⭐ : 1 en offre Essentiel, 4 en offre Pro. Sans choix, ce sont vos meilleures ventes qui apparaissent automatiquement.</div>
 </div>
-</div><div class="bpnl"><div class="dcard">
+</div><div class="bpnl"><div id="encart-stripe-connect-catalogue" style="margin-top:16px;"></div><div class="dcard" style="margin-top:16px;">
 <div class="dchdr">
 <div class="dctit">🔗 Ma boutique en ligne</div>
 </div>
@@ -773,15 +773,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <button class="addb" onclick="copierLienBoutique()" style="flex-shrink:0;">📋 Copier</button>
 <button class="addb" onclick="ouvrirPartageArtisan('boutique')" style="flex-shrink:0;">🔗 Partager / QR code</button>
 </div>
-<div style="border:1px solid var(--brd);border-radius:10px;padding:12px 14px;background:var(--inp);margin-bottom:12px;">
-<div style="font-size:13px;font-weight:700;margin-bottom:2px;">🎨 Personnaliser ma boutique <span style="font-size:11px;font-weight:700;color:var(--ok,#059669);">Gratuit</span></div>
+</div></div>
+<div class="dcard" style="margin-top:16px;"><div class="dchdr"><div class="dctit">🎨 Personnaliser ma boutique <span style="font-size:11px;font-weight:700;color:var(--ok,#059669);">Gratuit</span></div></div><div style="padding:16px;">
 <div style="font-size:12px;color:var(--mu);margin-bottom:10px;line-height:1.5;">Votre boutique est votre vitrine : donnez-lui votre image. Le <strong>logo</strong> se change dans « Mon profil ».</div>
 <div id="pers-apercu" style="aspect-ratio:3/1;width:100%;border-radius:9px;background:linear-gradient(135deg,#e9eef7,#d5dff0);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:12px;margin-bottom:8px;">Pas encore d'image de fond</div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
 <button class="addb" id="btn-banniere" onclick="document.getElementById('banniere-input').click()" style="flex-shrink:0;">🖼️ Choisir une image de fond</button>
 <button class="addb" id="btn-banniere-retirer" onclick="retirerBanniere()" style="flex-shrink:0;display:none;">Retirer</button>
 <input accept="image/jpeg,image/png,image/webp" id="banniere-input" onchange="uploaderBanniere()" style="display:none;" type="file"/>
-<span style="font-size:11.5px;color:var(--mu);">Format panoramique 3:1 (idéal : 1600 × 533 px). Ce cadre montre exactement ce que verront vos clients : le centre de l'image est conservé, le haut et le bas (ou les côtés) sont coupés.</span>
+<span style="font-size:11.5px;color:var(--mu);">Format panoramique 3:1 (idéal : 1600 × 533 px, soit environ 42 × 14 cm). Ce cadre montre exactement ce que verront vos clients : le centre de l'image est conservé, le haut et le bas (ou les côtés) sont coupés.</span>
 </div>
 <div style="font-size:12.5px;font-weight:700;margin-bottom:5px;">Coordonnées affichées sur la boutique</div>
 <label style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;margin-bottom:4px;cursor:pointer;"><input type="checkbox" id="pers-adresse" style="margin-top:3px;"><span>Adresse : <span id="pers-adresse-val" style="color:var(--mu);">—</span></span></label>
@@ -800,9 +800,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <a id="pers-voir" href="#" target="_blank" rel="noopener" style="font-size:12.5px;font-weight:700;color:var(--ac);text-decoration:none;">Voir ma boutique →</a>
 </div>
 <div id="pers-statut" style="font-size:12px;color:var(--mu);margin-top:8px;"></div>
-</div>
-<div style="border:1px solid var(--brd);border-radius:10px;padding:12px 14px;background:var(--inp);">
-<div style="font-size:13px;font-weight:700;margin-bottom:2px;">🎁 Code promo <span style="font-size:11px;font-weight:700;color:var(--ac);">Offre Pro</span></div>
+</div></div>
+<div class="dcard" style="margin-top:16px;"><div class="dchdr"><div class="dctit">🎁 Code promo <span style="font-size:11px;font-weight:700;color:var(--ac);">Offre Pro</span></div></div><div style="padding:16px;">
 <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.5;">Vos clients le saisissent dans leur panier et la remise est calculée automatiquement. <strong>Il ne s'applique pas aux produits déjà en remise</strong> (la remise « % » de la fiche produit) : les deux ne se cumulent jamais, c'est l'un ou l'autre.</div>
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
 <input id="boutique-code-promo" maxlength="30" placeholder="Code (ex : BIENVENUE10)" style="flex:1;min-width:170px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;text-transform:uppercase;" type="text"/>
@@ -813,9 +812,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <label style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;margin-top:9px;line-height:1.45;cursor:pointer;"><input type="checkbox" id="boutique-code-promo-visible" checked style="margin-top:3px;"><span><strong>Afficher ce code sur CaraLink</strong> (bandeau de la boutique et fiche). Décochez-le pour un <strong>code partenaire</strong> (donné dans une vidéo, une affiche, un partenariat…) : seuls ceux qui le connaissent pourront l'utiliser, la case « J'ai un code promo » reste disponible dans le panier.</span></label>
 <div id="code-promo-statut" style="font-size:12px;color:var(--mu);margin-top:8px;"></div>
 <div id="code-promo-usage" style="font-size:12.5px;margin-top:6px;"></div>
-</div>
-<div style="border:1px solid var(--brd);border-radius:10px;padding:12px 14px;background:var(--inp);margin-top:12px;">
-<div style="font-size:13px;font-weight:700;margin-bottom:2px;">💚 Cashback fidélité <span style="font-size:11px;font-weight:700;color:var(--ac);">Offre Pro</span></div>
+</div></div>
+<div class="dcard" style="margin-top:16px;"><div class="dchdr"><div class="dctit">💚 Cashback fidélité <span style="font-size:11px;font-weight:700;color:var(--ac);">Offre Pro</span></div></div><div style="padding:16px;">
 <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.5;">Offrez un crédit à vos clients ayant un compte CaraLink : <strong>un pourcentage de ce qu'ils paient pour leurs produits</strong> (livraison exclue), gagné quand la commande est livrée ou remise, <strong>valable 12 mois dans votre boutique uniquement</strong>. Ils le déduisent de leur commande suivante (en tout ou partie) : le crédit est financé par vous, vous encaissez simplement un peu moins, et la commission CaraLink se calcule sur ce que vous encaissez réellement. Si vous quittez l'offre Pro, plus aucun nouveau crédit n'est offert, mais ceux déjà gagnés restent utilisables.</div>
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
 <input id="boutique-cashback-pct" type="number" min="1" max="10" step="1" placeholder="% (1-10)" style="width:110px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;"/>
@@ -823,9 +821,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <span style="font-size:12px;color:var(--mu);">Vide = pas de cashback.</span>
 </div>
 <div id="cashback-statut" style="font-size:12px;color:var(--mu);margin-top:8px;"></div>
-</div>
-</div>
-</div><div id="encart-stripe-connect-catalogue" style="margin-top:16px;"></div><div class="dcard" style="margin-top:16px;">
+</div></div><div class="dcard" style="margin-top:16px;">
 <div class="dchdr">
 <div class="dctit">📊 Ventes par produit</div>
 </div>
