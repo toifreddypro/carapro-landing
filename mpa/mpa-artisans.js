@@ -12,6 +12,37 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 var _session = null;
 var _artisan = null;
 var _clientsCache = [];
+
+// ── Connexion endormie (« JWT expired ») ──
+// Après une longue inactivité (ordinateur en veille, onglet oublié), la connexion expire. Les messages techniques de ce genre
+// (« JWT expired »…) ne disent rien à l'artisan. Ici : (1) au retour sur l'onglet, la connexion est renouvelée discrètement ;
+// (2) si une erreur de ce type apparaît quand même, on tente de renouveler la connexion, puis on explique clairement ce qui s'est passé.
+(function() {
+  var alertOrigine = window.alert.bind(window), enCours = false;
+  function estErreurConnexion(m) { return /jwt|token (is |has )?expired|invalid token|refresh token/i.test(String(m)); }
+  window.alert = function(msg) {
+    if (!estErreurConnexion(msg)) return alertOrigine(msg);
+    if (enCours) return;
+    enCours = true;
+    sb.auth.refreshSession().then(function(r) {
+      enCours = false;
+      if (r && !r.error && r.data && r.data.session) {
+        _session = r.data.session;
+        alertOrigine('Votre connexion s\'était mise en veille (longue inactivité). Elle vient d\'être renouvelée : vos données sont intactes. Merci de refaire votre dernière action.');
+      } else {
+        alertOrigine('Votre connexion a expiré après une longue inactivité. Vos données sont intactes. Merci de vous reconnecter.');
+        window.location.href = 'https://caralink.app/artisans/connexion.html';
+      }
+    }).catch(function() {
+      enCours = false;
+      alertOrigine('Votre connexion a expiré après une longue inactivité. Vos données sont intactes. Merci de vous reconnecter.');
+      window.location.href = 'https://caralink.app/artisans/connexion.html';
+    });
+  };
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') { try { sb.auth.getSession().catch(function() {}); } catch (e) { /* sans importance */ } }
+  });
+})();
 var _servicesCache = [];
 
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
