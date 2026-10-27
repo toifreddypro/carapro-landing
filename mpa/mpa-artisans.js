@@ -5102,6 +5102,7 @@ function afficherPersonnalisation() {
   _fondChoisi = _artisan.boutique_fond || 'clair';
   dessinerFondsBoutique();
   afficherStyleBoutique();
+  assurerImagePartage();
   var voir = document.getElementById('pers-voir');
   if (voir) { if (_artisan.slug_catalogue) voir.href = 'https://caralink.app/artisans/catalogue.html?s=' + encodeURIComponent(_artisan.slug_catalogue); else voir.style.display = 'none'; }
 }
@@ -5305,6 +5306,7 @@ async function uploaderBanniere() {
     var up = await sb.storage.from('artisans-photos').upload(chemin, blob, { contentType: 'image/jpeg' });
     if (up.error) throw new Error(up.error.message);
     var { data: pub } = sb.storage.from('artisans-photos').getPublicUrl(chemin);
+    await envoyerImagePartage(cv, chemin); // copie légère pour WhatsApp / Facebook (jamais bloquant)
     var ancienne = _artisan.boutique_banniere_url;
     var { error } = await sb.from('artisans').update({ boutique_banniere_url: pub.publicUrl }).eq('id', _artisan.id);
     if (error) throw error;
@@ -5316,6 +5318,46 @@ async function uploaderBanniere() {
   } catch (e) { alert('Erreur : ' + e.message); }
   finally { btn.disabled = false; btn.textContent = txt; }
 }
+// ── Image de partage (aperçu WhatsApp / Facebook) : WhatsApp refuse les images trop lourdes ou trop larges. On range donc, à côté de la
+// bannière, une copie légère de 1200 × 630 px (même nom + « _partage.jpg », environ 100 Ko). La page /api/b l'utilise si elle existe.
+function cheminImagePartage(chemin) { return chemin.replace(/\.jpg$/i, '_partage.jpg'); }
+function fabriquerImagePartage(source) { // source : canvas ou image de la bannière (3:1) → canvas 1200 × 630
+  var W = 1200, H = 630, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  var ctx = cv.getContext('2d'), sw = source.naturalWidth || source.width, sh = source.naturalHeight || source.height;
+  var pt = document.createElement('canvas'); pt.width = 48; pt.height = Math.max(8, Math.round(48 * H / W));
+  var rb = Math.max(pt.width / sw, pt.height / sh);
+  pt.getContext('2d').drawImage(source, (pt.width - sw * rb) / 2, (pt.height - sh * rb) / 2, sw * rb, sh * rb); // fond flou de la même image, sans filtre (compatible Safari)
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(pt, 0, 0, W, H);
+  var r = Math.min(W / sw, H / sh), w = sw * r, h = sh * r;
+  ctx.drawImage(source, (W - w) / 2, (H - h) / 2, w, h);
+  return cv;
+}
+async function envoyerImagePartage(source, cheminBanniere) {
+  try {
+    var cv = fabriquerImagePartage(source);
+    var blob = await new Promise(function(resolve) { cv.toBlob(resolve, 'image/jpeg', 0.8); });
+    if (!blob) return false;
+    var up = await sb.storage.from('artisans-photos').upload(cheminImagePartage(cheminBanniere), blob, { contentType: 'image/jpeg' });
+    return !up.error;
+  } catch (e) { return false; }
+}
+// Boutiques dont la bannière existait avant : la copie de partage est créée toute seule, une fois, à l'ouverture de « Ma boutique ».
+var _partageVerifie = {};
+async function assurerImagePartage() {
+  try {
+    var url = _artisan && _artisan.boutique_banniere_url, marque = '/artisans-photos/';
+    if (!url || !/\.jpg$/i.test(url) || url.indexOf(marque) < 0 || _partageVerifie[url]) return;
+    _partageVerifie[url] = true;
+    var chemin = decodeURIComponent(url.split(marque)[1]);
+    if (chemin.indexOf(_artisan.user_id + '/banniere_') !== 0) return;
+    var r = await fetch(url.replace(/\.jpg$/i, '_partage.jpg'), { method: 'HEAD' });
+    if (r.ok) return;
+    var img = new Image(); img.crossOrigin = 'anonymous';
+    await new Promise(function(ok, ko) { img.onload = ok; img.onerror = ko; img.src = url; });
+    await envoyerImagePartage(img, chemin);
+  } catch (e) { /* sans importance : le partage utilisera la bannière telle quelle */ }
+}
 // Ménage : l'ancienne image est effacée du stockage (jamais bloquant, jamais un autre fichier que celui de cet artisan).
 function supprimerAncienneBanniere(url) {
   try {
@@ -5323,7 +5365,7 @@ function supprimerAncienneBanniere(url) {
     if (!url || url.indexOf(marque) < 0) return;
     var chemin = decodeURIComponent(url.split(marque)[1]);
     if (chemin.indexOf(_artisan.user_id + '/banniere_') !== 0) return;
-    sb.storage.from('artisans-photos').remove([chemin]);
+    sb.storage.from('artisans-photos').remove([chemin, cheminImagePartage(chemin)]);
   } catch (e) { /* sans importance */ }
 }
 async function retirerBanniere() {

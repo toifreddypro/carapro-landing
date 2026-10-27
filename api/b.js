@@ -38,6 +38,7 @@ module.exports = async function handler(req, res) {
   let titre = "Boutique — CaraLink Artisans";
   let description = "Découvrez cette boutique d'artisan en Guadeloupe : commandez et payez en ligne, en toute simplicité.";
   let image = null;
+  let imagePartage = false; // vrai si l'image est la copie légère 1200 × 630
 
   if (slugOk) {
     try {
@@ -57,9 +58,22 @@ module.exports = async function handler(req, res) {
           const texte = coupe(a.boutique_texte, 200);
           const lieu = a.commune ? " à " + coupe(a.commune, 40) : "";
           description = accroche || texte || ("Boutique de " + coupe(a.nom_entreprise, 70) + lieu + " : commandez et payez en ligne.");
-          const candidates = [a.boutique_banniere_url, a.photo_profil_url];
-          for (const c of candidates) {
-            if (typeof c === "string" && c.startsWith(PREFIXE_IMAGES) && c.length < 600) { image = c; break; }
+          // Image d'aperçu : d'abord la copie légère de partage (1200 × 630, ~100 Ko) rangée à côté de la bannière — WhatsApp refuse les images
+          // trop lourdes ou trop larges. À défaut, la bannière elle-même, puis la photo de profil.
+          const ban = a.boutique_banniere_url;
+          if (typeof ban === "string" && ban.startsWith(PREFIXE_IMAGES) && /\.jpg$/i.test(ban) && ban.length < 580) {
+            const partage = ban.replace(/\.jpg$/i, "_partage.jpg");
+            try {
+              const c2 = new AbortController(); const m2 = setTimeout(() => c2.abort(), 2500);
+              const h = await fetch(partage, { method: "HEAD", signal: c2.signal });
+              clearTimeout(m2);
+              if (h.ok) { image = partage; imagePartage = true; }
+            } catch (_) { /* pas de copie de partage : on retombe sur la bannière */ }
+          }
+          if (!image) {
+            for (const c of [a.boutique_banniere_url, a.photo_profil_url]) {
+              if (typeof c === "string" && c.startsWith(PREFIXE_IMAGES) && c.length < 600) { image = c; break; }
+            }
           }
         }
       }
@@ -78,6 +92,7 @@ module.exports = async function handler(req, res) {
     "<meta property=\"og:description\" content=\"" + esc(description) + "\">" +
     "<meta property=\"og:url\" content=\"" + esc(adressePartage) + "\">" +
     (image ? "<meta property=\"og:image\" content=\"" + esc(image) + "\">" : "") +
+    (image && imagePartage ? "<meta property=\"og:image:type\" content=\"image/jpeg\"><meta property=\"og:image:width\" content=\"1200\"><meta property=\"og:image:height\" content=\"630\">" : "") +
     "<meta name=\"twitter:card\" content=\"" + (image ? "summary_large_image" : "summary") + "\">" +
     "<meta name=\"twitter:title\" content=\"" + esc(titre) + "\">" +
     "<meta name=\"twitter:description\" content=\"" + esc(description) + "\">" +
