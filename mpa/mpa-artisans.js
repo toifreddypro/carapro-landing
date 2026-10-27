@@ -5081,6 +5081,7 @@ var _fondChoisi = 'clair';
 var NOMS_FONDS = { clair: 'Clair', creme: 'Crème', terre: 'Terre cuite pâle', bleu: 'Bleu pâle', vert: 'Vert pâle', rose: 'Rose pâle', violet: 'Violet pâle', ocre: 'Ocre pâle', sombre: 'Sombre', plage: 'Plage', sable: 'Sable', motif: 'Motif sombre' };
 var APERCU_FONDS = { clair: ['#ffffff', '#13223c'], creme: ['#f6efe4', '#2a2118'], terre: ['#f8ebe4', '#13223c'], bleu: ['#e6eff9', '#13223c'], vert: ['#e5f2e9', '#13223c'], rose: ['#fae6f1', '#13223c'], violet: ['#ece7f8', '#13223c'], ocre: ['#f8efd9', '#13223c'], sombre: ['#0f1115', '#f3f1ec'], plage: ['linear-gradient(rgba(255,255,255,.45),rgba(255,255,255,.45)),url(/artisans/img/fond-plage-mini.webp) center/cover', '#13223c'], sable: ['linear-gradient(rgba(255,255,255,.45),rgba(255,255,255,.45)),url(/artisans/img/fond-sable-mini.webp) center/cover', '#13223c'], motif: ['linear-gradient(rgba(15,17,21,.55),rgba(15,17,21,.55)),url(/artisans/img/fond-motif-mini.webp) center/cover', '#f3f1ec'] };
 function afficherPersonnalisation() {
+  initGlisserBanniere();
   var ap = document.getElementById('pers-apercu');
   if (!ap || !_artisan) return;
   if (_artisan.boutique_banniere_url) { ap.style.backgroundImage = 'url("' + _artisan.boutique_banniere_url + '")'; ap.textContent = ''; }
@@ -5119,29 +5120,96 @@ function dessinerFondsBoutique() {
 function choisirFondBoutique(k) { _fondChoisi = k; dessinerFondsBoutique(); }
 function choisirCouleurBoutique(k) { _accentChoisi = k; dessinerCouleursBoutique(); }
 
-// Réduit l'image dans le navigateur (3:1, 2400 px de large, JPEG : reste net sur un grand écran) : boutique rapide, même avec une photo de 12 Mo prise au téléphone.
-function preparerBanniere(fichier) {
-  return new Promise(function(resolve, reject) {
-    var url = URL.createObjectURL(fichier), img = new Image();
-    img.onload = function() {
-      var W = 2400, H = 800, c = document.createElement('canvas'); c.width = W; c.height = H;
-      var ratio = Math.max(W / img.width, H / img.height), w = img.width * ratio, h = img.height * ratio;
-      c.getContext('2d').drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
-      URL.revokeObjectURL(url);
-      c.toBlob(function(b) { b ? resolve(b) : reject(new Error('Image illisible.')); }, 'image/jpeg', 0.82);
-    };
-    img.onerror = function() { URL.revokeObjectURL(url); reject(new Error('Cette image ne peut pas être lue. Utilisez une photo JPG, PNG ou WebP.')); };
-    img.src = url;
+// ── Image de fond : l'artisan choisit comment elle remplit le cadre 3:1, avec un aperçu identique au résultat ──
+// « Remplir » : l'image couvre tout le cadre, on choisit la partie visible (glisser ou curseurs).
+// « Image entière » : rien n'est coupé, les côtés sont remplis par une version floue de la même image.
+// Le fichier final est toujours un JPEG de 2400 × 800 px : boutique rapide et nette, même avec une photo de 12 Mo prise au téléphone.
+var _ban = null; // { img, url, mode, px, py }
+function dessinerBanniere(cv, W, H, img, mode, px, py) {
+  cv.width = W; cv.height = H;
+  var ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  if (mode === 'entiere') {
+    // Fond flou sans filtre (compatible Safari) : on réduit très fort puis on réagrandit.
+    var pt = document.createElement('canvas'); pt.width = 48; pt.height = Math.max(8, Math.round(48 * H / W));
+    var pc = pt.getContext('2d'), rb = Math.max(pt.width / iw, pt.height / ih);
+    pc.drawImage(img, (pt.width - iw * rb) / 2, (pt.height - ih * rb) / 2, iw * rb, ih * rb);
+    ctx.drawImage(pt, 0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(0, 0, W, H);
+    var rc = Math.min(W / iw, H / ih), cw = iw * rc, ch = ih * rc;
+    ctx.drawImage(img, (W - cw) / 2, (H - ch) / 2, cw, ch);
+  } else {
+    var r = Math.max(W / iw, H / ih), w = iw * r, h = ih * r;
+    ctx.drawImage(img, (W - w) * px / 100, (H - h) * py / 100, w, h);
+  }
+}
+function banDebordement() {
+  var iw = _ban.img.naturalWidth, ih = _ban.img.naturalHeight, r = Math.max(3 / iw * 1, 1 / ih); // cadre 3:1
+  var w = iw * r, h = ih * r;
+  return { h: w - 3 > 0.001, v: h - 1 > 0.001 };
+}
+function banRafraichir() {
+  if (!_ban) return;
+  dessinerBanniere(document.getElementById('ban-canvas'), 900, 300, _ban.img, _ban.mode, _ban.px, _ban.py);
+  var d = banDebordement(), rem = _ban.mode === 'remplir';
+  document.getElementById('ban-lbl-v').style.display = rem && d.v ? '' : 'none';
+  document.getElementById('ban-lbl-h').style.display = rem && d.h ? '' : 'none';
+  document.getElementById('ban-v').value = _ban.py; document.getElementById('ban-h').value = _ban.px;
+  [['remplir', 'ban-m-remplir'], ['entiere', 'ban-m-entiere']].forEach(function(x) {
+    var b = document.getElementById(x[1]), sel = _ban.mode === x[0];
+    b.style.opacity = sel ? '1' : '.5'; b.style.outline = sel ? '3px solid var(--ac)' : 'none'; b.style.outlineOffset = '2px'; b.setAttribute('aria-pressed', sel);
   });
+  document.getElementById('ban-aide').textContent = rem
+    ? (d.v || d.h ? 'Glissez l\'image avec la souris, ou utilisez le curseur, pour choisir la partie visible.' : 'Votre image a déjà la bonne forme.')
+    : 'Toute l\'image est visible. Les côtés sont remplis par une version floue.';
+}
+function banMode(mode) { if (_ban) { _ban.mode = mode; banRafraichir(); } }
+function banPos() { if (_ban) { _ban.py = +document.getElementById('ban-v').value; _ban.px = +document.getElementById('ban-h').value; banRafraichir(); } }
+function ouvrirEditeurBanniere() {
+  var input = document.getElementById('banniere-input'), fichier = input.files[0];
+  if (!fichier) return;
+  if (_ban && _ban.url) URL.revokeObjectURL(_ban.url);
+  var url = URL.createObjectURL(fichier), img = new Image();
+  img.onload = function() {
+    var ratio = img.naturalWidth / img.naturalHeight;
+    _ban = { img: img, url: url, mode: ratio >= 2.0 ? 'remplir' : 'entiere', px: 50, py: 50 };
+    document.getElementById('ban-editeur').style.display = '';
+    banRafraichir();
+    if (_ban.mode === 'entiere') document.getElementById('ban-aide').textContent = 'Votre image n\'est pas en format panoramique : elle est affichée entière. Choisissez « Remplir le cadre » pour la recadrer.';
+  };
+  img.onerror = function() { URL.revokeObjectURL(url); _ban = null; input.value = ''; alert('Cette image ne peut pas être lue. Utilisez une photo JPG, PNG ou WebP.'); };
+  img.src = url;
+}
+function annulerBanniere() {
+  if (_ban && _ban.url) URL.revokeObjectURL(_ban.url);
+  _ban = null; document.getElementById('banniere-input').value = '';
+  document.getElementById('ban-editeur').style.display = 'none';
+}
+function initGlisserBanniere() {
+  var cv = document.getElementById('ban-canvas'); if (!cv || cv._glisse) return; cv._glisse = true;
+  var dep = null;
+  cv.addEventListener('pointerdown', function(e) { if (e.pointerType !== 'mouse' || !_ban || _ban.mode !== 'remplir') return; dep = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); cv.style.cursor = 'grabbing'; });
+  cv.addEventListener('pointermove', function(e) {
+    if (!dep || !_ban) return;
+    var rect = cv.getBoundingClientRect(), k = 900 / rect.width, iw = _ban.img.naturalWidth, ih = _ban.img.naturalHeight, r = Math.max(900 / iw, 300 / ih);
+    var exH = iw * r - 900, exV = ih * r - 300, dx = (e.clientX - dep.x) * k, dy = (e.clientY - dep.y) * k;
+    if (exH > 0.5) _ban.px = Math.min(100, Math.max(0, _ban.px - dx * 100 / exH));
+    if (exV > 0.5) _ban.py = Math.min(100, Math.max(0, _ban.py - dy * 100 / exV));
+    dep = { x: e.clientX, y: e.clientY }; banRafraichir();
+  });
+  var fin = function() { dep = null; cv.style.cursor = 'grab'; };
+  cv.addEventListener('pointerup', fin); cv.addEventListener('pointercancel', fin);
 }
 async function uploaderBanniere() {
   if (!verifierAccesEcriture()) return;
-  var input = document.getElementById('banniere-input'), fichier = input.files[0];
-  if (!fichier) return;
-  var btn = document.getElementById('btn-banniere'), txt = btn.textContent;
+  if (!_ban) return;
+  var btn = document.getElementById('btn-ban-ok'), txt = btn.textContent;
   btn.disabled = true; btn.textContent = 'Envoi…';
   try {
-    var blob = await preparerBanniere(fichier);
+    var cv = document.createElement('canvas');
+    dessinerBanniere(cv, 2400, 800, _ban.img, _ban.mode, _ban.px, _ban.py);
+    var blob = await new Promise(function(resolve, reject) { cv.toBlob(function(b) { b ? resolve(b) : reject(new Error('Image illisible.')); }, 'image/jpeg', 0.82); });
     var chemin = _artisan.user_id + '/banniere_' + Date.now() + '.jpg';
     var up = await sb.storage.from('artisans-photos').upload(chemin, blob, { contentType: 'image/jpeg' });
     if (up.error) throw new Error(up.error.message);
@@ -5151,10 +5219,11 @@ async function uploaderBanniere() {
     if (error) throw error;
     _artisan.boutique_banniere_url = pub.publicUrl;
     supprimerAncienneBanniere(ancienne);
+    annulerBanniere();
     afficherPersonnalisation();
     document.getElementById('pers-statut').textContent = '✓ Image enregistrée.';
   } catch (e) { alert('Erreur : ' + e.message); }
-  finally { btn.disabled = false; btn.textContent = txt; input.value = ''; }
+  finally { btn.disabled = false; btn.textContent = txt; }
 }
 // Ménage : l'ancienne image est effacée du stockage (jamais bloquant, jamais un autre fichier que celui de cet artisan).
 function supprimerAncienneBanniere(url) {

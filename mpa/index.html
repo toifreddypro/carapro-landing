@@ -780,8 +780,23 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
 <button class="addb" id="btn-banniere" onclick="document.getElementById('banniere-input').click()" style="flex-shrink:0;">🖼️ Choisir une image de fond</button>
 <button class="addb" id="btn-banniere-retirer" onclick="retirerBanniere()" style="flex-shrink:0;display:none;">Retirer</button>
-<input accept="image/jpeg,image/png,image/webp" id="banniere-input" onchange="uploaderBanniere()" style="display:none;" type="file"/>
-<span style="font-size:11.5px;color:var(--mu);">Format panoramique 3:1 (idéal : 2400 × 800 px, soit environ 63 × 21 cm). Ce cadre montre exactement ce que verront vos clients : le centre de l'image est conservé, le haut et le bas (ou les côtés) sont coupés.</span>
+<input accept="image/jpeg,image/png,image/webp" id="banniere-input" onchange="ouvrirEditeurBanniere()" style="display:none;" type="file"/>
+<span style="font-size:11.5px;color:var(--mu);">Format panoramique 3:1 (idéal : 2400 px de large sur 800 px de haut, soit environ 63 cm de large sur 21 cm de haut). Ce cadre montre exactement ce que verront vos clients : le centre de l'image est conservé, le haut et le bas (ou les côtés) sont coupés.</span>
+</div>
+<div id="ban-editeur" style="display:none;border:1px solid var(--brd);border-radius:10px;padding:12px;background:var(--bg);margin-bottom:12px;">
+<div style="font-size:12.5px;font-weight:700;margin-bottom:8px;">Comment votre image remplit le cadre</div>
+<canvas id="ban-canvas" width="900" height="300" style="width:100%;aspect-ratio:3/1;border-radius:9px;display:block;cursor:grab;background:var(--b2);" aria-label="Aperçu de votre image de fond"></canvas>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 6px;">
+<button type="button" class="addb" id="ban-m-remplir" onclick="banMode('remplir')" aria-pressed="true">Remplir le cadre</button>
+<button type="button" class="addb" id="ban-m-entiere" onclick="banMode('entiere')" aria-pressed="false">Image entière</button>
+</div>
+<label id="ban-lbl-v" style="display:none;font-size:12px;color:var(--mu);margin:6px 0;">Monter / descendre l'image<input type="range" id="ban-v" min="0" max="100" value="50" oninput="banPos()" style="display:block;width:100%;"></label>
+<label id="ban-lbl-h" style="display:none;font-size:12px;color:var(--mu);margin:6px 0;">Déplacer à gauche / à droite<input type="range" id="ban-h" min="0" max="100" value="50" oninput="banPos()" style="display:block;width:100%;"></label>
+<div id="ban-aide" style="font-size:11.5px;color:var(--mu);margin:6px 0 10px;"></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;">
+<button type="button" class="addb" id="btn-ban-ok" onclick="uploaderBanniere()">Enregistrer cette image</button>
+<button type="button" class="addb" onclick="annulerBanniere()">Annuler</button>
+</div>
 </div>
 <div style="font-size:12.5px;font-weight:700;margin-bottom:5px;">Coordonnées affichées sur la boutique</div>
 <label style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;margin-bottom:4px;cursor:pointer;"><input type="checkbox" id="pers-adresse" style="margin-top:3px;"><span>Adresse : <span id="pers-adresse-val" style="color:var(--mu);">—</span></span></label>
