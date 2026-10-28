@@ -8,7 +8,7 @@
 // franchise mensuelle), et Stripe — pas CaraLink — porte la perte si l'artisan ne peut pas rembourser (compte créé avec
 // losses.payments = stripe, voir connecter-stripe-artisan). Les « frais de paiement refacturés » n'existent donc plus.
 //
-// Taux de commission à ajuster ici — décidé à 7% le 25/09, à revoir
+// Taux de commission à ajuster ici — décidé à 7% le 25/09 ; 5 % pour l'offre Pro depuis le 28/10 — à revoir
 // une fois qu'il y a du vrai volume pour voir comment ça se comporte.
 //
 // Modèle "gratuit sous un seuil" (28/09) : chaque mois, les premiers SEUIL_GRATUIT_EUROS
@@ -46,7 +46,12 @@ const corsHeaders = {
 };
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
-const TAUX_COMMISSION = 0.07; // 7%
+const TAUX_COMMISSION_ESSENTIEL = 0.07; // 7 % au-delà de la franchise mensuelle (offre gratuite)
+const TAUX_COMMISSION_PRO = 0.05; // 5 % au-delà de la franchise mensuelle (offre Pro, décidé le 28/10)
+// Le taux dépend de l'offre de l'artisan AU MOMENT du calcul (« pro » = abonnement payant, « pro_offert » = Pro offert).
+function tauxCommissionPour(plan: string | null | undefined): number {
+  return (plan === "pro" || plan === "pro_offert") ? TAUX_COMMISSION_PRO : TAUX_COMMISSION_ESSENTIEL;
+}
 const SEUIL_GRATUIT_EUROS = 200; // seuil mensuel — aligné sur celui des Prestations (28/09)
 const DECALAGE_LOCAL_MS = 4 * 3600 * 1000; // Guadeloupe = UTC-4 : le « mois » de l'artisan commence à 04:00 UTC
 const MONTANT_MINIMUM_CENTIMES = 50; // Stripe refuse tout paiement en dessous de 0,50 €
@@ -138,7 +143,7 @@ Deno.serve(async (req: Request) => {
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { data: commande, error: errC } = await sb.from("commandes_catalogue")
-      .select("id, artisan_id, catalogue_id, nom_article, quantite, paiement_statut, statut, stripe_payment_intent_id, frais_livraison, cashback_utilise, artisans(stripe_connect_account_id, stripe_connect_statut, nom_entreprise, boutique_en_pause), artisans_catalogue(prix)")
+      .select("id, artisan_id, catalogue_id, nom_article, quantite, paiement_statut, statut, stripe_payment_intent_id, frais_livraison, cashback_utilise, artisans(stripe_connect_account_id, stripe_connect_statut, nom_entreprise, boutique_en_pause, plan), artisans_catalogue(prix)")
       .eq("id", commande_id).maybeSingle();
     if (errC) throw errC;
     if (!commande) return json({ error: "Commande introuvable." }, 404);
@@ -223,11 +228,11 @@ Deno.serve(async (req: Request) => {
 
     const dejaFacture = await dejaFactureCeMoisCentimes(sb, commande.artisan_id);
     const { commissionCentimes: commission } = calculerCommissionAvecSeuil(
-      montantTotal, dejaFacture, SEUIL_GRATUIT_EUROS * 100, TAUX_COMMISSION,
+      montantTotal, dejaFacture, SEUIL_GRATUIT_EUROS * 100, tauxCommissionPour(artisanInfos?.plan),
     );
 
     // Paiement direct : CaraLink ne prélève QUE sa commission (0 sous la franchise). Les frais Stripe sont à la charge de l'artisan.
-    // Jamais plus que le montant payé (Stripe le refuserait) ; en pratique impossible avec 7 %.
+    // Jamais plus que le montant payé (Stripe le refuserait) ; en pratique impossible avec 7 % ou 5 %.
     const retenue = Math.min(commission, montantTotal);
 
     // Clé d'idempotence : deux appels simultanés pour la même commande, le même montant et le même état précédent

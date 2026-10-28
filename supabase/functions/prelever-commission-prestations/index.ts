@@ -57,7 +57,12 @@ const corsHeaders = {
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const ADMIN_EMAIL = "toifreddypro@gmail.com";
 const CRON_SECRET = Deno.env.get("PRELEVEMENT_CRON_SECRET"); // déclenchement automatique mensuel (Supabase Cron)
-const TAUX_COMMISSION = 0.07;
+const TAUX_COMMISSION_ESSENTIEL = 0.07; // 7 % au-delà de la franchise mensuelle (offre gratuite)
+const TAUX_COMMISSION_PRO = 0.05; // 5 % au-delà de la franchise mensuelle (offre Pro, décidé le 28/10)
+// Le taux dépend de l'offre de l'artisan AU MOMENT du calcul (« pro » = abonnement payant, « pro_offert » = Pro offert).
+function tauxCommissionPour(plan: string | null | undefined): number {
+  return (plan === "pro" || plan === "pro_offert") ? TAUX_COMMISSION_PRO : TAUX_COMMISSION_ESSENTIEL;
+}
 const SEUIL_GRATUIT_EUROS = 200; // même seuil que côté Ventes — à garder aligné si on le change un jour
 const MINIMUM_STRIPE_CENTIMES = 50; // Stripe refuse tout prélèvement en dessous de 0,50€
 const REGEX_MOIS = /^\d{4}-(0[1-9]|1[0-2])-01$/;
@@ -196,7 +201,7 @@ async function traiterUnArtisan(sb: any, artisan: any, debut: string, finExclusi
 
   const ca = await caPrestationsAnnuaireDuMois(sb, artisan.id, debut, finExclusive);
   const caTotalCentimes = ca.total;
-  const calcul = calculerCommissionAvecSeuil(caTotalCentimes, SEUIL_GRATUIT_EUROS * 100, TAUX_COMMISSION);
+  const calcul = calculerCommissionAvecSeuil(caTotalCentimes, SEUIL_GRATUIT_EUROS * 100, tauxCommissionPour(artisan.plan));
   const montantCommissionneCentimes = calcul.montantCommissionneCentimes;
   const commissionCentimes = Math.max(0, calcul.commissionCentimes - ca.commissionDejaPrelevee); // déjà prélevée en ligne au moment des paiements
 
@@ -310,7 +315,7 @@ async function reprendreMoisEchoues(sb: any, artisanId: string | null, moisExclu
     try {
       let artisan = artisans.get(l.artisan_id);
       if (!artisan) {
-        const { data } = await sb.from("artisans").select("id, nom_entreprise, email, stripe_customer_id, carte_prestations_enregistree").eq("id", l.artisan_id).maybeSingle();
+        const { data } = await sb.from("artisans").select("id, nom_entreprise, email, stripe_customer_id, carte_prestations_enregistree, plan").eq("id", l.artisan_id).maybeSingle();
         artisan = data; artisans.set(l.artisan_id, artisan);
       }
       if (!artisan || !artisan.stripe_customer_id) continue;
@@ -391,7 +396,7 @@ Deno.serve(async (req: Request) => {
     if (typeof mois === "string") return json({ error: mois }, 400);
     const { debut, finExclusive, moisISO } = mois;
 
-    const { data: artisans, error } = await sb.from("artisans").select("id, nom_entreprise, email, stripe_customer_id");
+    const { data: artisans, error } = await sb.from("artisans").select("id, nom_entreprise, email, stripe_customer_id, plan");
     if (error) throw error;
 
     const resultats = [];

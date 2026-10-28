@@ -18,7 +18,7 @@
 //  - un paiement déjà réglé, remboursé, annulé ou expiré n'est jamais repayé ; un lien de réservation expire au bout de 60 minutes ;
 //  - UN SEUL paiement Stripe actif par ligne (réutilisé si même montant, clé d'idempotence contre les doubles appels) ;
 //  - compte Stripe de l'artisan contrôlé (modèle « paiements directs » : Stripe porte les pertes, frais Stripe à la charge de l'artisan) ;
-//  - commission : 7 % au-dessus de 200 € par mois sur le canal « prestations » (le prélèvement mensuel tient compte de ce qui est déjà commissionné ici), le mois commençant à l'heure de la Guadeloupe.
+//  - commission : 7 % (5 % pour un artisan Pro) au-dessus de 200 € par mois sur le canal « prestations » (le prélèvement mensuel tient compte de ce qui est déjà commissionné ici), le mois commençant à l'heure de la Guadeloupe.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -29,7 +29,12 @@ const corsHeaders = {
 };
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
-const TAUX_COMMISSION = 0.07;
+const TAUX_COMMISSION_ESSENTIEL = 0.07; // 7 % au-delà de la franchise mensuelle (offre gratuite)
+const TAUX_COMMISSION_PRO = 0.05; // 5 % au-delà de la franchise mensuelle (offre Pro, décidé le 28/10)
+// Le taux dépend de l'offre de l'artisan AU MOMENT du calcul (« pro » = abonnement payant, « pro_offert » = Pro offert).
+function tauxCommissionPour(plan: string | null | undefined): number {
+  return (plan === "pro" || plan === "pro_offert") ? TAUX_COMMISSION_PRO : TAUX_COMMISSION_ESSENTIEL;
+}
 const SEUIL_GRATUIT_EUROS = 200;
 const DECALAGE_LOCAL_MS = 4 * 3600 * 1000; // Guadeloupe = UTC-4
 const MONTANT_MINIMUM_CENTIMES = 50;
@@ -123,7 +128,7 @@ Deno.serve(async (req: Request) => {
     if (!p) return json({ error: "Ce lien de paiement n'existe pas ou n'est plus valable." }, 404);
 
     const { data: artisan, error: errA } = await sb.from("artisans")
-      .select("id, nom_entreprise, stripe_connect_account_id, stripe_connect_statut").eq("id", p.artisan_id).maybeSingle();
+      .select("id, nom_entreprise, stripe_connect_account_id, stripe_connect_statut, plan").eq("id", p.artisan_id).maybeSingle();
     if (errA) throw errA;
     if (!artisan) return json({ error: "Artisan introuvable." }, 404);
 
@@ -196,7 +201,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const dejaFacture = await dejaFactureCeMoisCentimes(sb, p.artisan_id, p.id);
-    const commission = Math.min(calculerCommissionAvecSeuil(montantCentimes, dejaFacture, SEUIL_GRATUIT_EUROS * 100, TAUX_COMMISSION), montantCentimes);
+    const commission = Math.min(calculerCommissionAvecSeuil(montantCentimes, dejaFacture, SEUIL_GRATUIT_EUROS * 100, tauxCommissionPour(artisan.plan)), montantCentimes);
 
     const params: Record<string, string> = {
       amount: String(montantCentimes),
