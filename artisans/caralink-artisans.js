@@ -33,7 +33,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       annul_aucune: "Pas d'annulation gratuite : ces frais restent acquis à l'artisan si vous annulez.",
       err_email_paiement: "Une adresse email est nécessaire pour payer en ligne (votre reçu et le lien d'annulation y sont envoyés).",
       ph_email_paiement: 'Email (obligatoire — pour payer en ligne et recevoir votre reçu)',
-      contact_titre: "Vos coordonnées (pour confirmer votre rendez-vous)",
+      contact_titre: "Vos coordonnées (pour confirmer votre rendez-vous)", cmpt_connecte: "✓ Connecté : vos coordonnées sont préremplies depuis votre compte (vous pouvez les modifier).", cmpt_deja: "Déjà un compte client ?", cmpt_se_connecter: "Se connecter",
       err_nom_complet: "Merci d'indiquer votre prénom ET votre nom (ex. Marie Dupont) : l'artisan en a besoin pour vous reconnaître.",
       err_email_format: "Cette adresse email ne semble pas valide.",
       redirection_paiement: 'Redirection vers le paiement sécurisé…',
@@ -71,7 +71,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       annul_aucune: 'No free cancellation: this fee is kept by the craftsman if you cancel.',
       err_email_paiement: 'An email address is required to pay online (your receipt and cancellation link are sent there).',
       ph_email_paiement: 'Email (required — to pay online and receive your receipt)',
-      contact_titre: "Your details (to confirm your appointment)",
+      contact_titre: "Your details (to confirm your appointment)", cmpt_connecte: "✓ Signed in: your details are pre-filled from your account (you can edit them).", cmpt_deja: "Already have a customer account?", cmpt_se_connecter: "Sign in",
       err_nom_complet: "Please enter your first AND last name (e.g. Mary Smith): the craftsman needs it to recognise you.",
       err_email_format: "This email address doesn't look valid.",
       redirection_paiement: 'Redirecting to secure payment…',
@@ -109,7 +109,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
       annul_aucune: 'Sin cancelación gratuita: estos gastos quedan para el profesional si usted cancela.',
       err_email_paiement: 'Se necesita un correo electrónico para pagar en línea (allí se envían su recibo y el enlace de cancelación).',
       ph_email_paiement: 'Email (obligatorio — para pagar en línea y recibir su recibo)',
-      contact_titre: "Sus datos (para confirmar su cita)",
+      contact_titre: "Sus datos (para confirmar su cita)", cmpt_connecte: "✓ Sesión iniciada: sus datos se han rellenado desde su cuenta (puede modificarlos).", cmpt_deja: "¿Ya tiene una cuenta de cliente?", cmpt_se_connecter: "Iniciar sesión",
       err_nom_complet: "Indique su nombre Y apellido (p. ej. María García): el profesional lo necesita para reconocerle.",
       err_email_format: "Este correo electrónico no parece válido.",
       redirection_paiement: 'Redirigiendo al pago seguro…',
@@ -976,6 +976,7 @@ function ouvrirVerifDispo(artisanId, pourVisite) {
       (pourVisite ? '<div style="font-size:13px;font-weight:700;color:#1e40af;margin-bottom:8px;">' + T('type_visite') + '</div>' : '') +
       '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:10px;">' + T('dispo_intro') + '</div>' +
       (options ? '<select id="dispo-service" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' + options + '</select>' : '') +
+      '<div id="dispo-compte" style="font-size:12.5px;color:var(--mu2,#777);margin-bottom:8px;"></div>' +
       '<input id="dispo-adresse" type="text" placeholder="' + T('ph_adresse_interv') + '" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' +
       '<div style="display:flex;gap:8px;margin-bottom:8px;">' +
         '<input id="dispo-cp" type="text" placeholder="' + T('ph_cp') + '" style="flex:1;min-width:0;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);box-sizing:border-box;">' +
@@ -988,7 +989,49 @@ function ouvrirVerifDispo(artisanId, pourVisite) {
       '<button type="button" onclick="verifierDispoReelle(' + jsAttr(artisanId) + ')" style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--ac,#B5502F);color:#fff;font-weight:700;cursor:pointer;">' + T('dispo_verifier_btn') + '</button>' +
       '<div id="dispo-resultat" style="margin-top:10px;"></div>' +
     '</div>';
+  prefillDispoDepuisCompte();
 }
+
+// ── Compte client : préremplit la demande d'intervention (adresse, nom, téléphone, email) quand le client est connecté ──
+// Même session que compte.html (même site). Rien n'est jamais écrasé : on ne remplit que les cases encore vides.
+function lienCompteRetour() { return '/artisans/compte.html?retour=' + encodeURIComponent(location.href.split('#')[0]); }
+async function jetonClientConnecte() {
+  var cle = 'sb-uzgboxfxpxazhysusewv-auth-token';
+  try {
+    var o = JSON.parse(localStorage.getItem(cle) || 'null');
+    if (!o || !o.access_token) return null;
+    if (o.expires_at && o.expires_at * 1000 > Date.now() + 30000) return o;
+    if (!o.refresh_token) return null;
+    var r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON }, body: JSON.stringify({ refresh_token: o.refresh_token }) });
+    if (!r.ok) return null;
+    var n = await r.json();
+    if (!n.access_token) return null;
+    o.access_token = n.access_token; o.refresh_token = n.refresh_token || o.refresh_token; o.expires_at = n.expires_at || (Math.floor(Date.now() / 1000) + (n.expires_in || 3600)); if (n.user) o.user = n.user;
+    try { localStorage.setItem(cle, JSON.stringify(o)); } catch (e) {}
+    return o;
+  } catch (e) { return null; }
+}
+async function prefillDispoDepuisCompte() {
+  var zone = document.getElementById('dispo-compte');
+  if (!zone) return;
+  var o = await jetonClientConnecte();
+  var uid = o && o.user && o.user.id, email = o && o.user && o.user.email;
+  if (!uid) {
+    zone.innerHTML = T('cmpt_deja') + ' <a href="' + lienCompteRetour() + '" target="_blank" rel="noopener" style="color:var(--ac,#B5502F);font-weight:700;">' + T('cmpt_se_connecter') + '</a>';
+    return;
+  }
+  var p = {};
+  try {
+    var r = await fetch(SUPABASE_URL + '/rest/v1/comptes_clients?select=nom,telephone,adresse,code_postal,commune&user_id=eq.' + encodeURIComponent(uid), { headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + o.access_token } });
+    if (r.ok) p = (await r.json())[0] || {};
+  } catch (e) {}
+  function mettre(id, v) { var e = document.getElementById(id); if (e && v && !e.value.trim()) e.value = v; }
+  mettre('dispo-adresse', p.adresse); mettre('dispo-cp', p.code_postal); mettre('dispo-commune', p.commune);
+  mettre('dispo-nom', p.nom); mettre('dispo-tel', p.telephone); mettre('dispo-email', email);
+  zone.innerHTML = T('cmpt_connecte');
+}
+// Le client vient de se connecter dans l'autre onglet : à son retour, on remplit le formulaire sans recharger.
+document.addEventListener('visibilitychange', function() { if (!document.hidden && document.getElementById('dispo-compte')) prefillDispoDepuisCompte(); });
 
 async function verifierDispoReelle(artisanId, dateDebut) {
   var resultat = document.getElementById('dispo-resultat');

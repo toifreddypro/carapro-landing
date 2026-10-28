@@ -197,7 +197,7 @@ function lienRetourBoutique(){
     var r = new URLSearchParams(location.search).get('retour');
     if (!r) return null;
     var u = new URL(r, location.href);
-    if (u.origin !== location.origin || !/catalogue\.html$/.test(u.pathname)) return null;
+    if (u.origin !== location.origin || !/(catalogue\.html|\/artisans\/|\/artisans\/index\.html)$/.test(u.pathname)) return null;
     return u.href;
   } catch(e) { return null; }
 }
@@ -206,7 +206,7 @@ function lienRetourBoutique(){
   if (!href) return;
   var b = document.getElementById('bloc-retour'), a = document.getElementById('lien-retour');
   if (!b || !a) return;
-  a.href = href; a.textContent = '← ' + T('cpt_retour_boutique'); b.style.display = 'block';
+  a.href = href; a.textContent = '← ' + T(/catalogue\.html$/.test(a.pathname) ? 'cpt_retour_boutique' : 'cpt_retour_artisan'); b.style.display = 'block';
 })();
 function voirMdp(id, b){ var i=document.getElementById(id); i.type = i.type==='password'?'text':'password'; }
 function euros(n){ return Number(n||0).toLocaleString(AT_LANG==='en'?'en-GB':AT_LANG==='es'?'es-ES':'fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
