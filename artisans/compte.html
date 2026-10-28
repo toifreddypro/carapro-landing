@@ -71,6 +71,7 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
 <main>
 
 <!-- ÉCRAN 1 : connexion / création -->
+<div id="bloc-retour" style="display:none;max-width:560px;margin:14px auto 0;padding:0 16px;"><a id="lien-retour" class="btn sec" style="display:block;text-align:center;text-decoration:none;" href="#"></a></div>
 <div id="v-auth" style="display:none;">
   <div class="card">
     <h1 data-i18n="cpt_titre">Mon compte</h1>
@@ -149,6 +150,10 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
         <div class="field"><label for="p-nom" data-i18n="cpt_nom"></label><input type="text" id="p-nom" maxlength="100"></div>
         <div class="field"><label for="p-email" data-i18n="cpt_email"></label><input type="email" id="p-email" disabled><div class="hint" data-i18n="cpt_email_fixe"></div></div>
         <div class="field"><label for="p-tel" data-i18n="cpt_tel"></label><input type="tel" id="p-tel" maxlength="30"></div>
+        <div class="field"><label for="p-adr" data-i18n="cat_adresse"></label><input type="text" id="p-adr" maxlength="200" autocomplete="street-address"></div>
+        <div class="field"><label for="p-cp" data-i18n="cat_code_postal"></label><input type="text" id="p-cp" maxlength="10" autocomplete="postal-code"></div>
+        <div class="field"><label for="p-com" data-i18n="cat_commune"></label><input type="text" id="p-com" maxlength="100" autocomplete="address-level2"></div>
+        <div class="hint" style="margin-bottom:12px;" data-i18n="cpt_adresse_aide"></div>
         <button type="submit" class="btn" id="btn-prof" data-i18n="cpt_enregistrer"></button>
       </form>
     </div>
@@ -186,6 +191,23 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){retu
 function fill(t, o){ return String(t).replace(/\{(\w+)\}/g,function(_,k){return o&&o[k]!=null?o[k]:'';}); }
 function show(id, txt){ var e=document.getElementById(id); if(!e) return; if(txt){e.textContent=txt;e.classList.add('show');} else {e.classList.remove('show');} }
 function vue(v){ ['v-auth','v-reset','v-app'].forEach(function(x){ document.getElementById(x).style.display = (x===v)?'block':'none'; }); }
+// Venu d'une boutique ? Un bouton ramène le client à la boutique qu'il vient de quitter (même site uniquement : jamais un lien extérieur).
+function lienRetourBoutique(){
+  try {
+    var r = new URLSearchParams(location.search).get('retour');
+    if (!r) return null;
+    var u = new URL(r, location.href);
+    if (u.origin !== location.origin || !/catalogue\.html$/.test(u.pathname)) return null;
+    return u.href;
+  } catch(e) { return null; }
+}
+(function(){
+  var href = lienRetourBoutique();
+  if (!href) return;
+  var b = document.getElementById('bloc-retour'), a = document.getElementById('lien-retour');
+  if (!b || !a) return;
+  a.href = href; a.textContent = '← ' + T('cpt_retour_boutique'); b.style.display = 'block';
+})();
 function voirMdp(id, b){ var i=document.getElementById(id); i.type = i.type==='password'?'text':'password'; }
 function euros(n){ return Number(n||0).toLocaleString(AT_LANG==='en'?'en-GB':AT_LANG==='es'?'es-ES':'fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
 function dateCourte(d){ if(!d) return ''; var x=new Date(String(d).slice(0,10)+'T12:00:00Z'); return x.toLocaleDateString(AT_LANG==='en'?'en-GB':AT_LANG==='es'?'es-ES':'fr-FR',{day:'numeric',month:'long',timeZone:'UTC'}); }
@@ -262,7 +284,7 @@ async function ouvrirEspace(user){
   USER = user;
   var meta = user.user_metadata || {};
   // Profil : créé au premier passage à partir des infos données à l'inscription.
-  var p = await sb.from('comptes_clients').select('nom,telephone').eq('user_id', user.id).maybeSingle();
+  var p = await sb.from('comptes_clients').select('nom,telephone,adresse,code_postal,commune').eq('user_id', user.id).maybeSingle();
   if (!p.data) {
     var neuf = { user_id:user.id, nom:(meta.nom||'').slice(0,100)||null, telephone:(meta.telephone||'').slice(0,30)||null };
     await sb.from('comptes_clients').insert(neuf);
@@ -273,6 +295,9 @@ async function ouvrirEspace(user){
   document.getElementById('bonjour').textContent = fill(T('cpt_bonjour'), {nom: PROFIL.nom || user.email});
   document.getElementById('p-nom').value = PROFIL.nom || '';
   document.getElementById('p-tel').value = PROFIL.telephone || '';
+  document.getElementById('p-adr').value = PROFIL.adresse || '';
+  document.getElementById('p-cp').value = PROFIL.code_postal || '';
+  document.getElementById('p-com').value = PROFIL.commune || '';
   document.getElementById('p-email').value = user.email || '';
   vue('v-app'); ongletApp('cmd'); chargerCommandes(); chargerRdv(); chargerCredits();
 }
@@ -416,9 +441,10 @@ async function sauverProfil(){
   show('prof-err'); show('prof-ok');
   var nom = document.getElementById('p-nom').value.trim(), tel = document.getElementById('p-tel').value.trim();
   if (!nom) { show('prof-err', T('cpt_err_nom')); return; }
-  var r = await sb.from('comptes_clients').update({nom:nom, telephone:tel||null, updated_at:new Date().toISOString()}).eq('user_id', USER.id);
+  var adr = document.getElementById('p-adr').value.trim(), cp = document.getElementById('p-cp').value.trim(), com = document.getElementById('p-com').value.trim();
+  var r = await sb.from('comptes_clients').update({nom:nom, telephone:tel||null, adresse:adr||null, code_postal:cp||null, commune:com||null, updated_at:new Date().toISOString()}).eq('user_id', USER.id);
   if (r.error) { show('prof-err', T('cpt_err_generique')); return; }
-  PROFIL.nom = nom; PROFIL.telephone = tel||null;
+  PROFIL.nom = nom; PROFIL.telephone = tel||null; PROFIL.adresse = adr||null; PROFIL.code_postal = cp||null; PROFIL.commune = com||null;
   document.getElementById('bonjour').textContent = fill(T('cpt_bonjour'), {nom:nom});
   show('prof-ok', T('cpt_enregistre'));
 }

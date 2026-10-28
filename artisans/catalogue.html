@@ -359,7 +359,7 @@ async function appliquerCodePromo() {
   try {
     // Un code promo demande un compte client connecté (une seule utilisation par client) : sans lui, on le dit tout de suite, avec le lien pour se connecter.
     var jeton = await jetonClient();
-    if (!jeton) { msg.style.color = '#b91c1c'; msg.innerHTML = escHtml(T('cat_promo_connexion')) + ' <a href="compte.html" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">' + escHtml(T('cat_promo_connexion_lien')) + '</a>'; return; }
+    if (!jeton) { msg.style.color = '#b91c1c'; msg.innerHTML = escHtml(T('cat_promo_connexion')) + ' <a href="' + lienCompte() + '" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">' + escHtml(T('cat_promo_connexion_lien')) + '</a>'; return; }
     // Le code peut être « secret » (non affiché sur la boutique) : c'est le serveur qui dit s'il est valable.
     var res = await fetch(SUPABASE_URL + '/functions/v1/verifier-code-promo', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
@@ -464,6 +464,7 @@ function fermerModalePanier() { document.getElementById('modal-panier').classLis
 
 // Compte client FACULTATIF : si le client est déjà connecté (session partagée, même site), on préremplit ses coordonnées ;
 // sinon on propose simplement de créer un compte. La commande reste possible sans compte.
+function lienCompte() { return 'compte.html?retour=' + encodeURIComponent(location.href.split('#')[0]); }
 function prefillCompteClient() {
   var zone = document.getElementById('mc-compte');
   if (!zone) return;
@@ -479,9 +480,31 @@ function prefillCompteClient() {
     if (m.nom) document.getElementById('mc-nom').value = m.nom;
     if (m.telephone) document.getElementById('mc-tel').value = m.telephone;
     zone.textContent = '✓ ' + T('cpt_connecte_pre');
+    prefillDepuisProfil(); // nom, téléphone et adresse enregistrés dans le compte
   } else {
-    zone.innerHTML = T('cpt_compte_avantages') + ' <a href="compte.html" target="_blank" rel="noopener" style="color:var(--clay,#B5502F);font-weight:600;">' + T('cpt_onglet_creer') + '</a>';
+    zone.innerHTML = T('cpt_compte_avantages') + ' <a href="' + lienCompte() + '" target="_blank" rel="noopener" style="color:var(--clay,#B5502F);font-weight:600;">' + T('cpt_onglet_creer') + '</a>';
   }
+}
+
+// Complète le formulaire avec le profil du compte (jamais par-dessus ce que le client a déjà tapé).
+async function prefillDepuisProfil() {
+  try {
+    var jeton = await jetonClient(); if (!jeton) return;
+    var o = JSON.parse(localStorage.getItem('sb-uzgboxfxpxazhysusewv-auth-token') || 'null');
+    var uid = o && o.user && o.user.id; if (!uid) return;
+    var r = await fetch(SUPABASE_URL + '/rest/v1/comptes_clients?select=nom,telephone,adresse,code_postal,commune&user_id=eq.' + encodeURIComponent(uid), { headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + jeton } });
+    if (!r.ok) return;
+    var p = (await r.json())[0]; if (!p) return;
+    function vide(id) { var e = document.getElementById(id); return e && !e.value.trim() ? e : null; }
+    var e;
+    if (p.nom && (e = vide('mc-nom'))) e.value = p.nom;
+    if (p.telephone && (e = vide('mc-tel'))) e.value = p.telephone;
+    var adr = false;
+    if (p.adresse && (e = vide('mc-adresse'))) { e.value = p.adresse; adr = true; }
+    if (p.code_postal && (e = vide('mc-cp'))) { e.value = p.code_postal; adr = true; }
+    if (p.commune && (e = vide('mc-commune'))) { e.value = p.commune; adr = true; }
+    if (adr && document.getElementById('mc-mode').value === 'livraison') planifierApercuFrais();
+  } catch (e) {}
 }
 
 function ouvrirModaleCommande() {
@@ -567,10 +590,10 @@ async function majCashback() {
       var gain = Math.round(base * pct) / 100;
       if (gain >= 0.01) html += (html ? '<div style="height:6px;"></div>' : '') + '<span style="color:var(--mu2);">' + T('cat_cb_gain_estime').replace('{m}', fmtEur(gain)) + '</span>';
     } else {
-      html += '<span style="color:var(--mu2);">' + T('cat_cb_invite').replace('{p}', String(pct).replace('.', ',')) + ' <a href="compte.html" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">' + T('cpt_onglet_creer') + '</a><br>' + T('cat_cb_deja') + ' <a href="compte.html" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">' + T('cpt_btn_connexion') + '</a></span>';
+      html += '<span style="color:var(--mu2);">' + T('cat_cb_invite').replace('{p}', String(pct).replace('.', ',')) + ' <a href="' + lienCompte() + '" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">' + T('cpt_onglet_creer') + '</a><br>' + T('cat_cb_deja') + ' <a href="' + lienCompte() + '" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">' + T('cpt_btn_connexion') + '</a></span>';
     }
   }
-  if (CB.session_invalide) html += '<div style="margin-top:6px;color:var(--mu2);">' + T('cat_cb_reconnecter') + ' <a href="compte.html" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">' + T('cpt_onglet_connexion') + '</a></div>';
+  if (CB.session_invalide) html += '<div style="margin-top:6px;color:var(--mu2);">' + T('cat_cb_reconnecter') + ' <a href="' + lienCompte() + '" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">' + T('cpt_onglet_connexion') + '</a></div>';
   zone.innerHTML = html; zone.style.display = html ? 'block' : 'none';
 }
 // Le client vient de se connecter dans l'autre onglet (compte.html) : on revient ici, le crédit s'affiche sans recharger la page.
@@ -953,7 +976,7 @@ function render() {
 
   var html = annonceHtml +
     '<div style="background:var(--inp);border-bottom:1px solid var(--brd);padding:8px 0;">' +
-      '<div class="wrap"><a href="https://caralink.app/artisans/" style="font-size:12.5px;font-weight:600;color:var(--mu2);text-decoration:none;">← ' + T('cat_retour_annuaire') + '</a><a href="compte.html" style="float:right;font-size:12.5px;font-weight:600;color:var(--ac);text-decoration:none;">👤 ' + T('nav_compte_client') + '</a></div>' +
+      '<div class="wrap"><a href="https://caralink.app/artisans/" style="font-size:12.5px;font-weight:600;color:var(--mu2);text-decoration:none;">← ' + T('cat_retour_annuaire') + '</a><a href="' + lienCompte() + '" style="float:right;font-size:12.5px;font-weight:600;color:var(--ac);text-decoration:none;">👤 ' + T('nav_compte_client') + '</a></div>' +
     '</div>' +
     '<div class="hero disp-' + dispo + (urlBanniere ? '' : ' sans-image') + '">' +
       '<div class="bandeau-couv"' + (urlBanniere ? ' style="background-image:url(&quot;' + escHtml(urlBanniere) + '&quot;);" role="img" aria-label="' + escHtml(a.nom_entreprise) + '"' : '') + '></div>' +
