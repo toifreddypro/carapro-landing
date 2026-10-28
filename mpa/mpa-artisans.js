@@ -3173,7 +3173,7 @@ async function chargerPanierClient() {
     .is('facture_id', null)
     .order('date_intervention', { ascending: true });
 
-  if (error) { zone.innerHTML = '<p style="color:var(--danger);font-size:13px;">Erreur : ' + error.message + '</p>'; return; }
+  if (error) { zone.innerHTML = '<p style="color:var(--danger);font-size:13px;">Erreur : ' + escHtml(error.message) + '</p>'; return; }
   _panierActuel = data || [];
 
   if (!_panierActuel.length) {
@@ -4323,7 +4323,7 @@ async function openModifierFiche() {
   var a = _artisan;
   var apercu = document.getElementById('apercu-logo');
   apercu.innerHTML = a.photo_profil_url
-    ? '<img src="' + a.photo_profil_url + '" style="width:100%;height:100%;object-fit:cover;">'
+    ? '<img src="' + escHtml(a.photo_profil_url) + '" style="width:100%;height:100%;object-fit:cover;">'
     : (a.nom_entreprise || '—').split(' ').filter(Boolean).slice(0, 2).map(function(w) { return w[0].toUpperCase(); }).join('');
   document.getElementById('m-nom').value = a.nom_entreprise || '';
   document.getElementById('m-statut').value = a.statut || 'Artisan Indépendant';
