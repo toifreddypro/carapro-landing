@@ -47,14 +47,32 @@ function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
-// Vérification manuelle de la signature Stripe (HMAC SHA-256) — pas de SDK Stripe côté Deno,
-// on vérifie nous-mêmes exactement comme Stripe le documente pour les environnements non-Node.
+// Vérification manuelle de la signature Stripe (HMAC SHA-256) — pas de SDK Stripe côté Deno.
+// Durcie (audit sécurité 28/10) : message de plus de 5 minutes refusé (un message intercepté ne peut pas être rejoué),
+// comparaison à temps constant, et TOUTES les signatures « v1 » sont acceptées (Stripe en envoie plusieurs quand un secret est renouvelé).
+const TOLERANCE_SIGNATURE_SECONDES = 300;
+function egalConstant(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let ecart = 0;
+  for (let i = 0; i < a.length; i++) ecart |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return ecart === 0;
+}
 async function verifierSignatureStripe(payloadBrut: string, enTeteSignature: string, secret: string): Promise<boolean> {
   try {
-    const parties = Object.fromEntries(enTeteSignature.split(",").map((p) => p.split("=")) as [string, string][]);
-    const timestamp = parties["t"];
-    const signatureAttendue = parties["v1"];
-    if (!timestamp || !signatureAttendue) return false;
+    if (!secret) return false;
+    let timestamp = "";
+    const signatures: string[] = [];
+    for (const part of enTeteSignature.split(",")) {
+      const i = part.indexOf("=");
+      if (i < 0) continue;
+      const cle = part.slice(0, i).trim();
+      const valeur = part.slice(i + 1).trim();
+      if (cle === "t") timestamp = valeur;
+      else if (cle === "v1") signatures.push(valeur);
+    }
+    if (!timestamp || !signatures.length) return false;
+    const t = Number(timestamp);
+    if (!Number.isFinite(t) || Math.abs(Date.now() / 1000 - t) > TOLERANCE_SIGNATURE_SECONDES) return false;
 
     const payloadSigne = `${timestamp}.${payloadBrut}`;
     const cle = await crypto.subtle.importKey(
@@ -62,7 +80,7 @@ async function verifierSignatureStripe(payloadBrut: string, enTeteSignature: str
     );
     const signatureBytes = await crypto.subtle.sign("HMAC", cle, new TextEncoder().encode(payloadSigne));
     const signatureCalculee = Array.from(new Uint8Array(signatureBytes)).map((b) => b.toString(16).padStart(2, "0")).join("");
-    return signatureCalculee === signatureAttendue;
+    return signatures.some((sg) => egalConstant(sg, signatureCalculee));
   } catch (e) {
     console.error("[stripe-webhook-litiges] Erreur vérification signature :", e);
     return false;
