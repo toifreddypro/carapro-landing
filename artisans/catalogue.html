@@ -4,12 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Boutique — CaraLink Artisans</title>
+<meta name="description" content="Boutique d'artisan en Guadeloupe sur CaraLink Artisans : découvrez les produits et services, commandez et payez en ligne en toute simplicité.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:wght@600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:wght@600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:wght@600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"></noscript>
 <style>
   :root{
     --bg:#f7f8fb;--panel:#ffffff;--brd:#e3eaf4;--b2:#c9d8ef;
-    --ac:#B5502F;--ac2:#B5502F;--tx:#13223c;--mu:#6b7c96;--mu2:#4a5c78;
+    --ac:#B5502F;--ac2:#B5502F;--tx:#13223c;--mu:#5a6b86;--mu2:#4a5c78;
     --inp:#f6f9fe;--ok:#059669;--gold:#b45309;--danger:#dc2626;
   }
   /* Fond de boutique choisi par l'artisan : on change seulement les variables. Les fenêtres (panier, paiement) restent claires : le formulaire de carte Stripe est clair. */
@@ -216,7 +218,7 @@
   .panier-total span:last-child{color:var(--ac);font-family:'Bricolage Grotesque',sans-serif;font-size:19px;}
   .panier-vider{font-size:12px;color:var(--mu);text-decoration:underline;cursor:pointer;background:none;border:none;padding:0;margin-top:8px;}
 </style>
-<script src="https://js.stripe.com/v3/"></script>
+<script src="https://js.stripe.com/v3/" async></script>
 <script src="tr-artisans.js"></script>
 </head>
 <body>
@@ -1016,7 +1018,7 @@ function renderBarreFiltres() {
     return '<button onclick="filtrerParCategorie(' + jsAttr(cat) + ')" style="padding:6px 14px;border-radius:20px;border:1px solid ' + (actif ? 'var(--ac)' : 'var(--brd)') + ';background:' + (actif ? 'var(--ac)' : 'transparent') + ';color:' + (actif ? '#fff' : 'var(--tx)') + ';font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;">' + escHtml(cat) + '</button>';
   }).join('');
   var selectTri =
-    '<select onchange="changerTri(this.value)" style="padding:7px 12px;border-radius:8px;border:1px solid var(--brd);background:var(--panel);font-family:\'Outfit\',sans-serif;font-size:12.5px;color:var(--tx);">' +
+    '<select aria-label="' + escHtml(T('cat_tri_label')) + '" onchange="changerTri(this.value)" style="padding:7px 12px;border-radius:8px;border:1px solid var(--brd);background:var(--panel);font-family:\'Outfit\',sans-serif;font-size:12.5px;color:var(--tx);">' +
       '<option value="pertinence"' + (_triActif === 'pertinence' ? ' selected' : '') + '>' + T('cat_tri_pertinence') + '</option>' +
       '<option value="prix_asc"' + (_triActif === 'prix_asc' ? ' selected' : '') + '>' + T('cat_tri_prix_asc') + '</option>' +
       '<option value="prix_desc"' + (_triActif === 'prix_desc' ? ' selected' : '') + '>' + T('cat_tri_prix_desc') + '</option>' +
