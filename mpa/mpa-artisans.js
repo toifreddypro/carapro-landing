@@ -2953,6 +2953,7 @@ async function renderRecapInterventions() {
   var texteTitre = '📊 Mes interventions ' + (/^[aeiouéèh]/i.test(MOIS_NOMS[_calMois]) ? 'd\'' : 'de ') + MOIS_NOMS[_calMois].toLowerCase() + ' ' + _calAnnee;
   var elTitre = document.getElementById('recap-int-titre');
   if (elTitre) elTitre.textContent = texteTitre;
+  renderVentesProduits();
   var titre = '';
   if (!lignes.length) { zone.innerHTML = titre + '<p style="font-size:13px;color:var(--mu);margin:0;">Aucune intervention ce mois-ci.</p>'; return; }
   var rembourse = {}, enLigne = {};
@@ -5520,14 +5521,55 @@ async function sauverCodePromo() {
   chargerUsageCodePromo();
 }
 
-function renderVentesProduits() {
+// Ventes par produit du MOIS affiché (même mois que « Mes interventions » : les flèches ◀ ▶ changent les deux). Heure de la Guadeloupe (UTC-4).
+var _ventesMoisSeq = 0;
+async function ventesCatalogueDuMois(ids) {
+  var res = {};
+  if (!ids.length) return res;
+  var connus = {};
+  ids.forEach(function(id) { connus[id] = true; });
+  function deux(n) { return (n < 10 ? '0' : '') + n; }
+  var debut = _calAnnee + '-' + deux(_calMois + 1) + '-01T00:00:00-04:00';
+  var finA = _calMois === 11 ? _calAnnee + 1 : _calAnnee, finM = _calMois === 11 ? 1 : _calMois + 2;
+  var fin = finA + '-' + deux(finM) + '-01T00:00:00-04:00';
+  function ajouter(id, q, ca) { if (!res[id]) res[id] = { ventes: 0, ca: 0 }; res[id].ventes += q; res[id].ca += ca; }
+  var { data: unArticle } = await sb.from('commandes_catalogue').select('catalogue_id, quantite, montant_total, montant_rembourse, frais_livraison')
+    .in('catalogue_id', ids).in('paiement_statut', STATUTS_COMMANDE_REGLEE).gte('created_at', debut).lt('created_at', fin);
+  (unArticle || []).forEach(function(c) {
+    if (!c.catalogue_id) return;
+    ajouter(c.catalogue_id, c.quantite || 0, Math.max(0, Number(c.montant_total || 0) - Number(c.montant_rembourse || 0) - Number(c.frais_livraison || 0)));
+  });
+  var { data: paniers } = await sb.from('commandes_catalogue').select('id')
+    .eq('artisan_id', _artisan.id).is('catalogue_id', null).in('paiement_statut', STATUTS_COMMANDE_REGLEE).gte('created_at', debut).lt('created_at', fin);
+  var idsPaniers = (paniers || []).map(function(c) { return c.id; });
+  for (var i = 0; i < idsPaniers.length; i += 100) {
+    var { data: lignes } = await sb.from('commandes_catalogue_lignes').select('catalogue_id, quantite, prix_unitaire')
+      .in('commande_id', idsPaniers.slice(i, i + 100));
+    (lignes || []).forEach(function(l) {
+      if (!l.catalogue_id || !connus[l.catalogue_id]) return;
+      ajouter(l.catalogue_id, l.quantite || 0, (Number(l.prix_unitaire) || 0) * (l.quantite || 0));
+    });
+  }
+  return res;
+}
+
+async function renderVentesProduits() {
   var zone = document.getElementById('zone-ventes-produits');
   if (!zone) return;
+  var seq = ++_ventesMoisSeq;
+  if (typeof _calMois !== 'number' || typeof _calAnnee !== 'number') { var _n = new Date(); _calAnnee = _n.getFullYear(); _calMois = _n.getMonth(); }
+  var nomMois = MOIS_NOMS[_calMois].toLowerCase();
+  var elTitre = document.getElementById('ventes-produits-titre');
+  if (elTitre) elTitre.textContent = '📊 Ventes par produit ' + (/^[aeiouéèh]/i.test(nomMois) ? 'd\'' : 'de ') + nomMois + ' ' + _calAnnee;
   if (!_catalogueCache.length) { zone.innerHTML = 'Ajoutez des produits pour voir vos ventes ici.'; return; }
+  var duMois = {};
+  try { duMois = await ventesCatalogueDuMois(_catalogueCache.map(function(c) { return c.id; })); } catch (e) { /* on affiche zéro plutôt que de bloquer */ }
+  if (seq !== _ventesMoisSeq) return; // le mois a changé entre-temps
 
-  var avecVentes = _catalogueCache.map(function(c) { return { nom: c.nom, ventes: _ventesCatalogueCache[c.id] || 0, ca: _caCatalogue[c.id] || 0 }; })
+  var avecVentes = _catalogueCache.map(function(c) { var m = duMois[c.id] || { ventes: 0, ca: 0 }; return { nom: c.nom, ventes: m.ventes, ca: m.ca }; })
     .sort(function(a, b) { return b.ventes - a.ventes; });
-  var meilleures = avecVentes.slice(0, 3);
+  if (!avecVentes.some(function(i) { return i.ventes > 0; })) { zone.innerHTML = '<p style="font-size:13px;color:var(--mu);margin:0;">Aucune vente ce mois-ci.</p>'; return; }
+  var meilleures = avecVentes.filter(function(i) { return i.ventes > 0; }).slice(0, 3);
   var moins = avecVentes.slice(-3).reverse();
 
   function liste(items) {
