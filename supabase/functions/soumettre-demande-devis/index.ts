@@ -392,6 +392,14 @@ Deno.serve(async (req: Request) => {
     if ((await compter("client_telephone", tel)) >= LIMITE_DEMANDES_PAR_HEURE || (email && (await compter("client_email", email)) >= LIMITE_DEMANDES_PAR_HEURE)) {
       return json({ error: "Trop de demandes envoyées. Réessayez dans un moment." }, 429);
     }
+    // Audit sécurité 28/10 : la limite ci-dessus se contourne en changeant de téléphone ou d'email à chaque envoi. On ajoute une limite par
+    // adresse du visiteur (20 demandes par heure : largement assez pour un vrai client, même sur un réseau partagé). Si le limiteur est
+    // absent ou en panne, on laisse passer : une vraie demande vaut mieux qu'un blocage.
+    try {
+      const ip = (req.headers.get("cf-connecting-ip") || (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "inconnue");
+      const { data: autorise } = await sb.rpc("limiter_appel", { p_cle: `demande-devis:${ip}`, p_max: 20, p_fenetre_s: 3600 });
+      if (autorise === false) return json({ error: "Trop de demandes envoyées. Réessayez dans un moment." }, 429);
+    } catch (e) { console.error("[soumettre-demande-devis] limiter_appel :", e); }
 
     const estUneProposionDeCreneau = !!(dateIntervention && heureDebut && artisanId);
     // Cohérence du type et du créneau : un rendez-vous (visite ou réservation) sans créneau n'a pas de sens, et un simple
