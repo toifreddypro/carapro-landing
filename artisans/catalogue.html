@@ -567,12 +567,14 @@ async function majCashback() {
       var gain = Math.round(base * pct) / 100;
       if (gain >= 0.01) html += (html ? '<div style="height:6px;"></div>' : '') + '<span style="color:var(--mu2);">' + T('cat_cb_gain_estime').replace('{m}', fmtEur(gain)) + '</span>';
     } else {
-      html += '<span style="color:var(--mu2);">' + T('cat_cb_invite').replace('{p}', String(pct).replace('.', ',')) + ' <a href="compte.html" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">' + T('cpt_onglet_creer') + '</a></span>';
+      html += '<span style="color:var(--mu2);">' + T('cat_cb_invite').replace('{p}', String(pct).replace('.', ',')) + ' <a href="compte.html" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">' + T('cpt_onglet_creer') + '</a><br>' + T('cat_cb_deja') + ' <a href="compte.html" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">' + T('cpt_btn_connexion') + '</a></span>';
     }
   }
   if (CB.session_invalide) html += '<div style="margin-top:6px;color:var(--mu2);">' + T('cat_cb_reconnecter') + ' <a href="compte.html" target="_blank" rel="noopener" style="color:var(--ac);font-weight:700;">' + T('cpt_onglet_connexion') + '</a></div>';
   zone.innerHTML = html; zone.style.display = html ? 'block' : 'none';
 }
+// Le client vient de se connecter dans l'autre onglet (compte.html) : on revient ici, le crédit s'affiche sans recharger la page.
+document.addEventListener('visibilitychange', function() { if (!document.hidden && DATA && DATA.artisan) { try { majCashback(); } catch (e) {} } });
 function fmtEur(n) { return Number(n).toFixed(2).replace('.', ',') + ' €'; }
 async function calculerFraisApercu() {
   var zone = document.getElementById('mc-frais');
