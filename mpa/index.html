@@ -133,6 +133,20 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .bpnl.active{display:block;}
 .dcard{background:var(--panel);border:1px solid var(--brd);border-radius:14px;overflow:hidden;}
 .dchdr{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--brd);flex-wrap:wrap;gap:10px;}
+.dchdr.fam-bleu{background:rgba(37,99,235,.09);border-left:5px solid #2563eb;border-radius:12px 12px 0 0;}
+.dchdr.fam-orange{background:rgba(242,106,28,.10);border-left:5px solid #f26a1c;border-radius:12px 12px 0 0;}
+.dchdr.fam-violet{background:rgba(124,58,237,.09);border-left:5px solid #7c3aed;border-radius:12px 12px 0 0;}
+.dchdr.fam-vert{background:rgba(18,163,122,.10);border-left:5px solid #12a37a;border-radius:12px 12px 0 0;}
+.dchdr .hdr-sub{font-size:12px;color:var(--mu);font-weight:500;margin-left:auto;margin-right:8px;}
+.dchdr .chev{font-size:16px;color:var(--mu2);transition:transform .2s;}
+.carte-repliable>.dchdr{cursor:pointer;}
+.carte-repliable>.dchdr:focus-visible{outline:2px solid var(--ac);outline-offset:-2px;}
+.carte-repliable.carte-repliee>.dchdr{border-bottom:0;border-radius:12px;}
+.carte-repliable.carte-repliee>.dchdr .chev{transform:rotate(-90deg);}
+.carte-repliable.carte-repliee>.carte-corps{display:none;}
+.mois-nav{display:flex;gap:6px;align-items:center;}
+.mois-nav button{width:32px;height:32px;border-radius:8px;border:1px solid var(--brd);background:var(--panel,#fff);color:var(--tx);cursor:pointer;font-size:14px;}
+
 .dctit{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;}
 .dctit svg{width:16px;height:16px;}
 .sinp{padding:7px 12px;border-radius:8px;border:1px solid var(--b2);font-size:12.5px;font-family:'Outfit',sans-serif;width:180px;}
@@ -693,7 +707,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div style="font-size:14px;font-weight:600;line-height:1.5;color:var(--tx);background:rgba(181,80,47,.09);border:1.5px solid rgba(181,80,47,.35);border-left:5px solid var(--ac);border-radius:10px;padding:12px 16px;margin-bottom:14px;">💡 Cliquez sur une intervention pour changer son statut en <span style="color:var(--ac);">Terminée</span> ou <span style="color:var(--ac);">Payée</span>, ou sur le crayon ✎ pour voir et modifier les détails (prix, paiement, notes).</div>
 <div class="cal-grid" id="cal-dows"></div>
 <div class="cal-grid" id="cal-grid" style="margin-top:6px;"></div>
-<div id="zone-recap-interventions" style="margin-top:16px;border-top:1px solid var(--brd);padding-top:14px;"></div>
 <div class="dash-jauge-card" style="margin-top:16px;margin-bottom:0;">
 <div class="dj-header">
 <div class="dj-icon" style="background:rgba(59,130,246,.1);">
@@ -763,7 +776,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 <strong>Disponible</strong> : prêt à vendre tout de suite. <strong>Sur commande</strong> : nécessite un délai de préparation (ex : gâteau). Marquez vos produits phares avec ⭐ : 1 en offre Essentiel, 4 en offre Pro. Sans choix, ce sont vos meilleures ventes qui apparaissent automatiquement.</div>
 </div>
 </div><div class="bpnl"><div id="encart-stripe-connect-catalogue" style="margin-top:16px;"></div><div class="dcard" style="margin-top:16px;">
-<div class="dchdr">
+<div class="dchdr fam-bleu">
 <div class="dctit">🔗 Ma boutique en ligne</div>
 </div>
 <div style="padding:16px;">
@@ -774,7 +787,28 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <button class="addb" onclick="ouvrirPartageArtisan('boutique')" style="flex-shrink:0;">🔗 Partager / QR code</button>
 </div>
 </div></div>
-<div class="dcard" style="margin-top:16px;"><div class="dchdr"><div class="dctit">🎨 Personnaliser ma boutique <span style="font-size:11px;font-weight:700;color:var(--ok,#059669);">Gratuit</span></div></div><div style="padding:16px;">
+<div class="dcard carte-repliable carte-repliee" style="margin-top:16px;"><div class="dchdr fam-orange" role="button" tabindex="0" aria-expanded="false" onclick="basculerCarte(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();basculerCarte(this);}"><div class="dctit">🎁 Code promo <span style="font-size:11px;font-weight:700;color:var(--ac);">Offre Pro</span></div><span class="hdr-sub">Une remise que vos clients saisissent au panier</span><span class="chev" aria-hidden="true">▾</span></div><div class="carte-corps" style="padding:16px;">
+<div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.5;">Vos clients le saisissent dans leur panier et la remise est calculée automatiquement. <strong>Il ne s'applique pas aux produits déjà en remise</strong> (la remise « % » de la fiche produit) : les deux ne se cumulent jamais, c'est l'un ou l'autre.</div>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+<input id="boutique-code-promo" maxlength="30" placeholder="Code (ex : BIENVENUE10)" style="flex:1;min-width:170px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;text-transform:uppercase;" type="text"/>
+<input id="boutique-code-promo-pct" type="number" min="1" max="50" step="1" placeholder="% (1-50)" style="width:92px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;"/>
+<label style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:5px;">jusqu'au <input id="boutique-code-promo-fin" type="date" style="padding:8px 9px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;"/></label>
+<button class="addb" id="btn-code-promo" onclick="sauverCodePromo()" style="flex-shrink:0;">Enregistrer</button>
+</div>
+<label style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;margin-top:9px;line-height:1.45;cursor:pointer;"><input type="checkbox" id="boutique-code-promo-visible" checked style="margin-top:3px;"><span><strong>Afficher ce code sur CaraLink</strong> (bandeau de la boutique et fiche). Décochez-le pour un <strong>code partenaire</strong> (donné dans une vidéo, une affiche, un partenariat…) : seuls ceux qui le connaissent pourront l'utiliser, la case « J'ai un code promo » reste disponible dans le panier.</span></label>
+<div id="code-promo-statut" style="font-size:12px;color:var(--mu);margin-top:8px;"></div>
+<div id="code-promo-usage" style="font-size:12.5px;margin-top:6px;"></div>
+</div></div>
+<div class="dcard carte-repliable carte-repliee" style="margin-top:16px;"><div class="dchdr fam-orange" role="button" tabindex="0" aria-expanded="false" onclick="basculerCarte(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();basculerCarte(this);}"><div class="dctit">💚 Cashback fidélité <span style="font-size:11px;font-weight:700;color:var(--ac);">Offre Pro</span></div><span class="hdr-sub">Un crédit offert à vos clients fidèles</span><span class="chev" aria-hidden="true">▾</span></div><div class="carte-corps" style="padding:16px;">
+<div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.5;">Offrez un crédit à vos clients ayant un compte CaraLink : <strong>un pourcentage de ce qu'ils paient pour leurs produits</strong> (livraison exclue), gagné quand la commande est livrée ou remise, <strong>valable 12 mois dans votre boutique uniquement</strong>. Ils le déduisent de leur commande suivante (en tout ou partie) : le crédit est financé par vous, vous encaissez simplement un peu moins, et la commission CaraLink se calcule sur ce que vous encaissez réellement. Si vous quittez l'offre Pro, plus aucun nouveau crédit n'est offert, mais ceux déjà gagnés restent utilisables.</div>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+<input id="boutique-cashback-pct" type="number" min="1" max="10" step="1" placeholder="% (1-10)" style="width:110px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;"/>
+<button class="addb" id="btn-cashback" onclick="sauverCashback()" style="flex-shrink:0;">Enregistrer</button>
+<span style="font-size:12px;color:var(--mu);">Vide = pas de cashback.</span>
+</div>
+<div id="cashback-statut" style="font-size:12px;color:var(--mu);margin-top:8px;"></div>
+</div></div>
+<div class="dcard carte-repliable carte-repliee" style="margin-top:16px;"><div class="dchdr fam-violet" role="button" tabindex="0" aria-expanded="false" onclick="basculerCarte(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();basculerCarte(this);}"><div class="dctit">🎨 Personnaliser ma boutique <span style="font-size:11px;font-weight:700;color:var(--ok,#059669);">Gratuit</span></div><span class="hdr-sub">Image, fond, couleurs, police, coordonnées</span><span class="chev" aria-hidden="true">▾</span></div><div class="carte-corps" style="padding:16px;">
 <div style="font-size:12px;color:var(--mu);margin-bottom:10px;line-height:1.5;">Votre boutique est votre vitrine : donnez-lui votre image. Le <strong>logo</strong> se change dans « Mon profil ».</div>
 <div id="pers-apercu" style="aspect-ratio:3/1;width:100%;border-radius:9px;background:linear-gradient(135deg,#e9eef7,#d5dff0);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:12px;margin-bottom:8px;">Pas encore d'image de fond</div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
@@ -845,33 +879,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <a id="pers-voir" href="#" target="_blank" rel="noopener" style="font-size:12.5px;font-weight:700;color:var(--ac);text-decoration:none;">Voir ma boutique →</a>
 </div>
 <div id="pers-statut" style="font-size:12px;color:var(--mu);margin-top:8px;"></div>
-</div></div>
-<div class="dcard" style="margin-top:16px;"><div class="dchdr"><div class="dctit">🎁 Code promo <span style="font-size:11px;font-weight:700;color:var(--ac);">Offre Pro</span></div></div><div style="padding:16px;">
-<div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.5;">Vos clients le saisissent dans leur panier et la remise est calculée automatiquement. <strong>Il ne s'applique pas aux produits déjà en remise</strong> (la remise « % » de la fiche produit) : les deux ne se cumulent jamais, c'est l'un ou l'autre.</div>
-<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-<input id="boutique-code-promo" maxlength="30" placeholder="Code (ex : BIENVENUE10)" style="flex:1;min-width:170px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;text-transform:uppercase;" type="text"/>
-<input id="boutique-code-promo-pct" type="number" min="1" max="50" step="1" placeholder="% (1-50)" style="width:92px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;"/>
-<label style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:5px;">jusqu'au <input id="boutique-code-promo-fin" type="date" style="padding:8px 9px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;"/></label>
-<button class="addb" id="btn-code-promo" onclick="sauverCodePromo()" style="flex-shrink:0;">Enregistrer</button>
-</div>
-<label style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;margin-top:9px;line-height:1.45;cursor:pointer;"><input type="checkbox" id="boutique-code-promo-visible" checked style="margin-top:3px;"><span><strong>Afficher ce code sur CaraLink</strong> (bandeau de la boutique et fiche). Décochez-le pour un <strong>code partenaire</strong> (donné dans une vidéo, une affiche, un partenariat…) : seuls ceux qui le connaissent pourront l'utiliser, la case « J'ai un code promo » reste disponible dans le panier.</span></label>
-<div id="code-promo-statut" style="font-size:12px;color:var(--mu);margin-top:8px;"></div>
-<div id="code-promo-usage" style="font-size:12.5px;margin-top:6px;"></div>
-</div></div>
-<div class="dcard" style="margin-top:16px;"><div class="dchdr"><div class="dctit">💚 Cashback fidélité <span style="font-size:11px;font-weight:700;color:var(--ac);">Offre Pro</span></div></div><div style="padding:16px;">
-<div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.5;">Offrez un crédit à vos clients ayant un compte CaraLink : <strong>un pourcentage de ce qu'ils paient pour leurs produits</strong> (livraison exclue), gagné quand la commande est livrée ou remise, <strong>valable 12 mois dans votre boutique uniquement</strong>. Ils le déduisent de leur commande suivante (en tout ou partie) : le crédit est financé par vous, vous encaissez simplement un peu moins, et la commission CaraLink se calcule sur ce que vous encaissez réellement. Si vous quittez l'offre Pro, plus aucun nouveau crédit n'est offert, mais ceux déjà gagnés restent utilisables.</div>
-<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-<input id="boutique-cashback-pct" type="number" min="1" max="10" step="1" placeholder="% (1-10)" style="width:110px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;"/>
-<button class="addb" id="btn-cashback" onclick="sauverCashback()" style="flex-shrink:0;">Enregistrer</button>
-<span style="font-size:12px;color:var(--mu);">Vide = pas de cashback.</span>
-</div>
-<div id="cashback-statut" style="font-size:12px;color:var(--mu);margin-top:8px;"></div>
-</div></div><div class="dcard" style="margin-top:16px;">
-<div class="dchdr">
-<div class="dctit">📊 Ventes par produit</div>
-</div>
-<div id="zone-ventes-produits" style="padding:16px;font-size:13px;color:var(--mu);">Chargement…</div>
-</div></div><div class="bpnl" id="p7">
+</div></div></div><div class="bpnl" id="p7">
 <div class="dcard">
 <div class="dchdr">
 <div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Commandes</div>
@@ -935,7 +943,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Créez vos produits ici. Pour les mettre réellement en vente, rendez-vous ensuite dans <strong>Mes ventes → Mon catalogue</strong>.</div>
 </div>
 </div></div></div><div class="pnl" id="p-compta">
-<div class="sous-nav" id="nav-compta"><button class="btab active" id="bt-compta-0" onclick="switchSousOnglet('nav-compta','conteneur-compta',0)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><line x1="12" x2="12" y1="1" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>Mon chiffre d'affaires</button><button class="btab" id="bt-compta-1" onclick="switchSousOnglet('nav-compta','conteneur-compta',1)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" x2="8" y1="13" y2="13"></line><line x1="16" x2="8" y1="17" y2="17"></line></svg>Mes factures</button><button class="btab" id="bt-compta-2" onclick="switchSousOnglet('nav-compta','conteneur-compta',2)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><line x1="18" x2="18" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="6" x2="6" y1="20" y2="14"></line></svg>Tableau de bord</button></div><div id="conteneur-compta"><div class="bpnl active"><div class="cpv2-card">
+<div class="sous-nav" id="nav-compta"><button class="btab active" id="bt-compta-0" onclick="switchSousOnglet('nav-compta','conteneur-compta',0)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><line x1="12" x2="12" y1="1" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>Mon chiffre d'affaires</button><button class="btab" id="bt-compta-1" onclick="switchSousOnglet('nav-compta','conteneur-compta',1)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" x2="8" y1="13" y2="13"></line><line x1="16" x2="8" y1="17" y2="17"></line></svg>Mes factures</button><button class="btab" id="bt-compta-2" onclick="switchSousOnglet('nav-compta','conteneur-compta',2)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><line x1="18" x2="18" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="6" x2="6" y1="20" y2="14"></line></svg>Tableau de bord</button><button class="btab" id="bt-compta-3" onclick="switchSousOnglet('nav-compta','conteneur-compta',3)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><line x1="18" x2="18" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="6" x2="6" y1="20" y2="14"></line></svg>Mes résultats</button></div><div id="conteneur-compta"><div class="bpnl active"><div class="cpv2-card">
 <div class="cpv2-matrix-head">
 <div class="cpv2-matrix-headtext">
 <p class="cpv2-matrix-title"><svg fill="none" height="18" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="18"><rect height="7" rx="1" width="7" x="3" y="3"></rect><rect height="7" rx="1" width="7" x="14" y="3"></rect><rect height="7" rx="1" width="7" x="3" y="14"></rect><rect height="7" rx="1" width="7" x="14" y="14"></rect></svg><span id="compta-titre">Mon chiffre d'affaires</span></p>
@@ -1116,6 +1124,18 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div>
 </div>
+</div></div><div class="bpnl"><div class="dcard" style="margin-top:16px;">
+<div class="dchdr fam-vert">
+<div class="dctit" id="recap-int-titre">📊 Mes interventions du mois</div>
+<div class="mois-nav"><button type="button" onclick="moisPrecedent()" aria-label="Mois précédent">◀</button><button type="button" onclick="moisSuivant()" aria-label="Mois suivant">▶</button></div>
+</div>
+<div id="zone-recap-interventions" style="padding:16px;"></div>
+</div>
+<div class="dcard" style="margin-top:16px;">
+<div class="dchdr fam-vert">
+<div class="dctit">📊 Ventes par produit</div>
+</div>
+<div id="zone-ventes-produits" style="padding:16px;font-size:13px;color:var(--mu);">Chargement…</div>
 </div></div></div></div></div>
 <!-- MODALE : Avis produit (CaraLink Artisans / MPA Artisans) -->
 <div class="modal-overlay" id="modal-avis-produit">

@@ -521,6 +521,14 @@ function nomAccueil() {
 // ── Sous-onglets génériques — un seul mécanisme pour les trois groupes (Mon profil,
 // Mes interventions, Mes ventes), au lieu d'une fonction dédiée par groupe comme avant
 // (switchBdd). Même logique exacte, juste paramétrée par les bons identifiants.
+// Cartes repliables de « Ma boutique » (Personnaliser, Code promo, Cashback) : un clic sur le titre ouvre ou ferme la carte.
+function basculerCarte(entete) {
+  var carte = entete.closest('.carte-repliable');
+  if (!carte) return;
+  var fermee = carte.classList.toggle('carte-repliee');
+  entete.setAttribute('aria-expanded', fermee ? 'false' : 'true');
+}
+
 function switchSousOnglet(idNav, idConteneur, i) {
   document.querySelectorAll('#' + idNav + ' .btab').forEach(function(b, idx) { b.classList.toggle('active', idx === i); });
   document.querySelectorAll('#' + idConteneur + ' > .bpnl').forEach(function(p, idx) { p.classList.toggle('active', idx === i); });
@@ -2942,7 +2950,10 @@ async function renderRecapInterventions() {
   var seq = ++_recapIntSeq;
   var lignes = (_interventionsCache || []).filter(function(i) { return i.statut !== 'annulee'; })
     .sort(function(a, b) { return String(a.date_intervention).localeCompare(String(b.date_intervention)); });
-  var titre = '<div style="font-size:14px;font-weight:700;margin-bottom:8px;">📊 Mes interventions ' + (/^[aeiouéèh]/i.test(MOIS_NOMS[_calMois]) ? 'd\'' : 'de ') + MOIS_NOMS[_calMois].toLowerCase() + '</div>';
+  var texteTitre = '📊 Mes interventions ' + (/^[aeiouéèh]/i.test(MOIS_NOMS[_calMois]) ? 'd\'' : 'de ') + MOIS_NOMS[_calMois].toLowerCase() + ' ' + _calAnnee;
+  var elTitre = document.getElementById('recap-int-titre');
+  if (elTitre) elTitre.textContent = texteTitre;
+  var titre = '';
   if (!lignes.length) { zone.innerHTML = titre + '<p style="font-size:13px;color:var(--mu);margin:0;">Aucune intervention ce mois-ci.</p>'; return; }
   var rembourse = {}, enLigne = {};
   try {
