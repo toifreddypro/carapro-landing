@@ -922,6 +922,17 @@ function suiteInterventionTerminee(id) {
 function messageSuiteTerminee(ids) {
   var liste = ids.map(function(x) { return _interventionsCache.find(function(i) { return i.id === x; }); }).filter(Boolean);
   if (!liste.length) return;
+  // Une livraison n'est pas une prestation à facturer : son prix est le frais de livraison, déjà réglé avec la commande. On ne propose donc jamais « On facture ? ».
+  var livraisons = liste.filter(estLivraisonIntervention);
+  liste = liste.filter(function(i) { return !estLivraisonIntervention(i); });
+  if (livraisons.length && !liste.length) {
+    var l0 = livraisons[0];
+    var nomL = (l0.mpa_artisans_clients && l0.mpa_artisans_clients.nom) ? escHtml(l0.mpa_artisans_clients.nom) : 'votre client';
+    mpaAiDire(livraisons.length > 1 ? '🚚 ' + livraisons.length + ' livraisons terminées : les commandes sont marquées livrées.' : '🚚 Livraison chez ' + nomL + ' terminée : la commande est marquée livrée. Le frais de livraison a déjà été réglé avec la commande, il n\'y a rien à facturer en plus.', 'info',
+      { label: 'Voir mes commandes', action: "switchTab(4);switchSousOnglet('nav-ventes','conteneur-ventes',2)" });
+    return;
+  }
+  if (!liste.length) return;
   var facturables = liste.filter(function(i) { return !i.facture_id && i.client_id && Number(i.prix) > 0; });
   if (liste.length > 1) {
     if (!facturables.length) return;
