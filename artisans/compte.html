@@ -635,7 +635,63 @@ function carteReponse(p, r){
     + '<div style="display:flex;gap:10px;align-items:center;">'+photo+'<div><strong>'+esc(a.nom_entreprise||'')+'</strong>'+verifie+'<div class="cmd-date">'+esc(a.commune||'')+' · '+avis+'</div></div></div>'
     + '<div class="prj-desc">'+esc(r.message)+'</div>' + prix
     + '<a href="/artisans/?artisan='+encodeURIComponent(a.id||'')+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;font-size:13px;font-weight:600;">'+esc(T('prj_rep_profil'))+' →</a>'
-    + garder + '</div>';
+    + garder + carteFil(r) + '</div>';
+}
+var NONLUS = {};
+function carteFil(r){
+  var n = NONLUS[r.id] || 0, id = esc(r.id);
+  return '<button class="btn" style="margin-top:10px;" onclick="ouvrirFil(\''+id+'\')">💬 '+esc(T('msg_bouton'))+(n>0?' <span class="prj-badge" style="background:#B5502F;color:#fff;">'+esc(fill(T('msg_non_lus'),{n:n}))+'</span>':'')+'</button>'
+    + '<div id="fil-'+id+'" style="display:none;margin-top:10px;"><div id="fil-msgs-'+id+'"></div>'
+    + '<div id="fil-form-'+id+'"><textarea id="fil-txt-'+id+'" rows="3" maxlength="1000" placeholder="'+esc(T('msg_ph'))+'" style="width:100%;box-sizing:border-box;margin-top:8px;padding:9px;border:1px solid #d6dce8;border-radius:8px;font-family:inherit;font-size:14px;"></textarea>'
+    + '<div id="fil-err-'+id+'" style="display:none;color:#c0392b;font-size:13px;margin-top:6px;"></div>'
+    + '<button class="btn" id="fil-btn-'+id+'" style="margin-top:6px;" onclick="envoyerMessage(\''+id+'\')">'+esc(T('msg_envoyer'))+'</button></div></div>';
+}
+function ouvrirFil(id){
+  var b = document.getElementById('fil-'+id); if (!b) return;
+  var ouvre = b.style.display === 'none';
+  b.style.display = ouvre ? '' : 'none';
+  if (ouvre) chargerFil(id);
+}
+async function chargerFil(id){
+  var zone = document.getElementById('fil-msgs-'+id), form = document.getElementById('fil-form-'+id);
+  var r = await sb.rpc('messages_fil', { p_reponse: id });
+  if (r.error || !r.data) { zone.innerHTML = '<div class="vide">'+esc(T('cpt_err_generique'))+'</div>'; return; }
+  var d = r.data; NONLUS[id] = 0;
+  var msgs = d.messages || [];
+  zone.innerHTML = (msgs.length ? msgs.map(function(m){
+    var sig = !m.moi ? (m.signale ? '<span class="cmd-date"> · '+esc(T('msg_signale'))+'</span>' : ' <a href="#" style="font-size:11.5px;" onclick="signalerMessage(\''+esc(m.id)+'\',\''+id+'\');return false;">'+esc(T('msg_signaler'))+'</a>') : '';
+    return '<div style="margin-top:8px;display:flex;flex-direction:column;align-items:'+(m.moi?'flex-end':'flex-start')+';"><div style="max-width:88%;padding:8px 12px;border-radius:12px;font-size:14px;white-space:pre-wrap;word-break:break-word;background:'+(m.moi?'#fbe9e2':'#eef1f6')+';">'+esc(m.contenu)+'</div>'
+      + '<div class="cmd-date">'+esc(m.moi?T('msg_vous'):T('msg_artisan'))+' · '+esc(new Date(m.created_at).toLocaleString(AT_LANG==='en'?'en-GB':AT_LANG==='es'?'es-ES':'fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Guadeloupe'}))+sig+'</div></div>';
+  }).join('') : '<div class="cmd-date" style="margin-top:6px;">'+esc(T('msg_aucun'))+'</div>')
+    + (d.ferme ? '<div class="cmd-date" style="margin-top:8px;">'+esc(T('msg_ferme'))+'</div>' : (msgs.length ? '' : '<div class="cmd-date" style="margin-top:8px;">'+esc(T('msg_regle'))+'</div>'));
+  form.style.display = d.peut_ecrire ? '' : 'none';
+  zone.scrollTop = zone.scrollHeight;
+}
+async function envoyerMessage(id){
+  var t = document.getElementById('fil-txt-'+id), err = document.getElementById('fil-err-'+id), btn = document.getElementById('fil-btn-'+id);
+  err.style.display = 'none';
+  if (!t.value.trim()) return;
+  btn.disabled = true; btn.textContent = T('msg_envoi');
+  try {
+    var s = (await sb.auth.getSession()).data.session;
+    if (!s) throw new Error('session');
+    var res = await fetch(SUPABASE_URL + '/functions/v1/envoyer-message-projet', { method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON,'Authorization':'Bearer '+s.access_token},
+      body: JSON.stringify({ reponse_id:id, contenu:t.value }) });
+    var j = await res.json().catch(function(){ return {}; });
+    if (!res.ok || !j.success) {
+      var cle = ({coordonnees:'msg_err_coordonnees', limite:'msg_err_limite', ferme:'msg_ferme'})[j.code];
+      err.textContent = T(cle || 'cpt_err_generique'); err.style.display = ''; return;
+    }
+    t.value = ''; await chargerFil(id);
+  } catch(e) { err.textContent = T('cpt_err_generique'); err.style.display = ''; }
+  finally { btn.disabled = false; btn.textContent = T('msg_envoyer'); }
+}
+async function signalerMessage(idMsg, idFil){
+  if (!confirm(T('msg_signaler_confirm'))) return;
+  var r = await sb.rpc('signaler_message', { p_message: idMsg });
+  if (r.error) { alert(T('cpt_err_generique')); return; }
+  await chargerFil(idFil);
 }
 function carteProjet(p){
   var ouvert = p.statut === 'ouvert';
@@ -679,6 +735,7 @@ async function relancerProjet(id){
 async function chargerProjets(){
   var zone = document.getElementById('prj-liste');
   var r = await sb.rpc('mes_projets');
+  try { var nl = await sb.rpc('messages_non_lus'); NONLUS = (nl && nl.data) || {}; } catch(e) { NONLUS = {}; }
   if (r.error) { zone.innerHTML = '<div class="vide">'+esc(T('cpt_err_generique'))+'</div>'; return; }
   var l = r.data || [];
   zone.innerHTML = l.length ? l.map(carteProjet).join('') : '<div class="vide">'+esc(T('prj_aucun'))+'</div>';

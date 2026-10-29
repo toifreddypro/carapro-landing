@@ -967,6 +967,8 @@ async function demanderPaiementDepuisMessage(id) {
 // Le client reste anonyme : on ne voit ni son nom, ni son téléphone, ni son email (protection contre le harcèlement).
 // Le serveur ne renvoie que les projets de MON métier et de MA zone, encore ouverts ou auxquels j'ai déjà répondu.
 window._nbProjetsATraiter = 0;
+window._nbMessagesNonLus = 0;
+var _filsClients = [];
 var _projetsRecus = [];
 var _photosProjetsSignees = {};
 
@@ -991,6 +993,11 @@ async function chargerProjetsRecus() {
     console.warn('Projets de clients non chargés :', e);
     _projetsRecus = []; window._nbProjetsATraiter = 0;
   }
+  try {
+    var rf = await sb.rpc('fils_artisan');
+    _filsClients = (rf && Array.isArray(rf.data)) ? rf.data : [];
+  } catch (e2) { console.warn('Messages des clients non chargés :', e2); _filsClients = []; }
+  window._nbMessagesNonLus = _filsClients.filter(function(f) { return f.nb_non_lus > 0; }).length;
   renderProjetsRecus();
 }
 
@@ -998,12 +1005,13 @@ function renderProjetsRecus() {
   var carte = document.getElementById('carte-projets');
   var zone = document.getElementById('zone-projets');
   if (!zone || !carte) return;
-  carte.style.display = _projetsRecus.length ? '' : 'none';
+  carte.style.display = (_projetsRecus.length || _filsClients.length) ? '' : 'none';
+  renderFilsClients();
   // Pastille « Mes demandes » : projets à traiter + demandes de devis (recalculée par renderDemandes aussi)
   var badge = document.getElementById('cnt-demandes');
   if (badge) {
     var autres = (_demandesListe || []).filter(function(l) { return !demandeArchivee(l); }).length;
-    var total = autres + window._nbProjetsATraiter;
+    var total = autres + window._nbProjetsATraiter + (window._nbMessagesNonLus || 0);
     if (total > 0) { badge.textContent = total; badge.style.display = 'inline-flex'; } else { badge.style.display = 'none'; }
   }
   zone.innerHTML = _projetsRecus.map(function(p) {
@@ -1075,6 +1083,89 @@ async function envoyerReponseProjet(id) {
     if (err) { err.textContent = e.message; err.style.display = ''; }
     if (btn) { btn.disabled = false; btn.textContent = 'Envoyer ma réponse'; }
   }
+}
+
+// ── Messagerie avec les clients : le client écrit en premier, l'artisan répond. Aucun téléphone / email / lien (le client décide seul, à la fin). ──
+function renderFilsClients() {
+  var zone = document.getElementById('zone-fils');
+  if (!zone) return;
+  if (!_filsClients.length) { zone.innerHTML = ''; return; }
+  zone.innerHTML = '<div style="font-weight:700;margin-bottom:10px;">💬 Messages de clients</div>' + _filsClients.map(function(f) {
+    var id = escHtml(f.reponse_id);
+    var nl = f.nb_non_lus > 0 ? ' <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--danger);color:#fff;">' + f.nb_non_lus + ' nouveau' + (f.nb_non_lus > 1 ? 'x' : '') + '</span>' : '';
+    return '<div style="border:1px solid var(--brd);border-radius:12px;padding:12px 14px;margin-bottom:12px;">' +
+      '<div style="font-weight:700;">' + escHtml(f.besoin_icon || '') + ' ' + escHtml(f.besoin_fr) + ' <span style="font-weight:400;color:var(--mu);font-size:12.5px;">· ' + escHtml(f.commune) + '</span>' + nl + '</div>' +
+      '<div style="font-size:12.5px;color:var(--mu);margin-top:3px;">' + escHtml(f.description) + '</div>' +
+      '<div style="margin-top:8px;"><button type="button" class="addb" onclick="ouvrirFilClient(' + jsAttrLocal(f.reponse_id) + ')">💬 Ouvrir la discussion</button></div>' +
+      '<div id="fc-' + id + '" style="display:none;margin-top:10px;"><div id="fc-msgs-' + id + '"></div>' +
+      '<div id="fc-form-' + id + '" style="display:none;"><textarea id="fc-txt-' + id + '" rows="3" maxlength="1000" placeholder="Votre message…" style="width:100%;margin-top:8px;padding:9px;border:1px solid var(--brd);border-radius:8px;font-family:inherit;font-size:13px;box-sizing:border-box;"></textarea>' +
+      '<div style="font-size:11.5px;color:var(--mu);margin-top:4px;">🔒 Pas de téléphone, d\'email ni de lien : le client décidera lui-même de vous donner ses coordonnées.</div>' +
+      '<div id="fc-err-' + id + '" style="display:none;margin-top:6px;font-size:12.5px;color:var(--danger);"></div>' +
+      '<button type="button" class="addb" id="fc-btn-' + id + '" style="margin-top:8px;" onclick="envoyerMessageClient(' + jsAttrLocal(f.reponse_id) + ')">Envoyer</button></div></div></div>';
+  }).join('');
+}
+
+function ouvrirFilClient(id) {
+  var b = document.getElementById('fc-' + id);
+  if (!b) return;
+  var ouvre = b.style.display === 'none';
+  b.style.display = ouvre ? '' : 'none';
+  if (ouvre) chargerFilClient(id);
+}
+
+async function chargerFilClient(id) {
+  var zone = document.getElementById('fc-msgs-' + id), form = document.getElementById('fc-form-' + id);
+  if (!zone) return;
+  var { data, error } = await sb.rpc('messages_fil', { p_reponse: id });
+  if (error || !data) { zone.innerHTML = '<div style="color:var(--danger);font-size:13px;">Discussion indisponible.</div>'; return; }
+  var f = _filsClients.find(function(x) { return x.reponse_id === id; });
+  if (f && f.nb_non_lus) { f.nb_non_lus = 0; window._nbMessagesNonLus = _filsClients.filter(function(x) { return x.nb_non_lus > 0; }).length; renderProjetsRecusBadgeSeul(); }
+  var msgs = data.messages || [];
+  zone.innerHTML = msgs.map(function(m) {
+    var sig = !m.moi ? (m.signale ? ' · Signalé ✓' : ' · <a href="#" onclick="signalerMessageClient(' + jsAttrLocal(m.id) + ',' + jsAttrLocal(id) + ');return false;">Signaler</a>') : '';
+    return '<div style="margin-top:8px;display:flex;flex-direction:column;align-items:' + (m.moi ? 'flex-end' : 'flex-start') + ';">' +
+      '<div style="max-width:88%;padding:8px 12px;border-radius:12px;font-size:13.5px;white-space:pre-wrap;word-break:break-word;background:' + (m.moi ? 'rgba(181,80,47,.12)' : 'var(--brd)') + ';">' + escHtml(m.contenu) + '</div>' +
+      '<div style="font-size:11px;color:var(--mu);">' + (m.moi ? 'Vous' : 'Client') + ' · ' + new Date(m.created_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + sig + '</div></div>';
+  }).join('') + (data.ferme ? '<div style="margin-top:8px;font-size:12.5px;color:var(--mu);">Cette discussion est fermée.</div>' : '');
+  if (form) form.style.display = data.peut_ecrire ? '' : 'none';
+}
+
+function renderProjetsRecusBadgeSeul() {
+  var badge = document.getElementById('cnt-demandes');
+  if (!badge) return;
+  var autres = (_demandesListe || []).filter(function(l) { return !demandeArchivee(l); }).length;
+  var total = autres + window._nbProjetsATraiter + (window._nbMessagesNonLus || 0);
+  if (total > 0) { badge.textContent = total; badge.style.display = 'inline-flex'; } else { badge.style.display = 'none'; }
+}
+
+async function envoyerMessageClient(id) {
+  if (!verifierAccesEcriture()) return;
+  var t = document.getElementById('fc-txt-' + id), err = document.getElementById('fc-err-' + id), btn = document.getElementById('fc-btn-' + id);
+  if (!t || !t.value.trim()) return;
+  err.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    if (!authSession) throw new Error('Session expirée : reconnectez-vous.');
+    var res = await fetch(SUPABASE_URL + '/functions/v1/envoyer-message-projet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({ reponse_id: id, contenu: t.value }),
+    });
+    var data = await res.json().catch(function() { return {}; });
+    if (!res.ok || !data.success) throw new Error((data && data.error) || ('Erreur serveur (' + res.status + ')'));
+    t.value = '';
+    await chargerFilClient(id);
+  } catch (e) {
+    err.textContent = e.message; err.style.display = '';
+  } finally { btn.disabled = false; btn.textContent = 'Envoyer'; }
+}
+
+async function signalerMessageClient(idMsg, idFil) {
+  if (!confirm('Signaler ce message comme abusif ?')) return;
+  var { error } = await sb.rpc('signaler_message', { p_message: idMsg });
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerFilClient(idFil);
 }
 
 // ════════════════════════════════════════
@@ -1179,7 +1270,7 @@ function renderDemandes() {
   if (!zone) return;
   var liste = _demandesListe || [];
   var nbArchivees = liste.filter(demandeArchivee).length;
-  var nbNouvelles = liste.length - nbArchivees + (window._nbProjetsATraiter || 0);
+  var nbNouvelles = liste.length - nbArchivees + (window._nbProjetsATraiter || 0) + (window._nbMessagesNonLus || 0);
   var badge = document.getElementById('cnt-demandes');
   if (badge) { if (nbNouvelles > 0) { badge.textContent = nbNouvelles; badge.style.display = 'inline-flex'; } else { badge.style.display = 'none'; } }
   if (!liste.length) {
