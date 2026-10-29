@@ -973,6 +973,16 @@ var _projetsRecus = [];
 var _photosProjetsSignees = {};
 
 async function chargerProjetsRecus() {
+  // La pastille de l'onglet principal « Mes interventions » reprend celle de « Mes demandes » (elle se met à jour toute seule).
+  if (!window._obsPastille) {
+    var src = document.getElementById('cnt-demandes'), dst = document.getElementById('cnt-nt-interventions');
+    if (src && dst) {
+      var copier = function() { dst.textContent = src.textContent; dst.style.display = src.style.display === 'none' ? 'none' : 'inline-flex'; };
+      window._obsPastille = new MutationObserver(copier);
+      window._obsPastille.observe(src, { attributes: true, childList: true, characterData: true, subtree: true });
+      copier();
+    }
+  }
   var carte = document.getElementById('carte-projets');
   var zone = document.getElementById('zone-projets');
   if (!zone || !carte) return;
@@ -1122,9 +1132,9 @@ async function chargerFilClient(id) {
   if (f && f.nb_non_lus) { f.nb_non_lus = 0; window._nbMessagesNonLus = _filsClients.filter(function(x) { return x.nb_non_lus > 0; }).length; renderProjetsRecusBadgeSeul(); }
   var msgs = data.messages || [];
   zone.innerHTML = msgs.map(function(m) {
-    var sig = !m.moi ? (m.signale ? ' · Signalé ✓' : ' · <a href="#" onclick="signalerMessageClient(' + jsAttrLocal(m.id) + ',' + jsAttrLocal(id) + ');return false;">Signaler</a>') : '';
+    var sig = !m.moi ? (m.signale ? ' · Signalé ✓' : ' · <a href="#" style="color:#dc2626;font-weight:600;text-decoration:underline;" onclick="signalerMessageClient(' + jsAttrLocal(m.id) + ',' + jsAttrLocal(id) + ');return false;">🚩 Signaler</a>') : '';
     return '<div style="margin-top:8px;display:flex;flex-direction:column;align-items:' + (m.moi ? 'flex-end' : 'flex-start') + ';">' +
-      '<div style="max-width:88%;padding:8px 12px;border-radius:12px;font-size:13.5px;white-space:pre-wrap;word-break:break-word;background:' + (m.moi ? 'rgba(181,80,47,.12)' : 'var(--brd)') + ';">' + escHtml(m.contenu) + '</div>' +
+      '<div style="max-width:88%;padding:8px 12px;border-radius:12px;font-size:13.5px;white-space:pre-wrap;word-break:break-word;background:' + (m.moi ? '#fde2ec' : '#dbeafe') + ';">' + escHtml(m.contenu) + '</div>' +
       '<div style="font-size:11px;color:var(--mu);">' + (m.moi ? 'Vous' : 'Client') + ' · ' + new Date(m.created_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + sig + '</div></div>';
   }).join('') + (data.ferme ? '<div style="margin-top:8px;font-size:12.5px;color:var(--mu);">Cette discussion est fermée.</div>' : '');
   if (form) form.style.display = data.peut_ecrire ? '' : 'none';
