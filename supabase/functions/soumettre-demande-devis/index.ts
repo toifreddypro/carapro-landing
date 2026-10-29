@@ -319,6 +319,10 @@ Deno.serve(async (req: Request) => {
     if (typeIntervention && !TYPES_INTERVENTION_VALIDES.includes(typeIntervention)) return json({ error: "Type de demande invalide." }, 400);
     const artisanId = (artisan_id ?? "").trim() || null;
     if (artisanId && !REGEX_UUID.test(artisanId)) return json({ error: "Artisan introuvable." }, 404);
+    // Phase 2 (30/10/2026) : la demande OUVERTE à plusieurs artisans (sans artisan précis) n'existe plus sans compte. Elle se publie
+    // désormais comme « projet » depuis un compte client (fonction publier-projet). Sans cette ligne, quelqu'un pourrait contourner la
+    // page et envoyer l'ancienne demande ouverte, avec son téléphone visible des artisans.
+    if (!artisanId) return json({ error: "Pour publier un projet à plusieurs artisans, connectez-vous à votre compte client.", code: "connexion_requise" }, 403);
     const serviceId = (service_id ?? "").trim() || null;
     if (serviceId && !REGEX_UUID.test(serviceId)) return json({ error: "Service invalide." }, 400);
     const dateIntervention = (date_intervention ?? "").trim() || null;

@@ -34,6 +34,14 @@ Deno.serve(async (req: Request) => {
     const { data: artisan } = await sb.from("artisans").select("id").eq("user_id", u.user.id).maybeSingle();
     if (artisan) return json({ error: "artisan" }, 409);
 
+    // Photos des projets publiés (phase 2, 30/10/2026) : effacées avec le compte. Les lignes des projets partent d'elles-mêmes
+    // avec le compte ; les photos, elles, resteraient dans l'espace de stockage. Jamais bloquant pour la suppression.
+    try {
+      const { data: projets } = await sb.from("projets").select("photos").eq("client_user_id", u.user.id);
+      const chemins = (projets ?? []).flatMap((p: any) => (Array.isArray(p.photos) ? p.photos : []));
+      if (chemins.length) await sb.storage.from("projets-photos").remove(chemins);
+    } catch (e) { console.error("[supprimer-mon-compte-client] photos de projets :", e); }
+
     // Dans l'ordre : le profil, puis le compte (les commandes passent à « sans compte » toutes seules).
     const { error: errP } = await sb.from("comptes_clients").delete().eq("user_id", u.user.id);
     if (errP) throw errP;

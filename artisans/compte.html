@@ -37,7 +37,7 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
 .msg.err{background:rgba(179,38,30,.08);border:1px solid rgba(179,38,30,.3);color:var(--danger);}
 .msg.ok{background:rgba(15,157,120,.08);border:1px solid rgba(15,157,120,.3);color:var(--ok);}
 .tabs{display:flex;gap:6px;margin-bottom:18px;border-bottom:1px solid var(--line);}
-.tab{background:none;border:none;border-bottom:3px solid transparent;padding:10px 14px;font-family:inherit;font-size:14px;font-weight:600;color:var(--mute);cursor:pointer;}
+.tab{background:none;border:none;border-bottom:3px solid transparent;padding:10px 11px;font-family:inherit;font-size:14px;font-weight:600;color:var(--mute);cursor:pointer;}
 .tab.on{color:var(--clay);border-bottom-color:var(--clay);}
 .lien{background:none;border:none;color:var(--mute);font-size:13px;cursor:pointer;text-decoration:underline;font-family:inherit;margin-top:14px;display:block;width:100%;text-align:center;}
 .cgu{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--mute);margin-bottom:14px;}
@@ -61,6 +61,22 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
 .vide{text-align:center;color:var(--mute);font-size:14px;padding:30px 10px;}
 .pw{position:relative;} .pw input{padding-right:42px;} .pw button{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:4px;}
 .zone-danger{border-top:1px solid var(--line);margin-top:22px;padding-top:18px;}
+.tabs{overflow-x:auto;} .tab{white-space:nowrap;}
+.prj-etapes{display:grid;gap:10px;margin:6px 0 14px;}
+.prj-etape{background:#fbf3ee;border-radius:10px;padding:11px 13px;} .prj-etape b{display:block;font-size:13.5px;margin-bottom:2px;} .prj-etape span{font-size:12.5px;color:var(--mute);}
+.prj-protege{background:rgba(15,157,120,.08);border:1px solid rgba(15,157,120,.3);color:#0b6b52;border-radius:9px;padding:11px 13px;font-size:12.5px;margin-bottom:14px;line-height:1.5;}
+.opts{display:grid;gap:8px;margin:10px 0 4px;}
+.opt{display:flex;align-items:center;gap:11px;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;font-family:inherit;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;width:100%;}
+.opt:hover{border-color:var(--clay);background:#fbf3ee;} .opt .ic{font-size:22px;flex-shrink:0;}
+.prj-choix{display:inline-block;background:#fbf3ee;border-radius:99px;padding:5px 12px;font-size:12.5px;font-weight:600;margin-bottom:12px;}
+.field textarea{width:100%;padding:11px 13px;border-radius:8px;border:1.5px solid var(--line);font-family:inherit;font-size:14px;resize:vertical;}
+.field textarea:focus{outline:2px solid var(--clay);outline-offset:1px;border-color:var(--clay);}
+.prj-thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.prj-thumb{position:relative;width:70px;height:70px;} .prj-thumb img{width:100%;height:100%;object-fit:cover;border-radius:8px;border:1px solid var(--line);}
+.prj-thumb button{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:none;background:var(--danger);color:#fff;font-size:13px;line-height:1;cursor:pointer;padding:0;}
+.prj-badge{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:rgba(15,157,120,.12);color:var(--ok);}
+.prj-badge.off{background:#eef1f6;color:var(--mute);}
+.prj-desc{font-size:13.5px;margin:8px 0;white-space:pre-wrap;word-break:break-word;}
 </style>
 </head>
 <body>
@@ -73,6 +89,7 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
 <!-- ÉCRAN 1 : connexion / création -->
 <div id="bloc-retour" style="display:none;max-width:560px;margin:14px auto 0;padding:0 16px;"><a id="lien-retour" class="btn sec" style="display:block;text-align:center;text-decoration:none;" href="#"></a></div>
 <div id="v-auth" style="display:none;">
+  <div class="card" id="bandeau-projet" style="display:none;"><p class="sub" style="margin:0;" data-i18n="prj_connexion_requise"></p></div>
   <div class="card">
     <h1 data-i18n="cpt_titre">Mon compte</h1>
     <p class="sub" data-i18n="cpt_sous_titre"></p>
@@ -133,6 +150,7 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
     <button class="tab on" id="t-cmd" onclick="ongletApp('cmd')" data-i18n="cpt_onglet_commandes"></button>
     <button class="tab" id="t-credits" onclick="ongletApp('credits')" data-i18n="cpt_onglet_credits"></button>
     <button class="tab" id="t-rdv" onclick="ongletApp('rdv')" data-i18n="cpt_onglet_rdv"></button>
+    <button class="tab" id="t-projets" onclick="ongletApp('projets')" data-i18n="prj_onglet"></button>
     <button class="tab" id="t-profil" onclick="ongletApp('profil')" data-i18n="cpt_onglet_profil"></button>
   </div>
 
@@ -141,6 +159,51 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
   <div id="p-credits" style="display:none;"><div class="vide" data-i18n="cpt_chargement"></div></div>
 
   <div id="p-rdv" style="display:none;"><div class="vide" data-i18n="cpt_chargement"></div></div>
+
+  <div id="p-projets" style="display:none;">
+    <div id="prj-ok" class="msg ok"></div>
+    <div class="card" id="prj-intro">
+      <h2 data-i18n="prj_titre"></h2>
+      <div class="prj-etapes">
+        <div class="prj-etape"><b data-i18n="prj_etape1"></b><span data-i18n="prj_etape1_d"></span></div>
+        <div class="prj-etape"><b data-i18n="prj_etape2"></b><span data-i18n="prj_etape2_d"></span></div>
+        <div class="prj-etape"><b data-i18n="prj_etape3"></b><span data-i18n="prj_etape3_d"></span></div>
+      </div>
+      <div class="prj-protege" data-i18n="prj_protege"></div>
+      <button class="btn" id="btn-prj-nouveau" onclick="ouvrirFormProjet()" data-i18n="prj_btn_publier"></button>
+    </div>
+    <div class="card" id="prj-form" style="display:none;">
+      <div id="prj-err" class="msg err"></div>
+      <div id="prj-s1">
+        <h2 data-i18n="prj_q_famille"></h2>
+        <div class="opts" id="prj-familles"></div>
+      </div>
+      <div id="prj-s2" style="display:none;">
+        <button type="button" class="lien" style="margin:0 0 10px;text-align:left;" onclick="etapeProjet(1)" data-i18n="prj_changer_famille"></button>
+        <h2 data-i18n="prj_q_besoin"></h2>
+        <div class="opts" id="prj-besoins"></div>
+      </div>
+      <div id="prj-s3" style="display:none;">
+        <button type="button" class="lien" style="margin:0 0 10px;text-align:left;" onclick="etapeProjet(2)" data-i18n="prj_changer_besoin"></button>
+        <div class="prj-choix" id="prj-choix"></div>
+        <form onsubmit="event.preventDefault();publierProjet();">
+          <div class="field"><label for="prj-desc" data-i18n="prj_q_description"></label><textarea id="prj-desc" rows="5" maxlength="2000"></textarea></div>
+          <div class="field"><label for="prj-commune" data-i18n="prj_commune"></label><input type="text" id="prj-commune" maxlength="100" autocomplete="address-level2"></div>
+          <div class="field"><label for="prj-cp" data-i18n="prj_cp"></label><input type="text" id="prj-cp" maxlength="10" autocomplete="postal-code"></div>
+          <div class="field"><label data-i18n="prj_photos"></label>
+            <input type="file" id="prj-fichiers" accept="image/jpeg,image/png,image/webp" multiple style="display:none;" onchange="ajouterPhotosProjet(this)">
+            <button type="button" class="btn sec" style="width:auto;padding:9px 14px;font-size:13px;" onclick="document.getElementById('prj-fichiers').click()" data-i18n="prj_photos_ajouter"></button>
+            <div class="prj-thumbs" id="prj-thumbs"></div>
+          </div>
+          <div class="prj-protege" data-i18n="prj_protege"></div>
+          <button type="submit" class="btn" id="btn-prj" data-i18n="prj_btn_envoyer"></button>
+          <button type="button" class="lien" onclick="fermerFormProjet()" data-i18n="prj_annuler"></button>
+        </form>
+      </div>
+    </div>
+    <h2 style="margin:18px 0 10px;" data-i18n="prj_mes_projets"></h2>
+    <div id="prj-liste"><div class="vide" data-i18n="cpt_chargement"></div></div>
+  </div>
 
   <div id="p-profil" style="display:none;">
     <div class="card">
@@ -186,6 +249,8 @@ const CGU_VERSION = '2026-10-14';
 var mode = 'login', USER = null, PROFIL = null;
 // À lire AVANT que Supabase ne consomme le lien (il efface l'adresse) : est-on arrivé par « mot de passe oublié » ?
 var MODE_RESET = /type=recovery/.test(location.hash + location.search);
+// Arrivé par « Publier un projet » ? Après connexion, on ouvre directement le formulaire du projet.
+var VEUT_PROJET = /(?:^|[?&])projet=nouveau(?:&|$)/.test(location.search);
 
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
 function fill(t, o){ return String(t).replace(/\{(\w+)\}/g,function(_,k){return o&&o[k]!=null?o[k]:'';}); }
@@ -245,7 +310,7 @@ async function soumettreAuth(){
       if (mdp.length < 8) { show('auth-err', T('cpt_err_mdp')); return; }
       if (!document.getElementById('f-cgu').checked) { show('auth-err', T('cpt_err_cgu')); return; }
       var s = await sb.auth.signUp({ email:email, password:mdp, options:{
-        emailRedirectTo: location.origin + location.pathname,
+        emailRedirectTo: location.origin + location.pathname + (VEUT_PROJET ? '?projet=nouveau' : ''),
         data:{ nom:nom, telephone:tel||null, cgu_acceptees_le:new Date().toISOString(), cgu_version:CGU_VERSION, type_compte:'client' } } });
       if (s.error) { show('auth-err', /registered|exists/i.test(s.error.message)?T('cpt_err_existe'):T('cpt_err_generique')); return; }
       // Supabase renvoie un utilisateur sans identité quand l'email existe déjà (anti-énumération).
@@ -299,17 +364,21 @@ async function ouvrirEspace(user){
   document.getElementById('p-cp').value = PROFIL.code_postal || '';
   document.getElementById('p-com').value = PROFIL.commune || '';
   document.getElementById('p-email').value = user.email || '';
-  vue('v-app'); ongletApp('cmd'); chargerCommandes(); chargerRdv(); chargerCredits();
+  vue('v-app'); ongletApp(VEUT_PROJET ? 'projets' : 'cmd'); chargerCommandes(); chargerRdv(); chargerCredits(); chargerProjets();
+  if (VEUT_PROJET) ouvrirFormProjet();
 }
 function ongletApp(o){
   document.getElementById('p-cmd').style.display = o==='cmd'?'':'none';
   document.getElementById('p-rdv').style.display = o==='rdv'?'':'none';
   document.getElementById('p-credits').style.display = o==='credits'?'':'none';
   document.getElementById('t-credits').classList.toggle('on', o==='credits');
+  document.getElementById('p-projets').style.display = o==='projets'?'':'none';
+  document.getElementById('t-projets').classList.toggle('on', o==='projets');
   document.getElementById('p-profil').style.display = o==='profil'?'':'none';
   document.getElementById('t-rdv').classList.toggle('on', o==='rdv');
   document.getElementById('t-cmd').classList.toggle('on', o==='cmd');
   document.getElementById('t-profil').classList.toggle('on', o==='profil');
+  var actif = document.querySelector('#v-app .tab.on'); if (actif && actif.scrollIntoView) { try { actif.scrollIntoView({inline:'nearest', block:'nearest'}); } catch(e){} }
 }
 
 function etapesCommande(c){
@@ -347,6 +416,12 @@ function carteCommande(c){
   var cb = '';
   if (Number(c.cashback_utilise)>0) cb += '<div class="cmd-total">🎁 '+esc(fill(T('cpt_cb_utilise'),{m:euros(c.cashback_utilise)}))+'</div>';
   if (Number(c.cashback_gagne)>0) cb += '<div class="cmd-info ok">🎁 '+esc(fill(T('cpt_cb_gagne'),{m:euros(c.cashback_gagne)}))+'</div>';
+  // Pas encore livrée : on annonce ce que le client va gagner (même calcul que le serveur : produits seulement, livraison et remboursement exclus).
+  if (!(Number(c.cashback_gagne)>0) && Number(c.cashback_pct)>0 && c.statut!=='terminee' && c.statut!=='annulee' && c.paiement_statut==='paye') {
+    var baseCb = Math.max(0, Number(c.montant_total||0) - Number(c.frais_livraison||0) - Number(c.montant_rembourse||0));
+    var gainCb = Math.round(baseCb * Number(c.cashback_pct)) / 100;
+    if (gainCb >= 0.01) cb += '<div class="cmd-info">🎁 '+esc(fill(T('cpt_cb_a_gagner'),{m:euros(gainCb)}))+'</div>';
+  }
   var livr = (c.mode==='livraison' && Number(c.frais_livraison)>0) ? ' ('+esc(T('cpt_dont_livraison'))+' '+esc(euros(c.frais_livraison))+')' : '';
   var tel = art.telephone ? '<div class="cmd-contact">📞 <a href="tel:'+esc(String(art.telephone).replace(/[^+\d]/g,''))+'">'+esc(fill(T('cpt_contacter'),{nom:art.nom_entreprise||''}))+'</a></div>' : '';
   return '<div class="card"><div class="cmd-tete"><div class="cmd-art">'+esc(art.nom_entreprise||'')+'</div><div class="cmd-date">'+esc(fill(T('cpt_commande_du'),{date:dateLongueGP(c.created_at)}))+'</div></div>'
@@ -436,6 +511,146 @@ async function chargerCredits(){
   }).join('');
 }
 
+// ── Projets (demande générale : un besoin, une description, des photos — jamais le téléphone ni l'email) ──
+var BESOINS = null, PRJ = { famille:null, besoin:null, photos:[] };
+var FAMILLES_PROJET = [['maison','🏠'],['informatique','💻'],['alimentation','🍰']];
+function libelleBesoin(b){ return b['label_'+AT_LANG] || b.label_fr; }
+async function chargerBesoins(){
+  if (BESOINS) return BESOINS;
+  var r = await sb.from('besoins').select('code,famille,icon,label_fr,label_en,label_es,ordre').order('ordre', {ascending:true});
+  BESOINS = (r && r.data) || [];
+  return BESOINS;
+}
+async function ouvrirFormProjet(){
+  show('prj-err'); show('prj-ok');
+  PRJ = { famille:null, besoin:null, photos:[] };
+  document.getElementById('prj-desc').value = '';
+  document.getElementById('prj-desc').placeholder = T('prj_ph_description');
+  document.getElementById('prj-commune').value = (PROFIL && PROFIL.commune) || '';
+  document.getElementById('prj-cp').value = (PROFIL && PROFIL.code_postal) || '';
+  document.getElementById('prj-fichiers').value = '';
+  dessinerMiniatures();
+  document.getElementById('prj-intro').style.display = 'none';
+  document.getElementById('prj-form').style.display = '';
+  await chargerBesoins();
+  var dispo = {}; BESOINS.forEach(function(b){ dispo[b.famille] = true; });
+  document.getElementById('prj-familles').innerHTML = FAMILLES_PROJET.filter(function(f){ return dispo[f[0]]; }).map(function(f){
+    return '<button type="button" class="opt" onclick="choisirFamille(\''+f[0]+'\')"><span class="ic">'+f[1]+'</span>'+esc(T('prj_fam_'+f[0]))+'</button>';
+  }).join('');
+  etapeProjet(1);
+}
+function fermerFormProjet(){
+  document.getElementById('prj-form').style.display = 'none';
+  document.getElementById('prj-intro').style.display = '';
+  show('prj-err');
+}
+function etapeProjet(n){
+  show('prj-err');
+  ['prj-s1','prj-s2','prj-s3'].forEach(function(id, i){ document.getElementById(id).style.display = (i+1===n) ? '' : 'none'; });
+}
+function choisirFamille(f){
+  PRJ.famille = f; PRJ.besoin = null;
+  document.getElementById('prj-besoins').innerHTML = (BESOINS||[]).filter(function(b){ return b.famille===f; }).map(function(b){
+    return '<button type="button" class="opt" onclick="choisirBesoin(\''+esc(b.code)+'\')"><span class="ic">'+esc(b.icon||'')+'</span>'+esc(libelleBesoin(b))+'</button>';
+  }).join('');
+  etapeProjet(2);
+}
+function choisirBesoin(code){
+  var b = (BESOINS||[]).filter(function(x){ return x.code===code; })[0];
+  if (!b) return;
+  PRJ.besoin = b.code;
+  document.getElementById('prj-choix').textContent = (b.icon||'') + ' ' + libelleBesoin(b);
+  etapeProjet(3);
+  document.getElementById('prj-desc').focus();
+}
+// Une photo de téléphone fait vite 5 Mo : on la réduit (1600 px, JPEG) avant l'envoi.
+function reduirePhoto(fichier){
+  return new Promise(function(ok){
+    var fr = new FileReader();
+    fr.onerror = function(){ ok(null); };
+    fr.onload = function(){
+      var img = new Image();
+      img.onerror = function(){ ok(null); };
+      img.onload = function(){
+        var k = Math.min(1, 1600 / Math.max(img.width, img.height));
+        var c = document.createElement('canvas'); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        ok(c.toDataURL('image/jpeg', 0.82));
+      };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(fichier);
+  });
+}
+async function ajouterPhotosProjet(input){
+  var fichiers = Array.prototype.slice.call(input.files || []);
+  for (var i = 0; i < fichiers.length && PRJ.photos.length < 4; i++) {
+    var d = await reduirePhoto(fichiers[i]);
+    if (d) PRJ.photos.push(d);
+  }
+  input.value = '';
+  dessinerMiniatures();
+}
+function retirerPhotoProjet(i){ PRJ.photos.splice(i, 1); dessinerMiniatures(); }
+function dessinerMiniatures(){
+  document.getElementById('prj-thumbs').innerHTML = PRJ.photos.map(function(d, i){
+    return '<div class="prj-thumb"><img src="'+d+'" alt=""><button type="button" onclick="retirerPhotoProjet('+i+')">×</button></div>';
+  }).join('');
+}
+async function publierProjet(){
+  show('prj-err'); show('prj-ok');
+  var desc = document.getElementById('prj-desc').value.trim(), com = document.getElementById('prj-commune').value.trim(), cp = document.getElementById('prj-cp').value.trim();
+  if (!PRJ.besoin) { show('prj-err', T('prj_err_besoin')); return; }
+  if (desc.length < 10) { show('prj-err', T('prj_err_desc')); return; }
+  if (com.length < 2) { show('prj-err', T('prj_err_commune')); return; }
+  var btn = document.getElementById('btn-prj'); btn.disabled = true; btn.textContent = T('prj_envoi');
+  try {
+    var s = (await sb.auth.getSession()).data.session;
+    if (!s) { show('prj-err', T('cpt_err_generique')); return; }
+    var res = await fetch(SUPABASE_URL + '/functions/v1/publier-projet', { method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON,'Authorization':'Bearer '+s.access_token},
+      body: JSON.stringify({ besoin_code:PRJ.besoin, description:desc, commune:com, code_postal:cp||null, photos:PRJ.photos }) });
+    var j = await res.json().catch(function(){ return {}; });
+    if (!res.ok || !j.success) {
+      var cle = ({limite_jour:'prj_err_limite_jour', limite_ouverts:'prj_err_limite_ouverts', email_non_confirme:'prj_err_email_non_confirme'})[j.code];
+      show('prj-err', cle ? T(cle) : T('cpt_err_generique')); return;
+    }
+    // Mémorise la commune pour le prochain projet (même profil que le reste du compte)
+    if (PROFIL && !PROFIL.commune) { try { await sb.from('comptes_clients').update({commune:com, code_postal:cp||null, updated_at:new Date().toISOString()}).eq('user_id', USER.id); PROFIL.commune = com; PROFIL.code_postal = cp||null; } catch(e){} }
+    fermerFormProjet();
+    show('prj-ok', T('prj_ok'));
+    await chargerProjets();
+  } catch(e) { show('prj-err', T('cpt_err_generique')); }
+  finally { btn.disabled = false; btn.textContent = T('prj_btn_envoyer'); }
+}
+function carteProjet(p){
+  var ouvert = p.statut === 'ouvert';
+  var nom = p['besoin_'+AT_LANG] || p.besoin_fr || '';
+  var badge = '<span class="prj-badge'+(ouvert?'':' off')+'">'+esc(T('prj_statut_'+p.statut))+'</span>';
+  var photos = p.nb_photos > 0 ? '<div class="cmd-total">'+esc(fill(T('prj_photos_n'),{n:p.nb_photos}))+'</div>' : '';
+  var bas = ouvert
+    ? '<div class="cmd-total">'+esc(fill(T('prj_reponses'),{n:p.nb_reponses, max:p.max_reponses}))+' · '+esc(fill(T('prj_expire_le'),{d:dateLongueGP(p.expire_le)}))+'</div>'
+      + '<button class="btn danger" style="margin-top:6px;" onclick="cloreProjet(\''+esc(p.id)+'\')">'+esc(T('prj_clore'))+'</button>'
+    : '';
+  return '<div class="card"><div class="cmd-tete"><div class="cmd-art">'+esc(p.besoin_icon||'')+' '+esc(nom)+'</div><div class="cmd-date">'+esc(dateLongueGP(p.created_at))+'</div></div>'
+    + '<div>'+badge+' <span class="cmd-date">'+esc(p.commune||'')+'</span></div>'
+    + '<div class="prj-desc">'+esc(p.description)+'</div>' + photos + bas + '</div>';
+}
+async function chargerProjets(){
+  var zone = document.getElementById('prj-liste');
+  var r = await sb.rpc('mes_projets');
+  if (r.error) { zone.innerHTML = '<div class="vide">'+esc(T('cpt_err_generique'))+'</div>'; return; }
+  var l = r.data || [];
+  zone.innerHTML = l.length ? l.map(carteProjet).join('') : '<div class="vide">'+esc(T('prj_aucun'))+'</div>';
+}
+async function cloreProjet(id){
+  if (!confirm(T('prj_clore_confirm'))) return;
+  var r = await sb.rpc('clore_mon_projet', { p_id: id });
+  if (r.error) { alert(T('cpt_err_generique')); return; }
+  show('prj-ok');
+  await chargerProjets();
+}
+
 // ── Profil ──
 async function sauverProfil(){
   show('prof-err'); show('prof-ok');
@@ -474,6 +689,7 @@ async function supprimerCompte(){
 (async function(){
   appliquerTraductionsStatiques();
   modeAuth('login');
+  if (VEUT_PROJET) document.getElementById('bandeau-projet').style.display = '';
   // Lien « mot de passe oublié » : Supabase ouvre une session de récupération → on demande le nouveau mot de passe.
   sb.auth.onAuthStateChange(function(ev){ if (ev==='PASSWORD_RECOVERY') { MODE_RESET=true; vue('v-reset'); }
     else if (MODE_RESET && ev==='SIGNED_IN') { vue('v-reset'); } });

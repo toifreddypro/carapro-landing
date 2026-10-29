@@ -357,7 +357,12 @@ function renderHero() {
         '</div>' +
         '<div style="margin-top:14px;font-size:12.5px;color:var(--mu);">' +
           '📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">' + T('hero_devisgen_lien') + '</a>' +
-          ' — visible par tous les artisans du secteur et de la commune choisis' +
+          T('hero_devisgen_suite') +
+        '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">' +
+          ['1','2','3'].map(function(n) {
+            return '<div style="flex:1 1 170px;background:rgba(255,255,255,.7);border:1px solid var(--line,#e3eaf4);border-radius:10px;padding:9px 11px;font-size:12px;line-height:1.4;"><b style="display:block;font-size:12.5px;color:var(--ink,#13223c);">' + T('prj_etape' + n) + '</b><span style="color:var(--mu,#6b7c96);">' + T('prj_etape' + n + '_d') + '</span></div>';
+          }).join('') +
         '</div>' +
       '</div>' +
     '</div>';
@@ -1824,81 +1829,11 @@ async function envoyerCommande() {
   }
 }
 
-// ── Demande générale (hors fiche) — ouverte à tous les artisans du secteur/commune ──
+// ── Demande générale (hors fiche) — devenue « Publier un projet » (30/10/2026) ──
+// Elle exige un compte client : le formulaire vit dans la page du compte (compte.html), qui demande la connexion si besoin, puis
+// ouvre directement le formulaire en 3 étapes. Le téléphone et l'email du client ne sont jamais montrés aux artisans.
 function ouvrirModalDevisGeneral() {
-  _devisContactPref = 'telephone'; // réinitialisé à chaque ouverture
-  _devisPhotos = []; document.getElementById('devis-photos-preview') && (document.getElementById('devis-photos-preview').innerHTML = '');
-  _typeInterventionChoisi = null;
-  window._typeInterventionFrais = undefined; // demande ouverte à plusieurs artisans : chacun a ses propres frais
-  window._onTypeInterventionChoisi = null;
-  var div = document.getElementById('modal-devis');
-  if (!div) { div = document.createElement('div'); div.id = 'modal-devis'; document.body.appendChild(div); }
-  var champLabel = secteurLabelChamp();
-  var options = _secteursCache.map(function(s) {
-    return '<option value="' + escHtml(s.code) + '">' + (s.icon||'') + ' ' + escHtml(s[champLabel] || s.label_fr) + '</option>';
-  }).join('');
-  div.innerHTML =
-    '<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;display:flex;align-items:center;justify-content:center;padding:12px;" onclick="if(event.target===this)fermerModalDevis()">' +
-      '<div style="' + STYLE_BOITE_DEVIS + '">' +
-        '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">' + T('devisgen_titre') + '</div>' +
-        '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:16px;">' + T('devisgen_intro') + '</div>' +
-        '<select id="devis-secteur" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Outfit\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:6px;">' + options + '</select>' +
-        '<div style="font-size:11px;color:var(--mu,#999);margin-bottom:10px;">' + T('secteur_manquant_q') + ' <a href="mailto:contact@learnlogicstudio.com" style="color:var(--ac);">' + T('secteur_manquant_lien') + '</a> ' + T('secteur_manquant_suite') + '</div>' +
-        '<input id="devis-nom" type="text" placeholder="' + T('ph_nom') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
-        '<input id="devis-tel" type="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
-        contactPrefHTML() +
-        '<input id="devis-commune" type="text" placeholder="' + T('ph_commune') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
-        typeInterventionPickerHTML() +
-        '<textarea id="devis-message" rows="4" placeholder="' + T('ph_message') + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line,#ddd);font-family:\'Work Sans\',sans-serif;font-size:13px;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>' +
-        photosPickerHTML() +
-        '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
-        '<div style="display:flex;gap:8px;">' +
-          '<button id="btn-devis" onclick="envoyerDemandeDevisGenerale()" style="flex:1;padding:11px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">' + T('btn_envoyer') + '</button>' +
-          '<button onclick="fermerModalDevis()" style="flex:1;padding:11px;border-radius:9px;border:1px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);cursor:pointer;">' + T('btn_annuler') + '</button>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-}
-
-async function envoyerDemandeDevisGenerale() {
-  var secteur = document.getElementById('devis-secteur').value;
-  var nom = document.getElementById('devis-nom').value.trim();
-  var tel = document.getElementById('devis-tel').value.trim();
-  var email = document.getElementById('devis-email').value.trim();
-  var commune = document.getElementById('devis-commune').value.trim();
-  var message = document.getElementById('devis-message').value.trim();
-  var err = document.getElementById('devis-err');
-  var btn = document.getElementById('btn-devis');
-
-  if (!_typeInterventionChoisi) { err.textContent = T('err_type_requis'); err.style.display = 'block'; return; }
-
-  if (!nom || !tel || !commune || !message) {
-    err.textContent = T('err_champs'); err.style.display = 'block'; return;
-  }
-  if (_devisContactPref === 'email' && !email) {
-    err.textContent = T('err_email_requis'); err.style.display = 'block'; return;
-  }
-  btn.disabled = true; btn.textContent = T('btn_envoi_cours');
-
-  try {
-    var res = await fetch(SUPABASE_URL + '/functions/v1/soumettre-demande-devis', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
-      body: JSON.stringify({
-        client_nom: nom, client_telephone: tel, client_email: email || null, contact_prefere: _devisContactPref,
-        commune: commune, description_besoin: message, secteur: secteur, photos: _devisPhotos, type_intervention: _typeInterventionChoisi,
-        // pas d'artisan_id : demande ouverte, visible par tous les artisans du secteur/commune
-      }),
-    });
-    var data = await res.json();
-    if (data.error) throw new Error(data.error);
-
-    fermerModalDevis();
-    showToast(T('toast_envoye'));
-  } catch(e) {
-    err.textContent = e.message; err.style.display = 'block';
-    btn.disabled = false; btn.textContent = T('btn_envoyer');
-  }
+  location.href = '/artisans/compte.html?projet=nouveau';
 }
 
 async function envoyerDemandeDevis(artisanId, secteurArtisan) {
