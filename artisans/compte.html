@@ -251,6 +251,7 @@ var mode = 'login', USER = null, PROFIL = null;
 var MODE_RESET = /type=recovery/.test(location.hash + location.search);
 // Arrivé par « Publier un projet » ? Après connexion, on ouvre directement le formulaire du projet.
 var VEUT_PROJET = /(?:^|[?&])projet=nouveau(?:&|$)/.test(location.search);
+var VEUT_LISTE = /(?:^|[?&])projet=liste(?:&|$)/.test(location.search);
 
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
 function fill(t, o){ return String(t).replace(/\{(\w+)\}/g,function(_,k){return o&&o[k]!=null?o[k]:'';}); }
@@ -310,7 +311,7 @@ async function soumettreAuth(){
       if (mdp.length < 8) { show('auth-err', T('cpt_err_mdp')); return; }
       if (!document.getElementById('f-cgu').checked) { show('auth-err', T('cpt_err_cgu')); return; }
       var s = await sb.auth.signUp({ email:email, password:mdp, options:{
-        emailRedirectTo: location.origin + location.pathname + (VEUT_PROJET ? '?projet=nouveau' : ''),
+        emailRedirectTo: location.origin + location.pathname + (VEUT_PROJET ? '?projet=nouveau' : (VEUT_LISTE ? '?projet=liste' : '')),
         data:{ nom:nom, telephone:tel||null, cgu_acceptees_le:new Date().toISOString(), cgu_version:CGU_VERSION, type_compte:'client' } } });
       if (s.error) { show('auth-err', /registered|exists/i.test(s.error.message)?T('cpt_err_existe'):T('cpt_err_generique')); return; }
       // Supabase renvoie un utilisateur sans identité quand l'email existe déjà (anti-énumération).
@@ -364,7 +365,7 @@ async function ouvrirEspace(user){
   document.getElementById('p-cp').value = PROFIL.code_postal || '';
   document.getElementById('p-com').value = PROFIL.commune || '';
   document.getElementById('p-email').value = user.email || '';
-  vue('v-app'); ongletApp(VEUT_PROJET ? 'projets' : 'cmd'); chargerCommandes(); chargerRdv(); chargerCredits(); chargerProjets();
+  vue('v-app'); ongletApp((VEUT_PROJET || VEUT_LISTE) ? 'projets' : 'cmd'); chargerCommandes(); chargerRdv(); chargerCredits(); chargerProjets();
   if (VEUT_PROJET) ouvrirFormProjet();
 }
 function ongletApp(o){
@@ -623,18 +624,57 @@ async function publierProjet(){
   } catch(e) { show('prj-err', T('cpt_err_generique')); }
   finally { btn.disabled = false; btn.textContent = T('prj_btn_envoyer'); }
 }
+function carteReponse(p, r){
+  var a = r.artisan || {};
+  var photo = (a.photo_profil_url && /^https:\/\//.test(a.photo_profil_url)) ? '<img src="'+esc(a.photo_profil_url)+'" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex:none;">' : '<div style="width:44px;height:44px;border-radius:50%;background:#eef1f6;flex:none;display:flex;align-items:center;justify-content:center;">🛠️</div>';
+  var avis = a.nb_avis > 0 ? esc(fill(T('prj_rep_avis'),{note:String(a.note_moyenne).replace('.',AT_LANG==='en'?'.':','), n:a.nb_avis})) : esc(T('prj_rep_sans_avis'));
+  var verifie = a.verifie ? ' <span class="prj-badge">✓ '+esc(T('prj_rep_verifie'))+'</span>' : '';
+  var prix = r.prix_indicatif != null ? '<div class="cmd-total">'+esc(fill(T('prj_rep_prix'),{p:euros(r.prix_indicatif)}))+'</div>' : '';
+  var garder = p.peut_relancer ? '<label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:13px;cursor:pointer;"><input type="checkbox" '+(r.garde?'checked ':'')+'onchange="marquerGarde(\''+esc(r.id)+'\', this.checked)"> '+esc(T('prj_rep_garder'))+'</label>' : '';
+  return '<div style="border:1px solid var(--line,#e3e8f0);border-radius:10px;padding:12px;margin-top:10px;">'
+    + '<div style="display:flex;gap:10px;align-items:center;">'+photo+'<div><strong>'+esc(a.nom_entreprise||'')+'</strong>'+verifie+'<div class="cmd-date">'+esc(a.commune||'')+' · '+avis+'</div></div></div>'
+    + '<div class="prj-desc">'+esc(r.message)+'</div>' + prix
+    + '<a href="/artisans/?artisan='+encodeURIComponent(a.id||'')+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;font-size:13px;font-weight:600;">'+esc(T('prj_rep_profil'))+' →</a>'
+    + garder + '</div>';
+}
 function carteProjet(p){
   var ouvert = p.statut === 'ouvert';
   var nom = p['besoin_'+AT_LANG] || p.besoin_fr || '';
   var badge = '<span class="prj-badge'+(ouvert?'':' off')+'">'+esc(T('prj_statut_'+p.statut))+'</span>';
   var photos = p.nb_photos > 0 ? '<div class="cmd-total">'+esc(fill(T('prj_photos_n'),{n:p.nb_photos}))+'</div>' : '';
-  var bas = ouvert
-    ? '<div class="cmd-total">'+esc(fill(T('prj_reponses'),{n:p.nb_reponses, max:p.max_reponses}))+' · '+esc(fill(T('prj_expire_le'),{d:dateLongueGP(p.expire_le)}))+'</div>'
-      + '<button class="btn danger" style="margin-top:6px;" onclick="cloreProjet(\''+esc(p.id)+'\')">'+esc(T('prj_clore'))+'</button>'
-    : '';
+  var reps = p.reponses || [];
+  var bas = '<div class="cmd-total">'+esc(fill(T('prj_reponses'),{n:p.nb_reponses, max:p.max_reponses}))+' · '+esc(fill(T('prj_rep_tour'),{n:p.tour}))+(ouvert ? ' · '+esc(fill(T('prj_expire_le'),{d:dateLongueGP(p.expire_le)})) : '')+'</div>';
+  if (p.statut !== 'clos' || reps.length) {
+    bas += '<div style="margin-top:10px;font-weight:700;">'+esc(T('prj_rep_titre'))+'</div>'
+      + (reps.length ? reps.map(function(r){ return carteReponse(p, r); }).join('') : (ouvert ? '<div class="cmd-date" style="margin-top:6px;">'+esc(T('prj_rep_aucune'))+'</div>' : ''));
+  }
+  if (p.peut_relancer) bas += '<button class="btn" style="margin-top:12px;" onclick="relancerProjet(\''+esc(p.id)+'\')">'+esc(T('prj_relancer'))+'</button><div class="cmd-date">'+esc(T('prj_relancer_aide'))+'</div>';
+  if (ouvert) bas += '<button class="btn danger" style="margin-top:8px;display:block;" onclick="cloreProjet(\''+esc(p.id)+'\')">'+esc(T('prj_clore'))+'</button>';
   return '<div class="card"><div class="cmd-tete"><div class="cmd-art">'+esc(p.besoin_icon||'')+' '+esc(nom)+'</div><div class="cmd-date">'+esc(dateLongueGP(p.created_at))+'</div></div>'
     + '<div>'+badge+' <span class="cmd-date">'+esc(p.commune||'')+'</span></div>'
     + '<div class="prj-desc">'+esc(p.description)+'</div>' + photos + bas + '</div>';
+}
+async function marquerGarde(idReponse, garde){
+  var r = await sb.rpc('marquer_garde', { p_reponse: idReponse, p_garde: !!garde });
+  if (r.error) { alert(T('cpt_err_generique')); await chargerProjets(); }
+}
+async function relancerProjet(id){
+  if (!confirm(T('prj_relancer_confirm'))) return;
+  show('prj-ok');
+  try {
+    var s = (await sb.auth.getSession()).data.session;
+    if (!s) { alert(T('cpt_err_generique')); return; }
+    var res = await fetch(SUPABASE_URL + '/functions/v1/relancer-projet', { method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON,'Authorization':'Bearer '+s.access_token},
+      body: JSON.stringify({ projet_id:id }) });
+    var j = await res.json().catch(function(){ return {}; });
+    if (!res.ok || !j.success) {
+      var cle = ({clos:'prj_err_clos', limite_relances:'prj_err_limite_relances', tout_garde:'prj_err_tout_garde', limite_jour:'prj_err_limite_relances_jour'})[j.code];
+      alert(cle ? T(cle) : T('cpt_err_generique')); return;
+    }
+    show('prj-ok', T('prj_relance_ok'));
+  } catch(e) { alert(T('cpt_err_generique')); }
+  await chargerProjets();
 }
 async function chargerProjets(){
   var zone = document.getElementById('prj-liste');

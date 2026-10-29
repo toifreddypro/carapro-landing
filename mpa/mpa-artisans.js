@@ -574,6 +574,7 @@ async function init() {
 
   renderFiche();
   await chargerClients();
+  await chargerProjetsRecus();
   await chargerDemandes();
   await chargerAvis();
   await chargerCommandes();
@@ -961,6 +962,122 @@ async function demanderPaiementDepuisMessage(id) {
 }
 
 // ════════════════════════════════════════
+//  PROJETS DE CLIENTS — réponses sans coordonnées (max. 6 artisans par projet)
+// ════════════════════════════════════════
+// Le client reste anonyme : on ne voit ni son nom, ni son téléphone, ni son email (protection contre le harcèlement).
+// Le serveur ne renvoie que les projets de MON métier et de MA zone, encore ouverts ou auxquels j'ai déjà répondu.
+window._nbProjetsATraiter = 0;
+var _projetsRecus = [];
+var _photosProjetsSignees = {};
+
+async function chargerProjetsRecus() {
+  var carte = document.getElementById('carte-projets');
+  var zone = document.getElementById('zone-projets');
+  if (!zone || !carte) return;
+  try {
+    var { data, error } = await sb.rpc('projets_pour_moi');
+    if (error) throw error;
+    _projetsRecus = Array.isArray(data) ? data : [];
+    window._nbProjetsATraiter = _projetsRecus.filter(function(p) { return !p.ma_reponse && !p.complet; }).length;
+    // Photos : espace privé, liens temporaires signés (1 h) pour ce que j'ai le droit de voir.
+    _photosProjetsSignees = {};
+    var chemins = [];
+    _projetsRecus.forEach(function(p) { (p.photos || []).forEach(function(c) { if (c && chemins.indexOf(c) === -1) chemins.push(c); }); });
+    if (chemins.length) {
+      var rs = await sb.storage.from('projets-photos').createSignedUrls(chemins, 3600);
+      ((rs && rs.data) || []).forEach(function(x) { if (x && x.path && x.signedUrl) _photosProjetsSignees[x.path] = x.signedUrl; });
+    }
+  } catch (e) {
+    console.warn('Projets de clients non chargés :', e);
+    _projetsRecus = []; window._nbProjetsATraiter = 0;
+  }
+  renderProjetsRecus();
+}
+
+function renderProjetsRecus() {
+  var carte = document.getElementById('carte-projets');
+  var zone = document.getElementById('zone-projets');
+  if (!zone || !carte) return;
+  carte.style.display = _projetsRecus.length ? '' : 'none';
+  // Pastille « Mes demandes » : projets à traiter + demandes de devis (recalculée par renderDemandes aussi)
+  var badge = document.getElementById('cnt-demandes');
+  if (badge) {
+    var autres = (_demandesListe || []).filter(function(l) { return !demandeArchivee(l); }).length;
+    var total = autres + window._nbProjetsATraiter;
+    if (total > 0) { badge.textContent = total; badge.style.display = 'inline-flex'; } else { badge.style.display = 'none'; }
+  }
+  zone.innerHTML = _projetsRecus.map(function(p) {
+    var dateAff = new Date(p.created_at).toLocaleDateString('fr-FR');
+    var lieu = escHtml(p.commune) + (p.a_distance ? ' · à distance possible' : (p.km != null ? ' · à ~' + escHtml(String(p.km)) + ' km' : ''));
+    var photos = (p.photos || []).map(function(c) {
+      var u = _photosProjetsSignees[c];
+      return u ? '<a href="' + escHtml(u) + '" target="_blank" rel="noopener"><img src="' + escHtml(u) + '" alt="Photo du projet" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--brd);"></a>' : '';
+    }).join('');
+    var compteur = '<span style="font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:' + (p.complet ? 'rgba(220,38,38,.1)' : 'rgba(59,130,246,.1)') + ';color:' + (p.complet ? '#dc2626' : '#3b82f6') + ';">' + p.nb_reponses + ' sur ' + p.max_reponses + ' réponses</span>';
+    var bas;
+    if (p.ma_reponse) {
+      var prix = p.ma_reponse.prix_indicatif != null ? ' · ~' + Number(p.ma_reponse.prix_indicatif).toLocaleString('fr-FR') + ' €' : '';
+      bas = '<div style="margin-top:12px;padding:10px 12px;border-radius:8px;background:rgba(22,163,74,.08);font-size:13px;"><strong style="color:#16a34a;">✅ Répondu</strong>' + prix + '<div style="margin-top:4px;color:var(--mu);white-space:pre-wrap;">' + escHtml(p.ma_reponse.message) + '</div><div style="margin-top:6px;font-size:12px;color:var(--mu);">Le client compare les réponses. S\'il vous choisit, vous échangerez par messagerie.</div></div>';
+    } else if (p.complet) {
+      bas = '<div style="margin-top:12px;font-size:13px;color:var(--mu);">Ce projet a déjà reçu ses 6 réponses.</div>';
+    } else {
+      bas = '<div style="margin-top:12px;"><button type="button" class="addb" onclick="ouvrirReponseProjet(' + jsAttrLocal(p.id) + ')">✍️ Répondre</button></div>' +
+        '<div id="rep-' + escHtml(p.id) + '" style="display:none;margin-top:12px;">' +
+          '<label style="font-size:12.5px;font-weight:600;">Votre message au client</label>' +
+          '<textarea id="rep-msg-' + escHtml(p.id) + '" rows="4" maxlength="1000" placeholder="Présentez-vous, expliquez comment vous interviendriez, vos disponibilités…" style="width:100%;margin-top:4px;padding:9px;border:1px solid var(--brd);border-radius:8px;font-family:inherit;font-size:13px;box-sizing:border-box;"></textarea>' +
+          '<label style="display:block;margin-top:8px;font-size:12.5px;font-weight:600;">Prix indicatif en € (facultatif)</label>' +
+          '<input id="rep-prix-' + escHtml(p.id) + '" type="text" maxlength="12" inputmode="decimal" placeholder="ex. 250" style="width:160px;margin-top:4px;padding:8px;border:1px solid var(--brd);border-radius:8px;font-family:inherit;font-size:13px;">' +
+          '<div style="margin-top:8px;font-size:12px;color:var(--mu);">⚠️ Pas de numéro de téléphone, d\'email ni de lien dans le message : le client décidera lui-même de vous donner ses coordonnées. Vous ne pourrez répondre qu\'une fois.</div>' +
+          '<div id="rep-err-' + escHtml(p.id) + '" style="display:none;margin-top:8px;font-size:12.5px;color:var(--danger);"></div>' +
+          '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;"><button type="button" class="addb" id="rep-btn-' + escHtml(p.id) + '" onclick="envoyerReponseProjet(' + jsAttrLocal(p.id) + ')">Envoyer ma réponse</button>' +
+          '<button type="button" class="addb" style="background:var(--mu2);" onclick="ouvrirReponseProjet(' + jsAttrLocal(p.id) + ')">Annuler</button></div>' +
+        '</div>';
+    }
+    return '<div style="border:1px solid var(--brd);border-radius:12px;padding:14px;margin-bottom:12px;">' +
+      '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">' +
+        '<strong style="font-size:14.5px;">' + escHtml(p.besoin_icon || '') + ' ' + escHtml(p.besoin_fr) + '</strong>' + compteur + '</div>' +
+      '<div style="font-size:12px;color:var(--mu);margin-top:3px;">📍 ' + lieu + ' · publié le ' + dateAff + '</div>' +
+      '<div style="margin-top:8px;font-size:13.5px;white-space:pre-wrap;">' + escHtml(p.description) + '</div>' +
+      (photos ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">' + photos + '</div>' : '') +
+      bas + '</div>';
+  }).join('');
+}
+
+function ouvrirReponseProjet(id) {
+  var bloc = document.getElementById('rep-' + id);
+  if (bloc) bloc.style.display = bloc.style.display === 'none' ? '' : 'none';
+}
+
+async function envoyerReponseProjet(id) {
+  if (!verifierAccesEcriture()) return;
+  var msg = (document.getElementById('rep-msg-' + id) || {}).value || '';
+  var prix = (document.getElementById('rep-prix-' + id) || {}).value || '';
+  var err = document.getElementById('rep-err-' + id);
+  var btn = document.getElementById('rep-btn-' + id);
+  if (err) err.style.display = 'none';
+  if (msg.trim().length < 10) { if (err) { err.textContent = 'Écrivez un message d\'au moins 10 caractères.'; err.style.display = ''; } return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Envoi…'; }
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    if (!authSession) throw new Error('Session expirée : reconnectez-vous.');
+    var res = await fetch(SUPABASE_URL + '/functions/v1/repondre-projet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({ projet_id: id, message: msg, prix_indicatif: prix === '' ? null : prix }),
+    });
+    var data = await res.json().catch(function() { return {}; });
+    if (!res.ok || !data.success) {
+      if (data && (data.code === 'complet' || data.code === 'deja' || data.code === 'ferme')) await chargerProjetsRecus();
+      throw new Error((data && data.error) || ('Erreur serveur (' + res.status + ')'));
+    }
+    await chargerProjetsRecus();
+  } catch (e) {
+    if (err) { err.textContent = e.message; err.style.display = ''; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Envoyer ma réponse'; }
+  }
+}
+
+// ════════════════════════════════════════
 //  DEMANDES DE DEVIS — boîte de réception
 // ════════════════════════════════════════
 
@@ -1062,7 +1179,7 @@ function renderDemandes() {
   if (!zone) return;
   var liste = _demandesListe || [];
   var nbArchivees = liste.filter(demandeArchivee).length;
-  var nbNouvelles = liste.length - nbArchivees;
+  var nbNouvelles = liste.length - nbArchivees + (window._nbProjetsATraiter || 0);
   var badge = document.getElementById('cnt-demandes');
   if (badge) { if (nbNouvelles > 0) { badge.textContent = nbNouvelles; badge.style.display = 'inline-flex'; } else { badge.style.display = 'none'; } }
   if (!liste.length) {

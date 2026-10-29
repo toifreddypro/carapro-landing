@@ -5,8 +5,9 @@
 // Un client CONNECTÉ (compte client, email confirmé) publie un projet : un besoin choisi dans la liste, une description,
 // une commune, jusqu'à 4 photos. C'est la « demande générale » nouvelle formule (remplace la demande ouverte sans compte).
 //
-// Ce que cette fonction NE fait PAS (phase 3) : prévenir les artisans. Pour l'instant le projet est seulement enregistré
-// et visible dans « Mes projets » chez le client.
+// Phase 3 (30/10/2026) : une fois le projet enregistré, les artisans concernés (bon métier + dans le rayon, ou « à distance » quand le
+// besoin le permet) sont prévenus par email : les 15 plus proches au maximum, jamais un envoi en masse. L'email ne contient AUCUNE
+// coordonnée du client. Un échec d'envoi ne fait jamais échouer la publication. Les artisans voient aussi le projet dans MPA.
 //
 // Le téléphone et l'email du client ne sont JAMAIS copiés dans le projet : ils restent dans son compte, cachés des artisans,
 // pour limiter les risques de harcèlement. Le client décidera lui-même de les partager, à la fin.
@@ -37,12 +38,57 @@ const MAX_PHOTOS = 4;
 const MAX_PROJETS_PAR_JOUR = 3;
 const MAX_PROJETS_OUVERTS = 5;
 const REGEX_BESOIN = /^[a-z0-9-]{2,60}$/;
+const MAX_ARTISANS_NOTIFIES = 15;
+const URL_MPA = "https://caralink.app/mpa/";
 
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+// Tout ce qui vient d'un visiteur est échappé avant d'entrer dans un email HTML.
+function escHtml(s: unknown): string {
+  return String(s ?? "").replace(/[&<>"']/g, (m) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }) as Record<string, string>)[m]);
+}
+function texteHtml(s: unknown): string { return escHtml(s).replace(/\r?\n/g, "<br>"); }
+
+async function envoyerEmail(to: string, subject: string, html: string) {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) { console.warn("[publier-projet] RESEND_API_KEY absente — email non envoyé."); return; }
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: "CaraLink Artisans <notifications@learnlogicstudio.com>", to: [to], subject, html }),
+    });
+    if (!res.ok) console.error("[publier-projet] Échec envoi Resend :", await res.text());
+  } catch (e) { console.error("[publier-projet] Erreur envoi email :", e); }
+}
+
+// Prévient les artisans concernés. Jamais bloquant. Aucune coordonnée du client dans l'email : il n'en a pas, la base non plus.
+async function notifierArtisans(sb: any, projetId: string, besoinLibelle: string, commune: string, description: string, nbPhotos: number) {
+  try {
+    const { data: cibles, error } = await sb.rpc("projets_a_notifier", { p_projet: projetId, p_limite: MAX_ARTISANS_NOTIFIES });
+    if (error) throw error;
+    const extrait = description.length > 300 ? description.slice(0, 300).trim() + "…" : description;
+    const photos = nbPhotos > 0 ? `<p>📷 ${nbPhotos} photo${nbPhotos > 1 ? "s" : ""} jointe${nbPhotos > 1 ? "s" : ""} — à voir dans MPA Artisans.</p>` : "";
+    const html = `
+      <div style="font-family:sans-serif;max-width:480px;">
+        <h2 style="color:#B5502F;">📢 Un client cherche un professionnel</h2>
+        <p><strong>${escHtml(besoinLibelle)}</strong> à <strong>${escHtml(commune)}</strong></p>
+        <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${texteHtml(extrait)}</p>
+        ${photos}
+        <p>Ce projet accepte <strong>6 réponses au maximum</strong> : les premiers artisans qui répondent sont retenus.</p>
+        <p style="margin:22px 0;"><a href="${URL_MPA}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#B5502F;color:#fff;font-weight:700;text-decoration:none;">Voir le projet dans MPA Artisans</a></p>
+        <p style="font-size:12px;color:#6b7c96;">Pour protéger le client contre le harcèlement, ses coordonnées ne sont pas communiquées : vous échangerez avec lui par messagerie, et c'est lui qui décidera de vous les donner à la fin.</p>
+      </div>`;
+    await Promise.allSettled((cibles ?? []).map(async (c: any) => {
+      const { data: u } = await sb.auth.admin.getUserById(c.user_id);
+      if (u?.user?.email) await envoyerEmail(u.user.email, `Nouveau projet à ${commune} — ${besoinLibelle}`, html);
+    }));
+  } catch (e) { console.error("[publier-projet] Notification des artisans échouée (projet créé quand même) :", e); }
 }
 
 // Reconnaît le vrai format d'après les premiers octets. Le type annoncé par le visiteur n'est qu'une déclaration.
@@ -132,7 +178,7 @@ Deno.serve(async (req: Request) => {
     if (cp != null && cp.length > 12) return json({ error: "Code postal invalide." }, 400);
 
     // ── Le besoin doit exister et être actif ; la famille vient de LUI ──
-    const { data: besoin, error: errBesoin } = await sb.from("besoins").select("code, famille").eq("code", codeBesoin).eq("actif", true).maybeSingle();
+    const { data: besoin, error: errBesoin } = await sb.from("besoins").select("code, famille, label_fr").eq("code", codeBesoin).eq("actif", true).maybeSingle();
     if (errBesoin) throw errBesoin;
     if (!besoin) return json({ error: "Ce type de besoin n'existe pas." }, 400);
 
@@ -180,6 +226,9 @@ Deno.serve(async (req: Request) => {
     } catch (e) {
       console.error("[publier-projet] Téléversement des photos échoué (projet créé quand même) :", e);
     }
+
+    // ── Prévenir les artisans concernés (jamais bloquant) ──
+    await notifierArtisans(sb, projet.id, besoin.label_fr, communeNom, texte, nbPhotos);
 
     return json({ success: true, projet_id: projet.id, nb_photos: nbPhotos });
 
