@@ -4451,6 +4451,7 @@ async function openModifierFiche() {
   document.getElementById('m-cp').value = a.code_postal || '';
   document.getElementById('m-com').value = a.commune || '';
   document.getElementById('m-rayon').value = a.rayon_intervention_km || 15;
+  document.getElementById('m-distance').checked = !!a.travaille_a_distance;
   var champFrais = document.getElementById('m-frais'); // (absent si la page HTML en mémoire est plus ancienne que ce code)
   if (champFrais) champFrais.value = (a.frais_deplacement != null && a.frais_deplacement !== '') ? String(a.frais_deplacement).replace('.', ',') : '';
   var champResa = document.getElementById('m-frais-resa');
@@ -4656,6 +4657,7 @@ async function sauverFiche() {
     code_postal: document.getElementById('m-cp').value.trim(),
     commune: document.getElementById('m-com').value.trim(),
     rayon_intervention_km: parseInt(document.getElementById('m-rayon').value, 10) || 15,
+    travaille_a_distance: document.getElementById('m-distance').checked,
     telephone: document.getElementById('m-tel').value.trim(),
     email: document.getElementById('m-email').value.trim(),
     site_web: document.getElementById('m-web').value.trim(),
