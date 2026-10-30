@@ -1172,13 +1172,13 @@ function renderFilsClients() {
   var zone = document.getElementById('zone-fils');
   if (!zone) return;
   if (!_filsClients.length) { zone.innerHTML = ''; return; }
-  zone.innerHTML = '<div style="font-weight:700;margin-bottom:10px;">💬 Messages de clients</div>' + _filsClients.map(function(f) {
+  zone.innerHTML = '<div style="font-weight:700;margin-bottom:10px;">💬 Messages de clients</div>' + _filsClients.map(function(f, idx) {
     var id = escHtml(f.reponse_id);
     var nl = f.nb_non_lus > 0 ? ' <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--danger);color:#fff;">' + f.nb_non_lus + ' nouveau' + (f.nb_non_lus > 1 ? 'x' : '') + '</span>' : '';
-    return '<div style="border:1px solid var(--brd);border-radius:12px;padding:12px 14px;margin-bottom:12px;">' +
+    return '<div style="border:1px solid var(--brd);border-radius:12px;padding:12px 14px;margin-bottom:12px;background:' + (idx % 2 === 0 ? '#ffffff' : '#f3f4f6') + ';">' +
       '<div style="font-weight:700;">' + escHtml(f.besoin_icon || '') + ' ' + escHtml(f.besoin_fr) + ' <span style="font-weight:400;color:var(--mu);font-size:12.5px;">· ' + escHtml(f.commune) + '</span>' + nl + '</div>' +
       '<div style="font-size:12.5px;color:var(--mu);margin-top:3px;">' + escHtml(f.description) + '</div>' +
-      '<div style="margin-top:8px;"><button type="button" class="addb" onclick="ouvrirFilClient(' + jsAttrLocal(f.reponse_id) + ')">💬 Ouvrir la discussion</button></div>' +
+      '<div style="margin-top:8px;"><button type="button" class="addb" onclick="ouvrirFilClient(' + jsAttrLocal(f.reponse_id) + ')" id="fc-bouton-' + id + '">💬 Ouvrir la discussion</button></div>' +
       '<div id="fc-' + id + '" style="display:none;margin-top:10px;"><div id="fc-msgs-' + id + '"></div>' +
       '<div id="fc-form-' + id + '" style="display:none;"><textarea id="fc-txt-' + id + '" rows="3" maxlength="1000" placeholder="Votre message…" style="width:100%;margin-top:8px;padding:9px;border:1px solid var(--brd);border-radius:8px;font-family:inherit;font-size:13px;box-sizing:border-box;"></textarea>' +
       '<div style="font-size:11.5px;color:var(--mu);margin-top:4px;">🔒 Pas de téléphone, d\'email ni de lien : le client décidera lui-même de vous donner ses coordonnées.</div>' +
@@ -1192,6 +1192,8 @@ function ouvrirFilClient(id) {
   if (!b) return;
   var ouvre = b.style.display === 'none';
   b.style.display = ouvre ? '' : 'none';
+  var bt = document.getElementById('fc-bouton-' + id);
+  if (bt) bt.textContent = ouvre ? '▲ Fermer la discussion' : '💬 Ouvrir la discussion';
   if (ouvre) chargerFilClient(id);
 }
 

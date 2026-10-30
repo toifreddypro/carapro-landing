@@ -246,6 +246,7 @@ async function init() {
   await chargerArtisans();
   await chargerLitiges();
   await chargerSignalements();
+  if (location.hash === '#signalements') switchAdminTab(6);
 }
 
 
@@ -272,24 +273,29 @@ async function chargerSignalements() {
   var cnt = document.getElementById('cnt-signalements');
   if (cnt) cnt.textContent = aTraiter ? '(' + aTraiter + ')' : '';
   if (!_signalements.length) { zone.innerHTML = '<div class="dcard" style="padding:20px;color:var(--mu);">Aucun signalement.</div>'; return; }
-  zone.innerHTML = _signalements.map(function(s) {
+  zone.innerHTML = _signalements.map(function(s, idx) {
     var p = s.projet || {};
     var etat = s.bloque_le ? '<span style="color:#dc2626;font-weight:700;">🚫 Messagerie bloquée (' + dtFr(s.bloque_le) + ')</span>'
       : (s.avertissement_le ? '<span style="color:#d97706;font-weight:700;">⚠️ Averti (' + dtFr(s.avertissement_le) + ')</span>' : '<span style="color:var(--mu);">Ni averti ni bloqué</span>');
-    var conv = (s.conversation || []).map(function(m) {
-      return '<div style="padding:6px 10px;border-radius:8px;margin-top:4px;font-size:13px;background:' + (m.signale ? '#fee2e2' : '#f3f4f6') + ';' + (m.signale ? 'border:1px solid #dc2626;' : '') + '">' +
-        '<b>' + (m.auteur === 'client' ? 'Client' : 'Artisan') + '</b> · <span style="color:var(--mu);">' + dtFr(m.created_at) + '</span>' + (m.signale ? ' 🚩' : '') + '<br>' + escHtml(m.contenu) + '</div>';
+    var pastille = { nouveau: '#dc2626', classe: '#6b7280' }[s.statut] || '#2563eb';
+    var conv = (s.conversation || []).map(function(m, k) {
+      var fond = m.signale ? '#fee2e2' : (k % 2 === 0 ? '#ffffff' : '#eef0f4');
+      return '<div style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:13px;background:' + fond + ';' + (m.signale ? 'border-left:4px solid #dc2626;' : '') + '">' +
+        '<b>' + (m.auteur === 'client' ? 'Client' : 'Artisan') + '</b> · <span style="color:var(--mu);">' + dtFr(m.created_at) + '</span>' + (m.signale ? ' 🚩 <b style="color:#dc2626;">message signalé</b>' : '') + '<div style="margin-top:2px;white-space:pre-wrap;">' + escHtml(m.contenu) + '</div></div>';
     }).join('');
     var b = function(act, lib, col) { return '<button class="btn-secondary" style="padding:7px 14px;font-size:12.5px;border:1.5px solid #cbd5e1;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:600;' + (col ? 'border-color:' + col + ';color:' + col + ';' : '') + '" onclick="agirSignalement(' + attrJs(s.id) + ',\'' + act + '\')">' + lib + '</button>'; };
-    return '<div class="dcard" style="padding:16px 18px;">' +
-      '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">' +
-        '<div><b style="font-size:15px;">' + escHtml(s.nom_signale || '(sans nom)') + '</b> <span style="color:var(--mu);">(' + (s.role_signale === 'artisan' ? 'artisan' : 'client') + ' signalé)</span></div>' +
-        '<div style="font-size:12.5px;color:var(--mu);">' + dtFr(s.created_at) + ' · statut : <b>' + escHtml(s.statut) + '</b></div></div>' +
-      '<div style="font-size:13px;margin-top:6px;">Signalé par <b>' + escHtml(s.nom_signaleur || '(sans nom)') + '</b> · Projet : ' + escHtml(p.besoin || '') + (p.commune ? ' — ' + escHtml(p.commune) : '') + '</div>' +
-      '<div style="font-size:13px;margin-top:4px;"><b>' + s.nb_signaleurs + '</b> personne(s) distincte(s) · <b>' + s.nb_signalements + '</b> signalement(s) au total · ' + etat + '</div>' +
-      '<div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#fee2e2;font-size:13.5px;"><div style="font-size:11.5px;color:#991b1b;">Message signalé · ' + dtFr(s.message_le) + '</div>' + escHtml(s.message) + '</div>' +
-      '<details style="margin-top:8px;"><summary style="cursor:pointer;font-size:13px;">Voir toute la conversation</summary>' + conv + '</details>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">' + b('classer', 'Classer sans suite') + b('avertir', 'Avertir', '#d97706') + (s.bloque_le ? b('debloquer', 'Débloquer', '#16a34a') : b('bloquer', 'Bloquer sa messagerie', '#dc2626')) + '</div></div>';
+    return '<details class="dcard" ' + (s.statut === 'nouveau' ? 'open' : '') + ' style="background:' + (idx % 2 === 0 ? '#ffffff' : '#f3f4f6') + ';">' +
+      '<summary style="cursor:pointer;padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;list-style:none;">' +
+        '<span style="width:10px;height:10px;border-radius:50%;background:' + pastille + ';flex-shrink:0;"></span>' +
+        '<b>' + escHtml(s.nom_signale || '(sans nom)') + '</b><span style="color:var(--mu);font-size:12.5px;">' + (s.role_signale === 'artisan' ? 'artisan' : 'client') + ' signalé · ' + s.nb_signaleurs + ' personne(s) · ' + dtFr(s.created_at) + '</span>' +
+        '<span style="margin-left:auto;font-size:12.5px;">' + etat + '</span></summary>' +
+      '<div style="padding:4px 16px 16px;">' +
+        '<div style="font-size:13px;">Signalé par <b>' + escHtml(s.nom_signaleur || '(sans nom)') + '</b> · Projet : ' + escHtml(p.besoin || '') + (p.commune ? ' — ' + escHtml(p.commune) : '') + ' · statut : <b>' + escHtml(s.statut) + '</b></div>' +
+        '<div style="font-size:13px;margin-top:4px;"><b>' + s.nb_signaleurs + '</b> personne(s) distincte(s) · <b>' + s.nb_signalements + '</b> signalement(s) au total</div>' +
+        '<div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#fee2e2;border-left:4px solid #dc2626;font-size:13.5px;"><div style="font-size:11.5px;color:#991b1b;">Message signalé · ' + dtFr(s.message_le) + '</div>' + escHtml(s.message) + '</div>' +
+        '<details style="margin-top:10px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;"><summary style="cursor:pointer;padding:8px 12px;font-size:13px;background:#fff;">Voir toute la conversation (' + (s.conversation || []).length + ' messages)</summary>' + conv + '</details>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">' + b('classer', 'Classer sans suite') + b('avertir', 'Avertir', '#d97706') + (s.bloque_le ? b('debloquer', 'Débloquer', '#16a34a') : b('bloquer', 'Bloquer sa messagerie', '#dc2626')) + '</div>' +
+      '</div></details>';
   }).join('');
 }
 async function agirSignalement(id, action) {

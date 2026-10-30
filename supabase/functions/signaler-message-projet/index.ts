@@ -81,7 +81,7 @@ Deno.serve(async (req: Request) => {
           <p style="background:#fdecec;padding:12px 16px;border-radius:8px;white-space:pre-wrap;">${escHtml(s?.message ?? "")}</p>
           <p style="font-size:12px;color:#6b7c96;">Écrit le ${escHtml(s?.message_le ?? "")}</p>
           <p><strong>${escHtml(action)}</strong></p>
-          <p style="margin:20px 0;"><a href="https://caralink.app/artisans/admin-artisans.html" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#B5502F;color:#fff;font-weight:700;text-decoration:none;">Ouvrir l'administration (onglet Signalements)</a></p>
+          <p style="margin:20px 0;"><a href="https://caralink.app/artisans/admin.html#signalements" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#B5502F;color:#fff;font-weight:700;text-decoration:none;">Ouvrir l'administration (onglet Signalements)</a></p>
         </div>`);
     } catch (e) { console.error("[signaler-message-projet] Email admin échoué (signalement enregistré quand même) :", e); }
 

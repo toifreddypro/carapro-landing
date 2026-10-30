@@ -103,6 +103,8 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
       <div class="field" id="g-nom" style="display:none;"><label for="f-nom" data-i18n="cpt_nom"></label><input type="text" id="f-nom" autocomplete="name" maxlength="100"></div>
       <div class="field"><label for="f-email" data-i18n="cpt_email"></label><input type="email" id="f-email" required autocomplete="email"></div>
       <div class="field" id="g-tel" style="display:none;"><label for="f-tel" data-i18n="cpt_tel"></label><input type="tel" id="f-tel" autocomplete="tel" maxlength="30"></div>
+      <div class="field" id="g-adr" style="display:none;"><label for="f-adr" data-i18n="cat_adresse"></label><input type="text" id="f-adr" autocomplete="street-address" maxlength="200"></div>
+      <div class="field" id="g-cpcom" style="display:none;"><label for="f-cp" data-i18n="cat_code_postal"></label><input type="text" id="f-cp" autocomplete="postal-code" maxlength="10" style="margin-bottom:8px;"><label for="f-com" data-i18n="cat_commune"></label><input type="text" id="f-com" autocomplete="address-level2" maxlength="100"><div class="hint" data-i18n="cpt_inscr_adr_aide"></div></div>
       <div class="field"><label for="f-mdp" data-i18n="cpt_mdp"></label>
         <div class="pw"><input type="password" id="f-mdp" required autocomplete="current-password"><button type="button" onclick="voirMdp('f-mdp',this)">👁</button></div>
         <div class="hint" id="h-mdp" style="display:none;" data-i18n="cpt_mdp_aide"></div>
@@ -143,6 +145,7 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
 <!-- ÉCRAN 3 : espace connecté -->
 <div id="v-app" style="display:none;">
   <div id="bandeau-modo" style="display:none;"></div>
+  <div id="bandeau-infos" style="display:none;margin:12px 0;padding:12px 14px;border-radius:10px;background:#fff4e5;border:1px solid #f59e0b;color:#7c2d12;font-size:14px;line-height:1.5;"><span data-i18n="cpt_infos_inviter"></span> <a href="#" onclick="ongletApp('profil');window.scrollTo({top:0,behavior:'smooth'});return false;" style="font-weight:700;color:#7c2d12;text-decoration:underline;" data-i18n="cpt_infos_bouton"></a></div>
   <div class="haut">
     <h1 id="bonjour"></h1>
     <button class="btn sec" onclick="seDeconnecter()" data-i18n="cpt_deconnexion"></button>
@@ -292,7 +295,7 @@ function modeAuth(m){
   mode = m; show('auth-err'); show('auth-ok');
   var s = (m==='signup');
   document.getElementById('t-login').classList.toggle('on',!s); document.getElementById('t-signup').classList.toggle('on',s);
-  ['g-nom','g-tel','g-cgu','h-mdp'].forEach(function(id){ document.getElementById(id).style.display = s?'':'none'; });
+  ['g-nom','g-tel','g-adr','g-cpcom','g-cgu','h-mdp'].forEach(function(id){ document.getElementById(id).style.display = s?'':'none'; });
   document.getElementById('lien-oubli').style.display = s?'none':'';
   document.getElementById('f-mdp').autocomplete = s?'new-password':'current-password';
   document.getElementById('btn-auth').textContent = T(s?'cpt_btn_creer':'cpt_btn_connexion');
@@ -313,7 +316,7 @@ async function soumettreAuth(){
       if (!document.getElementById('f-cgu').checked) { show('auth-err', T('cpt_err_cgu')); return; }
       var s = await sb.auth.signUp({ email:email, password:mdp, options:{
         emailRedirectTo: location.origin + location.pathname + (VEUT_PROJET ? '?projet=nouveau' : (VEUT_LISTE ? '?projet=liste' : '')),
-        data:{ nom:nom, telephone:tel||null, cgu_acceptees_le:new Date().toISOString(), cgu_version:CGU_VERSION, type_compte:'client' } } });
+        data:{ nom:nom, telephone:tel||null, adresse:(document.getElementById('f-adr').value.trim().slice(0,200)||null), code_postal:(document.getElementById('f-cp').value.trim().slice(0,10)||null), commune:(document.getElementById('f-com').value.trim().slice(0,100)||null), cgu_acceptees_le:new Date().toISOString(), cgu_version:CGU_VERSION, type_compte:'client' } } });
       if (s.error) { show('auth-err', /registered|exists/i.test(s.error.message)?T('cpt_err_existe'):T('cpt_err_generique')); return; }
       // Supabase renvoie un utilisateur sans identité quand l'email existe déjà (anti-énumération).
       if (s.data.user && s.data.user.identities && s.data.user.identities.length===0) { show('auth-err', T('cpt_err_existe')); return; }
@@ -353,7 +356,7 @@ async function ouvrirEspace(user){
   // Profil : créé au premier passage à partir des infos données à l'inscription.
   var p = await sb.from('comptes_clients').select('nom,telephone,adresse,code_postal,commune').eq('user_id', user.id).maybeSingle();
   if (!p.data) {
-    var neuf = { user_id:user.id, nom:(meta.nom||'').slice(0,100)||null, telephone:(meta.telephone||'').slice(0,30)||null };
+    var neuf = { user_id:user.id, nom:(meta.nom||'').slice(0,100)||null, telephone:(meta.telephone||'').slice(0,30)||null, adresse:(meta.adresse||'').slice(0,200)||null, code_postal:(meta.code_postal||'').slice(0,10)||null, commune:(meta.commune||'').slice(0,100)||null };
     await sb.from('comptes_clients').insert(neuf);
     PROFIL = neuf;
   } else { PROFIL = p.data; }
@@ -366,6 +369,7 @@ async function ouvrirEspace(user){
   document.getElementById('p-cp').value = PROFIL.code_postal || '';
   document.getElementById('p-com').value = PROFIL.commune || '';
   document.getElementById('p-email').value = user.email || '';
+  document.getElementById('bandeau-infos').style.display = (PROFIL.adresse && PROFIL.commune && PROFIL.telephone) ? 'none' : '';
   vue('v-app'); ongletApp((VEUT_PROJET || VEUT_LISTE) ? 'projets' : 'cmd'); chargerCommandes(); chargerRdv(); chargerCredits(); chargerProjets(); chargerEtatModeration();
   if (VEUT_PROJET) ouvrirFormProjet();
 }
@@ -794,6 +798,7 @@ async function sauverProfil(){
   var r = await sb.from('comptes_clients').update({nom:nom, telephone:tel||null, adresse:adr||null, code_postal:cp||null, commune:com||null, updated_at:new Date().toISOString()}).eq('user_id', USER.id);
   if (r.error) { show('prof-err', T('cpt_err_generique')); return; }
   PROFIL.nom = nom; PROFIL.telephone = tel||null; PROFIL.adresse = adr||null; PROFIL.code_postal = cp||null; PROFIL.commune = com||null;
+  document.getElementById('bandeau-infos').style.display = (PROFIL.adresse && PROFIL.commune && PROFIL.telephone) ? 'none' : '';
   document.getElementById('bonjour').textContent = fill(T('cpt_bonjour'), {nom:nom});
   show('prof-ok', T('cpt_enregistre'));
 }
