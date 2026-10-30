@@ -4895,7 +4895,8 @@ async function sauverFiche() {
   var champAnnul = document.getElementById('m-annul-heures');
   if (champAnnul && 'annulation_gratuite_heures' in _artisan) maj.annulation_gratuite_heures = parseInt(champAnnul.value, 10) || 0;
   // Géocodage de l'adresse pro — sert de point de départ pour le calcul des trajets (Smart Dispatch)
-  if (maj.adresse) {
+  // Sans adresse, on retombe sur la commune : la position suit toujours un changement de commune (elle sert aussi à recevoir les projets de clients proches).
+  if (maj.adresse || maj.commune) {
     var pt = await geocoderAdresse(maj.adresse, maj.code_postal, maj.commune);
     if (pt) { maj.latitude = pt.lat; maj.longitude = pt.lon; }
   }
