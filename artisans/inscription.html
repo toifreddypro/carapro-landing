@@ -73,9 +73,10 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
 
   <div id="msg-err" class="msg-err"></div>
 
+  <div id="bandeau-email-confirme" style="display:none;margin:0 0 16px;padding:12px 14px;border-radius:10px;background:#dcfce7;color:#166534;font-size:14px;">✅ Votre email est confirmé. Il ne reste qu'à compléter votre profil.</div>
   <form id="form-inscription" onsubmit="event.preventDefault();soumettreInscription();">
 
-    <div class="form-section">
+    <div class="form-section" id="section-compte">
       <h2>Votre compte</h2>
       <div class="sub">Pour retrouver votre profil et le mettre à jour plus tard.</div>
       <div class="field">
@@ -188,6 +189,7 @@ var _idWidgetForm = null;
 var _idWidgetResume = null;
 var _turnstilePret = false;
 var _repriseNecessaire = false;
+var _sessionConfirmee = null;
 function onTurnstileReady() {
   _idWidgetForm = turnstile.render('#turnstile-form', { sitekey: '0x4AAAAAAE0Iymsul7mZRXTA' });
   _turnstilePret = true;
@@ -256,6 +258,7 @@ function afficherErreur(msg) {
 async function soumettreInscription() {
   var email = document.getElementById('f-email').value.trim();
   var password = document.getElementById('f-password').value;
+  var sessionConfirmee = !!_sessionConfirmee;   // email déjà confirmé (lien ouvert sur un autre appareil) : pas de nouveau compte à créer
   var nom = document.getElementById('f-nom').value.trim();
   var secteur = document.getElementById('f-secteur').value;
   var commune = document.getElementById('f-commune').value.trim();
@@ -266,7 +269,7 @@ async function soumettreInscription() {
 
   document.getElementById('msg-err').classList.remove('show');
 
-  if (!email || !password || !nom || !secteur || !commune || !telephone) {
+  if ((!sessionConfirmee && (!email || !password)) || !nom || !secteur || !commune || !telephone) {
     afficherErreur('Merci de remplir tous les champs obligatoires.');
     return;
   }
@@ -289,7 +292,7 @@ async function soumettreInscription() {
   btn.disabled = true; btn.textContent = 'Création en cours…';
 
   try {
-    var authResult = await sb.auth.signUp({
+    var authResult = sessionConfirmee ? { data: { session: _sessionConfirmee, user: _sessionConfirmee.user }, error: null } : await sb.auth.signUp({
       email: email, password: password,
       options: {
         emailRedirectTo: 'https://caralink.app/artisans/inscription.html',
@@ -384,10 +387,35 @@ function recommencerInscription() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// Le lien de confirmation a été ouvert sur un autre appareil (ex. le téléphone) que celui où le formulaire a été rempli :
+// aucune donnée en attente ici, mais l'email est bien confirmé. On affiche le formulaire sans les champs email / mot de passe.
+async function proposerCompletionProfil() {
+  try {
+    var { data: { session } } = await sb.auth.getSession();
+    if (!session || !session.user) return;
+    if (!(session.user.email_confirmed_at || session.user.confirmed_at)) return;
+    var { data: dejaProfil } = await sb.from('artisans').select('id').eq('user_id', session.user.id).limit(1);
+    if (dejaProfil && dejaProfil.length) {
+      document.getElementById('wrap-form').style.display = 'none';
+      document.getElementById('wrap-confirmation').style.display = 'block';
+      document.getElementById('confirmation-icon').textContent = 'ℹ️';
+      document.getElementById('confirmation-titre').textContent = 'Votre profil existe déjà';
+      document.getElementById('confirmation-msg').textContent = 'Un profil est déjà associé à ce compte : il n\'y a rien de plus à faire ici.';
+      document.getElementById('confirmation-action').innerHTML = '<a href="https://caralink.app/mpa/" class="btn-submit" style="display:inline-block;text-decoration:none;">Aller sur Mon espace →</a>';
+      return;
+    }
+    _sessionConfirmee = session;
+    document.getElementById('section-compte').style.display = 'none';
+    document.getElementById('f-email').required = false; document.getElementById('f-password').required = false;
+    document.getElementById('bandeau-email-confirme').style.display = 'block';
+  } catch (e) { /* pas bloquant : le formulaire normal reste affiché */ }
+}
+
 async function verifierRepriseInscription() {
   try {
-    var brut = localStorage.getItem('caralink_inscription_attente');
-    if (!brut) return;
+    var brut = null;
+    try { brut = localStorage.getItem('caralink_inscription_attente'); } catch (e) {}
+    if (!brut) { await proposerCompletionProfil(); return; }
     var infos = JSON.parse(brut);
 
     // Inscription en attente trop ancienne, ou enregistrée avant cette vérification : on l'oublie,
@@ -395,6 +423,7 @@ async function verifierRepriseInscription() {
     var QUARANTE_HUIT_H = 48 * 3600 * 1000;
     if (!infos || !infos.email_attente || !infos.cree_le || (Date.now() - infos.cree_le) > QUARANTE_HUIT_H) {
       oublierInscriptionEnAttente();
+      await proposerCompletionProfil();
       return;
     }
 
