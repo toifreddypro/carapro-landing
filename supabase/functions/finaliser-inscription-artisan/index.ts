@@ -95,6 +95,18 @@ async function verifierTurnstile(token: string, ip: string | null): Promise<bool
   }
 }
 
+// Centre de la commune (API officielle des adresses) : sert à proposer à l'artisan les projets de clients autour de lui. Jamais bloquant.
+async function geocoderCommune(commune: string) {
+  try {
+    const res = await fetch("https://api-adresse.data.gouv.fr/search/?limit=1&type=municipality&q=" + encodeURIComponent(commune), { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const coords = data?.features?.[0]?.geometry?.coordinates;
+    if (Array.isArray(coords) && coords.length === 2 && isFinite(Number(coords[0])) && isFinite(Number(coords[1]))) return { lon: Number(coords[0]), lat: Number(coords[1]) };
+  } catch (e) { console.warn("[finaliser-inscription-artisan] géocodage échoué :", e); }
+  return null;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
@@ -190,12 +202,14 @@ Deno.serve(async (req: Request) => {
       if (!Array.isArray(fichiers) || !fichiers.some((f: any) => f.name === fichier)) cheminDocument = null;
     }
 
+    const pointCommune = await geocoderCommune(communeNom);
     const { data: artisan, error } = await sbAdmin.from("artisans").insert({
       user_id: userId, email: userData.user.email ?? null, // l'email du compte de connexion : les notifications (commandes, prélèvement…) partent de là
       nom_entreprise: nom, secteur: secteurCode, commune: communeNom, telephone: tel,
       bio: bioTxt || null, rayon_intervention_km: rayon,
       siret: siretPropre || null, verifie: siretValide, verification_statut: statutVerif,
       actif: true,
+      latitude: pointCommune ? pointCommune.lat : null, longitude: pointCommune ? pointCommune.lon : null,
     }).select().single();
     if (error) {
       // Deux appels simultanés : l'autre a créé le profil (index d'unicité de securite-inscription.sql).
