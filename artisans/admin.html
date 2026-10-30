@@ -31,6 +31,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);min-he
 .tbtitle{font-family:'Bricolage Grotesque',sans-serif;font-size:17px;font-weight:800;}
 .tbtitle span{color:var(--ac);}
 .badge-admin{font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(181,80,47,.1);color:var(--ac);padding:3px 9px;border-radius:20px;font-weight:700;}
+#admin-nav{display:flex;gap:4px;padding:0 24px;border-bottom:1px solid var(--brd);background:var(--panel);overflow-x:auto;}
+.atab{padding:12px 16px;border:none;background:none;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;color:var(--mu);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s;}
+.atab:hover{color:var(--tx);}
+.atab.active{color:var(--ac);border-bottom-color:var(--ac);}
+.apnl{display:none;}
+.apnl.active{display:block;}
 #wrap{max-width:1100px;margin:0 auto;padding:24px;}
 .dcard{background:var(--panel);border:1px solid var(--brd);border-radius:14px;overflow:hidden;margin-bottom:20px;}
 .dchdr{padding:14px 18px;border-bottom:1px solid var(--brd);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:space-between;}
@@ -48,15 +54,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);min-he
 .access-denied h1{font-size:22px;margin-bottom:10px;}
 .loader{text-align:center;padding:40px;color:var(--mu);}
 .note{font-size:12px;color:var(--mu);padding:12px 18px;border-top:1px solid var(--brd);}
-.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;border-bottom:1px solid var(--brd);padding-bottom:0;}
-.tab{padding:10px 16px;border:none;background:transparent;font-family:'Outfit',sans-serif;font-size:13.5px;font-weight:600;color:var(--mu);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;}
-.tab:hover{color:var(--tx);}
-.tab.on{color:var(--ac);border-bottom-color:var(--ac);}
-.liste-barre{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 18px;border-bottom:1px solid var(--brd);background:var(--p2);}
-.liste-barre input{padding:7px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;min-width:240px;}
-.pager{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--mu);}
-.pager button{padding:5px 11px;border-radius:7px;border:1px solid var(--b2);background:var(--panel);cursor:pointer;font-size:12.5px;font-weight:600;}
-.pager button:disabled{opacity:.4;cursor:default;}
 </style>
 </head>
 <body>
@@ -65,6 +62,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);min-he
   <div class="tbtitle">MPA <span>Artisans</span></div>
   <span class="badge-admin">🔒 Administration</span>
   <a href="https://caralink.app/mpa/" title="Retour à MPA Artisans" style="margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:var(--inp,#f6f9fe);color:var(--ac,#B5502F);text-decoration:none;font-size:15px;">←</a>
+</div>
+
+<div id="admin-nav" style="display:none;">
+  <button class="atab active" onclick="switchAdminTab(0)">Artisans</button>
+  <button class="atab" onclick="switchAdminTab(1)">Secteurs</button>
+  <button class="atab" onclick="switchAdminTab(2)">Quoi de neuf</button>
+  <button class="atab" onclick="switchAdminTab(3)">Avis produit</button>
+  <button class="atab" onclick="switchAdminTab(4)">Prélèvements</button>
+  <button class="atab" onclick="switchAdminTab(5)">Litiges</button>
+  <button class="atab" onclick="switchAdminTab(6)">Signalements <span id="cnt-signalements"></span></button>
 </div>
 
 <div id="wrap">
@@ -78,6 +85,15 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 const ADMIN_EMAIL = 'toifreddypro@gmail.com';
 
 var _session = null;
+
+// Valeur à écrire DANS un attribut HTML, p. ex. onclick="f(' + attrJs(x) + ')". escHtml ne suffit pas ici :
+// il laisse passer les guillemets, ce qui permettait à un nom d'entreprise de refermer l'attribut et d'y
+// ajouter son propre code. JSON protège la chaîne côté JavaScript, puis l'échappement HTML complet
+// (& en premier, sinon un "&quot;" saisi par un utilisateur serait décodé en guillemet réel).
+function attrJs(val) {
+  return JSON.stringify(val == null ? '' : String(val))
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -103,7 +119,7 @@ async function chargerNouveautes() {
       '</table></div>' +
       '<div style="padding:14px 18px;border-top:1px solid var(--brd);display:flex;flex-direction:column;gap:8px;">' +
         '<input id="nouveaute-titre" type="text" placeholder="Titre (ex : Nouveau : le panier d\'achat !)" style="padding:8px 12px;border-radius:8px;border:1px solid var(--b2);font-family:\'Outfit\',sans-serif;font-size:13px;">' +
-        '<textarea id="nouveaute-desc" rows="6" placeholder="Une idée par ligne (Entrée = nouvelle ligne). « Libellé : texte » met le libellé en gras. Une ligne commençant par 💡 devient un encadré." style="padding:8px 12px;border-radius:8px;border:1px solid var(--b2);font-family:\'Outfit\',sans-serif;font-size:13px;resize:vertical;"></textarea>' +
+        '<textarea id="nouveaute-desc" rows="2" placeholder="Description courte, visible dans la bulle de l\'artisan…" style="padding:8px 12px;border-radius:8px;border:1px solid var(--b2);font-family:\'Outfit\',sans-serif;font-size:13px;resize:vertical;"></textarea>' +
         '<button onclick="ajouterNouveaute()" style="align-self:flex-start;padding:8px 16px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">+ Publier</button>' +
       '</div>' +
       '<div class="note">💡 Chaque artisan voit les annonces publiées depuis sa dernière connexion, une seule fois, dans une bulle à l\'ouverture de MPA.</div>' +
@@ -113,9 +129,9 @@ async function chargerNouveautes() {
 function renderLigneNouveaute(n) {
   return '<tr>' +
     '<td><strong>' + escHtml(n.titre) + '</strong></td>' +
-    '<td style="color:var(--mu);font-size:12px;white-space:normal;min-width:260px;max-width:420px;line-height:1.45;">' + escHtml(n.description) + '</td>' +
+    '<td style="color:var(--mu);font-size:12px;max-width:280px;">' + escHtml(n.description) + '</td>' +
     '<td><input type="checkbox" ' + (n.actif ? 'checked' : '') + ' onchange="basculerNouveaute(\'' + n.id + '\', this.checked)"></td>' +
-    '<td><button class="btn-del" onclick="supprimerNouveaute(\'' + n.id + '\',\'' + escHtml(n.titre).replace(/'/g,"\\'") + '\')">Supprimer</button></td>' +
+    '<td><button class="btn-del" onclick="supprimerNouveaute(' + attrJs(n.id) + ',' + attrJs(n.titre) + ')">Supprimer</button></td>' +
   '</tr>';
 }
 
@@ -171,7 +187,7 @@ function renderLigneSecteur(s) {
     '</td>' +
     '<td><strong>' + escHtml(s.label_fr) + '</strong></td>' +
     '<td style="color:var(--mu);font-family:\'JetBrains Mono\',monospace;font-size:11.5px;">' + escHtml(s.code) + '</td>' +
-    '<td><button class="btn-del" onclick="supprimerSecteur(\'' + s.id + '\',\'' + escHtml(s.label_fr).replace(/'/g,"\\'") + '\')">Supprimer</button></td>' +
+    '<td><button class="btn-del" onclick="supprimerSecteur(' + attrJs(s.id) + ',' + attrJs(s.label_fr) + ')">Supprimer</button></td>' +
   '</tr>';
 }
 
@@ -214,19 +230,79 @@ async function init() {
     return;
   }
   _session = data.session;
+  document.getElementById('admin-nav').style.display = 'flex';
   document.getElementById('wrap').innerHTML =
-    '<div class="tabs" id="onglets"></div>' +
-    '<div id="zone-secteurs"></div>' +
-    '<div id="zone-nouveautes"></div>' +
-    '<div id="zone-avis-produit"></div>' +
-    '<div id="zone-prelevement-prestations"></div>' +
-    '<div id="zone-artisans"></div>';
-  construireOnglets();
+    '<div class="apnl active" id="zone-artisans"></div>' +
+    '<div class="apnl" id="zone-secteurs"></div>' +
+    '<div class="apnl" id="zone-nouveautes"></div>' +
+    '<div class="apnl" id="zone-avis-produit"></div>' +
+    '<div class="apnl" id="zone-prelevement-prestations"></div>' +
+    '<div class="apnl" id="zone-litiges"></div>' +
+    '<div class="apnl" id="zone-signalements"></div>';
   await chargerSecteurs();
   await chargerNouveautes();
   await chargerAvisProduit();
   renderZonePrelevementPrestations();
   await chargerArtisans();
+  await chargerLitiges();
+  await chargerSignalements();
+}
+
+
+// ── Signalements de messages (modération) ──
+var _signalements = [];
+async function appelAdminSignalements(corps) {
+  var { data: { session } } = await sb.auth.getSession();
+  var res = await fetch(SUPABASE_URL + '/functions/v1/admin-signalements', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+    body: JSON.stringify(corps),
+  });
+  var d = await res.json().catch(function() { return {}; });
+  if (!res.ok || !d.success) throw new Error(d.error || ('Erreur serveur (' + res.status + ')'));
+  return d;
+}
+function dtFr(s) { return s ? new Date(s).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''; }
+async function chargerSignalements() {
+  var zone = document.getElementById('zone-signalements');
+  if (!zone) return;
+  try { _signalements = (await appelAdminSignalements({ action: 'liste' })).signalements || []; }
+  catch (e) { zone.innerHTML = '<div class="dcard" style="padding:20px;color:#dc2626;">Erreur : ' + escHtml(e.message) + '</div>'; return; }
+  var aTraiter = _signalements.filter(function(s) { return s.statut === 'nouveau'; }).length;
+  var cnt = document.getElementById('cnt-signalements');
+  if (cnt) cnt.textContent = aTraiter ? '(' + aTraiter + ')' : '';
+  if (!_signalements.length) { zone.innerHTML = '<div class="dcard" style="padding:20px;color:var(--mu);">Aucun signalement.</div>'; return; }
+  zone.innerHTML = _signalements.map(function(s) {
+    var p = s.projet || {};
+    var etat = s.bloque_le ? '<span style="color:#dc2626;font-weight:700;">🚫 Messagerie bloquée (' + dtFr(s.bloque_le) + ')</span>'
+      : (s.avertissement_le ? '<span style="color:#d97706;font-weight:700;">⚠️ Averti (' + dtFr(s.avertissement_le) + ')</span>' : '<span style="color:var(--mu);">Ni averti ni bloqué</span>');
+    var conv = (s.conversation || []).map(function(m) {
+      return '<div style="padding:6px 10px;border-radius:8px;margin-top:4px;font-size:13px;background:' + (m.signale ? '#fee2e2' : '#f3f4f6') + ';' + (m.signale ? 'border:1px solid #dc2626;' : '') + '">' +
+        '<b>' + (m.auteur === 'client' ? 'Client' : 'Artisan') + '</b> · <span style="color:var(--mu);">' + dtFr(m.created_at) + '</span>' + (m.signale ? ' 🚩' : '') + '<br>' + escHtml(m.contenu) + '</div>';
+    }).join('');
+    var b = function(act, lib, col) { return '<button class="btn-secondary" style="padding:7px 14px;font-size:12.5px;border:1.5px solid #cbd5e1;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:600;' + (col ? 'border-color:' + col + ';color:' + col + ';' : '') + '" onclick="agirSignalement(' + attrJs(s.id) + ',\'' + act + '\')">' + lib + '</button>'; };
+    return '<div class="dcard" style="padding:16px 18px;">' +
+      '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">' +
+        '<div><b style="font-size:15px;">' + escHtml(s.nom_signale || '(sans nom)') + '</b> <span style="color:var(--mu);">(' + (s.role_signale === 'artisan' ? 'artisan' : 'client') + ' signalé)</span></div>' +
+        '<div style="font-size:12.5px;color:var(--mu);">' + dtFr(s.created_at) + ' · statut : <b>' + escHtml(s.statut) + '</b></div></div>' +
+      '<div style="font-size:13px;margin-top:6px;">Signalé par <b>' + escHtml(s.nom_signaleur || '(sans nom)') + '</b> · Projet : ' + escHtml(p.besoin || '') + (p.commune ? ' — ' + escHtml(p.commune) : '') + '</div>' +
+      '<div style="font-size:13px;margin-top:4px;"><b>' + s.nb_signaleurs + '</b> personne(s) distincte(s) · <b>' + s.nb_signalements + '</b> signalement(s) au total · ' + etat + '</div>' +
+      '<div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#fee2e2;font-size:13.5px;"><div style="font-size:11.5px;color:#991b1b;">Message signalé · ' + dtFr(s.message_le) + '</div>' + escHtml(s.message) + '</div>' +
+      '<details style="margin-top:8px;"><summary style="cursor:pointer;font-size:13px;">Voir toute la conversation</summary>' + conv + '</details>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">' + b('classer', 'Classer sans suite') + b('avertir', 'Avertir', '#d97706') + (s.bloque_le ? b('debloquer', 'Débloquer', '#16a34a') : b('bloquer', 'Bloquer sa messagerie', '#dc2626')) + '</div></div>';
+  }).join('');
+}
+async function agirSignalement(id, action) {
+  var txt = { classer: 'Classer ce signalement sans suite ?', avertir: 'Avertir cette personne (message affiché à sa prochaine connexion) ?', bloquer: 'Bloquer la messagerie de cette personne ?', debloquer: 'Débloquer la messagerie de cette personne ?' }[action];
+  if (!confirm(txt)) return;
+  try { await appelAdminSignalements({ action: action, signalement_id: id }); }
+  catch (e) { alert('Erreur : ' + e.message); return; }
+  await chargerSignalements();
+}
+
+function switchAdminTab(i) {
+  document.querySelectorAll('#admin-nav .atab').forEach(function(b, idx) { b.classList.toggle('active', idx === i); });
+  document.querySelectorAll('#wrap .apnl').forEach(function(p, idx) { p.classList.toggle('active', idx === i); });
 }
 
 // ── Prélèvement mensuel de la commission prestations (à lancer soi-même pour l'instant) ──
@@ -241,43 +317,45 @@ function renderZonePrelevementPrestations() {
     '<div class="dcard">' +
       '<div class="dchdr"><span>Prélèvement mensuel — commission prestations</span></div>' +
       '<div class="dcbdy" style="padding:16px;">' +
-        '<p style="font-size:12.5px;color:var(--mu);margin-bottom:12px;">Calcule et débite, pour chaque artisan ayant une carte enregistrée, 7 % de la part au-dessus de 300 € de prestations "annuaire" sur le mois choisi. Un mois déjà traité n\'est jamais retraité.</p>' +
+        '<p style="font-size:12.5px;color:var(--mu);margin-bottom:12px;">Calcule et débite, pour chaque artisan ayant une carte enregistrée, 7 % (5 % pour un artisan Pro) de la part au-dessus de 200 € de prestations "annuaire" sur le mois choisi. Un mois déjà traité n\'est jamais retraité.</p>' +
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">' +
           '<label style="font-size:12.5px;color:var(--mu2);">Mois à traiter :</label>' +
           '<input type="month" id="pp-mois" value="' + moisDernierISO().slice(0, 7) + '" style="padding:6px 10px;border-radius:7px;border:1px solid var(--brd);">' +
-          '<button class="btn-primary" id="btn-pp-lancer" onclick="lancerPrelevementPrestations()" style="padding:8px 16px;font-size:12.5px;">Lancer le prélèvement</button>' +
+          '<button class="btn-secondary" id="btn-pp-simuler" onclick="lancerPrelevementPrestations(true)" style="padding:8px 16px;font-size:12.5px;">Simuler (rien n\'est débité)</button>' +
+          '<button class="btn-primary" id="btn-pp-lancer" onclick="lancerPrelevementPrestations(false)" style="padding:8px 16px;font-size:12.5px;">Lancer le prélèvement</button>' +
         '</div>' +
         '<div id="pp-resultat"></div>' +
       '</div>' +
     '</div>';
 }
 
-async function lancerPrelevementPrestations() {
+async function lancerPrelevementPrestations(simuler) {
   var btn = document.getElementById('btn-pp-lancer');
+  var btnSim = document.getElementById('btn-pp-simuler');
   var zoneRes = document.getElementById('pp-resultat');
   var moisChoisi = document.getElementById('pp-mois').value; // "AAAA-MM"
   if (!moisChoisi) { alert('Choisis un mois.'); return; }
   var moisISO = moisChoisi + '-01';
 
-  if (!confirm('Lancer le prélèvement pour ' + moisChoisi + ' ?\n\nÇa va débiter réellement les cartes enregistrées des artisans concernés. Cette action ne peut pas être annulée (mais ne prélève jamais deux fois le même mois).')) return;
+  if (!simuler && !confirm('Lancer le prélèvement pour ' + moisChoisi + ' ?\n\nÇa va débiter réellement les cartes enregistrées des artisans concernés. Cette action ne peut pas être annulée (mais ne prélève jamais deux fois le même mois).')) return;
 
-  btn.disabled = true; btn.textContent = 'Traitement en cours…';
+  btn.disabled = true; btnSim.disabled = true; (simuler ? btnSim : btn).textContent = 'Traitement en cours…';
   zoneRes.innerHTML = '';
   try {
     var { data: { session } } = await sb.auth.getSession();
     var res = await fetch(SUPABASE_URL + '/functions/v1/prelever-commission-prestations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
-      body: JSON.stringify({ mois_iso: moisISO }),
+      body: JSON.stringify({ mois_iso: moisISO, simuler: !!simuler }),
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    var LABELS = { reussi: '✅ Prélevé', sous_le_seuil: '— Sous le seuil (rien dû)', sous_minimum_stripe: 'ℹ️ Trop petit pour Stripe (< 0,50€)', echoue: '❌ Échec', deja_traite: '⏭️ Déjà traité', erreur: '⚠️ Erreur' };
-    var COULEURS = { reussi: '#0f9d78', sous_le_seuil: 'var(--mu)', sous_minimum_stripe: 'var(--mu)', echoue: '#dc2626', deja_traite: 'var(--mu)', erreur: '#dc2626' };
+    var LABELS = { reussi: '✅ Prélevé', sous_le_seuil: '— Sous le seuil (rien dû)', sous_minimum_stripe: 'ℹ️ Trop petit pour Stripe (< 0,50€)', echoue: '❌ Échec', deja_traite: '⏭️ Déjà traité', erreur: '⚠️ Erreur', a_prelever: '💶 Serait prélevé', carte_manquante: '⚠️ Aucune carte enregistrée', reussi_non_enregistre: '⚠️ Prélevé mais NON enregistré' };
+    var COULEURS = { reussi: '#0f9d78', sous_le_seuil: 'var(--mu)', sous_minimum_stripe: 'var(--mu)', echoue: '#dc2626', deja_traite: 'var(--mu)', erreur: '#dc2626', a_prelever: '#0f9d78', carte_manquante: '#d97706', reussi_non_enregistre: '#dc2626' };
 
     zoneRes.innerHTML =
-      '<p style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;">' + data.traites + ' artisan(s) examiné(s) pour ' + moisChoisi + '.</p>' +
+      '<p style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;">' + (data.simulation ? '<strong>SIMULATION — aucune carte n\'a été débitée, rien n\'a été enregistré.</strong> ' : '') + data.traites + ' artisan(s) examiné(s) pour ' + moisChoisi + '.</p>' +
       '<table style="width:100%;border-collapse:collapse;font-size:12.5px;">' +
         '<thead><tr style="text-align:left;color:var(--mu);"><th style="padding:4px 8px;">Artisan</th><th style="padding:4px 8px;">Résultat</th><th style="padding:4px 8px;">Détail</th></tr></thead>' +
         '<tbody>' +
@@ -285,9 +363,12 @@ async function lancerPrelevementPrestations() {
             var detail = r.statut === 'reussi' ? (r.commission || 0) + ' € prélevés'
               : r.statut === 'sous_le_seuil' ? (r.ca || 0) + ' € de CA ce mois-ci'
               : r.statut === 'sous_minimum_stripe' ? (r.commission || 0) + ' € dus, non prélevés (trop petit)'
+              : r.statut === 'a_prelever' ? (r.commission || 0) + ' € seraient prélevés'
+              : r.statut === 'carte_manquante' ? (r.commission || 0) + ' € dus, mais aucune carte enregistrée'
+              : r.statut === 'reussi_non_enregistre' ? (r.erreur || '') + ' Paiement Stripe : ' + (r.stripe_payment_intent_id || '?')
               : r.erreur || '';
             return '<tr style="border-top:1px solid var(--brd);">' +
-              '<td style="padding:4px 8px;">' + escHtml(r.artisan_id) + '</td>' +
+              '<td style="padding:4px 8px;">' + escHtml(r.nom || r.artisan_id) + '</td>' +
               '<td style="padding:4px 8px;color:' + (COULEURS[r.statut] || 'inherit') + ';font-weight:600;">' + (LABELS[r.statut] || r.statut) + '</td>' +
               '<td style="padding:4px 8px;color:var(--mu2);">' + escHtml(String(detail)) + '</td>' +
             '</tr>';
@@ -297,7 +378,7 @@ async function lancerPrelevementPrestations() {
   } catch (e) {
     zoneRes.innerHTML = '<p style="color:var(--danger);font-size:12.5px;">Erreur : ' + escHtml(e.message) + '</p>';
   } finally {
-    btn.disabled = false; btn.textContent = 'Lancer le prélèvement';
+    btn.disabled = false; btnSim.disabled = false; btn.textContent = 'Lancer le prélèvement'; btnSim.textContent = 'Simuler (rien n\'est débité)';
   }
 }
 
@@ -328,8 +409,8 @@ async function chargerAvisProduit() {
             return '<div style="border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;">' +
               '<div style="font-size:12px;color:var(--mu);margin-bottom:6px;">' + escHtml(a.type) + ' — ' + escHtml(a.nom_affiche) + '</div>' +
               '<div style="font-size:13.5px;margin-bottom:12px;">« ' + escHtml(a.texte) + ' »</div>' +
-              '<button class="btn-primary" style="padding:6px 14px;font-size:12px;" onclick="modererAvisProduit(\'' + a.id + '\',\'valider\')">✓ Valider</button> ' +
-              '<button class="btn-secondary" style="padding:6px 14px;font-size:12px;" onclick="modererAvisProduit(\'' + a.id + '\',\'refuser\')">✕ Refuser</button>' +
+              '<button class="btn-primary" style="padding:6px 14px;font-size:12px;" onclick="modererAvisProduit(' + attrJs(a.id) + ',\'valider\')">✓ Valider</button> ' +
+              '<button class="btn-secondary" style="padding:6px 14px;font-size:12px;" onclick="modererAvisProduit(' + attrJs(a.id) + ',\'refuser\')">✕ Refuser</button>' +
             '</div>';
           }).join('') +
         '</div>' +
@@ -355,34 +436,88 @@ async function modererAvisProduit(id, action) {
   }
 }
 
-// Contrôle du SIRET auprès du registre officiel (API publique gouvernementale), affiché pour chaque artisan.
-async function controlerSiretsAffiches() {
-  var cache = {};
-  var spans = document.querySelectorAll('.ctrl-siret');
-  for (var i = 0; i < spans.length; i++) {
-    var span = spans[i], siret = span.getAttribute('data-siret');
-    if (!(siret in cache)) {
-      try {
-        var r = await fetch('https://recherche-entreprises.api.gouv.fr/search?q=' + encodeURIComponent(siret));
-        if (!r.ok) throw new Error('http ' + r.status);
-        var d = await r.json();
-        var res = (d.results || []).find(function(x) {
-          return (x.matching_etablissements || []).some(function(e) { return e.siret === siret; }) || (x.siege && x.siege.siret === siret);
-        });
-        if (!res) cache[siret] = { etat: 'introuvable' };
-        else {
-          var etab = (res.matching_etablissements || []).find(function(e) { return e.siret === siret; }) || res.siege || {};
-          cache[siret] = { etat: (etab.etat_administratif || res.etat_administratif) === 'A' ? 'actif' : 'ferme', nom: res.nom_complet || '' };
-        }
-      } catch (e) { cache[siret] = { etat: 'indispo' }; }
-    }
-    var c = cache[siret];
-    if (c.etat === 'actif') { span.style.color = '#059669'; span.textContent = '✅ Reconnu et actif : ' + c.nom; }
-    else if (c.etat === 'ferme') { span.style.color = '#d97706'; span.textContent = '⚠️ Reconnu mais cessé : ' + c.nom; }
-    else if (c.etat === 'introuvable') { span.style.color = '#dc2626'; span.textContent = '❌ Introuvable au registre — à vérifier'; }
-    else { span.textContent = 'Contrôle indisponible'; }
+// ── Litiges Stripe — jamais une récupération automatique, toujours un geste volontaire ──
+async function chargerLitiges() {
+  var zone = document.getElementById('zone-litiges');
+  if (!zone) return;
+
+  var { data: litiges, error } = await sb.from('litiges_stripe')
+    .select('*, artisans(nom_entreprise)')
+    .order('created_at', { ascending: false });
+  if (error) {
+    zone.innerHTML = '<p style="color:var(--danger);padding:16px;">Erreur litiges : ' + escHtml(error.message) + '</p>';
+    return;
+  }
+
+  var ouverts = (litiges || []).filter(function(l) { return l.statut !== 'won' && l.statut !== 'lost' && l.statut !== 'warning_closed'; });
+  var clos = (litiges || []).filter(function(l) { return !ouverts.includes(l); });
+
+  zone.innerHTML =
+    '<div class="dcard">' +
+      '<div class="dchdr"><span>⚠️ Litiges Stripe' + (ouverts.length ? ' — ' + ouverts.length + ' en cours' : '') + '</span></div>' +
+      '<div class="dcbdy" style="padding:16px;">' +
+        '<p style="font-size:12.5px;color:var(--mu);margin-bottom:14px;">Avec des paiements en destination charge, un litige débite toujours notre solde Stripe, jamais directement celui de l\'artisan — même si l\'argent lui a déjà été transféré. "Récupérer" tente de reprendre ce montant sur son solde ; ça échoue proprement s\'il n\'a plus assez disponible.</p>' +
+        (litiges && litiges.length
+          ? '<table class="dtbl"><thead><tr><th>Date</th><th>Artisan</th><th>Montant</th><th>Motif</th><th>Statut</th><th>Réponse avant</th><th></th></tr></thead><tbody>' +
+              litiges.map(renderLigneLitige).join('') +
+            '</tbody></table>'
+          : '<div class="etat-vide-tbl">Aucun litige pour l\'instant.</div>') +
+      '</div>' +
+    '</div>';
+}
+
+function renderLigneLitige(l) {
+  var nomArtisan = (l.artisans && l.artisans.nom_entreprise) || '—';
+  var dateCree = new Date(l.created_at).toLocaleDateString('fr-FR');
+  var dateLimite = l.date_echeance_reponse ? new Date(l.date_echeance_reponse).toLocaleDateString('fr-FR') : '—';
+
+  var LABELS_STATUT = {
+    needs_response: '🔴 Réponse nécessaire', warning_needs_response: '🟠 Alerte précoce',
+    under_review: '🔵 En cours d\'examen', won: '✅ Gagné', lost: '❌ Perdu', warning_closed: '⚪ Alerte close',
+  };
+  var statutAff = LABELS_STATUT[l.statut] || l.statut;
+
+  var colonneAction;
+  if (l.transfer_reverse_statut === 'reussi') {
+    colonneAction = '<span style="color:#16a34a;font-size:11.5px;font-weight:700;">✓ Récupéré (' + Number(l.transfer_reverse_montant).toFixed(2) + ' €)</span>';
+  } else if (l.transfer_reverse_statut === 'echec') {
+    colonneAction = '<span style="color:var(--danger);font-size:11px;">Échec — </span><button class="addb" onclick="recupererLitige(\'' + l.id + '\')">Réessayer</button>';
+  } else {
+    colonneAction = '<button class="addb" onclick="recupererLitige(\'' + l.id + '\')">Récupérer auprès de l\'artisan</button>';
+  }
+
+  return '<tr>' +
+    '<td style="white-space:nowrap;">' + dateCree + '</td>' +
+    '<td>' + escHtml(nomArtisan) + '</td>' +
+    '<td style="font-weight:700;">' + Number(l.montant).toFixed(2) + ' €</td>' +
+    '<td style="font-size:11.5px;color:var(--mu);">' + escHtml(l.motif || '—') + '</td>' +
+    '<td>' + statutAff + '</td>' +
+    '<td style="white-space:nowrap;">' + dateLimite + '</td>' +
+    '<td id="litige-action-' + l.id + '">' + colonneAction + '</td>' +
+  '</tr>';
+}
+
+async function recupererLitige(litigeId) {
+  if (!confirm('Confirmer la récupération de ce montant auprès de l\'artisan ?\n\nÇa ne fonctionnera que s\'il a encore ce montant disponible sur son solde Stripe.')) return;
+  var cellule = document.getElementById('litige-action-' + litigeId);
+  cellule.innerHTML = '<span style="font-size:11.5px;color:var(--mu);">Tentative en cours…</span>';
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/admin-recuperer-litige', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _session.access_token },
+      body: JSON.stringify({ litige_id: litigeId }),
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+    if (data.avertissement) alert('⚠️ ' + data.avertissement);
+    await chargerLitiges();
+  } catch (e) {
+    alert('Erreur : ' + e.message);
+    await chargerLitiges();
   }
 }
+
+var _artisansCache = [];
 
 async function chargerArtisans() {
   var { data: artisans, error } = await sb.from('artisans').select('*').order('created_at', { ascending: false });
@@ -390,44 +525,58 @@ async function chargerArtisans() {
     document.getElementById('zone-artisans').innerHTML = '<p style="color:var(--danger);">Erreur : ' + escHtml(error.message) + '</p>';
     return;
   }
+  _artisansCache = artisans;
+
+  var nbPro = artisans.filter(function(a) { return a.plan === 'pro'; }).length;
+  var nbOffert = artisans.filter(function(a) { return a.plan === 'pro_offert'; }).length;
+  var nbEssentiel = artisans.length - nbPro - nbOffert;
 
   document.getElementById('zone-artisans').innerHTML =
     '<div class="dcard">' +
-      '<div class="dchdr"><span>Tous les artisans (' + artisans.length + ')</span></div>' +
+      '<div class="dchdr"><span>Tous les artisans (' + artisans.length + ')</span>' +
+        '<span style="font-size:12px;font-weight:600;color:var(--mu2);">' + nbEssentiel + ' Essentiel · ' + nbOffert + ' Pro offert · ' + nbPro + ' Pro abonné' + (nbPro > 1 ? 's' : '') + '</span></div>' +
       '<div class="dcbdy"><table class="dtbl">' +
-        '<thead><tr><th>Entreprise</th><th>Secteur</th><th>Commune</th><th>Vérifié</th><th>Abonnement</th><th>Inscrit le</th><th></th></tr></thead>' +
+        '<thead><tr><th>Entreprise</th><th>Secteur</th><th>Commune</th><th>Vérifié</th><th>Offre</th><th>Inscrit le</th><th></th></tr></thead>' +
         '<tbody>' + artisans.map(renderLigneArtisan).join('') + '</tbody>' +
       '</table></div>' +
-      '<div class="note">💡 Cliquez sur le badge "Vérifié" ou choisissez un statut d\'abonnement pour les modifier directement — l\'action passe par une fonction serveur sécurisée, jamais une écriture directe.</div>' +
+      '<div class="note">💡 Cliquez sur le badge "Vérifié" pour le modifier, ou choisissez l\'offre d\'un artisan (Essentiel / Pro offert). Un Pro abonné vient de Stripe : il se change dans Stripe, pas ici. Chaque modification passe par une fonction serveur sécurisée, jamais par une écriture directe.</div>' +
     '</div>';
-  controlerSiretsAffiches();
+}
+
+// Colonne Offre. "Pro (abonné)" est posé par Stripe (webhook) : jamais modifiable à la main ici, le serveur
+// le refuse aussi. Seuls Essentiel et Pro offert se choisissent.
+function renderCelluleOffre(a) {
+  var plan = a.plan || 'gratuit';
+  if (plan === 'pro') {
+    var fin = a.abonnement_echeance ? new Date(a.abonnement_echeance).toLocaleDateString('fr-FR') : null;
+    var detail = a.abonnement_fin_programmee ? 'résilié' + (fin ? ' — Pro jusqu\'au ' + fin : '')
+      : a.abonnement_statut === 'essai' ? 'essai' + (fin ? ' jusqu\'au ' + fin : '')
+      : 'renouvellement' + (fin ? ' le ' + fin : '');
+    return '<span class="badge-ok">Pro (abonné)</span>' +
+      '<div style="font-size:10.5px;color:var(--mu);margin-top:3px;line-height:1.4;">Stripe — ' + escHtml(detail) +
+        (a.abonnement_paiement_en_echec ? ' · <strong style="color:var(--danger);">⚠️ paiement échoué</strong>' : '') +
+        '<br>À changer dans Stripe.</div>';
+  }
+  return '<select onchange="changerPlan(' + attrJs(a.id) + ', this.value)" style="font-size:11.5px;font-weight:600;padding:3px 6px;border-radius:6px;border:1px solid var(--brd);background:var(--p2);color:var(--mu2);">' +
+    '<option value="gratuit"' + (plan === 'gratuit' ? ' selected' : '') + '>Essentiel</option>' +
+    '<option value="pro_offert"' + (plan === 'pro_offert' ? ' selected' : '') + '>🎁 Pro offert</option></select>';
 }
 
 function renderLigneArtisan(a) {
   var dateAff = new Date(a.created_at).toLocaleDateString('fr-FR');
   var badgeVerifie = a.verifie
-    ? '<span class="badge-ok" style="cursor:pointer;" title="Cliquer pour retirer la vérification" onclick="toggleVerifie(\'' + a.id + '\', false)">Vérifié</span>'
-    : '<span class="badge-attente" style="cursor:pointer;" title="Cliquer pour marquer comme vérifié" onclick="toggleVerifie(\'' + a.id + '\', true)">' + (a.verification_statut === 'en_attente' ? 'En attente' : 'Non vérifié') + '</span>';
-
-  var statut = a.abonnement_statut || 'essai';
-  var LABELS_STATUT = { essai: '🎁 Essai', actif: '✅ Actif', lecture_seule: '🔒 Lecture seule', annule: '⛔ Annulé' };
-  var joursRestants = '';
-  if (statut === 'essai' && a.essai_fin) {
-    var j = Math.max(0, Math.ceil((new Date(a.essai_fin).getTime() - Date.now()) / 86400000));
-    joursRestants = ' (' + j + 'j)';
-  }
-  var optionsStatut = ['essai', 'actif', 'lecture_seule', 'annule'].map(function(s) {
-    return '<option value="' + s + '"' + (s === statut ? ' selected' : '') + '>' + LABELS_STATUT[s] + '</option>';
-  }).join('');
+    ? '<span class="badge-ok" style="cursor:pointer;" title="Cliquer pour retirer la vérification" onclick="toggleVerifie(' + attrJs(a.id) + ', false)">Vérifié</span>'
+    : '<span class="badge-attente" style="cursor:pointer;" title="Cliquer pour marquer comme vérifié" onclick="toggleVerifie(' + attrJs(a.id) + ', true)">' + (a.verification_statut === 'en_attente' ? 'En attente' : 'Non vérifié') + '</span>';
 
   return '<tr>' +
-    '<td><strong>' + escHtml(a.nom_entreprise) + '</strong>' + (a.siret ? '<br><span style="font-size:11px;color:var(--mu);">SIRET ' + escHtml(a.siret) + '</span><br><span class="ctrl-siret" data-siret="' + escHtml(a.siret) + '" style="font-size:11px;color:var(--mu);">⏳ contrôle registre…</span>' : '<br><span style="font-size:11px;color:var(--mu);">Aucun SIRET</span>') + '</td>' +
+    '<td><strong>' + escHtml(a.nom_entreprise) + '</strong></td>' +
     '<td>' + escHtml(a.secteur) + '</td>' +
     '<td>' + escHtml(a.commune) + '</td>' +
     '<td>' + badgeVerifie + '</td>' +
-    '<td><select onchange="changerAbonnement(\'' + a.id + '\', this.value)" style="font-size:11.5px;font-weight:600;padding:3px 6px;border-radius:6px;border:1px solid var(--brd);background:var(--p2);color:var(--mu2);">' + optionsStatut + '</select><span style="font-size:10.5px;color:var(--mu);">' + joursRestants + '</span></td>' +
+    '<td>' + renderCelluleOffre(a) + '</td>' +
     '<td>' + dateAff + '</td>' +
-    '<td><button class="btn-del" onclick="supprimerCompte(\'' + a.user_id + '\',\'' + escHtml(a.nom_entreprise).replace(/'/g,"\\'") + '\')">Supprimer</button></td>' +
+    // Seul l'identifiant (généré par la base) passe dans l'attribut : le nom est relu dans _artisansCache.
+    '<td><button class="btn-del" onclick="supprimerCompte(' + attrJs(a.id) + ')">Supprimer</button></td>' +
   '</tr>';
 }
 
@@ -448,15 +597,23 @@ async function toggleVerifie(artisanId, nouvelleValeur) {
   } catch (e) { alert('Erreur : ' + e.message); }
 }
 
-async function changerAbonnement(artisanId, nouveauStatut) {
-  try {
-    await appelerActionAdmin(artisanId, { abonnement_statut: nouveauStatut });
-    await chargerArtisans();
-  } catch (e) { alert('Erreur : ' + e.message); await chargerArtisans(); }
+async function changerPlan(artisanId, nouveauPlan) {
+  var a = _artisansCache.find(function(x) { return x.id === artisanId; });
+  var nom = a ? a.nom_entreprise : 'cet artisan';
+  var question = nouveauPlan === 'pro_offert'
+    ? 'Offrir l\'offre Pro à « ' + nom + ' » ?\n\nElle lui donnera gratuitement : catalogue illimité, Mes fournitures avec scan, détection de planning chargé, suggestions d\'avis et bouton Retard.'
+    : 'Retirer le Pro offert à « ' + nom + ' » ?\n\nRien n\'est supprimé : ses produits et ses fournitures restent visibles. En revanche il ne pourra plus créer de fournitures ni dépasser 15 produits.';
+  if (!confirm(question)) { await chargerArtisans(); return; } // remet le menu sur sa valeur d'origine
+  try { await appelerActionAdmin(artisanId, { plan: nouveauPlan }); }
+  catch (e) { alert('Erreur : ' + e.message); }
+  await chargerArtisans();
 }
 
-async function supprimerCompte(userId, nom) {
-  if (!confirm('Supprimer définitivement le compte de "' + nom + '" ?\n\nCette action est irréversible : profil, services, photos, clients, interventions et factures seront tous effacés.')) return;
+async function supprimerCompte(artisanId) {
+  var a = _artisansCache.find(function(x) { return x.id === artisanId; });
+  if (!a) return;
+  var userId = a.user_id, nom = a.nom_entreprise;
+  if (!confirm('Supprimer définitivement le compte de "' + nom + '" ?\n\nCette action est irréversible : profil, services, photos, clients, interventions et factures seront tous effacés, son abonnement Stripe résilié, et ses fichiers supprimés. Un résumé comptable est conservé.')) return;
   if (!confirm('Vraiment sûr ? Il n\'y a aucun moyen de revenir en arrière.')) return;
 
   try {
@@ -467,76 +624,11 @@ async function supprimerCompte(userId, nom) {
     });
     var data = await res.json();
     if (data.error) throw new Error(data.error);
-    alert('Compte supprimé : ' + data.email);
+    alert('Compte supprimé : ' + data.email + (data.avertissements && data.avertissements.length ? '\n\n⚠️ À traiter à la main (le compte, lui, est bien supprimé) :\n- ' + data.avertissements.join('\n- ') : ''));
     await chargerArtisans();
   } catch(e) {
     alert('Erreur : ' + e.message);
   }
-}
-
-(function() {
-  var cs = chargerSecteurs, ca = chargerArtisans;
-  chargerSecteurs = async function() { await cs(); activerListe('zone-secteurs'); };
-  chargerArtisans = async function() { await ca(); activerListe('zone-artisans'); };
-})();
-
-// ── Onglets : une seule section visible à la fois ──
-var ONGLETS = [
-  ['artisans', '👷 Artisans', 'zone-artisans'],
-  ['secteurs', '🏷️ Secteurs', 'zone-secteurs'],
-  ['nouveautes', '📣 Quoi de neuf', 'zone-nouveautes'],
-  ['avis', '⭐ Avis produit', 'zone-avis-produit'],
-  ['prelevement', '💳 Prélèvements', 'zone-prelevement-prestations'],
-];
-function construireOnglets() {
-  var actif = 'artisans';
-  try { var m = localStorage.getItem('admin_onglet'); if (ONGLETS.some(function(o) { return o[0] === m; })) actif = m; } catch (e) {}
-  document.getElementById('onglets').innerHTML = ONGLETS.map(function(o) {
-    return '<button class="tab" id="tab-' + o[0] + '" onclick="choisirOnglet(\'' + o[0] + '\')">' + o[1] + '</button>';
-  }).join('');
-  choisirOnglet(actif);
-}
-function choisirOnglet(code) {
-  ONGLETS.forEach(function(o) {
-    document.getElementById(o[2]).style.display = o[0] === code ? '' : 'none';
-    document.getElementById('tab-' + o[0]).classList.toggle('on', o[0] === code);
-  });
-  try { localStorage.setItem('admin_onglet', code); } catch (e) {}
-}
-
-// ── Recherche + pagination d'une liste (secteurs, artisans) ──
-var TAILLE_PAGE = 20;
-var _etatListes = {};
-function activerListe(zoneId) {
-  var zone = document.getElementById(zoneId);
-  var tbody = zone && zone.querySelector('tbody');
-  if (!tbody) return;
-  var etat = _etatListes[zoneId] = _etatListes[zoneId] || { q: '', page: 0 };
-  var corps = zone.querySelector('.dcbdy');
-  var barre = document.createElement('div');
-  barre.className = 'liste-barre';
-  barre.innerHTML = '<input type="search" placeholder="🔎 Rechercher…" value="' + escHtml(etat.q) + '"><div class="pager"></div>';
-  corps.parentNode.insertBefore(barre, corps);
-  var champ = barre.querySelector('input'), pager = barre.querySelector('.pager');
-  function appliquer() {
-    var q = etat.q.toLowerCase().trim();
-    var lignes = Array.prototype.slice.call(tbody.rows);
-    var visibles = lignes.filter(function(tr) { return !q || tr.textContent.toLowerCase().indexOf(q) !== -1; });
-    var pages = Math.max(1, Math.ceil(visibles.length / TAILLE_PAGE));
-    if (etat.page >= pages) etat.page = pages - 1;
-    lignes.forEach(function(tr) { tr.style.display = 'none'; });
-    visibles.slice(etat.page * TAILLE_PAGE, (etat.page + 1) * TAILLE_PAGE).forEach(function(tr) { tr.style.display = ''; });
-    pager.innerHTML = '<span>' + visibles.length + ' résultat' + (visibles.length > 1 ? 's' : '') + '</span>' +
-      (pages > 1 ? '<button ' + (etat.page === 0 ? 'disabled' : '') + ' data-d="-1">←</button><span>Page ' + (etat.page + 1) + ' / ' + pages + '</span><button ' + (etat.page >= pages - 1 ? 'disabled' : '') + ' data-d="1">→</button>' : '');
-  }
-  champ.addEventListener('input', function() { etat.q = champ.value; etat.page = 0; appliquer(); });
-  pager.addEventListener('click', function(e) {
-    var d = e.target && e.target.getAttribute && e.target.getAttribute('data-d');
-    if (d) { etat.page += parseInt(d, 10); appliquer(); }
-  });
-  appliquer();
-  // le contrôle SIRET se complète après coup : on relance le filtre une fois terminé
-  zone._reappliquer = appliquer;
 }
 
 init();
