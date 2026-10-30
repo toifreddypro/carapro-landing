@@ -68,12 +68,12 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
 </nav>
 
 <div class="wrap" id="wrap-form">
-  <h1>Devenir artisan sur CaraLink</h1>
-  <p>Une seule page, quelques minutes. Votre profil sera visible immédiatement — le badge « Vérifié » est attribué automatiquement si votre SIRET est reconnu.</p>
+  <h1 id="titre-page">Devenir artisan sur CaraLink</h1>
+  <p id="intro-page">Deux étapes rapides : créez votre compte, confirmez votre email, puis présentez votre activité. Votre profil sera visible immédiatement — le badge « Vérifié » est attribué automatiquement si votre SIRET est reconnu.</p>
 
   <div id="msg-err" class="msg-err"></div>
 
-  <div id="bandeau-email-confirme" style="display:none;margin:0 0 16px;padding:12px 14px;border-radius:10px;background:#dcfce7;color:#166534;font-size:14px;">✅ Votre email est confirmé. Il ne reste qu'à compléter votre profil.</div>
+  <div id="bandeau-email-confirme" style="display:none;margin:0 0 16px;padding:12px 14px;border-radius:10px;background:#dcfce7;color:#166534;font-size:14px;">✅ Votre email est confirmé. Dernière étape : présentez votre activité aux clients. <a href="#" onclick="changerDeCompte();return false;" style="color:#166534;text-decoration:underline;white-space:nowrap;">Ce n'est pas votre compte ?</a></div>
   <form id="form-inscription" onsubmit="event.preventDefault();soumettreInscription();">
 
     <div class="form-section" id="section-compte">
@@ -92,29 +92,29 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
       </div>
     </div>
 
-    <div class="form-section">
+    <div class="form-section" id="section-activite" style="display:none;">
       <h2>Votre activité</h2>
       <div class="sub">Ce que verront les clients dans l'annuaire.</div>
       <div class="field">
         <label for="f-nom">Nom de votre entreprise</label>
-        <input type="text" id="f-nom" required placeholder="Ex : Jardins de Guadeloupe">
+        <input type="text" id="f-nom" placeholder="Ex : Jardins de Guadeloupe">
       </div>
       <div class="field-row">
         <div class="field">
           <label for="f-secteur">Secteur</label>
-          <select id="f-secteur" required>
+          <select id="f-secteur">
             <option value="">Choisir…</option>
           </select>
           <div class="field-note">Vous ne voyez pas votre secteur ? <a href="mailto:contact@learnlogicstudio.com">Écrivez-nous</a> pour qu'on l'ajoute.</div>
         </div>
         <div class="field">
           <label for="f-commune">Commune</label>
-          <input type="text" id="f-commune" required placeholder="Ex : Sainte-Anne">
+          <input type="text" id="f-commune" placeholder="Ex : Sainte-Anne">
         </div>
       </div>
       <div class="field">
         <label for="f-telephone">Téléphone</label>
-        <input type="tel" id="f-telephone" required placeholder="0690 00 00 00">
+        <input type="tel" id="f-telephone" placeholder="0690 00 00 00">
       </div>
       <div class="field">
         <label for="f-rayon">Rayon d'intervention (km)</label>
@@ -126,7 +126,7 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
       </div>
     </div>
 
-    <div class="form-section">
+    <div class="form-section" id="section-verif" style="display:none;">
       <h2>Vérification (recommandé)</h2>
       <div class="sub">Le badge « Vérifié » rassure vos futurs clients — vous pouvez aussi le compléter plus tard depuis votre profil.</div>
       <div class="field">
@@ -143,29 +143,15 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
       </div>
     </div>
 
-    <label style="display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:var(--mu,#666);margin-bottom:16px;cursor:pointer;">
+    <label id="label-cgu" style="display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:var(--mu,#666);margin-bottom:16px;cursor:pointer;">
       <input type="checkbox" id="f-cgu" style="margin-top:3px;flex-shrink:0;width:auto;">
       <span>J'ai lu et j'accepte les <a href="https://caralink.app/artisans/?legal=cgu" target="_blank" rel="noopener">conditions d'utilisation</a>, dont les conditions applicables aux artisans (commission, frais de paiement, règle des clients venus de l'annuaire), et la <a href="https://caralink.app/artisans/?legal=privacy" target="_blank" rel="noopener">politique de confidentialité</a>.</span>
     </label>
 
     <div id="turnstile-form" style="margin-bottom:16px;"></div>
 
-    <button type="submit" class="btn-submit" id="btn-submit">Créer mon profil</button>
+    <button type="submit" class="btn-submit" id="btn-submit">Créer mon compte</button>
   </form>
-</div>
-
-<div class="wrap" id="wrap-resume" style="display:none;">
-  <div class="confirmation">
-    <div class="icon">✅</div>
-    <h1>Email confirmé !</h1>
-    <p>Plus qu'une étape pour mettre votre profil en ligne :</p>
-    <div id="resume-recap" style="text-align:left;background:var(--panel2,#f6f9fe);border-radius:10px;padding:16px 20px;margin:16px 0;font-size:14px;line-height:1.7;"></div>
-    <div id="turnstile-resume" style="margin:16px auto;display:flex;justify-content:center;"></div>
-    <div id="resume-err" class="msg-err"></div>
-    <button type="button" class="btn-submit" id="btn-resume" onclick="terminerInscription()">Terminer mon inscription</button>
-    <p style="margin-top:14px;font-size:13px;"><a href="#" onclick="recommencerInscription();return false;">Ce n'est pas votre inscription ? Recommencer avec un autre email</a></p>
-    <p style="margin-top:14px;font-size:12.5px;color:var(--mu,#888);">Le document d'assurance n'a pas pu être conservé pendant l'attente de confirmation — vous pourrez l'ajouter depuis votre profil une fois inscrit.</p>
-  </div>
 </div>
 
 <div class="wrap" id="wrap-confirmation" style="display:none;">
@@ -186,19 +172,11 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 // formulaires = deux widgets, chacun avec son propre identifiant (jamais getResponse() sans
 // argument avec deux widgets sur une page — ça lit sinon la réponse du mauvais widget).
 var _idWidgetForm = null;
-var _idWidgetResume = null;
 var _turnstilePret = false;
-var _repriseNecessaire = false;
 var _sessionConfirmee = null;
 function onTurnstileReady() {
   _idWidgetForm = turnstile.render('#turnstile-form', { sitekey: '0x4AAAAAAE0Iymsul7mZRXTA' });
   _turnstilePret = true;
-  rendreWidgetResumeSiPret();
-}
-function rendreWidgetResumeSiPret() {
-  if (_turnstilePret && _repriseNecessaire && _idWidgetResume === null) {
-    _idWidgetResume = turnstile.render('#turnstile-resume', { sitekey: '0x4AAAAAAE0Iymsul7mZRXTA' });
-  }
 }
 
 var _fichierChoisi = null;
@@ -255,44 +233,24 @@ function afficherErreur(msg) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-async function soumettreInscription() {
+function soumettreInscription() { return _sessionConfirmee ? creerProfil() : creerCompte(); }
+
+// ── ÉTAPE 1 : création du compte (email + mot de passe + conditions) ──
+async function creerCompte() {
   var email = document.getElementById('f-email').value.trim();
   var password = document.getElementById('f-password').value;
-  var sessionConfirmee = !!_sessionConfirmee;   // email déjà confirmé (lien ouvert sur un autre appareil) : pas de nouveau compte à créer
-  var nom = document.getElementById('f-nom').value.trim();
-  var secteur = document.getElementById('f-secteur').value;
-  var commune = document.getElementById('f-commune').value.trim();
-  var telephone = document.getElementById('f-telephone').value.trim();
-  var rayon = parseInt(document.getElementById('f-rayon').value, 10) || 15;
-  var bio = document.getElementById('f-bio').value.trim();
-  var siret = document.getElementById('f-siret').value.trim();
-
   document.getElementById('msg-err').classList.remove('show');
 
-  if ((!sessionConfirmee && (!email || !password)) || !nom || !secteur || !commune || !telephone) {
-    afficherErreur('Merci de remplir tous les champs obligatoires.');
-    return;
-  }
-  if (!document.getElementById('f-cgu').checked) {
-    afficherErreur("Merci d'accepter les conditions d'utilisation pour créer votre profil.");
-    return;
-  }
-  if (siret && !/^\d{14}$/.test(siret)) {
-    afficherErreur('Le SIRET doit comporter exactement 14 chiffres.');
-    return;
-  }
-
+  if (!email || !password) { afficherErreur('Merci de saisir votre email et un mot de passe.'); return; }
+  if (password.length < 8) { afficherErreur('Le mot de passe doit comporter au moins 8 caractères.'); return; }
+  if (!document.getElementById('f-cgu').checked) { afficherErreur("Merci d'accepter les conditions d'utilisation pour créer votre compte."); return; }
   var turnstileToken = (typeof turnstile !== 'undefined' && _idWidgetForm != null) ? turnstile.getResponse(_idWidgetForm) : null;
-  if (!turnstileToken) {
-    afficherErreur('Merci de valider la vérification anti-robot.');
-    return;
-  }
+  if (!turnstileToken) { afficherErreur('Merci de valider la vérification anti-robot.'); return; }
 
   var btn = document.getElementById('btn-submit');
   btn.disabled = true; btn.textContent = 'Création en cours…';
-
   try {
-    var authResult = sessionConfirmee ? { data: { session: _sessionConfirmee, user: _sessionConfirmee.user }, error: null } : await sb.auth.signUp({
+    var r = await sb.auth.signUp({
       email: email, password: password,
       options: {
         emailRedirectTo: 'https://caralink.app/artisans/inscription.html',
@@ -300,45 +258,95 @@ async function soumettreInscription() {
         data: { cgu_acceptees_le: new Date().toISOString(), cgu_version: '2026-10-14' },
       },
     });
-    var authData = authResult.data;
-    var authError = authResult.error;
-    if (authError) throw new Error(authError.message === 'User already registered' ? 'Un compte existe déjà avec cet email.' : authError.message);
+    if (r.error) throw new Error(r.error.message === 'User already registered' ? 'Un compte existe déjà avec cet email.' : r.error.message);
+    // Supabase masque les doublons : un compte déjà existant renvoie un utilisateur sans identité.
+    if (r.data && r.data.user && Array.isArray(r.data.user.identities) && r.data.user.identities.length === 0) throw new Error('Un compte existe déjà avec cet email.');
 
-    var accessToken = authData.session ? authData.session.access_token : null;
-    if (!accessToken) {
-      // Le compte a bien été créé, mais Supabase exige une confirmation par email avant de
-      // renvoyer une session — ce n'est pas un échec, juste une étape de plus. On sauvegarde
-      // les informations du profil (jamais le mot de passe, jamais le fichier — juste le texte)
-      // pour pouvoir finaliser l'inscription automatiquement au retour, sans tout refaire saisir.
-      try {
-        localStorage.setItem('caralink_inscription_attente', JSON.stringify({
-          nom_entreprise: nom, secteur: secteur, commune: commune, telephone: telephone,
-          bio: bio || null, rayon_intervention_km: rayon, siret: siret || null,
-          // Sert uniquement à vérifier, au retour, que la session est bien celle de CET email.
-          email_attente: email.toLowerCase(), cree_le: Date.now(),
-        }));
-      } catch (e) { /* stockage indisponible : au pire, l'utilisateur retapera ses infos */ }
+    if (r.data.session) { passerEtape2(r.data.session); btn.disabled = false; return; }   // confirmation par email désactivée : on enchaîne
 
-      document.getElementById('wrap-form').style.display = 'none';
-      document.getElementById('wrap-confirmation').style.display = 'block';
-      document.getElementById('confirmation-icon').textContent = '📧';
-      document.getElementById('confirmation-titre').textContent = 'Vérifiez votre boîte mail';
-      document.getElementById('confirmation-msg').innerHTML = 'Un email de confirmation vient de vous être envoyé à <strong>' + escHtmlLocal(email) + '</strong>.<br><br>Cliquez sur le lien qu\'il contient pour continuer — vous terminerez ensuite votre profil directement dans <strong>Mon espace</strong>. Pensez à vérifier vos spams si vous ne le voyez pas d\'ici quelques minutes.';
-      document.getElementById('confirmation-action').innerHTML = '<a href="#" onclick="recommencerInscription();return false;" style="font-size:13.5px;">Mauvaise adresse email ? Recommencer l\'inscription</a>';
-      return;
-    }
+    document.getElementById('wrap-form').style.display = 'none';
+    document.getElementById('wrap-confirmation').style.display = 'block';
+    document.getElementById('confirmation-icon').textContent = '📧';
+    document.getElementById('confirmation-titre').textContent = 'Vérifiez votre boîte mail';
+    document.getElementById('confirmation-msg').innerHTML = 'Un email de confirmation vient de vous être envoyé à <strong>' + escHtmlLocal(email) + '</strong>.<br><br>Cliquez sur le lien qu\'il contient, depuis n\'importe quel appareil : vous présenterez ensuite votre activité en une seule fois. Pensez à vérifier vos spams si vous ne le voyez pas d\'ici quelques minutes.';
+    document.getElementById('confirmation-action').innerHTML = '<a href="#" onclick="recommencerInscription();return false;" style="font-size:13.5px;">Mauvaise adresse email ? Recommencer</a>';
+  } catch (e) {
+    afficherErreur(e.message);
+    btn.disabled = false; btn.textContent = 'Créer mon compte';
+    if (typeof turnstile !== 'undefined' && _idWidgetForm != null) turnstile.reset(_idWidgetForm);
+  }
+}
+
+function recommencerInscription() {
+  document.getElementById('wrap-confirmation').style.display = 'none';
+  document.getElementById('wrap-form').style.display = 'block';
+  var btn = document.getElementById('btn-submit');
+  btn.disabled = false; btn.textContent = 'Créer mon compte';
+  try { if (typeof turnstile !== 'undefined' && _idWidgetForm != null) turnstile.reset(_idWidgetForm); } catch (e) {}
+  document.getElementById('msg-err').classList.remove('show');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── ÉTAPE 2 : le profil (email confirmé, session ouverte) ──
+function passerEtape2(session) {
+  _sessionConfirmee = session;
+  document.getElementById('section-compte').style.display = 'none';
+  document.getElementById('label-cgu').style.display = 'none';
+  document.getElementById('section-activite').style.display = '';
+  document.getElementById('section-verif').style.display = '';
+  document.getElementById('bandeau-email-confirme').style.display = 'block';
+  document.getElementById('titre-page').textContent = 'Présentez votre activité';
+  document.getElementById('intro-page').textContent = 'Dernière étape : ce que verront les clients dans l\'annuaire.';
+  document.getElementById('btn-submit').textContent = 'Créer mon profil';
+  try { if (typeof turnstile !== 'undefined' && _idWidgetForm != null) turnstile.reset(_idWidgetForm); } catch (e) {}
+  window.scrollTo({ top: 0 });
+}
+
+async function changerDeCompte() {
+  try { await sb.auth.signOut(); } catch (e) {}
+  location.href = 'https://caralink.app/artisans/inscription.html';
+}
+
+function afficherProfilExistant() {
+  document.getElementById('wrap-form').style.display = 'none';
+  document.getElementById('wrap-confirmation').style.display = 'block';
+  document.getElementById('confirmation-icon').textContent = 'ℹ️';
+  document.getElementById('confirmation-titre').textContent = 'Votre profil existe déjà';
+  document.getElementById('confirmation-msg').textContent = 'Un profil est déjà associé à ce compte : il n\'y a rien de plus à faire ici.';
+  document.getElementById('confirmation-action').innerHTML = '<a href="https://caralink.app/mpa/" class="btn-submit" style="display:inline-block;text-decoration:none;">Aller sur Mon espace →</a>';
+}
+
+async function creerProfil() {
+  var nom = document.getElementById('f-nom').value.trim();
+  var secteur = document.getElementById('f-secteur').value;
+  var commune = document.getElementById('f-commune').value.trim();
+  var telephone = document.getElementById('f-telephone').value.trim();
+  var rayon = parseInt(document.getElementById('f-rayon').value, 10) || 15;
+  var bio = document.getElementById('f-bio').value.trim();
+  var siret = document.getElementById('f-siret').value.trim();
+  document.getElementById('msg-err').classList.remove('show');
+
+  if (!nom || !secteur || !commune || !telephone) { afficherErreur('Merci de remplir tous les champs obligatoires.'); return; }
+  if (siret && !/^\d{14}$/.test(siret)) { afficherErreur('Le SIRET doit comporter exactement 14 chiffres.'); return; }
+  var turnstileToken = (typeof turnstile !== 'undefined' && _idWidgetForm != null) ? turnstile.getResponse(_idWidgetForm) : null;
+  if (!turnstileToken) { afficherErreur('Merci de valider la vérification anti-robot.'); return; }
+
+  var btn = document.getElementById('btn-submit');
+  btn.disabled = true; btn.textContent = 'Création en cours…';
+  try {
+    var { data: { session } } = await sb.auth.getSession();
+    if (!session) throw new Error('Votre session a expiré — rouvrez le lien de confirmation reçu par email ou reconnectez-vous.');
 
     var documentPath = null;
     if (_fichierChoisi) {
-      var cheminFichier = authData.user.id + '/' + Date.now() + '_' + _fichierChoisi.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      var uploadResult = await sb.storage.from('artisans-documents').upload(cheminFichier, _fichierChoisi);
-      if (uploadResult.error) throw new Error('Le document n\'a pas pu être envoyé : ' + uploadResult.error.message);
+      var cheminFichier = session.user.id + '/' + Date.now() + '_' + _fichierChoisi.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      var up = await sb.storage.from('artisans-documents').upload(cheminFichier, _fichierChoisi);
+      if (up.error) throw new Error('Le document n\'a pas pu être envoyé : ' + up.error.message);
       documentPath = cheminFichier;
     }
-
     var res = await fetch(SUPABASE_URL + '/functions/v1/finaliser-inscription-artisan', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + accessToken },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
       body: JSON.stringify({
         nom_entreprise: nom, secteur: secteur, commune: commune, telephone: telephone,
         bio: bio || null, rayon_intervention_km: rayon, siret: siret || null, document_path: documentPath,
@@ -354,157 +362,26 @@ async function soumettreInscription() {
     document.getElementById('confirmation-titre').textContent = 'Bienvenue sur CaraLink Artisans !';
     document.getElementById('confirmation-msg').textContent = data.message;
     document.getElementById('confirmation-action').innerHTML = '<a href="https://caralink.app/mpa/" class="btn-submit" style="display:inline-block;text-decoration:none;">Aller sur Mon espace →</a>';
-
-  } catch(e) {
+  } catch (e) {
+    if (/existe déjà/i.test(e.message || '')) { afficherProfilExistant(); return; }
     afficherErreur(e.message);
     btn.disabled = false; btn.textContent = 'Créer mon profil';
     if (typeof turnstile !== 'undefined' && _idWidgetForm != null) turnstile.reset(_idWidgetForm);
   }
 }
-</script>
 
-<script>
-// ── Retour après confirmation d'email : reprend l'inscription là où elle s'était arrêtée ──
-// Supabase place la session dans l'adresse au retour du lien de confirmation (comportement
-// standard, rien à faire côté code pour ça) — on vérifie juste si une inscription était en
-// attente, et si oui on propose de la terminer plutôt que de faire tout resaisir.
-function oublierInscriptionEnAttente() {
-  try { localStorage.removeItem('caralink_inscription_attente'); } catch (e) {}
-}
-
-function recommencerInscription() {
-  oublierInscriptionEnAttente();
-  _repriseNecessaire = false;
-  document.getElementById('wrap-resume').style.display = 'none';
-  document.getElementById('wrap-confirmation').style.display = 'none';
-  document.getElementById('wrap-form').style.display = 'block';
-  // Le bouton était resté sur « Création en cours… » (grisé) depuis le premier envoi : on le rend à nouveau utilisable,
-  // et on renouvelle la vérification anti-robot, dont la réponse a déjà été consommée.
-  var btn = document.getElementById('btn-submit');
-  btn.disabled = false; btn.textContent = 'Créer mon profil';
-  try { if (typeof turnstile !== 'undefined' && _idWidgetForm != null) turnstile.reset(_idWidgetForm); } catch (e) {}
-  document.getElementById('msg-err').classList.remove('show');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// Le lien de confirmation a été ouvert sur un autre appareil (ex. le téléphone) que celui où le formulaire a été rempli :
-// aucune donnée en attente ici, mais l'email est bien confirmé. On affiche le formulaire sans les champs email / mot de passe.
-async function proposerCompletionProfil() {
+// Au chargement : email confirmé et pas encore de profil → étape 2 ; profil déjà là → on le dit ; sinon étape 1.
+async function demarrerInscription() {
   try {
     var { data: { session } } = await sb.auth.getSession();
     if (!session || !session.user) return;
     if (!(session.user.email_confirmed_at || session.user.confirmed_at)) return;
-    var { data: dejaProfil } = await sb.from('artisans').select('id').eq('user_id', session.user.id).limit(1);
-    if (dejaProfil && dejaProfil.length) {
-      document.getElementById('wrap-form').style.display = 'none';
-      document.getElementById('wrap-confirmation').style.display = 'block';
-      document.getElementById('confirmation-icon').textContent = 'ℹ️';
-      document.getElementById('confirmation-titre').textContent = 'Votre profil existe déjà';
-      document.getElementById('confirmation-msg').textContent = 'Un profil est déjà associé à ce compte : il n\'y a rien de plus à faire ici.';
-      document.getElementById('confirmation-action').innerHTML = '<a href="https://caralink.app/mpa/" class="btn-submit" style="display:inline-block;text-decoration:none;">Aller sur Mon espace →</a>';
-      return;
-    }
-    _sessionConfirmee = session;
-    document.getElementById('section-compte').style.display = 'none';
-    document.getElementById('f-email').required = false; document.getElementById('f-password').required = false;
-    document.getElementById('bandeau-email-confirme').style.display = 'block';
-  } catch (e) { /* pas bloquant : le formulaire normal reste affiché */ }
+    var r = await sb.from('artisans').select('id').eq('user_id', session.user.id).limit(1);
+    if (r.data && r.data.length) { afficherProfilExistant(); return; }
+    passerEtape2(session);
+  } catch (e) { /* pas bloquant : l'étape 1 reste affichée */ }
 }
-
-async function verifierRepriseInscription() {
-  try {
-    var brut = null;
-    try { brut = localStorage.getItem('caralink_inscription_attente'); } catch (e) {}
-    if (!brut) { await proposerCompletionProfil(); return; }
-    var infos = JSON.parse(brut);
-
-    // Inscription en attente trop ancienne, ou enregistrée avant cette vérification : on l'oublie,
-    // sinon elle bloquerait le formulaire pour toujours.
-    var QUARANTE_HUIT_H = 48 * 3600 * 1000;
-    if (!infos || !infos.email_attente || !infos.cree_le || (Date.now() - infos.cree_le) > QUARANTE_HUIT_H) {
-      oublierInscriptionEnAttente();
-      await proposerCompletionProfil();
-      return;
-    }
-
-    var { data: { session } } = await sb.auth.getSession();
-    if (!session || !session.user) return; // lien pas encore cliqué : le formulaire reste affiché
-
-    // La session doit être celle de l'email qui vient d'être confirmé — pas celle d'un autre compte
-    // déjà ouvert dans ce navigateur (c'était la cause de « Email confirmé ! » à tort).
-    var emailSession = String(session.user.email || '').toLowerCase();
-    var confirme = !!(session.user.email_confirmed_at || session.user.confirmed_at);
-    if (!confirme || emailSession !== infos.email_attente) return;
-
-    document.getElementById('resume-recap').innerHTML =
-      '<strong>' + String(infos.nom_entreprise || '').replace(/[<>&]/g, '') + '</strong><br>' +
-      String(infos.commune || '').replace(/[<>&]/g, '') + ' · ' + String(infos.telephone || '').replace(/[<>&]/g, '');
-    document.getElementById('wrap-form').style.display = 'none';
-    document.getElementById('wrap-confirmation').style.display = 'none';
-    document.getElementById('wrap-resume').style.display = 'block';
-    _repriseNecessaire = true;
-    rendreWidgetResumeSiPret();
-  } catch (e) { /* si ça échoue, l'utilisateur reste sur le formulaire normal — pas bloquant */ }
-}
-
-async function terminerInscription() {
-  var err = document.getElementById('resume-err');
-  err.classList.remove('show');
-
-  var turnstileToken = (typeof turnstile !== 'undefined' && _idWidgetResume != null) ? turnstile.getResponse(_idWidgetResume) : null;
-  if (!turnstileToken) {
-    err.textContent = 'Merci de valider la vérification anti-robot.';
-    err.classList.add('show');
-    return;
-  }
-
-  var btn = document.getElementById('btn-resume');
-  btn.disabled = true; btn.textContent = 'Finalisation…';
-
-  try {
-    var infos = JSON.parse(localStorage.getItem('caralink_inscription_attente'));
-    var { data: { session } } = await sb.auth.getSession();
-    if (!infos || !session) throw new Error('Votre session a expiré — merci de vous reconnecter.');
-
-    var res = await fetch(SUPABASE_URL + '/functions/v1/finaliser-inscription-artisan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
-      body: JSON.stringify({
-        nom_entreprise: infos.nom_entreprise, secteur: infos.secteur, commune: infos.commune, telephone: infos.telephone,
-        bio: infos.bio, rayon_intervention_km: infos.rayon_intervention_km, siret: infos.siret,
-        document_path: null, turnstile_token: turnstileToken,
-      }),
-    });
-    var data = await res.json();
-    if (data.error) throw new Error(data.error);
-
-    localStorage.removeItem('caralink_inscription_attente');
-    document.getElementById('wrap-resume').style.display = 'none';
-    document.getElementById('wrap-confirmation').style.display = 'block';
-    document.getElementById('confirmation-icon').textContent = '🎉';
-    document.getElementById('confirmation-titre').textContent = 'Bienvenue sur CaraLink Artisans !';
-    document.getElementById('confirmation-msg').textContent = data.message;
-    document.getElementById('confirmation-action').innerHTML = '<a href="https://caralink.app/mpa/" class="btn-submit" style="display:inline-block;text-decoration:none;">Aller sur Mon espace →</a>';
-  } catch (e) {
-    if (/existe déjà/i.test(e.message || '')) {
-      // Le profil est déjà créé : l'inscription en attente n'a plus lieu d'être, on ne bloque plus l'utilisateur.
-      oublierInscriptionEnAttente();
-      document.getElementById('wrap-resume').style.display = 'none';
-      document.getElementById('wrap-confirmation').style.display = 'block';
-      document.getElementById('confirmation-icon').textContent = 'ℹ️';
-      document.getElementById('confirmation-titre').textContent = 'Votre profil existe déjà';
-      document.getElementById('confirmation-msg').textContent = 'Un profil est déjà associé à ce compte : il n\'y a rien de plus à faire ici.';
-      document.getElementById('confirmation-action').innerHTML = '<a href="https://caralink.app/mpa/" class="btn-submit" style="display:inline-block;text-decoration:none;">Aller sur Mon espace →</a>';
-      return;
-    }
-    err.textContent = e.message;
-    err.classList.add('show');
-    btn.disabled = false; btn.textContent = 'Terminer mon inscription';
-    if (typeof turnstile !== 'undefined' && _idWidgetResume != null) turnstile.reset(_idWidgetResume);
-  }
-}
-
-verifierRepriseInscription();
+demarrerInscription();
 </script>
 </body>
 </html>
