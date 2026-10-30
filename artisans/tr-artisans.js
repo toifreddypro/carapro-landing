@@ -96,6 +96,8 @@ var AT_TR = {
     faq17_a: "<p>Oui. Dans MPA Artisans, créez vos produits dans <strong>Mon stock</strong>, puis mettez-les en vente. Vos clients ont une boutique avec un panier et paient par carte. Il faut avoir activé les paiements en ligne. Vous suivez les commandes, la livraison et les remboursements depuis MPA.</p><div class=\"faq-tip\">💡 Sur la boutique, CaraLink retient sa commission (au-delà de 200 € par mois) plus 1,9 % + 0,25 € de frais de paiement par commande.</div>",
     faq18_q: "Comment me faire payer après une visite ?",
     faq18_a: "<p>Dans MPA Artisans, ouvrez l'intervention et cliquez sur <strong>Demander un paiement</strong>. Saisissez le montant de votre devis ou de votre facture : le client reçoit un lien de paiement par email, valable 14 jours. Vous pouvez aussi copier le lien et l'envoyer par SMS ou WhatsApp.</p><div class=\"faq-tip\">💡 Si le client a déjà payé des frais en ligne, il en est informé. Le paiement va directement sur votre compte Stripe.</div>",
+    faq19_q: "Combien de temps avant de recevoir l'argent d'un paiement ?",
+    faq19_a: "<p>Le <strong>tout premier versement</strong> d'un nouveau compte prend en général <strong>7 à 14 jours</strong> après le premier paiement, le temps de la vérification par Stripe. Ensuite, comptez environ <strong>2 jours ouvrés</strong> après chaque paiement.</p>",
 
     faq_group_clients: "Pour les clients",
     faq5_q: "Comment trouver un artisan ?",
@@ -358,6 +360,8 @@ var AT_TR = {
     faq17_a: "<p>Yes. In MPA Artisans, create your products in <strong>My stock</strong>, then put them on sale. Your clients get a shop with a cart and pay by card. You must have activated online payments. You follow orders, delivery and refunds from MPA.</p><div class=\"faq-tip\">💡 On the shop, CaraLink keeps its commission (above €200 per month) plus 1.9% + €0.25 payment fees per order.</div>",
     faq18_q: "How do I get paid after a visit?",
     faq18_a: "<p>In MPA Artisans, open the job and click <strong>Request a payment</strong>. Enter the amount of your quote or invoice: the client receives a payment link by email, valid for 14 days. You can also copy the link and send it by SMS or WhatsApp.</p><div class=\"faq-tip\">💡 If the client already paid fees online, they are told. The payment goes straight to your Stripe account.</div>",
+    faq19_q: "How long before I receive the money from a payment?",
+    faq19_a: "<p>The <strong>very first payout</strong> of a new account usually takes <strong>7 to 14 days</strong> after the first payment, while Stripe carries out its verification. After that, allow about <strong>2 business days</strong> after each payment.</p>",
 
     faq_group_clients: "For clients",
     faq5_q: "How do I find a craftsman?",
@@ -620,6 +624,8 @@ var AT_TR = {
     faq17_a: "<p>Sí. En MPA Artisans, crea tus productos en <strong>Mi stock</strong> y ponlos a la venta. Tus clientes tienen una tienda con carrito y pagan con tarjeta. Hay que haber activado los pagos en línea. Sigues los pedidos, la entrega y los reembolsos desde MPA.</p><div class=\"faq-tip\">💡 En la tienda, CaraLink retiene su comisión (por encima de 200 € al mes) más 1,9 % + 0,25 € de gastos de pago por pedido.</div>",
     faq18_q: "¿Cómo cobro después de una visita?",
     faq18_a: "<p>En MPA Artisans, abre la intervención y haz clic en <strong>Solicitar un pago</strong>. Introduce el importe de tu presupuesto o factura: el cliente recibe un enlace de pago por correo, válido 14 días. También puedes copiar el enlace y enviarlo por SMS o WhatsApp.</p><div class=\"faq-tip\">💡 Si el cliente ya pagó gastos en línea, se le informa. El pago va directamente a tu cuenta Stripe.</div>",
+    faq19_q: "¿Cuánto tarda en llegar el dinero de un pago?",
+    faq19_a: "<p>El <strong>primer pago</strong> de una cuenta nueva suele tardar de <strong>7 a 14 días</strong> desde el primer cobro, el tiempo que Stripe necesita para verificar la cuenta. Después, cuenta unos <strong>2 días hábiles</strong> tras cada cobro.</p>",
 
     faq_group_clients: "Para clientes",
     faq5_q: "¿Cómo encuentro un artesano?",
