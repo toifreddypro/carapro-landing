@@ -94,6 +94,12 @@ Deno.serve(async (req: Request) => {
       prix = Math.round(n * 100) / 100;
     }
 
+    // ── Messagerie bloquée (signalements) : plus de réponse à un projet non plus ──
+    try {
+      const { data: bloque } = await sb.rpc("messagerie_bloquee", { p_user: user.id });
+      if (bloque === true) return json({ error: "Votre messagerie est bloquée. Contactez contact@learnlogicstudio.com.", code: "bloque" }, 403);
+    } catch (e) { console.error("[repondre-projet] messagerie_bloquee :", e); }
+
     // ── Limite : 30 réponses par heure et par artisan (si le limiteur est absent ou en panne, on laisse passer) ──
     try {
       const { data: autorise } = await sb.rpc("limiter_appel", { p_cle: `repondre-projet:${artisan.id}`, p_max: 30, p_fenetre_s: 3600 });

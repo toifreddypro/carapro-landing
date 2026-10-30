@@ -142,6 +142,7 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
 
 <!-- ÉCRAN 3 : espace connecté -->
 <div id="v-app" style="display:none;">
+  <div id="bandeau-modo" style="display:none;"></div>
   <div class="haut">
     <h1 id="bonjour"></h1>
     <button class="btn sec" onclick="seDeconnecter()" data-i18n="cpt_deconnexion"></button>
@@ -365,7 +366,7 @@ async function ouvrirEspace(user){
   document.getElementById('p-cp').value = PROFIL.code_postal || '';
   document.getElementById('p-com').value = PROFIL.commune || '';
   document.getElementById('p-email').value = user.email || '';
-  vue('v-app'); ongletApp((VEUT_PROJET || VEUT_LISTE) ? 'projets' : 'cmd'); chargerCommandes(); chargerRdv(); chargerCredits(); chargerProjets();
+  vue('v-app'); ongletApp((VEUT_PROJET || VEUT_LISTE) ? 'projets' : 'cmd'); chargerCommandes(); chargerRdv(); chargerCredits(); chargerProjets(); chargerEtatModeration();
   if (VEUT_PROJET) ouvrirFormProjet();
 }
 function ongletApp(o){
@@ -657,13 +658,16 @@ async function chargerFil(id){
   var r = await sb.rpc('messages_fil', { p_reponse: id });
   if (r.error || !r.data) { zone.innerHTML = '<div class="vide">'+esc(T('cpt_err_generique'))+'</div>'; return; }
   var d = r.data; NONLUS[id] = 0;
-  var msgs = d.messages || [];
+  var msgs = (d.messages || []).filter(function(m){ return !m.masque; });   // messages de la personne signalée : masqués pour celui qui a signalé
   zone.innerHTML = (msgs.length ? msgs.map(function(m){
-    var sig = !m.moi ? (m.signale ? '<span class="cmd-date"> · '+esc(T('msg_signale'))+'</span>' : ' <a href="#" style="font-size:12px;color:#dc2626;font-weight:600;text-decoration:underline;" onclick="signalerMessage(\''+esc(m.id)+'\',\''+id+'\');return false;">'+'🚩 '+esc(T('msg_signaler'))+'</a>') : '';
+    var sig = !m.moi ? ' <a href="#" style="font-size:12px;color:#dc2626;font-weight:600;text-decoration:underline;" onclick="signalerMessage(\''+esc(m.id)+'\',\''+id+'\');return false;">🚩 '+esc(T('msg_signaler'))+'</a>' : '';
     return '<div style="margin-top:8px;display:flex;flex-direction:column;align-items:'+(m.moi?'flex-end':'flex-start')+';"><div style="max-width:88%;padding:8px 12px;border-radius:12px;font-size:14px;white-space:pre-wrap;word-break:break-word;background:'+(m.moi?'#fde2ec':'#dbeafe')+';">'+esc(m.contenu)+'</div>'
       + '<div class="cmd-date">'+esc(m.moi?T('msg_vous'):T('msg_artisan'))+' · '+esc(new Date(m.created_at).toLocaleString(AT_LANG==='en'?'en-GB':AT_LANG==='es'?'es-ES':'fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Guadeloupe'}))+sig+'</div></div>';
-  }).join('') : '<div class="cmd-date" style="margin-top:6px;">'+esc(T('msg_aucun'))+'</div>')
-    + (d.ferme ? '<div class="cmd-date" style="margin-top:8px;">'+esc(T('msg_ferme'))+'</div>' : (msgs.length ? '' : '<div class="cmd-date" style="margin-top:8px;">'+esc(T('msg_regle'))+'</div>'));
+  }).join('') : (d.signale_par_moi ? '' : '<div class="cmd-date" style="margin-top:6px;">'+esc(T('msg_aucun'))+'</div>'))
+    + (d.signale_par_moi ? '<div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#fdecec;color:#991b1b;font-size:13px;">'+esc(T('msg_auto_signale'))+'</div>'
+      : d.ferme ? '<div class="cmd-date" style="margin-top:8px;">'+esc(T('msg_ferme'))+'</div>'
+      : (msgs.length ? '' : '<div class="cmd-date" style="margin-top:8px;">'+esc(T('msg_regle'))+'</div>'))
+    + (d.messagerie_bloquee ? '<div style="margin-top:10px;font-size:13px;color:#991b1b;">'+esc(T('msg_modo_bloque'))+'</div>' : '');
   form.style.display = d.peut_ecrire ? '' : 'none';
   zone.scrollTop = zone.scrollHeight;
 }
@@ -680,7 +684,7 @@ async function envoyerMessage(id){
       body: JSON.stringify({ reponse_id:id, contenu:t.value }) });
     var j = await res.json().catch(function(){ return {}; });
     if (!res.ok || !j.success) {
-      var cle = ({coordonnees:'msg_err_coordonnees', limite:'msg_err_limite', ferme:'msg_ferme'})[j.code];
+      var cle = ({coordonnees:'msg_err_coordonnees', limite:'msg_err_limite', ferme:'msg_ferme', bloque:'msg_err_bloque'})[j.code];
       err.textContent = T(cle || 'cpt_err_generique'); err.style.display = ''; return;
     }
     t.value = ''; await chargerFil(id);
@@ -689,9 +693,32 @@ async function envoyerMessage(id){
 }
 async function signalerMessage(idMsg, idFil){
   if (!confirm(T('msg_signaler_confirm'))) return;
-  var r = await sb.rpc('signaler_message', { p_message: idMsg });
-  if (r.error) { alert(T('cpt_err_generique')); return; }
+  try {
+    var s = (await sb.auth.getSession()).data.session;
+    if (!s) throw new Error('session');
+    var res = await fetch(SUPABASE_URL + '/functions/v1/signaler-message-projet', { method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON,'Authorization':'Bearer '+s.access_token},
+      body: JSON.stringify({ message_id:idMsg }) });
+    var j = await res.json().catch(function(){ return {}; });
+    if (!res.ok || !j.success) { alert(T('cpt_err_generique')); return; }
+  } catch(e) { alert(T('cpt_err_generique')); return; }
   await chargerFil(idFil);
+}
+// Avertissement / blocage de la messagerie : affiché à la connexion
+async function chargerEtatModeration(){
+  var z = document.getElementById('bandeau-modo');
+  try {
+    var r = await sb.rpc('mon_etat_messagerie');
+    var e = r && r.data;
+    if (!e || (!e.avertissement && !e.bloque)) { z.style.display = 'none'; z.innerHTML = ''; return; }
+    z.style.display = '';
+    if (e.bloque) z.innerHTML = '<div style="background:#dc2626;color:#fff;padding:12px 16px;border-radius:10px;margin-bottom:12px;font-size:14px;">'+esc(T('msg_modo_bloque'))+'</div>';
+    else z.innerHTML = '<div style="background:#f59e0b;color:#fff;padding:12px 16px;border-radius:10px;margin-bottom:12px;font-size:14px;">'+esc(T('msg_modo_avert'))+' <button class="btn" style="margin-left:8px;background:#fff;color:#92400e;" onclick="avertissementVu()">'+esc(T('msg_modo_avert_ok'))+'</button></div>';
+  } catch(e) { z.style.display = 'none'; }
+}
+async function avertissementVu(){
+  try { await sb.rpc('marquer_avertissement_vu'); } catch(e){}
+  chargerEtatModeration();
 }
 function carteProjet(p){
   var ouvert = p.statut === 'ouvert';

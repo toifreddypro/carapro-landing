@@ -576,6 +576,7 @@ async function init() {
   await chargerClients();
   await chargerProjetsRecus();
   await chargerRecapCommission();
+  await chargerEtatModerationMpa();
   await chargerDemandes();
   await chargerAvis();
   await chargerCommandes();
@@ -1201,13 +1202,16 @@ async function chargerFilClient(id) {
   if (error || !data) { zone.innerHTML = '<div style="color:var(--danger);font-size:13px;">Discussion indisponible.</div>'; return; }
   var f = _filsClients.find(function(x) { return x.reponse_id === id; });
   if (f && f.nb_non_lus) { f.nb_non_lus = 0; window._nbMessagesNonLus = _filsClients.filter(function(x) { return x.nb_non_lus > 0; }).length; renderProjetsRecusBadgeSeul(); }
-  var msgs = data.messages || [];
+  var msgs = (data.messages || []).filter(function(m) { return !m.masque; });   // messages de la personne signalée : masqués pour celui qui a signalé
   zone.innerHTML = msgs.map(function(m) {
-    var sig = !m.moi ? (m.signale ? ' · Signalé ✓' : ' · <a href="#" style="color:#dc2626;font-weight:600;text-decoration:underline;" onclick="signalerMessageClient(' + jsAttrLocal(m.id) + ',' + jsAttrLocal(id) + ');return false;">🚩 Signaler</a>') : '';
+    var sig = !m.moi ? ' · <a href="#" style="color:#dc2626;font-weight:600;text-decoration:underline;" onclick="signalerMessageClient(' + jsAttrLocal(m.id) + ',' + jsAttrLocal(id) + ');return false;">🚩 Signaler</a>' : '';
     return '<div style="margin-top:8px;display:flex;flex-direction:column;align-items:' + (m.moi ? 'flex-end' : 'flex-start') + ';">' +
       '<div style="max-width:88%;padding:8px 12px;border-radius:12px;font-size:13.5px;white-space:pre-wrap;word-break:break-word;background:' + (m.moi ? '#fde2ec' : '#dbeafe') + ';">' + escHtml(m.contenu) + '</div>' +
       '<div style="font-size:11px;color:var(--mu);">' + (m.moi ? 'Vous' : 'Client') + ' · ' + new Date(m.created_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + sig + '</div></div>';
-  }).join('') + (data.ferme ? '<div style="margin-top:8px;font-size:12.5px;color:var(--mu);">Cette discussion est fermée.</div>' : '');
+  }).join('')
+    + (data.signale_par_moi ? '<div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#fdecec;color:#991b1b;font-size:13px;">🚩 Cette personne est bloquée pour vous. Les preuves ont été transmises à l\'administrateur, qui étudiera la suite à donner.</div>'
+        : (data.ferme ? '<div style="margin-top:8px;font-size:12.5px;color:var(--mu);">Cette discussion est fermée.</div>' : ''))
+    + (data.messagerie_bloquee ? '<div style="margin-top:10px;font-size:13px;color:#991b1b;">Votre messagerie est bloquée : contactez contact@learnlogicstudio.com.</div>' : '');
   if (form) form.style.display = data.peut_ecrire ? '' : 'none';
 }
 
@@ -1244,9 +1248,36 @@ async function envoyerMessageClient(id) {
 
 async function signalerMessageClient(idMsg, idFil) {
   if (!confirm('Signaler ce message comme abusif ?')) return;
-  var { error } = await sb.rpc('signaler_message', { p_message: idMsg });
-  if (error) { alert('Erreur : ' + error.message); return; }
+  try {
+    var { data: { session: authSession } } = await sb.auth.getSession();
+    if (!authSession) throw new Error('Session expirée : reconnectez-vous.');
+    var res = await fetch(SUPABASE_URL + '/functions/v1/signaler-message-projet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({ message_id: idMsg }),
+    });
+    var data = await res.json().catch(function() { return {}; });
+    if (!res.ok || !data.success) throw new Error((data && data.error) || ('Erreur serveur (' + res.status + ')'));
+  } catch (e) { alert('Erreur : ' + e.message); return; }
   await chargerFilClient(idFil);
+}
+
+// Avertissement / blocage de la messagerie : affiché à la connexion
+async function chargerEtatModerationMpa() {
+  var z = document.getElementById('bandeau-messagerie');
+  if (!z) return;
+  try {
+    var { data } = await sb.rpc('mon_etat_messagerie');
+    if (!data || (!data.avertissement && !data.bloque)) { z.style.display = 'none'; z.innerHTML = ''; return; }
+    z.style.display = '';
+    z.innerHTML = data.bloque
+      ? '<div style="background:#dc2626;color:#fff;padding:12px 20px;font-size:13.5px;">🚫 Votre messagerie est bloquée à la suite de signalements : vous ne pouvez plus envoyer de message ni répondre à un projet. Pour contester, écrivez à contact@learnlogicstudio.com.</div>'
+      : '<div style="background:#f59e0b;color:#fff;padding:12px 20px;font-size:13.5px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;"><span style="flex:1;min-width:220px;">⚠️ Des messages de votre part ont été signalés. Merci de rester courtois et de n\'échanger que sur le projet. Sans changement, votre messagerie pourra être bloquée.</span><button type="button" onclick="avertissementVuMpa()" style="padding:7px 14px;border-radius:8px;border:none;background:#fff;color:#92400e;font-weight:700;cursor:pointer;font-family:inherit;">J\'ai compris</button></div>';
+  } catch (e) { z.style.display = 'none'; }
+}
+async function avertissementVuMpa() {
+  try { await sb.rpc('marquer_avertissement_vu'); } catch (e) {}
+  chargerEtatModerationMpa();
 }
 
 // ════════════════════════════════════════

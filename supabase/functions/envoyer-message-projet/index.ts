@@ -89,6 +89,7 @@ Deno.serve(async (req: Request) => {
         ferme: ["Cette discussion est fermée.", 409],
         client_dabord: ["Le client doit écrire le premier message.", 409],
         trop_de_messages: ["Cette discussion a atteint sa limite de messages.", 409],
+        bloque: ["Votre messagerie est bloquée. Contactez contact@learnlogicstudio.com.", 403],
       };
       const [msg, statut] = messages[r?.erreur] ?? [MSG_ERREUR_GENERIQUE, 500];
       return json({ error: msg, code: r?.erreur ?? "erreur" }, statut);
