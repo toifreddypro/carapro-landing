@@ -74,7 +74,7 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
   <div id="msg-err" class="msg-err"></div>
 
   <div id="bandeau-email-confirme" style="display:none;margin:0 0 16px;padding:12px 14px;border-radius:10px;background:#dcfce7;color:#166534;font-size:14px;">✅ Votre email est confirmé. Dernière étape : présentez votre activité aux clients. <a href="#" onclick="changerDeCompte();return false;" style="color:#166534;text-decoration:underline;white-space:nowrap;">Ce n'est pas votre compte ?</a></div>
-  <form id="form-inscription" onsubmit="event.preventDefault();soumettreInscription();">
+  <form id="form-inscription" novalidate onsubmit="event.preventDefault();soumettreInscription();">
 
     <div class="form-section" id="section-compte">
       <h2>Votre compte</h2>
@@ -291,6 +291,7 @@ function recommencerInscription() {
 function passerEtape2(session) {
   _sessionConfirmee = session;
   document.getElementById('section-compte').style.display = 'none';
+  document.getElementById('f-email').required = false; document.getElementById('f-password').required = false; document.getElementById('f-password').removeAttribute('minlength');
   document.getElementById('label-cgu').style.display = 'none';
   document.getElementById('section-activite').style.display = '';
   document.getElementById('section-verif').style.display = '';
