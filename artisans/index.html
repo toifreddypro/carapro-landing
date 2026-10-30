@@ -1323,8 +1323,11 @@ body.theme-light footer { background:#fbfcfe; }
       setTimeout(function() {
         var it = document.getElementById('faq-commission');
         if (!it) return;
+        var panel = document.getElementById('faq-panel');
+        if (panel && !panel.classList.contains('open')) toggleFAQ();   // la FAQ est un panneau latéral : on l'ouvre
         document.querySelectorAll('.faq-item.open').forEach(function(i){ i.classList.remove('open'); });
-        it.classList.add('open'); it.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        it.classList.add('open');
+        setTimeout(function() { it.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 450);   // après l'animation d'ouverture du panneau
       }, 400);
     });
     function toggleFAQItem(el) {
