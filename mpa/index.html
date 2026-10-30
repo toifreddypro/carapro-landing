@@ -496,6 +496,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <span class="tbbtn-label">Déconnexion</span>
 </button>
 </div>
+<div id="bandeau-commission" style="display:none;"></div>
 <!-- NAV -->
 <div id="nav">
 <button class="ntab active" id="nt-planning" onclick="switchTab(2)">
@@ -1171,6 +1172,20 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div>
 <!-- MODALE : Enregistrer une carte pour la commission prestations -->
+<div class="modal-overlay" id="modal-commissions">
+<div class="modal-box" style="max-width:720px;max-height:88vh;overflow:auto;">
+<h3>Mes commissions : le détail du calcul</h3>
+<p style="font-size:13px;color:var(--mu);margin-bottom:12px;line-height:1.5;">
+      Les <strong>200 premiers euros</strong> de chaque mois, sur les clients que CaraLink vous a apportés, sont <strong>gratuits</strong>. Au-dessus, la commission est de <strong>7 %</strong> (5 % avec l'offre Pro), même si le client vous a payé en main propre. Les clients que vous ajoutez vous-même ne sont jamais commissionnés.
+    </p>
+<div id="com-contenu">Chargement…</div>
+<div class="modal-actions">
+<a class="btn-secondary" href="https://caralink.app/artisans/#faq-commission" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;">Pourquoi cette commission ?</a>
+<button class="btn-primary" onclick="fermerModale('modal-commissions');ouvrirCartePrestations()">Mettre à jour ma carte</button>
+<button class="btn-secondary" onclick="fermerModale('modal-commissions')">Fermer</button>
+</div>
+</div>
+</div>
 <div class="modal-overlay" id="modal-carte-prestations">
 <div class="modal-box">
 <h3>Enregistrer une carte</h3>

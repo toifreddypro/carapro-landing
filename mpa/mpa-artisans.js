@@ -575,6 +575,7 @@ async function init() {
   renderFiche();
   await chargerClients();
   await chargerProjetsRecus();
+  await chargerRecapCommission();
   await chargerDemandes();
   await chargerAvis();
   await chargerCommandes();
@@ -959,6 +960,76 @@ async function demanderPaiementDepuisMessage(id) {
   await ouvrirIntervention(id);
   await chargerPaiementsIntervention(_interventionsCache.find(function(x) { return x.id === id; }));
   ouvrirDemandePaiement();
+}
+
+// ════════════════════════════════════════
+//  COMMISSION IMPAYÉE — bandeau rouge, détail du calcul, suspension
+// ════════════════════════════════════════
+var _recapCommission = null;
+async function chargerRecapCommission() {
+  try {
+    var { data, error } = await sb.rpc('recap_commission_prestations');
+    if (error) throw error;
+    _recapCommission = data || null;
+  } catch (e) { console.warn('recap_commission_prestations :', e && e.message); _recapCommission = null; }
+  renderBandeauCommission();
+}
+
+function renderBandeauCommission() {
+  var zone = document.getElementById('bandeau-commission');
+  if (!zone) return;
+  var r = _recapCommission;
+  var impaye = r ? Number(r.impaye_total || 0) : 0;
+  if (!r || (impaye <= 0 && !r.suspendu)) { zone.style.display = 'none'; zone.innerHTML = ''; return; }
+  var dateSusp = r.suspension_prevue_le ? new Date(r.suspension_prevue_le).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  var texte = r.suspendu
+    ? '🚫 <strong>Votre fiche est suspendue de l\'annuaire</strong> : commission impayée de <strong>' + eurosMPA(impaye) + '</strong>. Elle revient automatiquement dès que vous avez réglé.'
+    : '⚠️ <strong>Commission impayée : ' + eurosMPA(impaye) + '.</strong> Sans règlement avant le <strong>' + escHtml(dateSusp) + '</strong>, votre fiche sera suspendue de l\'annuaire.';
+  var bt = 'padding:8px 14px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-block;';
+  zone.style.display = '';
+  zone.innerHTML = '<div style="background:#dc2626;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:13.5px;">' +
+    '<div style="flex:1;min-width:240px;line-height:1.45;">' + texte + '</div>' +
+    '<button type="button" onclick="ouvrirDetailCommissions()" style="' + bt + 'border:none;background:#fff;color:#dc2626;">Voir le calcul</button>' +
+    '<a href="https://caralink.app/artisans/#faq-commission" target="_blank" rel="noopener" style="' + bt + 'border:1px solid rgba(255,255,255,.7);background:transparent;color:#fff;">Pourquoi cette commission ?</a>' +
+    '<button type="button" onclick="ouvrirCartePrestations()" style="' + bt + 'border:1px solid rgba(255,255,255,.7);background:transparent;color:#fff;">Mettre à jour ma carte</button></div>';
+}
+
+function ouvrirDetailCommissions() {
+  var zone = document.getElementById('com-contenu');
+  ouvrirModale('modal-commissions');
+  var r = _recapCommission;
+  if (!r) { zone.innerHTML = '<div style="font-size:13px;color:var(--mu);">Aucun détail disponible pour l\'instant.</div>'; return; }
+  var e = eurosMPA;
+  var mois = r.mois || [];
+  var enCours = '<div style="font-size:13px;margin-bottom:12px;padding:10px 12px;border-radius:8px;background:rgba(59,130,246,.07);">Ce mois-ci : <strong>' + e(Number(r.ca_mois_en_cours || 0)) + '</strong> sur vos clients CaraLink. Franchise gratuite : 200 €.</div>';
+  if (!mois.length) { zone.innerHTML = enCours + '<div style="font-size:13px;color:var(--mu);">Aucune commission pour l\'instant : vous êtes sous la franchise de 200 € par mois.</div>'; return; }
+  var badge = function(st) {
+    var m = { echoue: ['Impayée', '#dc2626'], reussi: ['Prélevée ✓', '#16a34a'], sous_le_seuil: ['Sous la franchise : rien à payer', '#6b7c96'], sous_minimum_stripe: ['Moins de 0,50 € : reporté', '#6b7c96'] }[st] || [st, '#6b7c96'];
+    return '<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;color:#fff;background:' + m[1] + ';">' + escHtml(m[0]) + '</span>';
+  };
+  var td = 'padding:5px 8px;border-bottom:1px solid var(--brd);font-size:12.5px;';
+  zone.innerHTML = enCours + mois.map(function(m) {
+    var libMois = new Date(m.mois + 'T12:00:00').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    var part = Number(m.part_commissionnee || 0), dejaLigne = Number(m.deja_en_ligne || 0), due = Number(m.commission || 0);
+    var totale = due + dejaLigne;
+    var taux = part > 0 ? Math.round(totale / part * 100) : null;
+    var lignes = (m.interventions || []).map(function(i) {
+      var enLigne = Number(i.paye_en_ligne || 0), hors = Math.max(0, Number(i.prix || 0) - enLigne);
+      return '<tr><td style="' + td + '">' + new Date(i.date + 'T12:00:00').toLocaleDateString('fr-FR') + '</td><td style="' + td + '">' + escHtml(i.client || '') + '</td><td style="' + td + 'text-align:right;">' + e(Number(i.prix || 0)) + '</td><td style="' + td + 'text-align:right;">' + (enLigne ? e(enLigne) : '—') + '</td><td style="' + td + 'text-align:right;">' + e(hors) + '</td></tr>';
+    }).join('');
+    var calc = function(l, v, fort) { return '<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;' + (fort ? 'font-weight:700;border-top:1px solid var(--brd);margin-top:4px;padding-top:6px;' : '') + '"><span>' + l + '</span><span>' + v + '</span></div>'; };
+    return '<div style="border:1px solid var(--brd);border-radius:12px;padding:12px 14px;margin-bottom:14px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;"><strong style="text-transform:capitalize;font-size:14px;">' + escHtml(libMois) + '</strong>' + badge(m.statut) + '</div>' +
+      (lignes ? '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="text-align:left;font-size:11.5px;color:var(--mu);"><th style="' + td + '">Date</th><th style="' + td + '">Client</th><th style="' + td + 'text-align:right;">Prix</th><th style="' + td + 'text-align:right;">Payé en ligne</th><th style="' + td + 'text-align:right;">Hors CaraLink</th></tr></thead><tbody>' + lignes + '</tbody></table></div>' : '') +
+      '<div style="font-size:13px;margin-top:10px;">' +
+        calc('Total de vos clients CaraLink ce mois-là', e(Number(m.ca_total || 0))) +
+        calc('Franchise gratuite', '− ' + e(Number(m.franchise || 200))) +
+        calc('Part sur laquelle la commission s\'applique', e(part)) +
+        (part > 0 ? calc('Commission' + (taux ? ' (' + taux + ' %)' : ''), e(totale)) : '') +
+        (dejaLigne > 0 ? calc('Déjà prélevée lors de paiements en ligne', '− ' + e(dejaLigne)) : '') +
+        calc(m.statut === 'echoue' ? 'Reste à payer' : 'Commission du mois', e(due), true) +
+      '</div></div>';
+  }).join('');
 }
 
 // ════════════════════════════════════════
@@ -6733,7 +6804,7 @@ async function confirmerCartePrestations() {
     fermerModale('modal-carte-prestations');
     renderEncartCartePrestations();
     // Le serveur confirme la carte (et relance une éventuelle commission échouée) en quelques secondes : on relit l'état juste après.
-    setTimeout(async function() { await chargerEtatCommission(); renderEncartCartePrestations(); }, 5000);
+    setTimeout(async function() { await chargerEtatCommission(); renderEncartCartePrestations(); await chargerRecapCommission(); }, 5000);
     alert('✅ Carte enregistrée. Elle ne sera débitée que si vos prestations trouvées via CaraLink dépassent 200 € dans un mois' + (_etatCommission && _etatCommission.commission_impayee > 0 ? ', et la commission restée impayée va être prélevée dans quelques instants.' : '.'));
   } catch (e) {
     err.textContent = e.message;

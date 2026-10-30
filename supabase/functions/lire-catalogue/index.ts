@@ -62,6 +62,7 @@ Deno.serve(async (req: Request) => {
       .select("id, nom_entreprise, secteur, commune, photo_profil_url, verifie, code_promo, code_promo_pct, code_promo_fin, code_promo_visible, stripe_connect_statut, boutique_en_pause, plan, cashback_pct, boutique_banniere_url, boutique_texte, boutique_accent, boutique_fond, boutique_police, boutique_accroche, boutique_annonce, boutique_annonce_fin, boutique_instagram, boutique_facebook, boutique_tiktok, boutique_whatsapp, boutique_accent_libre, boutique_disposition, boutique_cartes, boutique_affiche_adresse, boutique_affiche_telephone, boutique_affiche_email, adresse, code_postal, telephone, email")
       .eq("slug_catalogue", slug)
       .eq("actif", true)
+      .eq("suspendu_commission", false)
       .maybeSingle();
     if (error) throw error;
     if (!artisan) return json({ error: "Boutique introuvable." }, 404);

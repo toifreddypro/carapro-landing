@@ -42,6 +42,7 @@ Deno.serve(async (req: Request) => {
     let requete = sb.from("artisans")
       .select("id, nom_entreprise, secteur, commune, bio, photo_profil_url, verifie, rayon_intervention_km")
       .eq("actif", true)
+      .eq("suspendu_commission", false)
       .order("verifie", { ascending: false }) // les profils vérifiés remontent naturellement
       .order("created_at", { ascending: false });
 

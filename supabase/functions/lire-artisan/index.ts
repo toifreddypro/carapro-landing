@@ -90,7 +90,7 @@ Deno.serve(async (req: Request) => {
 
     let artisan: any = null, error: any = null;
     for (const colonnes of JEUX_COLONNES_ARTISAN) {
-      ({ data: artisan, error } = await sb.from("artisans").select(colonnes).eq("id", id).eq("actif", true).maybeSingle());
+      ({ data: artisan, error } = await sb.from("artisans").select(colonnes).eq("id", id).eq("actif", true).eq("suspendu_commission", false).maybeSingle());
       if (!(error && (error as any).code === "42703")) break;
     }
     if (error) throw error;

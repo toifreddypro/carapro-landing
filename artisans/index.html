@@ -1166,6 +1166,16 @@ body.theme-light footer { background:#fbfcfe; }
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
           <div class="faq-a" data-i18n="faq19_a"><p>Le <strong>tout premier versement</strong> d'un nouveau compte prend en général <strong>7 à 14 jours</strong> après le premier paiement, le temps de la vérification par Stripe. Ensuite, comptez environ <strong>2 jours ouvrés</strong> après chaque paiement.</p></div>
+        </div>
+
+<div class="faq-item" id="faq-commission" data-q="commission impayée main propre 7% 5% 200 franchise prélèvement suspension calcul">
+          <div class="faq-q" onclick="toggleFAQItem(this)">
+            <span data-i18n="faq20_q">Pourquoi une commission alors que mon client m'a payé en main propre ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-a" data-i18n="faq20_a"><p>Les clients que CaraLink vous apporte (demande de devis, projet publié, annuaire) sont commissionnés <strong>même si le paiement se fait hors de CaraLink</strong>. Les <strong>200 premiers euros de chaque mois sont gratuits</strong> ; au-dessus, la commission est de <strong>7 %</strong> (<strong>5 %</strong> avec l'offre Pro) sur la part qui dépasse. Les clients que vous ajoutez vous-même ne sont <strong>jamais</strong> commissionnés.</p><p><strong>Exemple :</strong> 450 € de prestations dans le mois : (450 − 200) × 7 % = <strong>17,50 €</strong>. Ce qui a déjà été payé en ligne est commissionné au paiement et déduit : jamais deux fois.</p><p>La commission est prélevée <strong>une fois par mois</strong>, le mois suivant, sur votre carte enregistrée. Le détail du calcul est dans MPA Artisans (bandeau rouge ou « Ma comptabilité »).</p><div class="faq-tip">⚠️ Si le prélèvement échoue : rappel à 7 jours, dernier rappel à 14 jours, puis <strong>suspension de votre fiche de l'annuaire à 30 jours</strong>. Rien n'est supprimé : tout revient automatiquement dès que vous avez réglé (mettez à jour votre carte).</div></div>
+        </div>
+
       </div>
 
       <!-- ── CLIENTS ── -->
@@ -1307,6 +1317,16 @@ body.theme-light footer { background:#fbfcfe; }
         if (s) { s.value = ''; filterFAQ(''); }
       }
     }
+    // Lien direct vers une question (ex. https://caralink.app/artisans/#faq-commission, depuis le bandeau « commission impayée » de MPA)
+    window.addEventListener('load', function() {
+      if (location.hash !== '#faq-commission') return;
+      setTimeout(function() {
+        var it = document.getElementById('faq-commission');
+        if (!it) return;
+        document.querySelectorAll('.faq-item.open').forEach(function(i){ i.classList.remove('open'); });
+        it.classList.add('open'); it.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 400);
+    });
     function toggleFAQItem(el) {
       var item    = el.closest('.faq-item');
       var wasOpen = item.classList.contains('open');

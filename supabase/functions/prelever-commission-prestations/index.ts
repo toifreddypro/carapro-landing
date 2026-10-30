@@ -284,6 +284,7 @@ async function traiterUnArtisan(sb: any, artisan: any, debut: string, finExclusi
           <p>Bonjour,</p>
           <p>Le prélèvement automatique de ${euros(commissionCentimes)} (commission sur vos prestations de ${moisISO.slice(0, 7)}) n'a pas pu être effectué${intent?.error?.message ? " : " + escHtml(intent.error.message) : ""}.</p>
           <p>Merci de mettre à jour votre carte enregistrée dans MPA Artisans (Ma comptabilité, encart « Carte ») pour régulariser.</p>
+          <p>Le détail du calcul est dans MPA Artisans (bandeau rouge « Voir le calcul »). <a href="https://caralink.app/artisans/#faq-commission" style="color:#B5502F;">Pourquoi cette commission ?</a> Sans règlement sous 30 jours, votre fiche est suspendue de l'annuaire (elle revient dès que vous avez réglé).</p>
           <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Ouvrir MPA Artisans →</a></p>
         </div>`);
     }
