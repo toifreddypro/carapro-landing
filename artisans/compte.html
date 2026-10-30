@@ -636,11 +636,15 @@ function carteReponse(p, r){
   var verifie = a.verifie ? ' <span class="prj-badge">✓ '+esc(T('prj_rep_verifie'))+'</span>' : '';
   var prix = r.prix_indicatif != null ? '<div class="cmd-total">'+esc(fill(T('prj_rep_prix'),{p:euros(r.prix_indicatif)}))+'</div>' : '';
   var garder = p.peut_relancer ? '<label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:13px;cursor:pointer;"><input type="checkbox" '+(r.garde?'checked ':'')+'onchange="marquerGarde(\''+esc(r.id)+'\', this.checked)"> '+esc(T('prj_rep_garder'))+'</label>' : '';
-  return '<div style="border:1px solid var(--line,#e3e8f0);border-radius:10px;padding:12px;margin-top:10px;">'
+  var engageable = p.statut === 'ouvert' && !r.fil_ferme;
+  var etat = r.engagee ? '<div style="margin-top:8px;"><span class="prj-badge">'+esc(T('prj_engage_choisi'))+'</span></div>'
+    : (p.statut === 'engage' ? '<div class="cmd-date" style="margin-top:8px;">'+esc(T('prj_engage_clos'))+'</div>' : '');
+  var bouton = engageable ? '<button class="btn" style="margin-top:10px;background:#0f9d78;" onclick="ouvrirEngagement(\''+esc(r.id)+'\',\''+esc(String(a.nom_entreprise||'').replace(/\\/g,'').replace(/'/g,'’'))+'\')">✅ '+esc(T('prj_engager'))+'</button>' : '';
+  return '<div style="border:1px solid '+(r.engagee?'#0f9d78':'var(--line,#e3e8f0)')+';border-radius:10px;padding:12px;margin-top:10px;'+(p.statut==='engage'&&!r.engagee?'opacity:.6;':'')+'">'
     + '<div style="display:flex;gap:10px;align-items:center;">'+photo+'<div><strong>'+esc(a.nom_entreprise||'')+'</strong>'+verifie+'<div class="cmd-date">'+esc(a.commune||'')+' · '+avis+'</div></div></div>'
     + '<div class="prj-desc">'+esc(r.message)+'</div>' + prix
     + '<a href="/artisans/?artisan='+encodeURIComponent(a.id||'')+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;font-size:13px;font-weight:600;">'+esc(T('prj_rep_profil'))+' →</a>'
-    + garder + carteFil(r) + '</div>';
+    + garder + etat + carteFil(r) + bouton + '</div>';
 }
 var NONLUS = {};
 // « Nouvelle réponse » : repère visuel tant que le client n'a pas ouvert cette discussion sur cet appareil (simple confort d'affichage).
@@ -750,6 +754,60 @@ function carteProjet(p){
   return '<div class="card"><div class="cmd-tete"><div class="cmd-art">'+esc(p.besoin_icon||'')+' '+esc(nom)+'</div><div class="cmd-date">'+esc(dateLongueGP(p.created_at))+'</div></div>'
     + '<div>'+badge+' <span class="cmd-date">'+esc(p.commune||'')+'</span></div>'
     + '<div class="prj-desc">'+esc(p.description)+'</div>' + photos + bas + '</div>';
+}
+
+// ── Engager un artisan : le client confirme les coordonnées qui lui seront envoyées (définitif) ──
+var ENGAGE_REP = null;
+function ouvrirEngagement(idReponse, nomArtisan){
+  ENGAGE_REP = idReponse;
+  var m = document.getElementById('m-engager'); if (m) m.remove();
+  var P = PROFIL || {};
+  var st = 'width:100%;box-sizing:border-box;padding:10px;border:1px solid #d6dce8;border-radius:8px;font-family:inherit;font-size:14px;margin-top:4px;';
+  function ch(id, lab, val, ac){ return '<div style="margin-top:10px;"><label for="'+id+'" style="font-size:13px;font-weight:600;">'+esc(lab)+'</label><input id="'+id+'" type="text" value="'+esc(val||'')+'" maxlength="200" autocomplete="'+ac+'" style="'+st+'"></div>'; }
+  var d = document.createElement('div');
+  d.id = 'm-engager';
+  d.style.cssText = 'position:fixed;inset:0;background:rgba(20,28,45,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 12px;';
+  d.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:460px;width:100%;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);">'
+    + '<h2 style="margin:0 0 10px;">'+esc(fill(T('prj_engage_titre'),{nom:nomArtisan}))+'</h2>'
+    + '<div style="padding:10px 12px;border-radius:8px;background:#fff4e5;border:1px solid #f59e0b;color:#7c2d12;font-size:13.5px;line-height:1.5;">'+esc(T('prj_engage_intro'))+'</div>'
+    + '<div style="margin-top:12px;font-weight:700;font-size:14px;">'+esc(T('prj_engage_champs'))+'</div>'
+    + ch('eg-nom', T('cpt_nom'), P.nom, 'name') + ch('eg-tel', T('cpt_tel'), P.telephone, 'tel')
+    + ch('eg-adr', T('cat_adresse'), P.adresse, 'street-address') + ch('eg-cp', T('cat_code_postal'), P.code_postal, 'postal-code') + ch('eg-com', T('cat_commune'), P.commune, 'address-level2')
+    + '<div class="cmd-date" style="margin-top:10px;">'+esc(fill(T('prj_engage_email_note'),{email:(USER&&USER.email)||''}))+'</div>'
+    + '<label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:13px;cursor:pointer;"><input type="checkbox" id="eg-ok" style="margin-top:3px;flex:none;width:auto;"><span>'+esc(T('prj_engage_accepte'))+'</span></label>'
+    + '<div id="eg-err" style="display:none;color:#c0392b;font-size:13px;margin-top:10px;"></div>'
+    + '<button class="btn" id="eg-btn" style="margin-top:14px;background:#0f9d78;" onclick="confirmerEngagement()">'+esc(T('prj_engage_confirmer'))+'</button>'
+    + '<button class="btn" style="margin-top:8px;background:#eef1f6;color:#34415a;" onclick="fermerEngagement()">'+esc(T('prj_annuler'))+'</button></div>';
+  document.body.appendChild(d);
+}
+function fermerEngagement(){ var m = document.getElementById('m-engager'); if (m) m.remove(); ENGAGE_REP = null; }
+async function confirmerEngagement(){
+  var err = document.getElementById('eg-err'), btn = document.getElementById('eg-btn');
+  function e(k){ err.textContent = T(k); err.style.display = ''; }
+  err.style.display = 'none';
+  var v = function(id){ return (document.getElementById(id).value||'').trim(); };
+  if (!document.getElementById('eg-ok').checked) { e('prj_engage_accepte_err'); return; }
+  if (v('eg-nom').length < 2) { e('prj_err_engage_nom'); return; }
+  if (v('eg-tel').replace(/\D/g,'').length < 8) { e('prj_err_engage_tel'); return; }
+  if (v('eg-adr').length < 3 || v('eg-com').length < 2) { e('prj_err_engage_adr'); return; }
+  btn.disabled = true; btn.textContent = T('prj_engage_envoi');
+  try {
+    var s = (await sb.auth.getSession()).data.session;
+    if (!s) { e('cpt_err_generique'); return; }
+    var res = await fetch(SUPABASE_URL + '/functions/v1/engager-artisan', { method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON,'Authorization':'Bearer '+s.access_token},
+      body: JSON.stringify({ reponse_id:ENGAGE_REP, nom:v('eg-nom'), telephone:v('eg-tel'), adresse:v('eg-adr'), code_postal:v('eg-cp'), commune:v('eg-com') }) });
+    var j = await res.json().catch(function(){ return {}; });
+    if (!res.ok || !j.success) {
+      var cle = ({deja:'prj_err_engage_deja', ferme:'prj_err_clos', artisan_indisponible:'prj_err_engage_indispo', email_non_confirme:'prj_err_email_non_confirme', nom:'prj_err_engage_nom', telephone:'prj_err_engage_tel', adresse:'prj_err_engage_adr'})[j.code];
+      e(cle || 'cpt_err_generique'); return;
+    }
+    var nomArt = j.artisan_nom || '';
+    fermerEngagement();
+    show('prj-ok', fill(T('prj_engage_ok'), {nom:nomArt}));
+    await chargerProjets();
+  } catch(x) { e('cpt_err_generique'); }
+  finally { var b = document.getElementById('eg-btn'); if (b) { b.disabled = false; b.textContent = T('prj_engage_confirmer'); } }
 }
 async function marquerGarde(idReponse, garde){
   var r = await sb.rpc('marquer_garde', { p_reponse: idReponse, p_garde: !!garde });
