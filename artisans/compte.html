@@ -639,9 +639,14 @@ function carteReponse(p, r){
     + garder + carteFil(r) + '</div>';
 }
 var NONLUS = {};
+// « Nouvelle réponse » : repère visuel tant que le client n'a pas ouvert cette discussion sur cet appareil (simple confort d'affichage).
+function reponseVue(id){ try { return localStorage.getItem('at_rep_vue_'+id) === '1'; } catch(e) { return false; } }
+function marquerReponseVue(id){ try { localStorage.setItem('at_rep_vue_'+id, '1'); } catch(e) {} }
 function carteFil(r){
   var n = NONLUS[r.id] || 0, id = esc(r.id);
-  return '<button class="btn" style="margin-top:10px;" onclick="ouvrirFil(\''+id+'\')">💬 '+esc(T('msg_bouton'))+(n>0?' <span class="prj-badge" style="background:#B5502F;color:#fff;">'+esc(fill(T('msg_non_lus'),{n:n}))+'</span>':'')+'</button>'
+  var badge = n>0 ? ' <span class="prj-badge" style="background:#B5502F;color:#fff;">'+esc(fill(T('msg_non_lus'),{n:n}))+'</span>'
+    : (!reponseVue(r.id) ? ' <span class="prj-badge" style="background:#dc2626;color:#fff;">'+esc(T('msg_nouvelle_rep'))+'</span>' : '');
+  return '<button class="btn" id="fil-bouton-'+id+'" style="margin-top:10px;" onclick="ouvrirFil(\''+id+'\')">💬 '+esc(T('msg_bouton'))+badge+'</button>'
     + '<div id="fil-'+id+'" style="display:none;margin-top:10px;"><div id="fil-msgs-'+id+'"></div>'
     + '<div id="fil-form-'+id+'"><textarea id="fil-txt-'+id+'" rows="3" maxlength="1000" placeholder="'+esc(T('msg_ph'))+'" style="width:100%;box-sizing:border-box;margin-top:8px;padding:9px;border:1px solid #d6dce8;border-radius:8px;font-family:inherit;font-size:14px;"></textarea>'
     + '<div id="fil-err-'+id+'" style="display:none;color:#c0392b;font-size:13px;margin-top:6px;"></div>'
@@ -651,7 +656,12 @@ function ouvrirFil(id){
   var b = document.getElementById('fil-'+id); if (!b) return;
   var ouvre = b.style.display === 'none';
   b.style.display = ouvre ? '' : 'none';
-  if (ouvre) chargerFil(id);
+  if (ouvre) {
+    marquerReponseVue(id);
+    var bt = document.getElementById('fil-bouton-'+id);
+    if (bt) { var bg = bt.querySelector('.prj-badge'); if (bg) bg.remove(); }
+    chargerFil(id);
+  }
 }
 async function chargerFil(id){
   var zone = document.getElementById('fil-msgs-'+id), form = document.getElementById('fil-form-'+id);
@@ -666,7 +676,7 @@ async function chargerFil(id){
   }).join('') : (d.signale_par_moi ? '' : '<div class="cmd-date" style="margin-top:6px;">'+esc(T('msg_aucun'))+'</div>'))
     + (d.signale_par_moi ? '<div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#fdecec;color:#991b1b;font-size:13px;">'+esc(T('msg_auto_signale'))+'</div>'
       : d.ferme ? '<div class="cmd-date" style="margin-top:8px;">'+esc(T('msg_ferme'))+'</div>'
-      : (msgs.length ? '' : '<div class="cmd-date" style="margin-top:8px;">'+esc(T('msg_regle'))+'</div>'))
+      : (msgs.length ? '' : '<div style="margin-top:10px;padding:12px 14px;border-radius:10px;background:#fff4e5;border:1px solid #f59e0b;color:#7c2d12;font-size:14px;font-weight:600;line-height:1.5;">'+esc(T('msg_regle'))+'</div>'))
     + (d.messagerie_bloquee ? '<div style="margin-top:10px;font-size:13px;color:#991b1b;">'+esc(T('msg_modo_bloque'))+'</div>' : '');
   form.style.display = d.peut_ecrire ? '' : 'none';
   zone.scrollTop = zone.scrollHeight;
