@@ -1108,7 +1108,7 @@ function renderProjetsRecus() {
     if (p.cloture === 'choisi') {
       bas = '<div style="margin-top:12px;padding:10px 12px;border-radius:8px;background:rgba(22,163,74,.12);font-size:13.5px;"><strong style="color:#16a34a;">🎉 Le client vous a choisi !</strong><div style="margin-top:4px;">Ses coordonnées vous ont été envoyées par email, et il est ajouté à vos clients. Contactez-le pour convenir d\'un rendez-vous.</div></div>';
     } else if (p.cloture === 'autre') {
-      bas = '<div style="margin-top:12px;padding:10px 12px;border-radius:8px;background:#f3f4f6;font-size:13.5px;color:var(--mu);">🔒 Le projet est clos : le client a choisi un autre artisan. Merci d\'avoir répondu.</div>';
+      bas = '<div style="margin-top:12px;padding:10px 12px;border-radius:8px;background:#f3f4f6;font-size:13.5px;color:var(--mu);">🔒 Le projet est clos. Merci d\'avoir répondu.</div>';
     } else if (p.ma_reponse) {
       var prix = p.ma_reponse.prix_indicatif != null ? ' · ~' + Number(p.ma_reponse.prix_indicatif).toLocaleString('fr-FR') + ' €' : '';
       bas = '<div style="margin-top:12px;padding:10px 12px;border-radius:8px;background:rgba(22,163,74,.08);font-size:13px;"><strong style="color:#16a34a;">✅ Répondu</strong>' + prix + '<div style="margin-top:4px;color:var(--mu);white-space:pre-wrap;">' + escHtml(p.ma_reponse.message) + '</div><div style="margin-top:6px;font-size:12px;color:var(--mu);">Le client compare les réponses. S\'il vous choisit, vous échangerez par messagerie.</div></div>';
@@ -1217,7 +1217,7 @@ async function chargerFilClient(id) {
   }).join('')
     + (data.signale_par_moi ? '<div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#fdecec;color:#991b1b;font-size:13px;">🚩 Cette personne est bloquée pour vous. Les preuves ont été transmises à l\'administrateur, qui étudiera la suite à donner.</div>'
         : (data.engagee ? '<div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:rgba(22,163,74,.12);font-size:13px;color:#166534;">🎉 Le client vous a choisi : ses coordonnées vous ont été envoyées par email.</div>'
-        : data.ferme_motif === 'engagement' ? '<div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#f3f4f6;font-size:13px;color:var(--mu);">🔒 Le projet est clos : le client a choisi un autre artisan. Merci d\'avoir répondu.</div>'
+        : data.ferme_motif === 'engagement' ? '<div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#f3f4f6;font-size:13px;color:var(--mu);">🔒 Le projet est clos. Merci d\'avoir répondu.</div>'
         : data.ferme ? '<div style="margin-top:8px;font-size:12.5px;color:var(--mu);">Cette discussion est fermée.</div>' : ''))
     + (data.messagerie_bloquee ? '<div style="margin-top:10px;font-size:13px;color:#991b1b;">Votre messagerie est bloquée : contactez contact@learnlogicstudio.com.</div>' : '');
   if (form) form.style.display = data.peut_ecrire ? '' : 'none';
