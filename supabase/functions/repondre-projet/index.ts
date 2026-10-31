@@ -36,11 +36,22 @@ function escHtml(s: unknown): string {
   return String(s ?? "").replace(/[&<>"']/g, (m) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }) as Record<string, string>)[m]);
 }
 
-// Téléphone (8 chiffres ou plus, même séparés par espaces, points, tirets, parenthèses), email, lien : refusés dans le message.
+// Coordonnées interdites dans les messages : numéro de téléphone (chiffres OU écrits en lettres, même coupés par des espaces,
+// points, tirets, lettres), email (avec « @ » ou écrit « arobase »), lien ou nom de site, messageries (WhatsApp, Facebook…).
+const MOTS_CHIFFRES = "zero|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingt|trente|quarante|cinquante|soixante|cent";
 function contientCoordonnees(texte: string): boolean {
-  if (/\d(?:[\s.\-()]*\d){7,}/.test(texte)) return true;
-  if (/@/.test(texte)) return true;
-  if (/(https?:\/\/|www\.)/i.test(texte)) return true;
+  const t = texte.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  // chiffres : 8 ou plus, séparés par des espaces, points, tirets, parenthèses, barres, ou même quelques lettres isolées
+  if (/\d(?:[\s.\-()_*]*\d){7,}/.test(t)) return true;
+  if (/\d(?:[a-z.\-_]{0,2}\d){7,}/.test(t)) return true;
+  // chiffres écrits en lettres : au moins 6 mots-chiffres de suite (zéro six quatre-vingt-dix…)
+  if (new RegExp("(?:\\b(?:" + MOTS_CHIFFRES + ")\\b[\\s.,\\-]*){6,}").test(t)) return true;
+  // mélange chiffres + lettres : au moins 7 éléments « chiffre ou mot-chiffre » de suite
+  if (new RegExp("(?:(?:\\d|\\b(?:" + MOTS_CHIFFRES + ")\\b)[\\s.,\\-]*){7,}").test(t)) return true;
+  if (/@|\barobase\b|\(at\)|\[at\]|\bat\s+(gmail|hotmail|outlook|yahoo|orange|wanadoo|icloud|live|free|sfr)/.test(t)) return true;
+  if (/(https?:\/\/|www\.)/.test(t)) return true;
+  if (/\b[a-z0-9][a-z0-9-]{1,}\s?(?:\.|point|dot)\s?(?:com|fr|net|org|io|gp|app|me|info|eu|biz|co|site|shop)\b/.test(t)) return true;
+  if (/\b(gmail|hotmail|outlook|yahoo|icloud|whats\s?app|watsap|telegram|messenger|snap\s?chat|tik\s?tok|facebook|instagram|insta|signal app)\b/.test(t)) return true;
   return false;
 }
 
@@ -70,6 +81,7 @@ Deno.serve(async (req: Request) => {
     const { data: auth, error: errAuth } = await sb.auth.getUser(jeton);
     const user = auth?.user;
     if (errAuth || !user) return json({ error: "Connectez-vous à votre espace artisan.", code: "connexion_requise" }, 401);
+    if (!user.email_confirmed_at) return json({ error: "Confirmez d'abord votre adresse email : le lien vous a été envoyé à l'inscription.", code: "email_non_confirme" }, 403);
 
     const { data: artisan, error: errArt } = await sb.from("artisans").select("id, nom_entreprise, actif").eq("user_id", user.id).maybeSingle();
     if (errArt) throw errArt;
@@ -85,7 +97,7 @@ Deno.serve(async (req: Request) => {
     if (texte.length < 10) return json({ error: "Écrivez un message d'au moins 10 caractères.", code: "message_court" }, 400);
     if (texte.length > 1000) return json({ error: "Message trop long (1000 caractères maximum).", code: "message_long" }, 400);
     if (contientCoordonnees(texte)) {
-      return json({ error: "Pour la sécurité du client, n'écrivez ni numéro de téléphone, ni email, ni lien : il décidera lui-même de vous communiquer ses coordonnées à la fin.", code: "coordonnees" }, 400);
+      return json({ error: "Pour la sécurité du client, n'écrivez ni numéro de téléphone (même en lettres), ni email, ni lien, ni nom de messagerie : il décidera lui-même de vous communiquer ses coordonnées à la fin.", code: "coordonnees" }, 400);
     }
     let prix: number | null = null;
     if (prix_indicatif != null && prix_indicatif !== "") {

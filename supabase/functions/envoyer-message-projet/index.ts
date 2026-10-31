@@ -31,10 +31,22 @@ function json(payload: unknown, status = 200): Response {
 function escHtml(s: unknown): string {
   return String(s ?? "").replace(/[&<>"']/g, (m) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }) as Record<string, string>)[m]);
 }
+// Coordonnées interdites dans les messages : numéro de téléphone (chiffres OU écrits en lettres, même coupés par des espaces,
+// points, tirets, lettres), email (avec « @ » ou écrit « arobase »), lien ou nom de site, messageries (WhatsApp, Facebook…).
+const MOTS_CHIFFRES = "zero|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingt|trente|quarante|cinquante|soixante|cent";
 function contientCoordonnees(texte: string): boolean {
-  if (/\d(?:[\s.\-()]*\d){7,}/.test(texte)) return true;
-  if (/@/.test(texte)) return true;
-  if (/(https?:\/\/|www\.)/i.test(texte)) return true;
+  const t = texte.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  // chiffres : 8 ou plus, séparés par des espaces, points, tirets, parenthèses, barres, ou même quelques lettres isolées
+  if (/\d(?:[\s.\-()_*]*\d){7,}/.test(t)) return true;
+  if (/\d(?:[a-z.\-_]{0,2}\d){7,}/.test(t)) return true;
+  // chiffres écrits en lettres : au moins 6 mots-chiffres de suite (zéro six quatre-vingt-dix…)
+  if (new RegExp("(?:\\b(?:" + MOTS_CHIFFRES + ")\\b[\\s.,\\-]*){6,}").test(t)) return true;
+  // mélange chiffres + lettres : au moins 7 éléments « chiffre ou mot-chiffre » de suite
+  if (new RegExp("(?:(?:\\d|\\b(?:" + MOTS_CHIFFRES + ")\\b)[\\s.,\\-]*){7,}").test(t)) return true;
+  if (/@|\barobase\b|\(at\)|\[at\]|\bat\s+(gmail|hotmail|outlook|yahoo|orange|wanadoo|icloud|live|free|sfr)/.test(t)) return true;
+  if (/(https?:\/\/|www\.)/.test(t)) return true;
+  if (/\b[a-z0-9][a-z0-9-]{1,}\s?(?:\.|point|dot)\s?(?:com|fr|net|org|io|gp|app|me|info|eu|biz|co|site|shop)\b/.test(t)) return true;
+  if (/\b(gmail|hotmail|outlook|yahoo|icloud|whats\s?app|watsap|telegram|messenger|snap\s?chat|tik\s?tok|facebook|instagram|insta|signal app)\b/.test(t)) return true;
   return false;
 }
 
@@ -73,7 +85,7 @@ Deno.serve(async (req: Request) => {
     if (texte.length < 1) return json({ error: "Écrivez votre message.", code: "vide" }, 400);
     if (texte.length > 1000) return json({ error: "Message trop long (1000 caractères maximum).", code: "message_long" }, 400);
     if (contientCoordonnees(texte)) {
-      return json({ error: "Pour protéger tout le monde, n'écrivez ni numéro de téléphone, ni email, ni lien. Le client décidera lui-même de partager ses coordonnées à la fin.", code: "coordonnees" }, 400);
+      return json({ error: "Pour protéger tout le monde, n'écrivez ni numéro de téléphone (même en lettres), ni email, ni lien, ni nom de messagerie. Le client décidera lui-même de partager ses coordonnées à la fin.", code: "coordonnees" }, 400);
     }
 
     try {
