@@ -1379,10 +1379,17 @@ function urlPhotoDevis(v) { return _photosSignees[cheminPhotoDevis(v)] || ''; }
 // traitée restait comptée comme « nouvelle » dans la pastille et chez MPA-AI.) Une demande ouverte non prise en charge n'est jamais archivée.
 var _vueDemandes = 'atraiter';
 var _demandesListe = [];
+// Un créneau proposé dont le jour et l'heure sont passés (heure de Guadeloupe, UTC-4) ne peut plus être confirmé ni refusé.
+function creneauDepasse(d) {
+  if (!d || d.statut !== 'creneau_propose' || !d.date_intervention) return false;
+  var h = String(d.heure_debut || '23:59').slice(0, 5);
+  var t = new Date(String(d.date_intervention).slice(0, 10) + 'T' + h + ':00-04:00').getTime();
+  return isFinite(t) && t < Date.now();
+}
 function demandeArchivee(l) {
   if (l.type !== 'privee') return false;
   var st = l.demande && l.demande.statut;
-  return l.reponse_statut === 'traitee' || st === 'creneau_confirme' || st === 'creneau_refuse';
+  return l.reponse_statut === 'traitee' || st === 'creneau_confirme' || st === 'creneau_refuse' || creneauDepasse(l.demande);
 }
 function basculerVueDemandes(v) { _vueDemandes = v === 'archivees' ? 'archivees' : 'atraiter'; renderDemandes(); }
 function renderDemandes() {
@@ -1415,14 +1422,17 @@ function renderDemandes() {
     var dateAff = new Date(d.created_at).toLocaleDateString('fr-FR');
 
     var badgeType;
-    if (d.statut === 'creneau_propose') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(180,83,9,.1);color:#b45309;">📅 Créneau proposé</span>';
+    if (creneauDepasse(d)) badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--brd);color:var(--mu);">⌛ Créneau dépassé</span>';
+    else if (d.statut === 'creneau_propose') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(180,83,9,.1);color:#b45309;">📅 Créneau proposé</span>';
     else if (d.statut === 'creneau_confirme') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(22,163,74,.1);color:#16a34a;">✅ Confirmé</span>';
     else if (d.statut === 'creneau_refuse') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--brd);color:var(--mu);">❌ Refusé</span>';
     else if (l.type === 'privee') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(181,80,47,.1);color:var(--ac);">🔓 Privée</span>';
     else badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(59,130,246,.1);color:#3b82f6;">📢 Ouverte (mise en concurrence)</span>';
 
     var actionsHaut;
-    if (d.statut === 'creneau_propose') {
+    if (creneauDepasse(d)) {
+      actionsHaut = '<span style="font-size:11.5px;color:var(--mu);">Le créneau est passé</span>';
+    } else if (d.statut === 'creneau_propose') {
       actionsHaut = '<div style="display:flex;gap:6px;">' +
           '<button class="addb" style="background:#16a34a;" onclick="repondreCreneauInApp(' + jsAttrLocal(d.token) + ',\'confirmer\')">✅ Confirmer</button>' +
           '<button class="addb" style="background:var(--mu2);" onclick="repondreCreneauInApp(' + jsAttrLocal(d.token) + ',\'refuser\')">❌ Refuser</button>' +

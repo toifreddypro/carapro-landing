@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
         return res.ok;
       } catch (e) { console.error(`[maintenance-reservations] ${fonction} injoignable :`, e); return false; }
     };
-    const bilan = { expirees: 0, relances: 0, liberees: 0, sans_reponse_remboursees: 0, remboursements_rejoues: 0, livraisons_confirmees: 0, cashback_rendus: 0, erreurs: 0 };
+    const bilan = { creneaux_depasses: 0, expirees: 0, relances: 0, liberees: 0, sans_reponse_remboursees: 0, remboursements_rejoues: 0, livraisons_confirmees: 0, cashback_rendus: 0, erreurs: 0 };
     const maintenant = Date.now();
     const aujourdhui = new Date(maintenant - DECALAGE_LOCAL_MS).toISOString().slice(0, 10);
 
@@ -177,6 +177,19 @@ Deno.serve(async (req: Request) => {
         }
       } catch (e) { bilan.erreurs++; console.error("[maintenance-reservations] Réservation payée :", e); }
     }
+
+    // ── 3 bis. Créneaux proposés jamais confirmés ni refusés, dont le jour est PASSÉ, sans paiement en ligne : clos d'office ──
+    // (sinon la demande reste « à traiter » éternellement chez l'artisan, avec une pastille qui ne s'éteint jamais.
+    //  Les réservations déjà PAYÉES sont traitées juste au-dessus, avec remboursement.)
+    try {
+      const { data: perimees } = await sb.from("demandes_devis").select("id").eq("statut", "creneau_propose").lt("date_intervention", aujourdhui).limit(200);
+      for (const d of perimees || []) {
+        const { data: paiements } = await sb.from("paiements_prestations").select("id").eq("demande_id", d.id).in("statut", ["paye", "en_attente", "partiellement_rembourse"]).limit(1);
+        if (paiements && paiements.length) continue;
+        const { data: clos } = await sb.from("demandes_devis").update({ statut: "creneau_refuse", reponse_message: "Créneau dépassé" }).eq("id", d.id).eq("statut", "creneau_propose").select("id");
+        if (clos && clos.length) bilan.creneaux_depasses++;
+      }
+    } catch (e) { bilan.erreurs++; console.error("[maintenance-reservations] Créneaux dépassés :", e); }
 
     // ── 4. Remboursements à rejouer (refus ou annulation dont le remboursement automatique avait échoué) ──
     const { data: aRembourser } = await sb.from("paiements_prestations").select("id, demande_id, intervention_id").eq("statut", "paye").limit(200);
