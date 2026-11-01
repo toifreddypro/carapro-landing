@@ -1190,7 +1190,7 @@ function renderProjetsRecus() {
     var total = autres + window._nbProjetsATraiter + (window._nbMessagesNonLus || 0);
     if (total > 0) { badge.textContent = total; badge.style.display = 'inline-flex'; } else { badge.style.display = 'none'; }
   }
-  zone.innerHTML = _projetsRecus.map(function(p) {
+  zone.innerHTML = (_projetsRecus.length ? '<div class="pj-titre pj-t-proj">📢 Projets publiés par des clients <span>' + _projetsRecus.length + '</span></div>' : '') + _projetsRecus.map(function(p, idxP) {
     var dateAff = new Date(p.created_at).toLocaleDateString('fr-FR');
     var lieu = escHtml(p.commune) + (p.a_distance ? ' · à distance possible' : (p.km != null ? ' · à ~' + escHtml(String(p.km)) + ' km' : ''));
     var photos = (p.photos || []).map(function(c) {
@@ -1221,12 +1221,17 @@ function renderProjetsRecus() {
           '<button type="button" class="addb" style="background:var(--mu2);" onclick="ouvrirReponseProjet(' + jsAttrLocal(p.id) + ')">Annuler</button></div>' +
         '</div>';
     }
-    return '<div style="border:1px solid var(--brd);border-radius:12px;padding:14px;margin-bottom:12px;">' +
-      '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">' +
-        '<strong style="font-size:14.5px;">' + escHtml(p.besoin_icon || '') + ' ' + escHtml(p.besoin_fr) + '</strong>' + compteur + '</div>' +
-      '<div style="font-size:12px;color:var(--mu);margin-top:3px;">📍 ' + lieu + ' · publié le ' + dateAff + '</div>' +
-      '<div style="margin-top:8px;font-size:13.5px;white-space:pre-wrap;">' + escHtml(p.description) + '</div>' +
-      (photos ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">' + photos + '</div>' : '') +
+    // Couleur + étiquette d'état : on voit d'un coup d'œil ce qui attend une réponse.
+    var etatP = p.cloture === 'choisi' ? ['#16a34a', '🎉 Vous êtes choisi'] : p.cloture === 'autre' ? ['#94a3b8', '🔒 Clos'] : p.ma_reponse ? ['#16a34a', '✅ Répondu'] : p.complet ? ['#94a3b8', '⛔ Complet'] : ['#f59e0b', '✍️ À répondre'];
+    return '<div class="pj-carte" style="border-left-color:' + etatP[0] + ';">' +
+      '<div class="pj-entete">' +
+        '<span class="pj-num" style="background:' + etatP[0] + ';">' + (idxP + 1) + '</span>' +
+        '<div class="pj-id"><div class="pj-nom">' + escHtml(p.besoin_icon || '') + ' ' + escHtml(p.besoin_fr) + '</div>' +
+        '<div class="pj-meta">📍 ' + lieu + ' · publié le ' + dateAff + '</div></div>' +
+        '<div class="pj-etat"><span class="pj-pill" style="color:' + etatP[0] + ';border-color:' + etatP[0] + ';">' + etatP[1] + '</span>' + compteur + '</div>' +
+      '</div>' +
+      '<div class="pj-sec pj-besoin"><div class="pj-st">🛠️ Le besoin du client</div><div style="font-size:13.5px;line-height:1.55;white-space:pre-wrap;">' + escHtml(p.description) + '</div>' +
+      (photos ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">' + photos + '</div>' : '') + '</div>' +
       bas + '</div>';
   }).join('');
 }
@@ -1270,12 +1275,14 @@ function renderFilsClients() {
   var zone = document.getElementById('zone-fils');
   if (!zone) return;
   if (!_filsClients.length) { zone.innerHTML = ''; return; }
-  zone.innerHTML = '<div style="font-weight:700;margin-bottom:10px;">💬 Messages de clients</div>' + _filsClients.map(function(f, idx) {
+  zone.innerHTML = '<div class="pj-titre pj-t-msg">💬 Messages de clients <span>' + _filsClients.length + '</span></div>' + _filsClients.map(function(f, idx) {
     var id = escHtml(f.reponse_id);
     var nl = f.nb_non_lus > 0 ? ' <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--danger);color:#fff;">' + f.nb_non_lus + ' nouveau' + (f.nb_non_lus > 1 ? 'x' : '') + '</span>' : '';
-    return '<div style="border:1px solid var(--brd);border-radius:12px;padding:12px 14px;margin-bottom:12px;background:' + (idx % 2 === 0 ? '#ffffff' : '#f3f4f6') + ';">' +
-      '<div style="font-weight:700;">' + escHtml(f.besoin_icon || '') + ' ' + escHtml(f.besoin_fr) + ' <span style="font-weight:400;color:var(--mu);font-size:12.5px;">· ' + escHtml(f.commune) + '</span>' + nl + '</div>' +
-      '<div style="font-size:12.5px;color:var(--mu);margin-top:3px;">' + escHtml(f.description) + '</div>' +
+    var coulF = f.nb_non_lus > 0 ? '#dc2626' : '#3b82f6';
+    return '<div class="pj-carte" style="border-left-color:' + coulF + ';">' +
+      '<div class="pj-entete"><span class="pj-num" style="background:' + coulF + ';">' + (idx + 1) + '</span>' +
+      '<div class="pj-id"><div class="pj-nom">' + escHtml(f.besoin_icon || '') + ' ' + escHtml(f.besoin_fr) + ' <span style="font-weight:400;color:var(--mu);font-size:12.5px;">· ' + escHtml(f.commune) + '</span></div></div>' + nl + '</div>' +
+      '<div class="pj-sec pj-besoin"><div class="pj-st">🛠️ Son besoin</div><div style="font-size:13px;line-height:1.5;">' + escHtml(f.description) + '</div></div>' +
       '<div style="margin-top:8px;"><button type="button" class="addb" onclick="ouvrirFilClient(' + jsAttrLocal(f.reponse_id) + ')" id="fc-bouton-' + id + '">💬 Ouvrir la discussion</button></div>' +
       '<div id="fc-' + id + '" style="display:none;margin-top:10px;"><div id="fc-msgs-' + id + '"></div>' +
       '<div id="fc-form-' + id + '" style="display:none;"><textarea id="fc-txt-' + id + '" rows="3" maxlength="1000" placeholder="Votre message…" style="width:100%;margin-top:8px;padding:9px;border:1px solid var(--brd);border-radius:8px;font-family:inherit;font-size:13px;box-sizing:border-box;"></textarea>' +
@@ -1510,7 +1517,7 @@ function renderDemandes() {
       : 'Aucune demande à traiter ✅' + (nbArchivees ? ' Vos demandes déjà traitées sont dans « Archivées ».' : '')) + '</div>';
     return;
   }
-  var htmlCartes = affichees.map(function(l) {
+  var htmlCartes = affichees.map(function(l, idxD) {
     var d = l.demande;
     var estCreneau = ['creneau_propose', 'creneau_confirme', 'creneau_refuse'].indexOf(d.statut) !== -1;
     var dateAff = new Date(d.created_at).toLocaleDateString('fr-FR');
@@ -1592,6 +1599,7 @@ function renderDemandes() {
     var blocContactSec = '<div class="dm-sec dm-contact"><div class="dm-titre">📞 Contacter ' + escHtml(d.client_nom) + '</div>' + blocContact + '</div>';
     return '<div class="dm-carte" style="border-left-color:' + couleurBord + ';">' +
       '<div class="dm-entete">' +
+        '<span class="pj-num" style="background:' + couleurBord + ';">' + (idxD + 1) + '</span>' +
         '<div class="dm-id">' +
           '<div class="dm-nom">' + escHtml(d.client_nom) + ' ' + badgeType + '</div>' +
           '<div class="dm-meta">' + secteurLabelLocal(d.secteur) + ' · 📍 ' + escHtml(d.commune) + ' · reçue le ' + dateAff + '</div>' +

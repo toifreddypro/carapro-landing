@@ -520,6 +520,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 /* ── Lisibilité : cartes « Mes demandes » ── */
 .dm-carte{border:1px solid var(--brd);border-left:5px solid var(--ac);border-radius:12px;padding:14px;margin-bottom:14px;background:#fff;}
 .dm-entete{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.dm-carte{margin-bottom:18px!important;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.dm-entete .pj-num{margin-top:2px;}
 .dm-id{min-width:0;flex:1 1 220px;}
 .dm-nom{font-size:16px;font-weight:800;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 .dm-meta{font-size:12.5px;color:var(--mu);margin-top:3px;}
@@ -557,6 +559,18 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .cm-suite{background:rgba(139,92,246,.07);border-color:rgba(139,92,246,.26);}.cm-suite .cm-titre{color:#6d28d9;}
 .cm-pied{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-top:2px;}
 .cm-pied button{margin-left:0!important;}
+/* ── Lisibilité : projets et messages de clients ── */
+.pj-titre{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;margin:0 0 12px;padding:8px 12px;border-radius:10px;}
+.pj-titre span{font-size:11.5px;background:#fff;border-radius:20px;padding:1px 9px;}
+.pj-t-proj{background:rgba(245,158,11,.11);color:#b45309;}.pj-t-msg{background:rgba(59,130,246,.09);color:#1d4ed8;}
+.pj-carte{border:1px solid var(--brd);border-left:6px solid var(--ac);border-radius:12px;padding:14px;margin-bottom:18px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.pj-entete{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.pj-num{width:28px;height:28px;border-radius:50%;color:#fff;font-weight:800;font-size:14px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pj-id{flex:1 1 200px;min-width:0;}.pj-nom{font-size:15px;font-weight:800;}.pj-meta{font-size:12px;color:var(--mu);margin-top:2px;}
+.pj-etat{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.pj-pill{font-size:11.5px;font-weight:800;border:1.5px solid;border-radius:20px;padding:3px 10px;background:#fff;}
+.pj-sec{border-radius:10px;padding:10px 12px;border:1px solid var(--brd);}
+.pj-besoin{background:#fafafa;}.pj-st{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#b5502f;margin-bottom:6px;}
 .mi-s-danger{background:rgba(220,38,38,.06);border-color:rgba(220,38,38,.26);}
 .mi-s-danger .mi-section-titre{color:#b91c1c;}
 .mi-resume{display:flex;gap:10px;align-items:flex-start;border-radius:12px;padding:11px 14px;margin:0 0 12px;font-size:13px;line-height:1.5;background:#f8fafc;border:1px solid var(--brd);color:var(--mu2);}
