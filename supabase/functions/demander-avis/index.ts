@@ -9,6 +9,11 @@
 //
 // POST { intervention_id }
 //
+// Sécurité (audit du 01/11) :
+//  - un avis ne se demande QUE pour une intervention PAYÉE EN LIGNE via CaraLink (réservation/solde réglé par carte, ou commande boutique payée) :
+//    sinon un artisan pourrait s'envoyer des avis à lui-même sur une intervention fictive ;
+//  - limite d'envois par artisan (30 par heure, 100 par jour) : la fonction ne peut pas servir à écrire à des inconnus depuis ton domaine.
+//
 // Le lien envoyé au client mène à une page de ton site (caralink.app/artisans/avis.html) : Supabase n'affiche pas
 // les pages HTML sur son domaine par défaut. Le nom de l'entreprise est échappé avant d'entrer dans l'email.
 // ═══════════════════════════════════════════════════════════
@@ -26,6 +31,25 @@ function json(payload: unknown, status = 200): Response {
 
 const PAGE_AVIS = "https://caralink.app/artisans/avis.html";
 const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
+
+// Vrai si l'intervention a été réglée en ligne (paiement encaissé, même partiellement remboursé) : réservation/solde, ou commande boutique livrée.
+async function payeeEnLigne(sb: any, interventionId: string): Promise<boolean> {
+  const { data: pa, error: e1 } = await sb.from("paiements_prestations").select("id")
+    .eq("intervention_id", interventionId).in("statut", ["paye", "partiellement_rembourse"]).limit(1);
+  if (e1) throw e1;
+  if (pa && pa.length) return true;
+  const { data: co, error: e2 } = await sb.from("commandes_catalogue").select("id")
+    .eq("intervention_id", interventionId).in("paiement_statut", ["paye", "partiellement_rembourse"]).limit(1);
+  if (e2) throw e2;
+  return !!(co && co.length);
+}
+async function limiteAtteinte(sb: any, cle: string, max: number, fenetreSecondes: number): Promise<boolean> {
+  try {
+    const { data, error } = await sb.rpc("limiter_appel", { p_cle: cle, p_max: max, p_fenetre_s: fenetreSecondes });
+    if (error) { console.error("[limiter_appel]", error.message); return false; }
+    return data === false;
+  } catch (e) { console.error("[limiter_appel]", e); return false; }
+}
 
 function escHtml(s: unknown): string {
   return String(s ?? "").replace(/[&<>"']/g, (m) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }) as Record<string, string>)[m]);
@@ -65,6 +89,9 @@ Deno.serve(async (req: Request) => {
 
     const { data: artisan } = await sbAdmin.from("artisans").select("id, nom_entreprise").eq("user_id", user.id).maybeSingle();
     if (!artisan) return json({ error: "Aucun profil artisan trouvé." }, 404);
+    if (await limiteAtteinte(sbAdmin, "demander-avis:h:" + artisan.id, 30, 3600) || await limiteAtteinte(sbAdmin, "demander-avis:j:" + artisan.id, 100, 86400)) {
+      return json({ error: "Trop de demandes d'avis envoyées. Réessayez un peu plus tard." }, 429);
+    }
 
     const { data: intervention, error: errI } = await sbAdmin.from("mpa_artisans_interventions")
       .select("id, artisan_id, client_id, statut, avis_token, mpa_artisans_clients(nom, email)")
@@ -73,6 +100,9 @@ Deno.serve(async (req: Request) => {
     if (!intervention) return json({ error: "Intervention introuvable." }, 404);
     if (!["terminee", "payee"].includes(intervention.statut)) {
       return json({ error: "Cette intervention doit être marquée Terminée ou Payée avant de demander un avis." }, 400);
+    }
+    if (!(await payeeEnLigne(sbAdmin, intervention.id))) {
+      return json({ error: "Un avis ne peut être demandé que pour une intervention payée en ligne via CaraLink : c'est ce qui garantit que les avis affichés sont authentiques." }, 400);
     }
     const client = (intervention as any).mpa_artisans_clients;
     if (!client?.email) return json({ error: "Ce client n'a pas d'adresse email enregistrée — impossible de lui envoyer la demande." }, 400);

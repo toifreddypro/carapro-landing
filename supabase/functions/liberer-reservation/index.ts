@@ -16,6 +16,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SITE = "https://caralink.app/artisans";
 const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+function egalConstant(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let e = 0; for (let i = 0; i < a.length; i++) e |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return e === 0;
+}
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { "Content-Type": "application/json" } });
 }
@@ -43,7 +48,7 @@ async function envoyerEmail(to: string, subject: string, html: string): Promise<
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
   const cleService = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  if (req.headers.get("Authorization") !== `Bearer ${cleService}`) return json({ error: "Non autorisé." }, 401);
+  if (!egalConstant(req.headers.get("Authorization") ?? "", `Bearer ${cleService}`)) return json({ error: "Non autorisé." }, 401);
 
   try {
     const body = await req.json().catch(() => null);

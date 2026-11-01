@@ -18,6 +18,8 @@
 //
 // Sécurité :
 //  - la note doit être exactement un entier de 1 à 5, le commentaire est limité à 1000 caractères ;
+//  - un avis n'est enregistré que si l'intervention a été PAYÉE EN LIGNE via CaraLink (vérifié aussi ici, pas seulement à l'envoi de la demande : un lien
+//    plus ancien ou forgé ne peut pas créer un avis sur une intervention réglée en main propre) ;
 //  - un double-clic ne crée pas deux avis (voir securite-avis.sql, et le repli sur la mise à jour ci-dessous) ;
 //  - une erreur interne n'est jamais détaillée.
 // ═══════════════════════════════════════════════════════════
@@ -40,6 +42,17 @@ const MSG_ERREUR_GENERIQUE = "Une erreur est survenue — réessayez plus tard."
 
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
+}
+
+async function payeeEnLigne(sb: any, interventionId: string): Promise<boolean> {
+  const { data: pa, error: e1 } = await sb.from("paiements_prestations").select("id")
+    .eq("intervention_id", interventionId).in("statut", ["paye", "partiellement_rembourse"]).limit(1);
+  if (e1) throw e1;
+  if (pa && pa.length) return true;
+  const { data: co, error: e2 } = await sb.from("commandes_catalogue").select("id")
+    .eq("intervention_id", interventionId).in("paiement_statut", ["paye", "partiellement_rembourse"]).limit(1);
+  if (e2) throw e2;
+  return !!(co && co.length);
 }
 
 Deno.serve(async (req: Request) => {
@@ -103,6 +116,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── POST : enregistrement ──
+    if (!(await payeeEnLigne(sb, intervention.id))) return json({ error: "Les avis ne sont ouverts que pour les interventions payées en ligne via CaraLink.", code: "non_eligible" }, 403);
     if (!encoreModifiable) return json({ error: "Le délai de 7 jours pour modifier votre avis est dépassé.", code: "delai_depasse" }, 410);
     if (!Number.isInteger(note)) return json({ error: "Merci de choisir une note entre 1 et 5 étoiles.", code: "note_manquante" }, 400);
 

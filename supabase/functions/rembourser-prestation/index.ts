@@ -28,6 +28,11 @@ const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 const MSG_ERREUR_GENERIQUE = "Le remboursement n'a pas pu être fait. Réessayez dans un instant.";
 const ORIGINES = ["client", "artisan", "refus", "expiration"];
 
+function egalConstant(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let e = 0; for (let i = 0; i < a.length; i++) e |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return e === 0;
+}
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
@@ -71,7 +76,7 @@ Deno.serve(async (req: Request) => {
     const cleService = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, cleService);
     const authHeader = req.headers.get("Authorization") ?? "";
-    const interne = authHeader === `Bearer ${cleService}`;
+    const interne = egalConstant(authHeader, `Bearer ${cleService}`);
 
     let userId: string | null = null;
     if (!interne) {

@@ -78,7 +78,11 @@ function calculerCommissionAvecSeuil(
 // CA net déjà facturé en ligne par l'artisan depuis le 1er du mois (heure de la Guadeloupe), remboursements déduits.
 // Une commande totalement remboursée compte donc pour 0€ ; une commande partiellement remboursée
 // ne compte que pour ce qu'il en reste.
-async function dejaFactureCeMoisCentimes(sb: any, artisanId: string): Promise<number> {
+// Audit du 01/11 : on compte AUSSI les autres commandes dont le paiement vient d'être ouvert (moins de 30 min) mais pas encore réglé.
+// Sans cela, plusieurs commandes ouvertes en même temps voyaient toutes « 0 € déjà facturé » et échappaient ensemble à la commission.
+// La fenêtre est courte pour qu'un paiement abandonné ne grignote pas la franchise de l'artisan.
+const FENETRE_PAIEMENT_EN_COURS_MS = 30 * 60 * 1000;
+async function dejaFactureCeMoisCentimes(sb: any, artisanId: string, commandeExclue: string): Promise<number> {
   // Début du mois en heure de la Guadeloupe (UTC-4), exprimé en UTC.
   const local = new Date(Date.now() - DECALAGE_LOCAL_MS);
   const debutMoisISO = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), 1) + DECALAGE_LOCAL_MS).toISOString();
@@ -88,7 +92,14 @@ async function dejaFactureCeMoisCentimes(sb: any, artisanId: string): Promise<nu
     .in("paiement_statut", ["paye", "partiellement_rembourse", "rembourse"])
     .gte("created_at", debutMoisISO);
   if (error) throw error;
-  const totalCentimes = (data || []).reduce((somme: number, c: any) => {
+  const { data: enCours, error: errEnCours } = await sb.from("commandes_catalogue")
+    .select("montant_total")
+    .eq("artisan_id", artisanId).eq("paiement_statut", "en_attente").not("stripe_payment_intent_id", "is", null)
+    .neq("id", commandeExclue)
+    .gte("created_at", new Date(Math.max(Date.parse(debutMoisISO), Date.now() - FENETRE_PAIEMENT_EN_COURS_MS)).toISOString());
+  if (errEnCours) throw errEnCours;
+  const totalEnCours = (enCours || []).reduce((somme: number, c: any) => somme + Math.round(Math.max(0, Number(c.montant_total || 0)) * 100), 0);
+  const totalCentimes = totalEnCours + (data || []).reduce((somme: number, c: any) => {
     const net = Number(c.montant_total || 0) - Number(c.montant_rembourse || 0);
     return somme + Math.round(Math.max(0, net) * 100);
   }, 0);
@@ -226,7 +237,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const dejaFacture = await dejaFactureCeMoisCentimes(sb, commande.artisan_id);
+    const dejaFacture = await dejaFactureCeMoisCentimes(sb, commande.artisan_id, commande_id);
     const { commissionCentimes: commission } = calculerCommissionAvecSeuil(
       montantTotal, dejaFacture, SEUIL_GRATUIT_EUROS * 100, tauxCommissionPour(artisanInfos?.plan),
     );
