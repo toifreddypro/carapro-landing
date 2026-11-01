@@ -7036,8 +7036,9 @@ function ouvrirMaLivraison(i, c) {
   var statuts = [['planifiee', 'Planifiée'], ['en_cours', 'En cours'], ['terminee', 'Livrée'], ['payee', 'Livrée et encaissée']];
   var actions = '';
   if (ouverte) {
-    if (!c.livraison_confirmee_le) actions += '<button class="btn-secondary" onclick="prevenirDepuisMaLivraison()">✉️ Prévenir le client maintenant</button>';
-    actions += '<button class="btn-secondary" style="color:#dc2626;" onclick="annulerDepuisMaLivraison()">🚫 Impossible de livrer</button>';
+    var styleBtn = 'flex:1;min-width:150px;padding:11px 14px;border-radius:10px;font-family:\'Outfit\',sans-serif;font-size:13px;font-weight:700;cursor:pointer;background:transparent;';
+    if (!c.livraison_confirmee_le) actions += '<button type="button" style="' + styleBtn + 'border:1.5px solid var(--ac);color:var(--ac);" onclick="prevenirDepuisMaLivraison()">✉️ Prévenir le client maintenant</button>';
+    actions += '<button type="button" style="' + styleBtn + 'border:1.5px solid #dc2626;color:#dc2626;" onclick="annulerDepuisMaLivraison()">🚫 Impossible de livrer</button>';
   }
   document.getElementById('ml-contenu').innerHTML =
     '<h3>🚚 Ma livraison</h3>' +
