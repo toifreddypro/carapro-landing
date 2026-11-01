@@ -1533,12 +1533,23 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-overlay" id="modal-client">
 <div class="modal-box">
 <h3>Ajouter un client habituel</h3>
+<div class="mi-section mi-s-quand">
+<div class="mi-section-titre">👤 Le client</div>
 <div class="modal-field"><label>Nom</label><input id="c-nom" type="text"/></div>
 <div class="modal-field"><label>Email (optionnel — nécessaire pour demander un avis)</label><input id="c-email" type="email"/></div>
+</div>
+<div class="mi-section mi-s-lieu">
+<div class="mi-section-titre">📍 Son adresse</div>
 <div class="modal-field"><label>Adresse</label><input id="c-adr" type="text"/></div>
-<div class="modal-field"><label>Code postal</label><input id="c-cp" type="text"/></div>
-<div class="modal-field"><label>Commune</label><input id="c-com" type="text"/></div>
+<div class="modal-row" style="display:flex;gap:10px;">
+<div class="modal-field" style="flex:1;"><label>Code postal</label><input id="c-cp" type="text"/></div>
+<div class="modal-field" style="flex:2;"><label>Commune</label><input id="c-com" type="text"/></div>
+</div>
+</div>
+<div class="mi-section mi-s-frais">
+<div class="mi-section-titre">💶 Paiement</div>
 <div class="modal-field"><label>Délai de paiement (jours)</label><input id="c-delai" type="number" value="30"/></div>
+</div>
 <div class="modal-actions">
 <button class="btn-primary" onclick="sauverClient()">Ajouter</button>
 <button class="btn-secondary" onclick="fermerModale('modal-client')">Annuler</button>
@@ -1548,8 +1559,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-overlay" id="modal-service">
 <div class="modal-box">
 <h3 id="modal-service-titre">Ajouter un service</h3>
+<div class="mi-section mi-s-quand">
+<div class="mi-section-titre">🛠️ Le service</div>
 <div class="modal-field"><label>Nom du service</label><input id="s-nom" placeholder="Ex : Tonte de pelouse" type="text"/></div>
 <div class="modal-field"><label>Description</label><input id="s-desc" placeholder="Ex : Entretien complet, évacuation des déchets comprise" type="text"/></div>
+</div>
+<div class="mi-section mi-s-frais">
+<div class="mi-section-titre">💶 Durée et tarif</div>
 <div class="modal-field">
 <label>Durée estimée</label>
 <div style="display:flex;align-items:center;gap:6px;">
@@ -1575,6 +1591,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <input id="s-unite" maxlength="30" placeholder="Précisez l'unité" style="flex:1;display:none;" type="text"/>
 </div>
 <div id="s-unite-aide" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu);margin-top:4px;">Au forfait : le prix proposé est le tarif tel quel. À l'heure : il est calculé selon la durée. Autres unités : vous saisissez le total.</div>
+</div>
 </div>
 <div class="modal-actions">
 <button class="btn-primary" id="modal-service-btn" onclick="sauverService()">Ajouter</button>
