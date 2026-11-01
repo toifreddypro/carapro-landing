@@ -846,8 +846,10 @@ function renderCalendrier() {
 // Un statut ne sert que dans des noms de classes CSS : on n'accepte que de simples mots (jamais de guillemet, d'espace ni de chevron).
 function classeStatut(s) { return /^[a-z_-]{1,30}$/.test(s || '') ? s : 'planifiee'; }
 
+// Une case de planning : deux sections nettes (Matin / Après-midi), UNE vignette visible par section puis « +N » (liste du jour).
+// Vignette = barre de couleur du statut + heure + client ; la prestation est dans l'infobulle et dans la fenêtre de détail.
 function renderCreneauHtml(creneau, dateStr, liste) {
-  var maxVisible = 2;
+  var maxVisible = 1;
   var visibles = liste.slice(0, maxVisible);
   var reste = liste.length - maxVisible;
 
@@ -860,10 +862,13 @@ function renderCreneauHtml(creneau, dateStr, liste) {
     var statut = classeStatut(i.statut);
     var statutSuivant = CYCLE_STATUT[statut] || 'planifiee';
     var titreStatut = statut === 'annulee' ? 'Intervention annulée' : 'Statut : ' + LABEL_STATUT[statut] + ' — cliquer pour passer à ' + LABEL_STATUT[statutSuivant];
-    return '<div class="cal-pill st-' + statut + '" onclick="event.stopPropagation();ouvrirIntervention(\'' + i.id + '\')" title="Cliquer pour voir/modifier les détails">' +
+    var icone = estLivraisonIntervention(i) ? '🚚' : '🔧';
+    var texte = client || service;
+    return '<div class="cal-pill st-' + statut + '" onclick="event.stopPropagation();ouvrirIntervention(\'' + i.id + '\')" title="' + escHtml(service + (client ? ' — ' + client : '')) + '">' +
       '<span class="cal-pill-txt">' +
+        '<span class="cal-pill-ico">' + icone + '</span>' +
         (heure ? '<span class="cal-pill-heure">' + heure + '</span> ' : '') +
-        escHtml(service) + (client ? ' — ' + escHtml(client) : '') +
+        escHtml(texte) +
       '</span>' +
       (statut !== 'annulee'
         ? '<span class="cal-status-dot cal-status-' + statut + '" onclick="event.stopPropagation();avancerStatut(\'' + i.id + '\',event)" title="' + titreStatut + '"></span>'
@@ -874,7 +879,7 @@ function renderCreneauHtml(creneau, dateStr, liste) {
   var plus = reste > 0 ? '<div class="cal-more" onclick="event.stopPropagation();ouvrirJourDetail(\'' + dateStr + '\',\'' + creneau + '\')">+' + reste + ' autre' + (reste>1?'s':'') + '</div>' : '';
 
   return '<div class="cal-half cal-half-' + (creneau==='matin'?'matin':'am') + '">' +
-    '<div class="cal-half-label">' + (creneau==='matin'?'Matin':'Aprem') + '</div>' +
+    '<div class="cal-half-label">' + (creneau==='matin'?'☀️ Matin':'🌇 Après-midi') + '</div>' +
     pills + plus +
     '<button class="cal-add-btn" onclick="event.stopPropagation();ouvrirNouvelleIntervention(\'' + dateStr + '\',\'' + creneau + '\')">+</button>' +
   '</div>';
@@ -889,26 +894,36 @@ function ouvrirJourDetail(dateStr, creneau) {
 function ouvrirDetailJourMobile(dateStr) {
   if (!dateStr) return;
   var interDuJour = _interventionsCache.filter(function(i) { return i.date_intervention === dateStr; })
-    .sort(function(a, b) { return (a.creneau === 'apres_midi' ? 1 : 0) - (b.creneau === 'apres_midi' ? 1 : 0) || (a.heure_debut || '').localeCompare(b.heure_debut || ''); });
+    .sort(function(a, b) { return (a.heure_debut || '').localeCompare(b.heure_debut || ''); });
 
   var dateAff = new Date(dateStr + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   var LABEL_STATUT = { planifiee: 'Planifiée', en_cours: 'En cours', terminee: 'Terminée', payee: 'Payée', annulee: 'Annulée' };
+  var COULEUR_STATUT = { planifiee: '#b45309', en_cours: '#6d28d9', terminee: '#1d4ed8', payee: '#15803d', annulee: '#6b7280' };
+  var FOND_STATUT = { planifiee: 'rgba(245,158,11,.14)', en_cours: 'rgba(109,40,217,.12)', terminee: 'rgba(59,130,246,.12)', payee: 'rgba(34,197,94,.14)', annulee: 'rgba(107,114,128,.14)' };
 
-  var liste = interDuJour.length
-    ? interDuJour.map(function(i) {
-        var client = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '—';
-        var service = libelleServiceIntervention(i);
-        var heure = i.heure_debut ? i.heure_debut.slice(0,5) : '';
-        var statut = classeStatut(i.statut);
-        return '<div onclick="fermerModale(\'modal-jour-mobile\');ouvrirIntervention(\'' + i.id + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--brd);cursor:pointer;">' +
-          '<span class="cal-status-dot cal-status-' + statut + '" style="flex-shrink:0;"></span>' +
-          '<div style="flex:1;">' +
-            '<div style="font-size:13.5px;font-weight:600;">' + (heure ? heure + ' — ' : '') + escHtml(service) + '</div>' +
-            '<div style="font-size:12px;color:var(--mu);">' + escHtml(client) + ' · ' + (i.creneau === 'apres_midi' ? 'Après-midi' : 'Matin') + ' · ' + LABEL_STATUT[statut] + '</div>' +
-          '</div>' +
-        '</div>';
-      }).join('')
-    : '<p style="font-size:13px;color:var(--mu);padding:10px 0;">Aucune intervention ce jour-là.</p>';
+  function carte(i) {
+    var client = i.mpa_artisans_clients ? i.mpa_artisans_clients.nom : '—';
+    var service = libelleServiceIntervention(i);
+    var heure = i.heure_debut ? i.heure_debut.slice(0,5) : '';
+    var statut = classeStatut(i.statut);
+    var icone = estLivraisonIntervention(i) ? '🚚' : '🔧';
+    return '<div onclick="fermerModale(\'modal-jour-mobile\');ouvrirIntervention(\'' + i.id + '\')" style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border:1px solid var(--brd);border-left:4px solid ' + (COULEUR_STATUT[statut] || '#b45309') + ';border-radius:10px;background:var(--panel);cursor:pointer;">' +
+      '<div style="font-size:22px;flex-shrink:0;">' + icone + '</div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:14px;font-weight:700;">' + (heure ? escHtml(heure) + ' · ' : '') + escHtml(client) + '</div>' +
+        '<div style="font-size:12.5px;color:var(--mu);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escHtml(service) + '</div>' +
+      '</div>' +
+      '<span style="flex-shrink:0;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:99px;background:' + (FOND_STATUT[statut] || FOND_STATUT.planifiee) + ';color:' + (COULEUR_STATUT[statut] || '#b45309') + ';">' + (LABEL_STATUT[statut] || '') + '</span>' +
+    '</div>';
+  }
+  function section(titre, liste, creneau) {
+    return '<div style="margin:14px 0 6px;font-size:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--mu2);">' + titre + '</div>' +
+      (liste.length
+        ? liste.map(carte).join('')
+        : '<div style="font-size:12.5px;color:var(--mu);padding:8px 0 4px;">Rien de prévu · <a href="#" onclick="event.preventDefault();fermerModale(\'modal-jour-mobile\');ouvrirNouvelleIntervention(\'' + dateStr + '\',\'' + creneau + '\')" style="color:var(--ac);font-weight:700;text-decoration:none;">+ Ajouter</a></div>');
+  }
+  var matin = interDuJour.filter(function(i) { return i.creneau !== 'apres_midi'; });
+  var apm = interDuJour.filter(function(i) { return i.creneau === 'apres_midi'; });
 
   var div = document.getElementById('modal-jour-mobile');
   if (!div) {
@@ -920,8 +935,9 @@ function ouvrirDetailJourMobile(dateStr) {
   div.innerHTML =
     '<div class="modal-box">' +
       '<h3 style="text-transform:capitalize;">' + dateAff + '</h3>' +
-      '<div style="margin:10px 0;">' + liste + '</div>' +
-      '<div class="modal-actions">' +
+      section('☀️ Matin', matin, 'matin') +
+      section('🌇 Après-midi', apm, 'apres_midi') +
+      '<div class="modal-actions" style="margin-top:14px;">' +
         '<button class="btn-primary" onclick="fermerModale(\'modal-jour-mobile\');ouvrirNouvelleIntervention(\'' + dateStr + '\',\'matin\')">+ Ajouter une intervention</button>' +
         '<button class="btn-secondary" onclick="fermerModale(\'modal-jour-mobile\')">Fermer</button>' +
       '</div>' +
