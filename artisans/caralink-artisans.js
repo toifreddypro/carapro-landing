@@ -401,7 +401,7 @@ function renderHero() {
 // ════════════════════════════════════════
 var _infosStats = null, _infosTimer = null, _infosDernier = '', _infosChargement = false;
 
-function normaliserLieu(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+function normaliserLieu(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
 function majusculesLieu(t) { return String(t).toLowerCase().replace(/(^|[\s\-'’])([a-zà-ÿ])/g, function(m, a, b) { return a + b.toUpperCase(); }); }
 
 function calculerInfosStats(artisans) {
@@ -436,7 +436,7 @@ function afficherInfoAuHasard() {
   var choix = tous.filter(function(x) { return x.split('|')[0] !== _infosDernier; });
   var un = (choix.length ? choix : tous)[Math.floor(Math.random() * (choix.length || tous.length))];
   _infosDernier = un.split('|')[0];
-  cadre.style.display = '';
+  cadre.style.display = 'block';
   zone.style.opacity = '0';
   setTimeout(function() { zone.innerHTML = un.slice(un.indexOf('|') + 1); zone.style.opacity = '1'; }, zone.innerHTML ? 250 : 0);
 }
