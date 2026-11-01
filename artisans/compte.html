@@ -154,6 +154,7 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
     <button class="tab on" id="t-cmd" onclick="ongletApp('cmd')" data-i18n="cpt_onglet_commandes"></button>
     <button class="tab" id="t-credits" onclick="ongletApp('credits')" data-i18n="cpt_onglet_credits"></button>
     <button class="tab" id="t-rdv" onclick="ongletApp('rdv')" data-i18n="cpt_onglet_rdv"></button>
+    <button class="tab" id="t-carnet" onclick="ongletApp('carnet')" data-i18n="cpt_onglet_carnet"></button>
     <button class="tab" id="t-projets" onclick="ongletApp('projets')" data-i18n="prj_onglet"></button>
     <button class="tab" id="t-profil" onclick="ongletApp('profil')" data-i18n="cpt_onglet_profil"></button>
   </div>
@@ -163,6 +164,8 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
   <div id="p-credits" style="display:none;"><div class="vide" data-i18n="cpt_chargement"></div></div>
 
   <div id="p-rdv" style="display:none;"><div class="vide" data-i18n="cpt_chargement"></div></div>
+
+  <div id="p-carnet" style="display:none;"><div class="vide" data-i18n="cpt_chargement"></div></div>
 
   <div id="p-projets" style="display:none;">
     <div id="prj-ok" class="msg ok"></div>
@@ -281,6 +284,7 @@ function lienRetourBoutique(){
 function voirMdp(id, b){ var i=document.getElementById(id); i.type = i.type==='password'?'text':'password'; }
 function euros(n){ return Number(n||0).toLocaleString(AT_LANG==='en'?'en-GB':AT_LANG==='es'?'es-ES':'fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
 function dateCourte(d){ if(!d) return ''; var x=new Date(String(d).slice(0,10)+'T12:00:00Z'); return x.toLocaleDateString(AT_LANG==='en'?'en-GB':AT_LANG==='es'?'es-ES':'fr-FR',{day:'numeric',month:'long',timeZone:'UTC'}); }
+function dateAnnee(d){ if(!d) return ''; var x=new Date(String(d).slice(0,10)+'T12:00:00Z'); return x.toLocaleDateString(AT_LANG==='en'?'en-GB':AT_LANG==='es'?'es-ES':'fr-FR',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}); }
 function dateLongueGP(d){ if(!d) return ''; return new Date(d).toLocaleDateString(AT_LANG==='en'?'en-GB':AT_LANG==='es'?'es-ES':'fr-FR',{day:'numeric',month:'long',year:'numeric',timeZone:'America/Guadeloupe'}); }
 
 // Langue
@@ -370,12 +374,14 @@ async function ouvrirEspace(user){
   document.getElementById('p-com').value = PROFIL.commune || '';
   document.getElementById('p-email').value = user.email || '';
   document.getElementById('bandeau-infos').style.display = (PROFIL.adresse && PROFIL.commune && PROFIL.telephone) ? 'none' : '';
-  vue('v-app'); ongletApp((VEUT_PROJET || VEUT_LISTE) ? 'projets' : 'cmd'); chargerCommandes(); chargerRdv(); chargerCredits(); chargerProjets(); chargerEtatModeration();
+  vue('v-app'); ongletApp((VEUT_PROJET || VEUT_LISTE) ? 'projets' : 'cmd'); chargerCommandes(); chargerRdv(); chargerCarnet(); chargerCredits(); chargerProjets(); chargerEtatModeration();
   if (VEUT_PROJET) ouvrirFormProjet();
 }
 function ongletApp(o){
   document.getElementById('p-cmd').style.display = o==='cmd'?'':'none';
   document.getElementById('p-rdv').style.display = o==='rdv'?'':'none';
+  document.getElementById('p-carnet').style.display = o==='carnet'?'':'none';
+  document.getElementById('t-carnet').classList.toggle('on', o==='carnet');
   document.getElementById('p-credits').style.display = o==='credits'?'':'none';
   document.getElementById('t-credits').classList.toggle('on', o==='credits');
   document.getElementById('p-projets').style.display = o==='projets'?'':'none';
@@ -516,6 +522,37 @@ async function chargerRdv(){
 }
 
 // ── Crédits cashback (par boutique, jamais de total global) ──
+// ── Mon carnet d'entretien : les services qui reviennent, avec la date du prochain entretien et le choix de recevoir (ou non) le rappel par email ──
+function carteCarnet(l){
+  var passe = l.prochain && String(l.prochain).slice(0,10) <= new Date(Date.now()-4*3600*1000).toISOString().slice(0,10);
+  var quand = '<div class="cmd-lignes">'+esc(fill(T('cpt_carnet_derniere'),{d:dateAnnee(l.derniere)}))+'</div>'
+            + '<div class="cmd-info'+(passe?' ok':'')+'">'+esc(passe ? T('cpt_carnet_a_prevoir') : fill(T('cpt_carnet_prochain'),{d:dateAnnee(l.prochain)}))+'</div>';
+  var actions = '';
+  if (l.disponible && l.artisan_id) {
+    actions += '<a class="btn" style="display:block;text-align:center;text-decoration:none;margin-top:10px;" href="'+BASE_PAGES+'?artisan='+encodeURIComponent(l.artisan_id)+'">'+esc(T('cpt_carnet_reprendre'))+'</a>';
+    if (l.telephone) actions += '<div class="cmd-contact">📞 <a href="tel:'+esc(String(l.telephone).replace(/[^+\d]/g,''))+'">'+esc(fill(T('cpt_contacter'),{nom:l.artisan||''}))+'</a></div>';
+  } else {
+    actions += '<div class="hint" style="margin-top:8px;">'+esc(T('cpt_carnet_indispo'))+'</div><a class="btn sec" style="display:block;text-align:center;text-decoration:none;margin-top:8px;" href="'+BASE_PAGES+'">'+esc(T('cpt_carnet_trouver'))+'</a>';
+  }
+  var rappel = '<label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13.5px;cursor:pointer;"><input type="checkbox" '+(l.actif?'checked ':'')+'onchange="basculerCarnet(\''+esc(l.id)+'\',this)" style="width:18px;height:18px;"> '+esc(T('cpt_carnet_rappel'))+'</label>';
+  return '<div class="card"><div class="cmd-tete"><div class="cmd-art">'+esc(l.artisan||'')+'</div><div class="cmd-date">🔧 '+esc(l.service||'')+'</div></div>'+quand+actions+rappel+'</div>';
+}
+async function basculerCarnet(id, cb){
+  cb.disabled = true;
+  var r = await sb.rpc('carnet_basculer', {p_id:id, p_actif:cb.checked});
+  cb.disabled = false;
+  if (r.error || r.data !== true) { cb.checked = !cb.checked; alert(T('cpt_err_generique')); }
+}
+async function chargerCarnet(){
+  var zone = document.getElementById('p-carnet');
+  var r = await sb.rpc('mon_carnet');
+  if (r.error) { zone.innerHTML = '<div class="vide">'+esc(T('cpt_carnet_aucun'))+'</div>'; return; } // fonction pas encore installée : le carnet reste vide, sans bruit
+  var l = r.data || [];
+  var t = document.getElementById('t-carnet');
+  t.textContent = T('cpt_onglet_carnet') + (l.length ? ' (' + l.length + ')' : '');
+  if (!l.length) { zone.innerHTML = '<div class="vide">'+esc(T('cpt_carnet_aucun'))+'</div><p class="sub" style="text-align:center;">'+esc(T('cpt_carnet_info'))+'</p>'; return; }
+  zone.innerHTML = '<p class="sub">'+esc(T('cpt_carnet_info'))+'</p>' + l.map(carteCarnet).join('');
+}
 async function chargerCredits(){
   var zone = document.getElementById('p-credits');
   var r = await sb.rpc('mes_credits');

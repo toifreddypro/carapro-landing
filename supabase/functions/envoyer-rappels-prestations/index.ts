@@ -220,6 +220,14 @@ Deno.serve(async (req: Request) => {
       }
     } catch (e) { console.error("[envoyer-rappels-prestations] maintenance-reservations injoignable :", e); }
 
+    // Carnet d'entretien : rappels aux clients dont un entretien arrive à échéance (voir envoyer-rappels-entretien). Jamais bloquant.
+    try {
+      if (CRON_SECRET) {
+        const m2 = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/envoyer-rappels-entretien`, { method: "POST", headers: { "X-Cron-Secret": CRON_SECRET, "Content-Type": "application/json" }, body: "{}" });
+        if (!m2.ok) console.error("[envoyer-rappels-prestations] envoyer-rappels-entretien a répondu", m2.status);
+      }
+    } catch (e) { console.error("[envoyer-rappels-prestations] envoyer-rappels-entretien injoignable :", e); }
+
     // Commissions impayées : relances (7 j, 14 j) et suspension (30 j). Jamais bloquant pour les rappels.
     let commissions: unknown = null;
     try { commissions = await traiterCommissionsImpayees(sb); } catch (e) { console.error("[envoyer-rappels-prestations] commissions impayées :", e); }

@@ -4012,6 +4012,14 @@ async function imprimerFacture(factureId) {
     if (articles.length && Math.abs(ecart) > 0.004) lignesHtml += '<tr><td>' + dateCmd + '</td><td>' + (cmd && Number(cmd.cashback_utilise) > 0 ? 'Remise / crédit cashback' : 'Remise / ajustement') + '</td><td>1</td><td>' + ecart.toFixed(2) + '€</td><td>' + ecart.toFixed(2) + '€</td></tr>';
   }
 
+  // Facture d'intervention : si le client a payé avec une remise (code promo, client fidèle) ou du crédit cashback, le total facturé est inférieur au prix
+  // de l'intervention : une ligne le dit clairement (même principe que les commandes de la boutique).
+  if (!facture.commande_id && lignes && lignes.length) {
+    var sommeLignes = lignes.reduce(function(t, l) { return t + (Number(l.prix) || 0); }, 0);
+    var ecartInt = Math.round(((Number(facture.montant_total) || 0) - sommeLignes) * 100) / 100;
+    if (ecartInt < -0.004) lignesHtml += '<tr><td></td><td>Remise / crédit cashback</td><td>1</td><td>' + ecartInt.toFixed(2) + '€</td><td>' + ecartInt.toFixed(2) + '€</td></tr>';
+  }
+
   document.getElementById('facture-print').innerHTML =
     '<div class="fp-page">' +
       '<div class="fp-header">' +
@@ -7762,6 +7770,7 @@ async function chargerServices() {
   var { data, error } = await sb.from('artisans_services').select('*').eq('artisan_id', _artisan.id).order('ordre', { ascending: true });
   if (error) { console.error(error); return; }
   _servicesCache = data || [];
+  if (_servicesCache.length) _servicesAvecRappel = Object.prototype.hasOwnProperty.call(_servicesCache[0], 'rappel_mois');
   document.getElementById('cnt-s').textContent = _servicesCache.length;
   renderServices(_servicesCache);
 }
@@ -7776,7 +7785,7 @@ function renderServices(liste) {
     var prix = s.prix_indicatif ? (s.prix_indicatif + '€' + (s.unite ? '/' + s.unite : '')) : '<span style="font-style:italic;color:var(--mu);">Sur devis</span>';
     var duree = s.duree_estimee_min ? formatDuree(s.duree_estimee_min) : '—';
     return '<tr>' +
-      '<td><strong>' + escHtml(s.nom_service) + '</strong></td>' +
+      '<td><strong>' + escHtml(s.nom_service) + '</strong>' + (s.rappel_mois ? '<div style="font-size:11px;color:var(--mu);margin-top:2px;" title="Rappel d\'entretien envoyé à vos clients">🔔 rappel ' + (s.rappel_mois % 12 === 0 ? (s.rappel_mois / 12) + ' an' + (s.rappel_mois > 12 ? 's' : '') : s.rappel_mois + ' mois') + '</div>' : '') + '</td>' +
       '<td>' + escHtml(s.description||'—') + '</td>' +
       '<td>' + duree + '</td>' +
       '<td>' + prix + '</td>' +
@@ -7803,6 +7812,7 @@ function filtrerServices() {
   }));
 }
 
+var _servicesAvecRappel = null; // inconnu tant qu'on n'a pas lu les services
 function openAjouterService() {
   _serviceEnCours = null;
   document.getElementById('modal-service-titre').textContent = 'Ajouter un service';
@@ -7811,6 +7821,7 @@ function openAjouterService() {
   document.getElementById('s-desc').value = '';
   document.getElementById('s-duree').value = '';
   document.getElementById('s-prix').value = '';
+  document.getElementById('s-rappel').value = '';
   positionnerUnite('forfait');
   ouvrirModale('modal-service');
 }
@@ -7825,6 +7836,7 @@ function ouvrirService(id) {
   document.getElementById('s-desc').value = s.description || '';
   document.getElementById('s-duree').value = s.duree_estimee_min || '';
   document.getElementById('s-prix').value = s.prix_indicatif || '';
+  document.getElementById('s-rappel').value = s.rappel_mois != null ? String(s.rappel_mois) : '';
   positionnerUnite(s.unite);
   ouvrirModale('modal-service');
 }
@@ -7867,6 +7879,9 @@ async function sauverService() {
     prix_indicatif: parseFloat(document.getElementById('s-prix').value) || null,
     unite: lireUnite(),
   };
+  // Rappel d'entretien (colonne rappel_mois : retour-client-3.sql). Sans la colonne, on n'envoie rien plutôt que d'échouer.
+  var rappelBrut = document.getElementById('s-rappel').value;
+  if (_servicesAvecRappel !== false || rappelBrut !== '') maj.rappel_mois = rappelBrut === '' ? null : parseInt(rappelBrut, 10);
   var res;
   if (_serviceEnCours) {
     res = await sb.from('artisans_services').update(maj).eq('id', _serviceEnCours).eq('artisan_id', _artisan.id);
@@ -7874,6 +7889,7 @@ async function sauverService() {
     maj.ordre = _servicesCache.length;
     res = await sb.from('artisans_services').insert(maj);
   }
+  if (res.error && /rappel_mois/.test(res.error.message || '')) { alert('Le rappel d\'entretien n\'est pas encore activé sur votre compte (mise à jour en cours). Réessayez plus tard.'); return; }
   if (res.error) { alert('Erreur : ' + res.error.message); return; }
   fermerModale('modal-service');
   await chargerServices();
