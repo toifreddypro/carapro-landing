@@ -158,6 +158,13 @@ Deno.serve(async (req: Request) => {
     const notes = (toutesLesNotes || []).map((a: any) => Number(a.note)).filter((n: number) => Number.isFinite(n));
     const noteMoyenne = notes.length ? Math.round((notes.reduce((s: number, n: number) => s + n, 0) / notes.length) * 10) / 10 : null;
 
+    // « Nouveau sur CaraLink » : inscrit depuis moins de 90 jours ET moins de 3 avis (même règle que l'annuaire). Jamais une recommandation.
+    const { data: dateInscription } = await sb.from("artisans").select("created_at").eq("id", id).maybeSingle();
+    const nouveau = !!dateInscription?.created_at
+      && new Date(dateInscription.created_at).getTime() > Date.now() - 90 * 24 * 3600 * 1000
+      && notes.length < 3;
+    artisan.nouveau = nouveau;
+
     return json({
       artisan,
       services: services || [],

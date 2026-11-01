@@ -578,7 +578,9 @@ async function chargerArtisans() {
     }
 
     if (_searchState.tri === 'note') {
+      // Tri choisi par le visiteur (jamais l'ordre par défaut) : sans avis = en dernier, sans jugement.
       artisans.sort(function(a, b) {
+        if (a.note_moyenne == null && b.note_moyenne == null) return 0;
         if (a.note_moyenne == null) return 1;
         if (b.note_moyenne == null) return -1;
         return b.note_moyenne - a.note_moyenne;
@@ -648,7 +650,11 @@ function pastillesServicesCarte(services) {
 }
 function pastillesSpecialesCarte(a) {
   var h = '';
+  // « Nouveau sur CaraLink » : neutre (ni étoile ni doré), jamais une recommandation. Le texte complet est dans l'infobulle et sur la fiche.
+  if (a.nouveau) h += '<span class="badge-trust bt-blue" title="' + escHtml(T('badge_nouveau_info')) + '">' + escHtml(T('badge_nouveau')) + '</span>';
   if (a.verifie) h += '<span class="badge-trust bt-green" title="SIRET et assurance vérifiés">✅ ' + T('badge_verifie') + '</span>';
+  if (a.a_photos) h += '<span class="badge-trust bt-more">📷 ' + escHtml(T('badge_photos')) + '</span>';
+  if (a.profil_complet) h += '<span class="badge-trust bt-more">📝 ' + escHtml(T('badge_complet')) + '</span>';
   if (a.alternance_niveau >= 2) h += '<span class="badge-trust bt-purple" title="Cette entreprise s\'engage activement pour la formation locale">🟠 Tremplin des jeunes</span>';
   if (a.tarif_min != null) h += '<span class="badge-trust bt-accent">' + T('des_prefix') + ' ' + a.tarif_min + '€</span>';
   return h;
@@ -692,7 +698,9 @@ function renderArtisanCard(a) {
     '</div>' +
     (a.bio ? '<div class="card-bio">' + escHtml(a.bio) + '</div>' : '') +
     '<div class="card-meta">' +
-      '<div class="card-stars">' + etoilesCarte(noteAff) + '<span>' + noteAff.toFixed(1) + ' (' + nb + ' ' + (nb === 1 ? T('avis_un') : T('avis_plusieurs')) + ')</span></div>' +
+      (nb > 0
+        ? '<div class="card-stars">' + etoilesCarte(noteAff) + '<span>' + noteAff.toFixed(1) + ' (' + nb + ' ' + (nb === 1 ? T('avis_un') : T('avis_plusieurs')) + ')</span></div>'
+        : '<div class="card-stars"><span style="color:var(--mu2,#777);">' + escHtml(T('avis_aucun_court')) + '</span></div>') +
       '<div class="card-badges" id="dispo-carte-' + escHtml(a.id) + '"></div>' +
     '</div>' +
     '<div class="dispo-grid" id="grille-carte-' + escHtml(a.id) + '" style="display:none;"></div>' +
@@ -911,6 +919,7 @@ function buildProfilHTML(data) {
         '<div style="display:flex;gap:14px;align-items:center;">' + photo +
           '<div><div style="font-family:Fraunces,serif;font-size:19px;font-weight:700;">' + escHtml(a.nom_entreprise) + '</div>' +
           '<div style="font-size:13px;color:var(--mu2,#777);">' + secteurLabel(a.secteur) + ' · 📍 ' + escHtml(a.commune) + '</div>' +
+          (a.nouveau ? '<span class="badge-trust bt-blue" style="margin-top:4px;margin-right:6px;display:inline-block;">' + escHtml(T('badge_nouveau')) + '</span>' : '') +
           (a.verifie ? '<span class="badge-trust bt-green" style="margin-top:4px;display:inline-block;">✅ ' + T('badge_verifie') + '</span>' : '') +
           (a.alternance_niveau >= 2 ? '<span title="Cette entreprise s\'engage activement pour la formation locale" style="margin-top:4px;margin-left:6px;display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,158,11,.12);color:#b45309;">🟠 Tremplin des jeunes</span>' : '') +
           '</div>' +
@@ -920,6 +929,7 @@ function buildProfilHTML(data) {
           '<button onclick="fermerProfil({target:this,currentTarget:this})" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--mu,#999);">✕</button>' +
         '</div>' +
       '</div>' +
+      (a.nouveau ? '<p style="font-size:12.5px;color:var(--mu2,#777);margin:-6px 0 14px;">' + escHtml(T('badge_nouveau_info')) + '</p>' : '') +
       (a.bio ? '<p style="font-size:14px;line-height:1.6;margin-bottom:18px;">' + escHtml(a.bio) + '</p>' : '') +
       '<div style="font-weight:700;margin-bottom:6px;">' + T('services_titre') + '</div>' + servicesHtml +
       photosHtml +

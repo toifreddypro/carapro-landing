@@ -634,6 +634,7 @@ function carteReponse(p, r){
   var photo = (a.photo_profil_url && /^https:\/\//.test(a.photo_profil_url)) ? '<img src="'+esc(a.photo_profil_url)+'" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex:none;">' : '<div style="width:44px;height:44px;border-radius:50%;background:#eef1f6;flex:none;display:flex;align-items:center;justify-content:center;">🛠️</div>';
   var avis = a.nb_avis > 0 ? esc(fill(T('prj_rep_avis'),{note:String(a.note_moyenne).replace('.',AT_LANG==='en'?'.':','), n:a.nb_avis})) : esc(T('prj_rep_sans_avis'));
   var verifie = a.verifie ? ' <span class="prj-badge">✓ '+esc(T('prj_rep_verifie'))+'</span>' : '';
+  if (a.nouveau) verifie += ' <span class="prj-badge off" title="'+esc(T('badge_nouveau_info'))+'">'+esc(T('badge_nouveau'))+'</span>';
   var prix = r.prix_indicatif != null ? '<div class="cmd-total">'+esc(fill(T('prj_rep_prix'),{p:euros(r.prix_indicatif)}))+'</div>' : '';
   var garder = p.peut_relancer ? '<label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:13px;cursor:pointer;"><input type="checkbox" '+(r.garde?'checked ':'')+'onchange="marquerGarde(\''+esc(r.id)+'\', this.checked)"> '+esc(T('prj_rep_garder'))+'</label>' : '';
   var engageable = p.statut === 'ouvert' && !r.fil_ferme;

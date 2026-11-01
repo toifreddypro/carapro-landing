@@ -124,6 +124,7 @@ Deno.serve(async (req: Request) => {
     if (!r?.ok) {
       const messages: Record<string, [string, number]> = {
         complet: ["Ce projet a déjà reçu ses 6 réponses.", 409],
+        place_reservee: ["La dernière place de ce projet est gardée 24 heures pour un artisan récemment inscrit sur CaraLink. Elle s'ouvrira à tous au bout de 24 heures si elle est encore libre.", 409],
         deja: ["Vous avez déjà répondu à ce projet (ou il ne vous est plus proposé).", 409],
         ferme: ["Ce projet est clos ou expiré.", 409],
         non_eligible: ["Ce projet ne correspond pas à votre métier ou à votre zone.", 403],

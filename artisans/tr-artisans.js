@@ -50,6 +50,11 @@ var AT_TR = {
     erreur_generale: "Une erreur est survenue. Réessayez dans un instant.",
 
     badge_verifie: "Vérifié",
+    badge_nouveau: "Nouveau sur CaraLink",
+    badge_nouveau_info: "Cet artisan vient de rejoindre CaraLink. Cela ne signifie pas qu'il débute dans son métier.",
+    badge_photos: "Photos de réalisations",
+    badge_complet: "Profil complet",
+    avis_aucun_court: "Pas encore d'avis",
     des_prefix: "Dès",
 
     sur_devis: "Sur devis",
@@ -316,6 +321,11 @@ var AT_TR = {
     erreur_generale: "Something went wrong. Please try again in a moment.",
 
     badge_verifie: "Verified",
+    badge_nouveau: "New on CaraLink",
+    badge_nouveau_info: "This craftsperson has just joined CaraLink. It does not mean they are new to their trade.",
+    badge_photos: "Photos of past work",
+    badge_complet: "Complete profile",
+    avis_aucun_court: "No reviews yet",
     des_prefix: "From",
 
     sur_devis: "Quote on request",
@@ -582,6 +592,11 @@ var AT_TR = {
     erreur_generale: "Ha ocurrido un error. Inténtalo de nuevo en un momento.",
 
     badge_verifie: "Verificado",
+    badge_nouveau: "Nuevo en CaraLink",
+    badge_nouveau_info: "Este profesional acaba de unirse a CaraLink. Eso no significa que sea nuevo en su oficio.",
+    badge_photos: "Fotos de trabajos realizados",
+    badge_complet: "Perfil completo",
+    avis_aucun_court: "Aún sin reseñas",
     des_prefix: "Desde",
 
     sur_devis: "Presupuesto a medida",
