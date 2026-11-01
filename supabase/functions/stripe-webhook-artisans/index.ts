@@ -481,6 +481,22 @@ async function traiterPaiementReussi(intent: any, compteEvenement: string | null
     return;
   }
 
+  // Preuve que c'est BIEN notre paiement (audit du 01/11) : les métadonnées d'un paiement direct sont écrites par celui qui le crée, et l'artisan
+  // peut créer un paiement sur son propre compte avec l'identifiant de sa commande. On exige donc que ce soit le paiement enregistré par
+  // creer-paiement-commande pour cette commande, et que le montant encaissé soit celui de la commande. Sinon : rien n'est modifié, l'administrateur est prévenu.
+  {
+    const attenduCentimes = Math.round(Number(commande.montant_total) * 100);
+    const recuCentimes = Number(intent.amount_received ?? intent.amount);
+    if (commande.stripe_payment_intent_id !== intent.id || recuCentimes !== attenduCentimes) {
+      console.error("[stripe-webhook-artisans] Paiement non reconnu pour la commande", commandeId, intent.id);
+      await alerterAdmin("Paiement non reconnu : commande laissée non payée", [
+        `Commande ${commandeId} : le paiement ${intent.id} (${recuCentimes / 100} € encaissés) ne correspond pas au paiement enregistré par CaraLink (${commande.stripe_payment_intent_id || "aucun"}, ${attenduCentimes / 100} € attendus).`,
+        "Rien n'a été modifié. Si un vrai client a payé (par exemple pendant un changement de montant), vérifiez dans le Dashboard Stripe et traitez la commande à la main.",
+      ]);
+      return;
+    }
+  }
+
   // Commande avec paiement obligatoire : on « réclame » le traitement. Une seule livraison de l'événement obtient la réclamation :
   // un événement rejoué ne retire pas le stock deux fois et n'envoie pas l'email deux fois.
   const { data: reclame, error: errReclame } = await sbAdmin.from("commandes_catalogue")
@@ -578,6 +594,17 @@ async function traiterPaiementPrestation(intent: any, compteEvenement: string | 
 
   // Normal : « en attente » → « payé » (une seule livraison de l'événement obtient la réclamation).
   if (p.statut === "en_attente") {
+    // Même preuve que pour les commandes (audit du 01/11) : c'est le paiement créé par CaraLink pour cette ligne, pour le bon montant.
+    const attenduPrestation = Math.round(Number(p.montant) * 100);
+    const recuPrestation = Number(intent.amount_received ?? intent.amount);
+    if (p.stripe_payment_intent_id !== intent.id || recuPrestation !== attenduPrestation) {
+      console.error("[stripe-webhook-artisans] Paiement de prestation non reconnu", id, intent.id);
+      await alerterAdmin("Paiement de prestation non reconnu : laissé en attente", [
+        `Paiement ${id} : l'événement ${intent.id} (${recuPrestation / 100} € encaissés) ne correspond pas au paiement enregistré par CaraLink (${p.stripe_payment_intent_id || "aucun"}, ${attenduPrestation / 100} € attendus).`,
+        "Rien n'a été modifié. Si un vrai client a payé, vérifiez dans le Dashboard Stripe et traitez-le à la main.",
+      ]);
+      return;
+    }
     const { data: reclame, error: errR } = await sbAdmin.from("paiements_prestations").update({
       statut: "paye", paye_le: new Date().toISOString(), stripe_payment_intent_id: intent.id, stripe_account: compte, updated_at: new Date().toISOString(),
     }).eq("id", id).eq("statut", "en_attente").select("id");
@@ -728,8 +755,11 @@ Deno.serve(async (req: Request) => {
 
     const event = JSON.parse(payload);
 
-    if (event.type.startsWith("customer.subscription.")) await appliquerAbonnement(event.data.object);
     const compteEvenement: string | null = typeof event.account === "string" && event.account ? event.account : null; // présent pour les paiements directs
+    // Audit du 01/11 : les abonnements Pro et la carte de commission se passent TOUJOURS sur le compte de CaraLink (jamais sur celui d'un artisan).
+    // Un événement qui vient du compte Stripe d'un artisan (event.account) est donc ignoré ici : sinon un artisan pourrait créer, sur SON compte,
+    // un abonnement portant son identifiant en métadonnée et s'accorder le Pro gratuitement.
+    if (event.type.startsWith("customer.subscription.") && !compteEvenement) await appliquerAbonnement(event.data.object);
     if (event.type === "payment_intent.succeeded") {
       await traiterPaiementReussi(event.data.object, compteEvenement);
       await traiterPaiementPrestation(event.data.object, compteEvenement);
@@ -739,7 +769,7 @@ Deno.serve(async (req: Request) => {
       await traiterRemboursement(event.data.object, compteEvenement);
       await traiterRemboursementPrestation(event.data.object, compteEvenement);
     }
-    if (event.type === "setup_intent.succeeded") await traiterCarteEnregistree(event.data.object);
+    if (event.type === "setup_intent.succeeded" && !compteEvenement) await traiterCarteEnregistree(event.data.object);
     if (event.type === "account.updated") await traiterCompteConnect(event.data.object);
 
     return new Response(JSON.stringify({ received: true }), { headers: { "Content-Type": "application/json" } });
