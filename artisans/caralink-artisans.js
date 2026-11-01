@@ -321,6 +321,33 @@ function renderNav() {
 // ════════════════════════════════════════
 var _searchState = { secteur:'', commune:'', nom:'', tri:'' };
 
+// Bouton « boutique » doré à paillettes (même esprit que l'enseigne « BOUTIQUE » : lettres dorées scintillantes).
+(function() {
+  if (document.getElementById('style-boutique-or')) return;
+  var st = document.createElement('style'); st.id = 'style-boutique-or';
+  st.textContent =
+    '.btn-boutique-or{position:relative;display:inline-flex;align-items:center;gap:6px;padding:9px 17px;border-radius:999px;overflow:hidden;' +
+      'font-size:13px;font-weight:800;letter-spacing:.3px;text-decoration:none;color:#3b2704;text-shadow:0 1px 0 rgba(255,244,196,.7);' +
+      'border:1px solid #9a7412;' +
+      'background:' +
+        'radial-gradient(circle at 18% 30%,rgba(255,255,255,.95) 0 1.2px,transparent 1.7px),' +
+        'radial-gradient(circle at 42% 72%,rgba(255,255,255,.85) 0 1px,transparent 1.5px),' +
+        'radial-gradient(circle at 63% 28%,rgba(255,255,255,.9) 0 1.3px,transparent 1.8px),' +
+        'radial-gradient(circle at 82% 66%,rgba(255,255,255,.85) 0 1px,transparent 1.5px),' +
+        'radial-gradient(circle at 30% 50%,rgba(120,80,0,.35) 0 .9px,transparent 1.4px),' +
+        'radial-gradient(circle at 72% 45%,rgba(120,80,0,.3) 0 .9px,transparent 1.4px),' +
+        'linear-gradient(135deg,#f6dc82 0%,#d9a928 28%,#f9e9a1 50%,#c9951a 72%,#efce62 100%);' +
+      'background-size:26px 20px,31px 22px,23px 19px,29px 21px,17px 15px,21px 17px,100% 100%;' +
+      'box-shadow:0 2px 8px rgba(154,116,18,.4),inset 0 1px 0 rgba(255,255,255,.55);}' +
+    '.btn-boutique-or::after{content:"";position:absolute;top:0;left:-70%;width:45%;height:100%;' +
+      'background:linear-gradient(100deg,transparent,rgba(255,255,255,.65),transparent);transform:skewX(-18deg);animation:boutique-or-brille 3.6s ease-in-out infinite;}' +
+    '@keyframes boutique-or-brille{0%,55%{left:-70%}100%{left:130%}}' +
+    '.btn-boutique-or:hover{filter:brightness(1.06);box-shadow:0 3px 12px rgba(154,116,18,.55),inset 0 1px 0 rgba(255,255,255,.6);}' +
+    '.btn-boutique-or-large{display:flex;justify-content:center;margin-top:12px;padding:11px 16px;font-size:13.5px;}' +
+    '@media (prefers-reduced-motion:reduce){.btn-boutique-or::after{animation:none;display:none;}}';
+  document.head.appendChild(st);
+})();
+
 function renderHero() {
   var hero = document.getElementById('hero');
   if (!hero) return;
@@ -355,6 +382,7 @@ function renderHero() {
           '<button class="filter-pill" title="' + T('filter_bientot_title') + '" style="opacity:.55;cursor:not-allowed;" onclick="return false;">' + T('filter_dispo') + '</button>' +
           '<button class="filter-pill' + (_searchState.tri==='note'?' active':'') + '" onclick="trierPar(\'note\')">' + T('filter_note') + '</button>' +
         '</div>' +
+        '<div class="infos-defil" id="infos-defil" aria-live="polite"><span id="infos-defil-txt"></span></div>' +
         '<div style="margin-top:14px;font-size:12.5px;color:var(--mu);">' +
           '📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">' + T('hero_devisgen_lien') + '</a>' +
           T('hero_devisgen_suite') +
@@ -366,6 +394,87 @@ function renderHero() {
         '</div>' +
       '</div>' +
     '</div>';
+  demarrerInfosAnnuaire();
+}
+
+// ════════════════════════════════════════
+//  BANDEAU D'INFOS QUI DÉFILENT (annuaire) : nombre d'artisans sur le site, dans une commune, dans un secteur.
+//  Chiffres calculés une seule fois depuis la liste publique (aucune fonction de plus), puis tirés au hasard.
+// ════════════════════════════════════════
+var _infosStats = null, _infosTimer = null, _infosDernier = '', _infosChargement = false;
+
+function normaliserLieu(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+function majusculesLieu(t) { return String(t).toLowerCase().replace(/(^|[\s\-'’])([a-zà-ÿ])/g, function(m, a, b) { return a + b.toUpperCase(); }); }
+
+function calculerInfosStats(artisans) {
+  var communes = {}, secteurs = {};
+  artisans.forEach(function(a) {
+    var c = String(a.commune || '').trim();
+    if (c) { var k = normaliserLieu(c); (communes[k] = communes[k] || { nom: majusculesLieu(c), n: 0 }).n++; }
+    if (a.secteur) { (secteurs[a.secteur] = secteurs[a.secteur] || { code: a.secteur, n: 0 }).n++; }
+  });
+  return {
+    total: artisans.length,
+    communes: Object.keys(communes).map(function(k) { return communes[k]; }),
+    secteurs: Object.keys(secteurs).map(function(k) { return secteurs[k]; })
+  };
+}
+
+function messagesInfos() {
+  if (!_infosStats || !_infosStats.total) return [];
+  var m = [], st = _infosStats;
+  var n = function(x) { return x + ' ' + (x > 1 ? T('artisan_plusieurs') : T('artisan_un')); };
+  m.push('total|' + '🛠️ ' + escHtml(T('info_total_avant')) + ' <b>' + n(st.total) + '</b> ' + escHtml(T('info_total_apres')));
+  st.communes.forEach(function(c) { m.push('c:' + c.nom + '|📍 <b>' + n(c.n) + '</b> ' + escHtml(T('info_commune')) + ' <b>' + escHtml(c.nom) + '</b>'); });
+  st.secteurs.forEach(function(x) { m.push('s:' + x.code + '|' + escHtml(T('info_secteur_avant')) + ' <b>' + secteurLabel(x.code) + '</b> : <b>' + n(x.n) + '</b>'); });
+  return m;
+}
+
+function afficherInfoAuHasard() {
+  var zone = document.getElementById('infos-defil-txt'), cadre = document.getElementById('infos-defil');
+  if (!zone || !cadre) { clearInterval(_infosTimer); _infosTimer = null; return; }
+  var tous = messagesInfos();
+  if (!tous.length) { cadre.style.display = 'none'; return; }
+  var choix = tous.filter(function(x) { return x.split('|')[0] !== _infosDernier; });
+  var un = (choix.length ? choix : tous)[Math.floor(Math.random() * (choix.length || tous.length))];
+  _infosDernier = un.split('|')[0];
+  cadre.style.display = '';
+  zone.style.opacity = '0';
+  setTimeout(function() { zone.innerHTML = un.slice(un.indexOf('|') + 1); zone.style.opacity = '1'; }, zone.innerHTML ? 250 : 0);
+}
+
+async function demarrerInfosAnnuaire() {
+  if (!document.getElementById('style-infos-defil')) {
+    var st = document.createElement('style'); st.id = 'style-infos-defil';
+    st.textContent = '.infos-defil{display:none;margin:16px auto 0;max-width:560px;padding:9px 18px;border-radius:999px;background:rgba(255,255,255,.75);border:1px solid var(--line,#e3eaf4);font-size:13.5px;color:var(--ink,#13223c);text-align:center;min-height:20px;}' +
+      '.infos-defil b{color:var(--ac,#B5502F);}' +
+      '#infos-defil-txt{display:inline-block;transition:opacity .25s ease;}' +
+      '@media (prefers-reduced-motion:reduce){#infos-defil-txt{transition:none;}}';
+    document.head.appendChild(st);
+  }
+  var cadre = document.getElementById('infos-defil');
+  if (cadre && !cadre.dataset.survol) {
+    cadre.dataset.survol = '1';
+    cadre.addEventListener('mouseenter', function() { cadre.dataset.pause = '1'; });
+    cadre.addEventListener('mouseleave', function() { delete cadre.dataset.pause; });
+  }
+  if (!_infosStats && !_infosChargement) {
+    _infosChargement = true;
+    try {
+      var res = await fetch(SUPABASE_URL + '/functions/v1/lister-artisans', { headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON } });
+      var data = await res.json();
+      if (!data.error && Array.isArray(data.artisans)) _infosStats = calculerInfosStats(data.artisans);
+    } catch (e) { /* le bandeau reste simplement caché */ }
+    _infosChargement = false;
+  }
+  if (!_infosStats) return;
+  afficherInfoAuHasard();
+  clearInterval(_infosTimer);
+  _infosTimer = setInterval(function() {
+    var c = document.getElementById('infos-defil');
+    if (c && c.dataset.pause) return;
+    afficherInfoAuHasard();
+  }, 6000);
 }
 
 function trierPar(critere) {
@@ -832,7 +941,7 @@ async function chargerApercuCarte(id) {
           : '<div class="phare-mini phare-mini-vide" title="' + escHtml(p.nom) + '">📦</div>';
       }).join('');
       var lienBoutique = data.slug_catalogue
-        ? '<a href="catalogue.html?s=' + encodeURIComponent(data.slug_catalogue) + '" class="phares-lien" target="_blank" rel="noopener" onclick="event.stopPropagation();" style="display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:999px;background:var(--ac);color:#fff;font-size:13px;font-weight:700;text-decoration:none;box-shadow:0 2px 8px rgba(181,80,47,.28);">🛍️ ' + escHtml(T('phares_voir_boutique')) + ' →</a>'
+        ? '<a href="catalogue.html?s=' + encodeURIComponent(data.slug_catalogue) + '" class="phares-lien btn-boutique-or" target="_blank" rel="noopener" onclick="event.stopPropagation();">🛍️ ' + escHtml(T('phares_voir_boutique')) + ' →</a>'
         : '';
       var promoVentes = !data.avantages || !data.avantages.code_promo || data.avantages.code_promo.ventes !== false; // code réservé aux interventions : pas à côté de la boutique
       var promo = (data.code_promo && promoVentes)
@@ -989,7 +1098,7 @@ function buildProfilHTML(data) {
           '</div>';
         }).join('') +
       '</div>' +
-      (data.artisan.slug_catalogue ? '<a href="catalogue.html?s=' + encodeURIComponent(data.artisan.slug_catalogue) + '" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:12px;padding:10px 14px;border-radius:999px;background:var(--ac,#B5502F);color:#fff;font-size:13.5px;font-weight:700;text-decoration:none;box-shadow:0 2px 8px rgba(181,80,47,.28);">🛍️ Voir toute la boutique →</a>' : '') +
+      (data.artisan.slug_catalogue ? '<a href="catalogue.html?s=' + encodeURIComponent(data.artisan.slug_catalogue) + '" target="_blank" rel="noopener" class="btn-boutique-or btn-boutique-or-large">🛍️ Voir toute la boutique →</a>' : '') +
       ((data.artisan.code_promo && data.artisan.code_promo_ventes !== false) ? '<div style="text-align:center;margin-top:8px;font-family:monospace;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:7px;background:rgba(181,80,47,.08);color:var(--ac,#B5502F);border:1px dashed var(--ac,#B5502F);display:inline-block;">🎁 ' + escHtml(data.artisan.code_promo) + '</div>' : '')
     : '';
 

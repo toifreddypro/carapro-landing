@@ -6793,6 +6793,9 @@ async function chargerCommandes() {
   var nouvelles = _commandesCache.filter(function(c) { return c.statut === 'nouvelle'; }).length;
   var badge = document.getElementById('cnt-commandes');
   if (badge) { badge.style.display = nouvelles ? 'inline-block' : 'none'; badge.textContent = nouvelles; }
+  // La pastille de l'onglet principal « Mes ventes » reprend celle de « Mes commandes » (même principe que « Mes interventions »).
+  var pastilleVentes = document.getElementById('cnt-nt-ventes');
+  if (pastilleVentes) { pastilleVentes.textContent = nouvelles; pastilleVentes.style.display = nouvelles ? 'inline-flex' : 'none'; }
 }
 
 function trouverInterventionProche(commune) {
