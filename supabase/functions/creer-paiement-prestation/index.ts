@@ -18,6 +18,10 @@
 //  - un paiement déjà réglé, remboursé, annulé ou expiré n'est jamais repayé ; un lien de réservation expire au bout de 60 minutes ;
 //  - UN SEUL paiement Stripe actif par ligne (réutilisé si même montant, clé d'idempotence contre les doubles appels) ;
 //  - compte Stripe de l'artisan contrôlé (modèle « paiements directs » : Stripe porte les pertes, frais Stripe à la charge de l'artisan) ;
+//  - « retour du client » (01/11/2026), pour le paiement final (« solde ») seulement : une remise « client déjà venu » automatique, un code promo
+//    (compte client connecté, une seule fois par client et par artisan) et du crédit cashback. UNE seule remise sur le prix : la plus avantageuse ;
+//    le crédit s'utilise en plus. Le client paie toujours au moins 0,50 €. Tout est recalculé ICI, jamais pris de la page. Le montant encaissé par
+//    carte devient « montant » (commission, reçus et remboursements n'ont rien à changer) ; le prix d'origine est gardé dans « montant_brut ».
 //  - commission : 7 % (5 % pour un artisan Pro) au-dessus de 200 € par mois sur le canal « prestations » (le prélèvement mensuel tient compte de ce qui est déjà commissionné ici), le mois commençant à l'heure de la Guadeloupe.
 // ═══════════════════════════════════════════════════════════
 
@@ -69,6 +73,82 @@ async function dejaFactureCeMoisCentimes(sb: any, artisanId: string, sauf?: stri
   return total;
 }
 
+const estPro = (plan: string | null | undefined) => plan === "pro" || plan === "pro_offert";
+
+function codePromoValide(a: any): boolean {
+  if (!a || !a.code_promo || !String(a.code_promo).trim() || !estPro(a.plan)) return false;
+  const pct = Number(a.code_promo_pct);
+  if (!(pct >= 1 && pct <= 50)) return false;
+  if (a.code_promo_fin) {
+    const aujourdhui = new Date(Date.now() - DECALAGE_LOCAL_MS).toISOString().slice(0, 10);
+    if (String(a.code_promo_fin).slice(0, 10) < aujourdhui) return false;
+  }
+  return true;
+}
+
+async function limiteAtteinte(sb: any, cle: string, max: number, fenetreSecondes: number): Promise<boolean> {
+  try {
+    const { data, error } = await sb.rpc("limiter_appel", { p_cle: cle, p_max: max, p_fenetre_s: fenetreSecondes });
+    if (error) { console.error("[limiter_appel]", error.message); return false; }
+    return data === false;
+  } catch (e) { console.error("[limiter_appel]", e); return false; }
+}
+
+// Le client connecté (facultatif) : son jeton de connexion prouve qui il est. Pas de jeton valable = paiement « invité » (remise automatique seulement).
+async function clientConnecte(sb: any, jeton: unknown): Promise<string | null> {
+  if (typeof jeton !== "string" || jeton.length < 20 || jeton.length > 4000) return null;
+  try { const { data } = await sb.auth.getUser(jeton); return data?.user?.id ?? null; } catch (_) { return null; }
+}
+
+interface Prix { brut: number; remise: number; origine: "code" | "fidele" | null; codeRetenu: string | null; codeStatut: string | null; fidelePct: number; credit: number; creditDisponible: number; net: number; }
+
+// Le prix réellement payé (en centimes). Tout vient de la base : le navigateur n'envoie que « code saisi » et « utiliser mon crédit ».
+async function calculerPrix(sb: any, p: any, artisan: any, userId: string | null, codeSaisi: string, utiliserCredit: boolean): Promise<Prix> {
+  const brut = Math.round(Number(p.montant_brut ?? p.montant) * 100);
+  const res: Prix = { brut, remise: 0, origine: null, codeRetenu: null, codeStatut: null, fidelePct: 0, credit: 0, creditDisponible: 0, net: brut };
+  if (p.type !== "solde" || p.statut !== "en_attente") return res;
+  const plafond = Math.max(0, brut - MONTANT_MINIMUM_CENTIMES); // jamais moins de 0,50 € à payer par carte
+
+  // 1) Remise « client déjà venu » (automatique, offre Pro).
+  let remiseFidele = 0;
+  const pctF = Number(artisan.remise_fidele_pct);
+  if (estPro(artisan.plan) && pctF >= 1 && pctF <= 20 && p.client_email) {
+    const { data: venu, error } = await sb.rpc("client_deja_venu", { p_artisan: artisan.id, p_email: p.client_email, p_intervention: p.intervention_id });
+    if (error) throw error;
+    if (venu === true) { remiseFidele = Math.round(brut * pctF / 100); res.fidelePct = pctF; }
+  }
+
+  // 2) Code promo (compte client connecté, une seule utilisation par client et par artisan).
+  let remiseCode = 0;
+  if (codeSaisi) {
+    if (!userId) res.codeStatut = "connexion_requise";
+    else if (!codePromoValide(artisan) || String(artisan.code_promo).trim().toLowerCase() !== codeSaisi.toLowerCase()) res.codeStatut = "invalide";
+    else {
+      const { data: deja, error } = await sb.rpc("code_promo_deja_utilise", { p_user: userId, p_artisan: artisan.id });
+      if (error) throw error;
+      if (deja === true) res.codeStatut = "deja_utilise";
+      else { res.codeStatut = "ok"; remiseCode = Math.round(brut * Number(artisan.code_promo_pct) / 100); }
+    }
+  }
+
+  // UNE seule remise sur le prix : la plus avantageuse. (Si la remise « client déjà venu » est meilleure, le code n'est pas utilisé : il n'est pas « brûlé ».)
+  if (remiseCode > 0 && remiseCode >= remiseFidele) { res.remise = remiseCode; res.origine = "code"; res.codeRetenu = String(artisan.code_promo).trim(); }
+  else if (remiseFidele > 0) { res.remise = remiseFidele; res.origine = "fidele"; if (res.codeStatut === "ok") res.codeStatut = "fidele_plus_avantageuse"; }
+  res.remise = Math.min(res.remise, plafond);
+  if (res.remise <= 0) { res.remise = 0; res.origine = null; res.codeRetenu = null; }
+
+  // 3) Crédit cashback (s'ajoute à la remise). On remet dans le disponible ce que CE paiement a déjà réservé (le client peut changer d'avis).
+  if (userId) {
+    const { data: solde, error } = await sb.rpc("cashback_solde", { p_user: userId, p_artisan: artisan.id });
+    if (error) throw error;
+    const dejaReserve = p.client_user_id === userId ? Math.round(Number(p.cashback_utilise || 0) * 100) : 0;
+    res.creditDisponible = Math.max(0, Math.round(Number(solde || 0) * 100) + dejaReserve);
+    if (utiliserCredit) res.credit = Math.max(0, Math.min(res.creditDisponible, plafond - res.remise));
+  }
+  res.net = brut - res.remise - res.credit;
+  return res;
+}
+
 async function fetchAvecReprise(url: string, init: RequestInit): Promise<Response> {
   let res = await fetch(url, init);
   for (let i = 1; i <= 4 && res.status === 409; i++) { await new Promise((r) => setTimeout(r, 300 * i)); res = await fetch(url, init); }
@@ -115,6 +195,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
 
+  let creditReserve: string | null = null; // paiement sur lequel du crédit vient d'être réservé (rendu si la préparation échoue)
   try {
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Requête invalide." }, 400);
@@ -128,7 +209,7 @@ Deno.serve(async (req: Request) => {
     if (!p) return json({ error: "Ce lien de paiement n'existe pas ou n'est plus valable." }, 404);
 
     const { data: artisan, error: errA } = await sb.from("artisans")
-      .select("id, nom_entreprise, stripe_connect_account_id, stripe_connect_statut, plan").eq("id", p.artisan_id).maybeSingle();
+      .select("id, nom_entreprise, stripe_connect_account_id, stripe_connect_statut, plan, code_promo, code_promo_pct, code_promo_fin, cashback_pct, remise_fidele_pct").eq("id", p.artisan_id).maybeSingle();
     if (errA) throw errA;
     if (!artisan) return json({ error: "Artisan introuvable." }, 404);
 
@@ -148,9 +229,22 @@ Deno.serve(async (req: Request) => {
     const delaiGratuitDejaPasse = heures > 0 && Number.isFinite(debutRdv) && Date.now() > debutRdv - heures * 3600 * 1000;
     const conditions = p.type === "reservation" ? conditionsReservation(montant, heures, demande?.type_intervention ?? null, artisan.nom_entreprise, delaiGratuitDejaPasse) : [];
 
+    // Le client connecté (facultatif), le code saisi et le choix « utiliser mon crédit » : recalculés par le serveur à chaque appel.
+    const userId = await clientConnecte(sb, body.access_token);
+    const codeSaisi = typeof body.code_promo === "string" ? body.code_promo.trim().slice(0, 40) : "";
+    const utiliserCredit = body.utiliser_credit === true;
+    if (codeSaisi) {
+      const ip = (req.headers.get("x-forwarded-for") || "inconnue").split(",")[0].trim();
+      if (await limiteAtteinte(sb, `code-promo-presta:${p.id}:${ip}`, 15, 600)) return json({ error: "Trop d'essais. Réessayez dans quelques minutes." }, 429);
+    }
+    const prix = await calculerPrix(sb, p, artisan, userId, codeSaisi, utiliserCredit);
+
     if (action === "infos") {
       return json({
-        type: p.type, statut: statutEffectif, montant, artisan: artisan.nom_entreprise,
+        type: p.type, statut: statutEffectif, montant: statutEffectif === "en_attente" ? prix.net / 100 : montant, artisan: artisan.nom_entreprise,
+        montant_brut: prix.brut / 100, remise: prix.remise / 100, remise_origine: prix.origine, fidele_pct: prix.fidelePct,
+        connecte: !!userId, credit_disponible: prix.creditDisponible / 100, credit_applique: prix.credit / 100, code_statut: prix.codeStatut,
+        cashback_pct: estPro(artisan.plan) && Number(artisan.cashback_pct) >= 1 ? Number(artisan.cashback_pct) : null,
         client_nom: p.client_nom, description: p.description,
         date_affichee: demande?.date_intervention ? dateFr(demande.date_intervention) : null,
         heure: demande?.heure_debut ? String(demande.heure_debut).slice(0, 5) : null,
@@ -182,7 +276,27 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Cet artisan doit réactiver ses paiements en ligne." }, 400);
     }
 
-    const montantCentimes = Math.round(montant * 100);
+    // Remise, code et crédit : figés ICI, avant le paiement. Le crédit est réservé tout de suite (et rendu si le client abandonne).
+    if (p.type === "solde") {
+      if (prix.credit > 0) {
+        const { data: pris, error: errCredit } = await sb.rpc("cashback_reserver_prestation", { p_paiement: p.id, p_user: userId, p_artisan: p.artisan_id, p_montant: prix.credit / 100 });
+        if (errCredit) throw errCredit;
+        const reel = Math.round(Number(pris || 0) * 100);
+        if (reel !== prix.credit) { prix.credit = reel; prix.net = prix.brut - prix.remise - reel; } // le solde a changé entre-temps
+        creditReserve = p.id;
+      } else if (Number(p.cashback_utilise || 0) > 0) {
+        const { error: errRendre } = await sb.rpc("cashback_rendre_prestation", { p_paiement: p.id });
+        if (errRendre) throw errRendre;
+      }
+      const { error: errPrix } = await sb.from("paiements_prestations").update({
+        montant_brut: prix.brut / 100, montant: prix.net / 100, remise_montant: prix.remise / 100, remise_origine: prix.origine,
+        code_promo: prix.codeRetenu, cashback_utilise: prix.credit / 100,
+        cashback_pct: estPro(artisan.plan) && Number(artisan.cashback_pct) >= 1 ? Number(artisan.cashback_pct) : null,
+        client_user_id: userId ?? p.client_user_id ?? null, updated_at: new Date().toISOString(),
+      }).eq("id", p.id).eq("statut", "en_attente");
+      if (errPrix) throw errPrix;
+    }
+    const montantCentimes = p.type === "solde" ? prix.net : Math.round(montant * 100);
     if (!Number.isFinite(montantCentimes) || montantCentimes < MONTANT_MINIMUM_CENTIMES) return json({ error: "Montant invalide." }, 400);
 
     // Un seul paiement actif : on réutilise celui qui est ouvert pour le même montant.
@@ -194,7 +308,7 @@ Deno.serve(async (req: Request) => {
         if (st === "succeeded") return json({ error: "Ce paiement a déjà été réglé." }, 409);
         if (st === "processing") return json({ error: "Un paiement est déjà en cours. Patientez quelques instants." }, 409);
         if (["requires_payment_method", "requires_confirmation", "requires_action"].includes(st)) {
-          if (ancien.data.amount === montantCentimes && ancien.data.client_secret) return json({ client_secret: ancien.data.client_secret, stripe_account: compte });
+          if (ancien.data.amount === montantCentimes && ancien.data.client_secret) return json({ client_secret: ancien.data.client_secret, stripe_account: compte, montant: montantCentimes / 100 });
           try { await stripeCall(`payment_intents/${encodeURIComponent(ancienId)}/cancel`, {}, undefined, compte); } catch (e) { console.error("[creer-paiement-prestation] Annulation de l'ancien paiement impossible :", e); }
         }
       }
@@ -226,10 +340,14 @@ Deno.serve(async (req: Request) => {
       try { await stripeCall(`payment_intents/${encodeURIComponent(intent.id)}/cancel`, {}, undefined, compte); } catch (e) { console.error("[creer-paiement-prestation] Annulation impossible :", e); }
       throw new Error("Mise à jour du paiement impossible.");
     }
-    return json({ client_secret: intent.client_secret, stripe_account: compte });
+    return json({ client_secret: intent.client_secret, stripe_account: compte, montant: montantCentimes / 100 });
 
   } catch (e) {
     console.error("[creer-paiement-prestation]", e);
+    if (creditReserve) {
+      try { await createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!).rpc("cashback_rendre_prestation", { p_paiement: creditReserve }); }
+      catch (e2) { console.error("[creer-paiement-prestation] Crédit non rendu (le ménage de nuit s'en chargera) :", e2); }
+    }
     if ((e as any)?.stripeCode === "idempotency_error") return json({ error: "Votre paiement est en cours de préparation. Patientez un instant puis réessayez." }, 409);
     return json({ error: MSG_ERREUR_GENERIQUE }, 500);
   }

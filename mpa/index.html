@@ -863,6 +863,17 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <span style="font-size:12px;color:var(--mu);">Vide = pas de cashback.</span>
 </div>
 <div id="cashback-statut" style="font-size:12px;color:var(--mu);margin-top:8px;"></div>
+<div style="font-size:12px;color:var(--mu);margin-top:10px;line-height:1.5;">💡 Le cashback s'applique aussi à vos <strong>interventions payées en ligne</strong> : le crédit est gagné quand le client règle le paiement final.</div>
+<div style="border-top:1px solid var(--brd);margin-top:14px;padding-top:12px;">
+<div style="font-size:13px;font-weight:700;margin-bottom:4px;">🤝 Remise « client fidèle » <span style="font-size:11px;font-weight:700;color:var(--ac);">Offre Pro</span></div>
+<div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.5;">Un client <strong>déjà venu chez vous</strong> (intervention terminée) a automatiquement cette remise sur le paiement final de sa nouvelle intervention. Il n'y a rien à faire. <strong>Une seule remise sur le prix</strong> : s'il utilise aussi un code promo, c'est la plus avantageuse des deux qui compte.</div>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+<input id="remise-fidele-pct" type="number" min="1" max="20" step="1" placeholder="% (1-20)" style="width:110px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;"/>
+<button class="addb" id="btn-remise-fidele" onclick="sauverRemiseFidele()" style="flex-shrink:0;">Enregistrer</button>
+<span style="font-size:12px;color:var(--mu);">Vide = pas de remise.</span>
+</div>
+<div id="remise-fidele-statut" style="font-size:12px;color:var(--mu);margin-top:8px;"></div>
+</div>
 </div></div>
 <div class="dcard carte-repliable carte-repliee" style="margin-top:16px;"><div class="dchdr fam-violet" role="button" tabindex="0" aria-expanded="false" onclick="basculerCarte(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();basculerCarte(this);}"><div class="dctit">🎨 Personnaliser ma boutique <span style="font-size:11px;font-weight:700;color:var(--ok,#059669);">Gratuit</span></div><span class="hdr-sub">Image, fond, couleurs, police, coordonnées</span><span class="chev" aria-hidden="true">▾</span></div><div class="carte-corps" style="padding:16px;">
 <div style="font-size:12px;color:var(--mu);margin-bottom:10px;line-height:1.5;">Votre boutique est votre vitrine : donnez-lui votre image. Le <strong>logo</strong> se change dans « Mon profil ».</div>

@@ -9,7 +9,29 @@
   var SITE_RETOUR = 'https://caralink.app/artisans/';
   var token = new URLSearchParams(location.search).get('token') || '';
   var racine = document.getElementById('contenu');
+  var SUPABASE_URL = 'https://uzgboxfxpxazhysusewv.supabase.co';
+  var SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
+  var PAGE_COMPTE = 'compte.html';
   var infos = null, stripe = null, elements = null;
+  var choix = { code: '', credit: false }; // ce que le client a demandé ; le prix, lui, est toujours recalculé par le serveur
+
+  // Le jeton de connexion du client (même site que compte.html). Expiré ? renouvelé ; impossible ? on paie comme invité.
+  async function jetonClient() {
+    var cle = 'sb-uzgboxfxpxazhysusewv-auth-token';
+    try {
+      var o = JSON.parse(localStorage.getItem(cle) || 'null');
+      if (!o || !o.access_token) return null;
+      if (o.expires_at && o.expires_at * 1000 > Date.now() + 30000) return o.access_token;
+      if (!o.refresh_token) return null;
+      var r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON }, body: JSON.stringify({ refresh_token: o.refresh_token }) });
+      if (!r.ok) return null;
+      var n = await r.json();
+      if (!n.access_token) return null;
+      o.access_token = n.access_token; o.refresh_token = n.refresh_token || o.refresh_token; o.expires_at = n.expires_at || (Math.floor(Date.now() / 1000) + (n.expires_in || 3600)); if (n.user) o.user = n.user;
+      try { localStorage.setItem(cle, JSON.stringify(o)); } catch (e) {}
+      return o.access_token;
+    } catch (e) { return null; }
+  }
 
   function el(tag, classe, texte) { var n = document.createElement(tag); if (classe) n.className = classe; if (texte != null) n.textContent = texte; return n; }
   function ecran() { racine.textContent = ''; for (var i = 0; i < arguments.length; i++) if (arguments[i]) racine.appendChild(arguments[i]); }
@@ -17,7 +39,14 @@
   function message(titre, texte, ton) { ecran(el('h1', ton || 'neutre', titre), el('p', '', texte)); }
 
   async function appel(corps) {
-    var res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ token: token }, corps)) });
+    var extra = { token: token };
+    if (corps.action === 'infos' || corps.action === 'payer') {
+      var jeton = await jetonClient();
+      if (jeton) extra.access_token = jeton;
+      if (choix.code) extra.code_promo = choix.code;
+      if (choix.credit) extra.utiliser_credit = true;
+    }
+    var res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign(extra, corps)) });
     var data = await res.json().catch(function () { return {}; });
     if (!res.ok || data.error) { var e = new Error(data.error || 'Une erreur est survenue. Réessayez dans un instant.'); e.statut = res.status; throw e; }
     return data;
@@ -31,14 +60,49 @@
     return r;
   }
 
+  // Détail du prix (paiement final seulement) : prix, remise, crédit, à payer.
+  function ligne(libelle, valeur, classe) { var l = el('div', 'ligne' + (classe ? ' ' + classe : '')); l.appendChild(el('span', '', libelle)); l.appendChild(el('span', '', valeur)); return l; }
+  function detailPrix() {
+    var d = el('div', 'detail');
+    d.appendChild(ligne('Prix de la prestation', euros(infos.montant_brut)));
+    if (infos.remise > 0) d.appendChild(ligne(infos.remise_origine === 'code' ? 'Code promo' : 'Remise « client fidèle »' + (infos.fidele_pct ? ' (' + infos.fidele_pct + ' %)' : ''), '− ' + euros(infos.remise), 'vert'));
+    if (infos.credit_applique > 0) d.appendChild(ligne('Votre crédit CaraLink', '− ' + euros(infos.credit_applique), 'vert'));
+    d.appendChild(ligne('À payer', euros(infos.montant), 'total'));
+    return d;
+  }
+  var MSG_CODE = { invalide: "Ce code n'est pas valable pour cet artisan.", deja_utilise: 'Vous avez déjà utilisé ce code chez cet artisan : il ne sert qu\'une fois.', connexion_requise: 'Connectez-vous à votre compte CaraLink pour utiliser un code promo.', fidele_plus_avantageuse: 'Votre remise « client fidèle » est plus avantageuse : elle est appliquée, votre code reste utilisable une prochaine fois.' };
+  async function recalculer() { try { infos = await appel({ action: 'infos' }); } catch (e) { /* on garde l'écran */ } afficherPaiement(); }
+  function optionsRemise() {
+    var z = el('div', 'options');
+    if (!infos.connecte) {
+      var a = el('a', 'lien-compte', 'Vous avez un compte CaraLink ? Connectez-vous pour utiliser un code promo ou votre crédit.'); a.href = PAGE_COMPTE; z.appendChild(a);
+      if (infos.cashback_pct) z.appendChild(el('p', 'astuce', 'Avec un compte CaraLink, ' + infos.cashback_pct + ' % de ce paiement vous est rendu en crédit chez ' + infos.artisan + '.'));
+      return z;
+    }
+    if (infos.credit_disponible > 0) {
+      var lab = el('label', 'case'); var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = choix.credit;
+      lab.appendChild(cb); lab.appendChild(el('span', '', 'Utiliser mon crédit chez ' + infos.artisan + ' (' + euros(infos.credit_disponible) + ' disponibles)'));
+      cb.addEventListener('change', function () { choix.credit = cb.checked; recalculer(); });
+      z.appendChild(lab);
+    }
+    var rang = el('div', 'rang-code'); var inp = document.createElement('input'); inp.type = 'text'; inp.placeholder = 'Code promo'; inp.maxLength = 40; inp.value = choix.code; inp.setAttribute('aria-label', 'Code promo'); inp.autocomplete = 'off';
+    var ok = el('button', 'secondaire', 'Appliquer'); ok.type = 'button';
+    ok.addEventListener('click', function () { choix.code = inp.value.trim(); recalculer(); });
+    rang.appendChild(inp); rang.appendChild(ok); z.appendChild(rang);
+    if (choix.code && infos.code_statut && infos.code_statut !== 'ok') z.appendChild(el('p', 'alerte', MSG_CODE[infos.code_statut] || 'Code non appliqué.'));
+    if (infos.cashback_pct) z.appendChild(el('p', 'astuce', infos.cashback_pct + ' % de ce paiement vous seront rendus en crédit chez ' + infos.artisan + '.'));
+    return z;
+  }
+
   function afficherPaiement() {
     var titre = infos.type === 'reservation' ? (infos.nature === 'frais de déplacement' ? 'Régler les frais de déplacement' : 'Régler les frais de réservation') : 'Régler votre prestation';
     var m = el('div', 'montant', euros(infos.montant));
+    var solde = infos.type === 'solde';
     var btn = el('button', 'principal', infos.type === 'reservation' ? 'Continuer vers le paiement' : 'Payer ' + euros(infos.montant));
     btn.type = 'button';
     var err = el('div', 'alerte'); err.style.display = 'none'; err.setAttribute('role', 'alert');
     var cases = [];
-    var enfants = [el('h1', '', titre), m, resume()];
+    var enfants = solde ? [el('h1', '', titre), resume(), detailPrix(), optionsRemise()] : [el('h1', '', titre), m, resume()];
 
     if (infos.type === 'reservation') {
       enfants.push(el('p', '', "L'artisan ne verra votre demande qu'une fois ce paiement effectué."));
@@ -56,6 +120,7 @@
       err.style.display = 'none'; btn.disabled = true; btn.textContent = 'Préparation…';
       try {
         var data = await appel({ action: 'payer', accepte: infos.type === 'reservation' ? true : undefined });
+        if (data.montant != null) infos.montant = Number(data.montant);
         afficherFormulaire(data, titre);
       } catch (e) {
         err.textContent = e.message; err.style.display = 'block';
@@ -71,7 +136,7 @@
     var zone = el('div'); zone.id = 'element';
     var err = el('div', 'alerte'); err.style.display = 'none'; err.setAttribute('role', 'alert');
     var btn = el('button', 'principal', 'Payer ' + euros(infos.montant)); btn.type = 'button';
-    ecran(el('h1', '', titre), el('div', 'montant', euros(infos.montant)), resume(), zone, err, btn, el('p', 'secu', '🔒 Paiement sécurisé par carte (Stripe).'));
+    ecran(el('h1', '', titre), infos.type === 'solde' ? detailPrix() : el('div', 'montant', euros(infos.montant)), resume(), zone, err, btn, el('p', 'secu', '🔒 Paiement sécurisé par carte (Stripe).'));
     elements.create('payment').mount('#element');
     btn.addEventListener('click', async function () {
       err.style.display = 'none'; btn.disabled = true; btn.textContent = 'Paiement en cours…';

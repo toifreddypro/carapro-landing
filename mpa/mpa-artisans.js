@@ -4289,6 +4289,8 @@ function proposerPassagePro(raison) {
     ? '📅 Retrouver votre planning dans Google Agenda, Apple Calendrier ou Outlook, mis à jour automatiquement, fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
     : raison === 'facture_email'
     ? '✉️ L\'envoi de vos factures par email, directement à vos clients, fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Imprimer une facture reste gratuit.' + texteEssai()
+    : raison === 'remise_fidele'
+    ? '🤝 La remise automatique « client fidèle » fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
     : raison === 'code_promo'
     ? '🎁 Le code promo (remise automatique dans le panier de vos clients) fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
     : raison === 'cashback'
@@ -5278,6 +5280,7 @@ async function chargerCatalogue() {
   if (champVis) champVis.checked = _artisan.code_promo_visible !== false;
   afficherStatutCodePromo();
   afficherCashback();
+  afficherRemiseFidele();
   afficherPersonnalisation();
   afficherPauseBoutique();
 
@@ -5933,6 +5936,36 @@ async function sauverCashback() {
   }
   btn.disabled = false; btn.textContent = 'Enregistrer';
   afficherCashback();
+}
+
+// ── Remise « client fidèle » (offre Pro) : remise automatique pour un client déjà venu ──
+function afficherRemiseFidele() {
+  var champ = document.getElementById('remise-fidele-pct');
+  var z = document.getElementById('remise-fidele-statut');
+  if (!champ || !z) return;
+  champ.value = _artisan.remise_fidele_pct != null ? Math.round(Number(_artisan.remise_fidele_pct)) : '';
+  var pct = Number(_artisan.remise_fidele_pct);
+  if (!(pct >= 1)) z.innerHTML = '';
+  else if (!estPro()) z.innerHTML = '⚠️ Réglée à ' + pct + ' %, mais <strong>inactive</strong> : cette remise fait partie de l\'offre Pro.';
+  else z.innerHTML = '✅ Active : un client déjà venu chez vous a <strong>' + pct + ' %</strong> de remise sur le paiement final de sa nouvelle intervention.';
+}
+
+async function sauverRemiseFidele() {
+  if (!verifierAccesEcriture()) return;
+  var brut = document.getElementById('remise-fidele-pct').value.trim();
+  var pct = brut === '' ? null : parseInt(brut, 10);
+  if (pct !== null && !exigerPro('remise_fidele')) return;
+  if (pct !== null && (!(pct >= 1) || pct > 20)) { alert('Indiquez un pourcentage entre 1 % et 20 %, ou laissez vide pour ne pas proposer cette remise.'); return; }
+  var btn = document.getElementById('btn-remise-fidele');
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  var { error } = await sb.from('artisans').update({ remise_fidele_pct: pct }).eq('id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); }
+  else {
+    _artisan.remise_fidele_pct = pct;
+    mpaAiDire(pct ? '🤝 Remise « client fidèle » réglée à ' + pct + ' % : un client déjà venu la reçoit automatiquement sur le paiement final de sa nouvelle intervention (si le paiement passe par CaraLink).' : '🤝 Remise « client fidèle » désactivée.');
+  }
+  btn.disabled = false; btn.textContent = 'Enregistrer';
+  afficherRemiseFidele();
 }
 
 async function sauverCodePromo() {
