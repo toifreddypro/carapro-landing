@@ -1586,39 +1586,54 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-overlay" id="modal-catalogue">
 <div class="modal-box">
 <h3 id="modal-catalogue-titre">Ajouter un article au catalogue</h3>
+<div class="mi-section mi-s-quand">
+<div class="mi-section-titre">🛍️ L'article</div>
 <div class="modal-field"><label>Nom de l'article</label><input id="cat-nom" placeholder="Ex : Crème hydratante visage" type="text"/></div>
 <div class="modal-field"><label>Catégorie (facultatif)</label><input id="cat-categorie" placeholder="Ex : Soins visage, Gâteaux, Décoration…" type="text"/></div>
 <div class="modal-field"><label>Description</label><input id="cat-desc" placeholder="Ex : Hydratation longue durée, tous types de peau" type="text"/></div>
-<div class="modal-field">
+</div>
+<div class="mi-section mi-s-frais">
+<div class="mi-section-titre">💶 Prix et disponibilité</div>
+<div class="modal-row" style="display:flex;gap:10px;flex-wrap:wrap;">
+<div class="modal-field" style="flex:1;min-width:130px;">
 <label>Prix</label>
 <div style="display:flex;align-items:center;gap:6px;">
 <input id="cat-prix" min="0" step="0.5" style="width:100px;" type="number"/>
 <span style="font-size:13px;color:var(--mu);">€</span>
 </div>
 </div>
-<div class="modal-field">
+<div class="modal-field" style="flex:2;min-width:180px;">
 <label>Disponibilité</label>
 <select id="cat-type" onchange="document.getElementById('cat-delai-wrap').style.display = this.value === 'sur_commande' ? 'block' : 'none';">
 <option value="disponible">Disponible tout de suite</option>
 <option value="sur_commande">Sur commande</option>
 </select>
 </div>
+</div>
 <div class="modal-field" id="cat-delai-wrap" style="display:none;">
 <label>Délai de préparation</label>
 <input id="cat-delai" placeholder="Ex : 48h, 3-4 jours" type="text"/>
 </div>
-<div class="modal-field">
+</div>
+<div class="mi-section mi-s-lieu">
+<div class="mi-section-titre">📦 Stock</div>
+<div class="modal-row" style="display:flex;gap:10px;flex-wrap:wrap;">
+<div class="modal-field" style="flex:1;min-width:200px;">
 <label>Quantité en stock</label>
 <input id="cat-stock" min="0" placeholder="Laisser vide si illimité (ex : une formation)" step="1" type="number"/>
 <div style="font-size:11px;color:var(--mu);margin-top:4px;">Vide = toujours disponible, sans limite. Un nombre = suivi réel, mis à jour automatiquement à chaque vente.</div>
 </div>
-<div class="modal-field" id="cat-seuil-wrap">
+<div class="modal-field" style="flex:1;min-width:200px;" id="cat-seuil-wrap">
 <label>🔔 Seuil d'alerte (facultatif)</label>
 <input id="cat-seuil" min="0" placeholder="Ex : 5" step="1" type="number"/>
 <div style="font-size:11px;color:var(--mu);margin-top:4px;">MPA AI vous prévient (message + email) quand le stock descend à ce nombre ou moins. Utile seulement si vous suivez un stock réel.</div>
 </div>
+</div>
+</div>
+<div class="mi-section mi-s-profil">
+<div class="mi-section-titre">📷 Photos</div>
 <div class="modal-field">
-<label>Photo</label>
+<label>Photo principale</label>
 <input accept="image/*" id="cat-photo-input" type="file"/>
 <div style="font-size:11px;color:var(--mu);margin-top:4px;">📐 Idéal : une photo <strong>carrée</strong>, environ <strong>1000 × 1000 pixels</strong> (soit environ <strong>8,5 × 8,5 cm</strong> à l'impression) — sinon elle sera recadrée automatiquement au centre.</div>
 <div style="font-size:11px;color:var(--mu);margin-top:4px;">En modification : laissez vide pour garder la photo actuelle.</div>
@@ -1629,6 +1644,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <input accept="image/*" id="cat-photos-sup-input" multiple="" onchange="ajouterPhotosSup()" type="file"/>
 <div style="font-size:11px;color:var(--mu);margin-top:4px;">Vos clients pourront les faire défiler et les agrandir sur votre boutique. Elles sont enregistrées en cliquant sur « Ajouter » ou « Enregistrer » en bas de cette fenêtre. La photo ci-dessus reste la photo principale, celle qu'on voit sur la vignette.</div>
 <div id="cat-photos-sup-msg" role="status" style="font-size:11.5px;color:#b45309;margin-top:4px;"></div>
+</div>
 </div>
 <div class="modal-actions">
 <button class="btn-primary" id="btn-cat-sauver" onclick="sauverCatalogue()">Ajouter</button>
