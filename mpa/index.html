@@ -1149,6 +1149,43 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <p class="cpv2-matrix-note" id="compta-note">💡 Vue <strong>Production</strong> : le CA est rangé dans le mois de l'intervention, dès qu'elle est marquée "Terminée" ou "Payée".</p>
 <p class="cpv2-matrix-note" id="compta-note-cotis"></p>
 </div>
+<div class="cpv2-card" id="compta-stats-bloc" style="margin-top:16px;">
+<div class="cpv2-matrix-head">
+<div class="cpv2-matrix-headtext">
+<p class="cpv2-matrix-title">📈 <span>Statistiques</span></p>
+<p class="cpv2-matrix-subtitle">Votre activité de l'année affichée ci-dessus (même vue : Production ou Réel)</p>
+</div>
+</div>
+<div id="stats-libre" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;"></div>
+<div id="stats-pro" style="display:none;margin-top:16px;border-top:1px solid var(--brd);padding-top:14px;">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;">
+<div>
+<div style="font-size:14px;font-weight:700;margin-bottom:8px;">🏆 Top 5 clients <span class="dbg pu" style="font-size:10px;">PRO</span></div>
+<div id="stats-top" style="font-size:13px;"></div>
+</div>
+<div>
+<div style="font-size:14px;font-weight:700;margin-bottom:8px;">🔁 Fidélité et répartition <span class="dbg pu" style="font-size:10px;">PRO</span></div>
+<div id="stats-fidelite" style="font-size:13px;"></div>
+</div>
+</div>
+</div>
+<div id="stats-verrou" style="display:none;margin-top:16px;border-top:1px solid var(--brd);padding-top:14px;">
+<div style="position:relative;border:1px dashed var(--b2);border-radius:10px;padding:16px;overflow:hidden;">
+<div aria-hidden="true" style="filter:blur(5px);opacity:.55;pointer-events:none;user-select:none;font-size:13px;">
+<div style="font-weight:700;margin-bottom:8px;">🏆 Top 5 clients <span style="font-weight:400;color:var(--mu);">(exemple)</span></div>
+<div style="display:flex;justify-content:space-between;padding:5px 0;"><span>🥇 Client A</span><strong>0 000 €</strong></div>
+<div style="display:flex;justify-content:space-between;padding:5px 0;"><span>🥈 Client B</span><strong>0 000 €</strong></div>
+<div style="display:flex;justify-content:space-between;padding:5px 0;"><span>🥉 Client C</span><strong>0 000 €</strong></div>
+<div style="display:flex;justify-content:space-between;padding:5px 0;"><span>4. Client D</span><strong>0 000 €</strong></div>
+</div>
+<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12px;">
+<div style="font-size:14px;font-weight:700;margin-bottom:6px;">🔒 Réservé à l'offre Pro</div>
+<div style="font-size:13px;color:var(--mu);line-height:1.5;margin-bottom:10px;max-width:420px;">Découvrez vos 5 meilleurs clients, la part de clients fidèles, la répartition de votre activité et la part encaissée en ligne.</div>
+<button class="addb" onclick="proposerPassagePro('statistiques')" type="button">Découvrir l'offre Pro</button>
+</div>
+</div>
+</div>
+</div>
 <div class="cpv2-card" id="compta-client-bloc" style="margin-top:16px;">
 <div class="cpv2-matrix-head">
 <div class="cpv2-matrix-headtext">
@@ -2132,6 +2169,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=202611011003"></script>
+<script src="/mpa/mpa-artisans.js?v=1"></script>
 </body>
 </html>

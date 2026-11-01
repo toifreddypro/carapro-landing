@@ -3362,6 +3362,7 @@ async function chargerLignesCA(debut, finExclue) {
   (rI.data || []).forEach(function(i) {
     var fait = i.statut === 'terminee' || i.statut === 'payee';
     lignes.push({
+      id: i.id,
       fam: liv[i.id] ? 'livraisons' : 'interventions',
       client: (i.mpa_artisans_clients && i.mpa_artisans_clients.nom) || '(sans client)',
       montant: Number(i.prix) || 0,
@@ -3497,6 +3498,7 @@ async function chargerCompta() {
   document.getElementById('compta-annee').textContent = _anneeCompta;
   try {
     _lignesCompta = await chargerLignesCA(_anneeCompta + '-01-01', (_anneeCompta + 1) + '-01-01');
+    _interventionsEnLigne = null;
     _erreurCompta = false;
   } catch (e) {
     console.error(e);
@@ -3601,6 +3603,7 @@ function renderMatriceCompta() {
   }
 
   renderComptaMobile(parFam, parClient, clients, cols, curIdx, isCurYear, pro);
+  renderStatistiques(vue, annee, pro);
 
   // KPIs de l'année (toujours en Production : la « vraie richesse produite »), toutes familles confondues
   var t = totauxFamilles(_lignesCompta, 'production', function(d) { return d.getFullYear() === annee; });
@@ -3616,6 +3619,122 @@ function renderMatriceCompta() {
       ', <strong>plus ' + formatPct(_artisan.cfp_pct ?? TAUX_DEFAUT_CFP) + ' de contribution à la formation professionnelle</strong> (artisans). ' +
       'Taux modifiables dans Mon profil (ex. avec l\'ACRE). Simple estimation : à confirmer avec votre comptable.';
   }
+}
+
+// ── Statistiques (Comptabilité) : calculées sur les lignes de chiffre d'affaires déjà chargées, dans la même vue (Production / Réel) ──
+// Gratuit : CA de l'année, du mois, nombre de clients, panier moyen. Pro : Top 5 clients, fidélité, répartition, part encaissée en ligne.
+// Ce sont les propres chiffres de l'artisan : le « Pro » est une fonctionnalité de confort, pas un secret à protéger du serveur.
+var _interventionsEnLigne = null; // { idIntervention: true } — interventions réglées par carte via CaraLink (chargé une fois, seulement en Pro)
+var _statsSeq = 0;
+function _clientConnu(nom) { return nom && nom !== '(sans client)' && nom !== '(client boutique)'; }
+function _tuileStat(libelle, valeur, detail) {
+  return '<div style="border:1px solid var(--brd);border-radius:10px;padding:10px 12px;">' +
+    '<div style="font-size:11.5px;color:var(--mu);margin-bottom:3px;">' + libelle + '</div>' +
+    '<div style="font-size:19px;font-weight:800;">' + valeur + '</div>' +
+    (detail ? '<div style="font-size:11.5px;color:var(--mu2);margin-top:2px;">' + detail + '</div>' : '') + '</div>';
+}
+function _barreStat(libelle, pct, droite) {
+  var p = Math.max(0, Math.min(100, Math.round(pct)));
+  return '<div style="margin:7px 0;"><div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px;"><span>' + libelle + '</span><strong>' + droite + '</strong></div>' +
+    '<div style="height:7px;border-radius:4px;background:var(--brd);overflow:hidden;"><div style="height:100%;width:' + p + '%;background:var(--ac);"></div></div></div>';
+}
+async function chargerInterventionsEnLigne() {
+  if (_interventionsEnLigne) return _interventionsEnLigne;
+  var m = {};
+  try {
+    var r = await sb.from('paiements_prestations').select('intervention_id, statut')
+      .eq('artisan_id', _artisan.id).not('intervention_id', 'is', null)
+      .in('statut', ['paye', 'partiellement_rembourse', 'rembourse']).limit(5000);
+    if (!r.error) (r.data || []).forEach(function(p) { m[p.intervention_id] = true; });
+  } catch (e) { /* table absente ou erreur : la part « en ligne » ne comptera que les ventes de la boutique */ }
+  _interventionsEnLigne = m;
+  return m;
+}
+function renderStatistiques(vue, annee, pro) {
+  var zoneLibre = document.getElementById('stats-libre');
+  if (!zoneLibre) return;
+  var blocPro = document.getElementById('stats-pro'), verrou = document.getElementById('stats-verrou');
+  if (blocPro) blocPro.style.display = pro ? '' : 'none';
+  if (verrou) verrou.style.display = pro ? 'none' : '';
+  if (_erreurCompta) { zoneLibre.innerHTML = '<p style="color:var(--mu);">Les statistiques n\'ont pas pu être chargées. Rechargez la page.</p>'; return; }
+
+  var lignes = [];
+  _lignesCompta.forEach(function(l) {
+    var d = vue === 'reel' ? l.dReel : l.dProd;
+    if (d && d.getFullYear() === annee && l.montant > 0) lignes.push({ l: l, d: d });
+  });
+  var total = lignes.reduce(function(s, x) { return s + x.l.montant; }, 0);
+  var maint = new Date(), moisCourant = maint.getMonth(), anneeCourante = (annee === maint.getFullYear());
+  var parMois = Array(12).fill(0);
+  lignes.forEach(function(x) { parMois[x.d.getMonth()] += x.l.montant; });
+
+  // Clients (les ventes sans nom et les interventions sans client ne comptent pas comme « clients »)
+  var clientsMap = {};
+  lignes.forEach(function(x) {
+    if (!_clientConnu(x.l.client)) return;
+    var c = clientsMap[x.l.client] || (clientsMap[x.l.client] = { nom: x.l.client, ca: 0, nb: 0, derniere: null });
+    c.ca += x.l.montant; c.nb++;
+    if (!c.derniere || x.d > c.derniere) c.derniere = x.d;
+  });
+  var clients = Object.keys(clientsMap).map(function(k) { return clientsMap[k]; });
+  var panier = lignes.length ? total / lignes.length : 0;
+
+  // Tuile 2 : mois en cours comparé au précédent (année en cours, hors janvier) ; sinon moyenne mensuelle
+  var tuile2;
+  if (anneeCourante && moisCourant > 0) {
+    var cur = parMois[moisCourant], prec = parMois[moisCourant - 1];
+    var delta = prec > 0 ? Math.round((cur - prec) / prec * 100) : null;
+    tuile2 = _tuileStat('CA du mois', _fmtCA(cur) + ' €', delta === null ? 'mois précédent : ' + _fmtCA(prec) + ' €' : (delta >= 0 ? '▲ +' : '▼ ') + delta + ' % vs mois précédent');
+  } else {
+    var nbMois = anneeCourante ? moisCourant + 1 : 12;
+    tuile2 = _tuileStat('Moyenne par mois', _fmtCA(total / nbMois) + ' €', anneeCourante ? 'sur ' + nbMois + ' mois' : 'sur 12 mois');
+  }
+  zoneLibre.innerHTML =
+    _tuileStat('CA de l\'année', _fmtCA(total) + ' €', lignes.length + ' ligne' + (lignes.length > 1 ? 's' : '')) +
+    tuile2 +
+    _tuileStat('Clients', String(clients.length), 'clients identifiés') +
+    _tuileStat('Panier moyen', lignes.length ? _fmtCA(panier) + ' €' : '—', 'par intervention ou vente');
+
+  if (!pro) return;
+  var zoneTop = document.getElementById('stats-top'), zoneFid = document.getElementById('stats-fidelite');
+  if (!zoneTop || !zoneFid) return;
+  if (!lignes.length) { zoneTop.innerHTML = zoneFid.innerHTML = '<p style="color:var(--mu);margin:0;">Aucune donnée pour ' + annee + '.</p>'; return; }
+
+  // Top 5 clients
+  var top = clients.slice().sort(function(a, b) { return b.ca - a.ca; }).slice(0, 5);
+  var medailles = ['🥇', '🥈', '🥉', '4.', '5.'];
+  zoneTop.innerHTML = top.length ? top.map(function(c, i) {
+    return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--brd);">' +
+      '<span>' + medailles[i] + ' <strong>' + escHtml(c.nom) + '</strong><br><span style="font-size:11.5px;color:var(--mu);">' + c.nb + ' fois · dernière : ' + c.derniere.toLocaleDateString('fr-FR') + '</span></span>' +
+      '<span style="text-align:right;"><strong>' + _fmtCA(c.ca) + ' €</strong><br><span style="font-size:11.5px;color:var(--mu);">' + Math.round(c.ca / total * 100) + ' % du CA</span></span></div>';
+  }).join('') : '<p style="color:var(--mu);margin:0;">Aucun client identifié cette année.</p>';
+
+  // Fidélité, répartition, meilleur mois (tout de suite) ; part en ligne (après chargement)
+  var fideles = clients.filter(function(c) { return c.nb >= 2; });
+  var caFideles = fideles.reduce(function(s, c) { return s + c.ca; }, 0);
+  var caClients = clients.reduce(function(s, c) { return s + c.ca; }, 0);
+  var parFam = { interventions: 0, ventes: 0, livraisons: 0 };
+  lignes.forEach(function(x) { parFam[x.l.fam] += x.l.montant; });
+  var meilleur = 0; parMois.forEach(function(v, i) { if (v > parMois[meilleur]) meilleur = i; });
+  var html = '';
+  if (clients.length) {
+    html += '<div style="margin-bottom:6px;">Clients fidèles (2 fois ou plus) : <strong>' + fideles.length + ' sur ' + clients.length + '</strong></div>' +
+      _barreStat('Part du CA des clients fidèles', caClients > 0 ? caFideles / caClients * 100 : 0, caClients > 0 ? Math.round(caFideles / caClients * 100) + ' %' : '—');
+  }
+  html += '<div style="margin:12px 0 2px;font-weight:700;">Répartition</div>' +
+    FAMILLES_CA.map(function(f) { return _barreStat(_FAM_LIBELLE[f], parFam[f] / total * 100, _fmtCA(parFam[f]) + ' € · ' + Math.round(parFam[f] / total * 100) + ' %'); }).join('') +
+    '<div style="margin-top:10px;">Meilleur mois : <strong>' + MOIS_NOMS[meilleur] + '</strong> (' + _fmtCA(parMois[meilleur]) + ' €)</div>' +
+    '<div id="stats-en-ligne" style="margin-top:10px;color:var(--mu);">Part encaissée en ligne : calcul…</div>';
+  zoneFid.innerHTML = html;
+
+  var seq = ++_statsSeq;
+  chargerInterventionsEnLigne().then(function(enLigne) {
+    if (seq !== _statsSeq) return; // la vue ou l'année a changé entre-temps
+    var el = document.getElementById('stats-en-ligne');
+    if (!el) return;
+    var ligne = lignes.reduce(function(s, x) { return s + ((x.l.fam === 'ventes' || (x.l.id && enLigne[x.l.id])) ? x.l.montant : 0); }, 0);
+    el.innerHTML = '<span style="color:var(--tx);">' + _barreStat('💳 Encaissé en ligne via CaraLink', total > 0 ? ligne / total * 100 : 0, Math.round(total > 0 ? ligne / total * 100 : 0) + ' %').replace('margin:7px 0;', 'margin:0;') + '</span>';
+  });
 }
 
 function renderComptaMobile(parFam, parClient, clients, cols, curIdx, isCurYear, pro) {
@@ -4368,6 +4487,8 @@ function proposerPassagePro(raison) {
     ? '⭐ L\'offre Essentiel permet ' + LIMITE_PHARES_GRATUIT + ' produit phare. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + '), vous en mettez ' + LIMITE_PHARES_PRO + ' en avant sur votre fiche et votre boutique, avec le catalogue illimité et Mes fournitures. Pour changer de produit phare, retirez d\'abord l\'étoile de l\'actuel.' + texteEssai()
     : raison === 'detail_client'
     ? '🔒 Le détail du chiffre d\'affaires par client fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Le récapitulatif par mois (interventions, ventes, livraisons) reste gratuit.' + texteEssai()
+    : raison === 'statistiques'
+    ? '📈 Les statistiques détaillées (Top 5 clients, clients fidèles, répartition de votre activité, part encaissée en ligne) font partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Les chiffres clés de l\'année restent gratuits.'
     : raison === 'facture_rapide'
     ? '🧾 La facture en 1 clic (depuis une intervention ou une commande de la boutique) fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Le panier de facturation classique reste gratuit.' + texteEssai()
     : raison === 'agenda'
