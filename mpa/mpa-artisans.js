@@ -1571,29 +1571,36 @@ function renderDemandes() {
           (d.client_email ? '<div style="margin-top:8px;">ou par email : ' + blocEmail + '</div>' : '');
     }
 
-    return '<div style="border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">' +
-        '<div>' +
-          '<strong>' + escHtml(d.client_nom) + '</strong> ' + badgeType + '<br>' +
-          '<span style="font-size:12.5px;color:var(--mu);">' + secteurLabelLocal(d.secteur) + ' · 📍 ' + escHtml(d.commune) + ' · ' + dateAff + '</span>' +
-        '</div>' +
-        actionsHaut +
-      '</div>' +
-      ligneCreneau +
-      (typeInterventionLabelLocal(d.type_intervention) ? '<div style="display:inline-block;font-size:12px;font-weight:700;color:#4338ca;background:#eef2ff;padding:3px 10px;border-radius:20px;margin-bottom:8px;">' + typeInterventionLabelLocal(d.type_intervention) + '</div><br>' : '') +
-        ligneVisiteMPA(d) +
-      '<div style="font-size:13px;margin-bottom:10px;">' + escHtml(d.description_besoin) + '</div>' +
+    // Couleur du liseré gauche = où en est la demande, d'un coup d'œil.
+    var couleurBord = creneauDepasse(d) ? '#94a3b8' : d.statut === 'creneau_propose' ? '#f59e0b' : d.statut === 'creneau_confirme' ? '#16a34a' : d.statut === 'creneau_refuse' ? '#94a3b8' : l.type === 'ouverte' ? '#3b82f6' : 'var(--ac)';
+    var typeLabel = typeInterventionLabelLocal(d.type_intervention);
+    var blocQuand = ligneCreneau
+      ? '<div class="dm-sec dm-quand"><div class="dm-titre">📅 Créneau</div>' + ligneCreneau + '</div>' : '';
+    var blocBesoin = '<div class="dm-sec dm-besoin"><div class="dm-titre">🛠️ Le besoin</div>' +
+      (typeLabel ? '<div style="display:inline-block;font-size:12px;font-weight:700;color:#4338ca;background:#eef2ff;padding:3px 10px;border-radius:20px;margin-bottom:8px;">' + typeLabel + '</div>' : '') +
+      ligneVisiteMPA(d) +
+      '<div class="dm-texte">' + escHtml(d.description_besoin) + '</div>' +
       ((d.photos && d.photos.length) ?
-        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">' +
           d.photos.map(function(v) {
             var url = urlPhotoDevis(v);
             if (!url) return '';
             return '<a href="' + escHtml(url) + '" target="_blank" rel="noopener"><img src="' + escHtml(url) + '" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--brd);"></a>';
           }).join('') +
         '</div>' : '') +
-      '<div style="margin-bottom:8px;">' + blocContact + '</div>' +
+      '</div>';
+    var blocContactSec = '<div class="dm-sec dm-contact"><div class="dm-titre">📞 Contacter ' + escHtml(d.client_nom) + '</div>' + blocContact + '</div>';
+    return '<div class="dm-carte" style="border-left-color:' + couleurBord + ';">' +
+      '<div class="dm-entete">' +
+        '<div class="dm-id">' +
+          '<div class="dm-nom">' + escHtml(d.client_nom) + ' ' + badgeType + '</div>' +
+          '<div class="dm-meta">' + secteurLabelLocal(d.secteur) + ' · 📍 ' + escHtml(d.commune) + ' · reçue le ' + dateAff + '</div>' +
+        '</div>' +
+        '<div class="dm-actions">' + actionsHaut + '</div>' +
+      '</div>' +
+      blocQuand + blocBesoin + blocContactSec +
       (d.statut === 'creneau_confirme' ? '' :
-        '<button onclick="creerClientDepuisDemande(' + jsAttrLocal(d.client_nom) + ',' + jsAttrLocal(d.commune) + ')" style="background:none;border:none;color:var(--ac);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;">+ Ajouter comme client habituel</button>') +
+        '<div class="dm-pied"><button onclick="creerClientDepuisDemande(' + jsAttrLocal(d.client_nom) + ',' + jsAttrLocal(d.commune) + ')" style="background:none;border:none;color:var(--ac);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;">+ Ajouter comme client habituel</button></div>') +
     '</div>';
   }).join('');
   zone.innerHTML = barre + htmlCartes;
@@ -6557,37 +6564,42 @@ async function chargerLivraisons() {
     .select('id, commune, date_intervention').eq('artisan_id', _artisan.id).gte('date_intervention', aujourdhui).lte('date_intervention', finSemaine).neq('statut', 'annulee');
 
   var heureDe = function(i) { return i.heure_debut || (i.creneau === 'matin' ? 'Matin' : (i.creneau === 'apres_midi' || i.creneau === 'apres-midi') ? 'Après-midi' : '—'); };
-  var titre = function(txt, n) { return '<div style="font-size:12.5px;font-weight:700;margin:14px 0 4px;color:var(--mu2);">' + txt + ' <span style="font-weight:500;color:var(--mu);">(' + n + ')</span></div>'; };
+  var titre = function(txt, n, cls) { return '<div class="lv-titre ' + (cls || '') + '">' + txt + ' <span>' + n + '</span></div>'; };
   var carte = function(l, enteteHtml) {
     var i = l.mpa_artisans_interventions;
     var note = '';
     if (i) {
       var autres = (interventionsProches || []).filter(function(x) { return x.id !== i.id && x.date_intervention === i.date_intervention && (x.commune || '').toLowerCase().trim() === (i.commune || '').toLowerCase().trim(); }).length;
       note = autres > 0
-        ? '<div style="font-size:11.5px;color:#16a34a;margin-top:4px;">🧩 Regroupée — ' + autres + ' autre' + (autres > 1 ? 's' : '') + ' intervention' + (autres > 1 ? 's' : '') + ' dans ' + escHtml(i.commune || 'le même secteur') + '.</div>'
-        : '<div style="font-size:11.5px;color:var(--mu);margin-top:4px;">Livraison isolée ce jour.</div>';
+        ? '<span class="lv-puce lv-ok">🧩 Regroupée — ' + autres + ' autre' + (autres > 1 ? 's' : '') + ' intervention' + (autres > 1 ? 's' : '') + ' dans ' + escHtml(i.commune || 'le même secteur') + '</span>'
+        : '<span class="lv-puce lv-neutre">Livraison isolée ce jour</span>';
     }
-    return '<div style="padding:12px 0;border-bottom:1px solid var(--brd);">' +
-      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">' + enteteHtml +
-        '<span style="font-size:12px;color:var(--mu);">' + escHtml(l.nom_article) + ' × ' + l.quantite + '</span>' +
+    var etatClient = i ? (l.livraison_confirmee_le
+      ? '<span class="lv-puce lv-ok">✉️ Client prévenu</span>'
+      : '<span class="lv-puce lv-att">🕓 Provisoire — client prévenu le ' + dateCourteFR(ajouterJoursISO(i.date_intervention, -2)) + '</span>') : '';
+    return '<div class="lv-carte">' +
+      '<div class="lv-haut"><div class="lv-quand">' + enteteHtml + '</div>' +
+        '<span class="lv-article">📦 ' + escHtml(l.nom_article) + ' × ' + l.quantite + '</span></div>' +
+      '<div class="lv-corps">' +
+        '<div class="lv-ligne">👤 <strong>' + escHtml(l.client_nom) + '</strong></div>' +
+        '<div class="lv-ligne">📍 ' + escHtml(l.adresse_livraison || '') + (l.commune_livraison ? ', ' + escHtml(l.commune_livraison) : '') + '</div>' +
+        '<div class="lv-ligne">📞 ' + (l.client_telephone ? '<a href="tel:' + escHtml(l.client_telephone) + '" style="color:inherit;">' + escHtml(l.client_telephone) + '</a>' : '—') + '</div>' +
       '</div>' +
-      '<div style="font-size:13px;margin-top:2px;">' + escHtml(l.client_nom) + ' — ' + escHtml(l.adresse_livraison || '') + (l.commune_livraison ? ', ' + escHtml(l.commune_livraison) : '') + '</div>' +
-      '<div style="font-size:12px;color:var(--mu);">📞 ' + escHtml(l.client_telephone || '—') + '</div>' +
-      (i ? (l.livraison_confirmee_le ? '<div style="font-size:11.5px;color:#0f9d78;margin-top:4px;font-weight:700;">✉️ Client prévenu</div>' : '<div style="font-size:11.5px;color:#b45309;margin-top:4px;font-weight:700;">🕓 Provisoire — client prévenu le ' + dateCourteFR(ajouterJoursISO(i.date_intervention, -2)) + '</div>') : '') +
-      note + '</div>';
+      '<div class="lv-pied">' + etatClient + '<span class="lv-note-slot"></span>' + note + '</div>' +
+      '</div>';
   };
   var parHeure = function(a, b) { return (a.mpa_artisans_interventions.heure_debut || '99:99').localeCompare(b.mpa_artisans_interventions.heure_debut || '99:99'); };
   duJour.sort(parHeure);
   semaine.sort(function(a, b) { return a.mpa_artisans_interventions.date_intervention.localeCompare(b.mpa_artisans_interventions.date_intervention) || parHeure(a, b); });
 
   zone.innerHTML =
-    titre('Aujourd\'hui', duJour.length) + (duJour.length ? duJour.map(function(l) { return carte(l, '<strong>' + escHtml(heureDe(l.mpa_artisans_interventions)) + '</strong>'); }).join('') : '<div style="font-size:12.5px;color:var(--mu);">Aucune livraison prévue aujourd\'hui.</div>') +
-    (semaine.length ? titre('Cette semaine', semaine.length) + semaine.map(function(l) { return carte(l, '<strong>' + escHtml(dateCourteFR(l.mpa_artisans_interventions.date_intervention)) + ' · ' + escHtml(heureDe(l.mpa_artisans_interventions)) + '</strong>'); }).join('') : '') +
-    (aPlanifier.length ? titre('À planifier', aPlanifier.length) + aPlanifier.map(function(l) {
+    titre('📅 Aujourd\'hui', duJour.length, 'lv-t-jour') + (duJour.length ? duJour.map(function(l) { return carte(l, '<strong>' + escHtml(heureDe(l.mpa_artisans_interventions)) + '</strong>'); }).join('') : '<div style="font-size:12.5px;color:var(--mu);">Aucune livraison prévue aujourd\'hui.</div>') +
+    (semaine.length ? titre('🗓️ Cette semaine', semaine.length, 'lv-t-sem') + semaine.map(function(l) { return carte(l, '<strong>' + escHtml(dateCourteFR(l.mpa_artisans_interventions.date_intervention)) + ' · ' + escHtml(heureDe(l.mpa_artisans_interventions)) + '</strong>'); }).join('') : '') +
+    (aPlanifier.length ? titre('🕓 À planifier', aPlanifier.length, 'lv-t-plan') + aPlanifier.map(function(l) {
       var enRetard = l.statut !== 'prete' && l.livraison_debut && aujourdhui >= l.livraison_debut;
-      var etat = l.statut === 'prete' ? '<span style="color:#0f9d78;font-weight:700;font-size:12px;">📦 Prête — à planifier</span>' : (enRetard ? '<span style="color:var(--danger);font-weight:700;font-size:12px;">⏰ À préparer (en retard)</span>' : '<span style="color:var(--mu);font-size:12px;">À préparer</span>');
+      var etat = l.statut === 'prete' ? '<span class="lv-puce lv-ok">📦 Prête — à planifier</span>' : (enRetard ? '<span class="lv-puce lv-rouge">⏰ À préparer (en retard)</span>' : '<span class="lv-puce lv-neutre">À préparer</span>');
       var fen = l.livraison_debut && l.livraison_fin ? 'Entre le ' + dateCourteFR(l.livraison_debut) + ' et le ' + dateCourteFR(l.livraison_fin) : 'Date à convenir';
-      return carte(l, '<strong>' + escHtml(fen) + '</strong>').replace(/<\/div>$/, '<div style="margin-top:4px;">' + etat + '</div></div>');
+      return carte(l, '<strong>' + escHtml(fen) + '</strong>').replace('<span class="lv-note-slot"></span>', etat);
     }).join('') : '');
 }
 
@@ -6699,20 +6711,21 @@ function renderCommandes() {
         '</div>'
       : '<div><strong>' + escHtml(c.nom_article) + '</strong> × ' + c.quantite + '</div>';
 
-    return { c: c, html: '<div style="border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">' +
-        enTeteCommande +
-        '<span style="font-size:11px;font-weight:700;color:var(--mu2);flex-shrink:0;margin-left:10px;">' + (LABELS_STATUT_COMMANDE[c.statut] || escHtml(c.statut)) + '</span>' +
+    var couleurCmd = c.statut === 'nouvelle' ? '#f59e0b' : c.statut === 'prete' ? '#3b82f6' : c.statut === 'terminee' ? '#16a34a' : c.statut === 'annulee' ? '#94a3b8' : 'var(--ac)';
+    var pillStatut = '<span class="cm-statut" style="color:' + couleurCmd + ';border-color:' + couleurCmd + ';">' + (LABELS_STATUT_COMMANDE[c.statut] || escHtml(c.statut)) + '</span>';
+    return { c: c, html: '<div class="cm-carte" style="border-left-color:' + couleurCmd + ';">' +
+      '<div class="cm-entete">' + enTeteCommande + pillStatut + '</div>' +
+      '<div class="cm-date">🕒 Commandée le ' + dateCommandeTxt + (datePaiementTxt && datePaiementTxt !== dateCommandeTxt ? ' · payée le ' + datePaiementTxt : '') + '</div>' +
+      '<div class="cm-sec cm-livr"><div class="cm-titre">' + (c.mode === 'livraison' ? '🚚 Livraison' : '🏠 Retrait') + ' et client</div>' +
+        '<div class="cm-ligne">' + modeTxt + '</div>' +
+        (c.mode === 'livraison' ? '<div class="cm-ligne">📅 ' + texteFenetreCommande(c) + '</div>' : '') +
+        '<div class="cm-ligne">👤 <strong>' + escHtml(c.client_nom) + '</strong> — ' + escHtml(c.client_telephone) + '</div>' +
+        (c.notes ? '<div class="cm-ligne" style="font-style:italic;color:var(--mu2);">« ' + escHtml(c.notes) + ' »</div>' : '') +
+        badgeProche +
       '</div>' +
-      '<div style="font-size:12px;color:var(--mu);margin-bottom:3px;">🕒 Commandée le ' + dateCommandeTxt + (datePaiementTxt && datePaiementTxt !== dateCommandeTxt ? ' · payée le ' + datePaiementTxt : '') + '</div>' +
-      '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:3px;">' + modeTxt + '</div>' +
-      (c.mode === 'livraison' ? '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:3px;">📅 ' + texteFenetreCommande(c) + '</div>' : '') +
-      '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;">👤 ' + escHtml(c.client_nom) + ' — ' + escHtml(c.client_telephone) + '</div>' +
-      (c.notes ? '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;font-style:italic;">« ' + escHtml(c.notes) + ' »</div>' : '') +
-      ligneReglement +
-      badgeProche +
-      fluxHtml +
-      '<div style="margin-top:8px;">' + boutonFactureCommande(c) + boutonRembourser + '</div>' +
+      (ligneReglement ? '<div class="cm-sec cm-paie"><div class="cm-titre">💳 Paiement</div>' + ligneReglement + '</div>' : '') +
+      (fluxHtml ? '<div class="cm-sec cm-suite"><div class="cm-titre">➡️ Où en est la commande</div>' + fluxHtml + '</div>' : '') +
+      '<div class="cm-pied">' + boutonFactureCommande(c) + boutonRembourser + '</div>' +
     '</div>' };
   });
 

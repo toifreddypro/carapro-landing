@@ -517,7 +517,57 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .mi-s-lieu .mi-section-titre{color:#15803d;}
 .mi-s-frais{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.28);}
 .mi-s-frais .mi-section-titre{color:#b45309;}
+/* ── Lisibilité : cartes « Mes demandes » ── */
+.dm-carte{border:1px solid var(--brd);border-left:5px solid var(--ac);border-radius:12px;padding:14px;margin-bottom:14px;background:#fff;}
+.dm-entete{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.dm-id{min-width:0;flex:1 1 220px;}
+.dm-nom{font-size:16px;font-weight:800;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.dm-meta{font-size:12.5px;color:var(--mu);margin-top:3px;}
+.dm-actions{flex:0 0 auto;}
+.dm-sec{border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--brd);}
+.dm-titre{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;margin-bottom:7px;}
+.dm-quand{background:rgba(59,130,246,.07);border-color:rgba(59,130,246,.25);}.dm-quand .dm-titre{color:#1d4ed8;}
+.dm-besoin{background:#fafafa;}.dm-besoin .dm-titre{color:#b5502f;}
+.dm-texte{font-size:13.5px;line-height:1.55;white-space:pre-wrap;}
+.dm-contact{background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.26);}.dm-contact .dm-titre{color:#15803d;}
+.dm-pied{text-align:right;}
+@media(max-width:560px){.dm-actions{width:100%}.dm-actions>div{flex-wrap:wrap}}
+/* ── Lisibilité : « Mes livraisons » ── */
+.lv-titre{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;margin:18px 0 8px;padding:7px 12px;border-radius:10px;}
+.lv-titre span{font-size:11.5px;font-weight:800;background:#fff;border-radius:20px;padding:1px 9px;}
+.lv-t-jour{background:rgba(34,197,94,.1);color:#15803d;}.lv-t-sem{background:rgba(59,130,246,.09);color:#1d4ed8;}.lv-t-plan{background:rgba(245,158,11,.11);color:#b45309;}
+.lv-carte{border:1px solid var(--brd);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#fff;}
+.lv-haut{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+.lv-quand{font-size:15px;}
+.lv-article{font-size:12px;font-weight:700;color:var(--ac);background:rgba(181,80,47,.08);border-radius:20px;padding:3px 10px;}
+.lv-corps{display:grid;gap:3px;margin-bottom:8px;}.lv-ligne{font-size:13px;line-height:1.45;}
+.lv-pied{display:flex;gap:6px;flex-wrap:wrap;}.lv-pied:empty{display:none;}
+.lv-puce{font-size:11.5px;font-weight:700;border-radius:20px;padding:3px 10px;}
+.lv-ok{background:rgba(22,163,74,.1);color:#15803d;}.lv-att{background:rgba(245,158,11,.12);color:#b45309;}.lv-neutre{background:var(--p2,#f1f5f9);color:var(--mu);}.lv-rouge{background:rgba(220,38,38,.1);color:#b91c1c;}
+/* ── Lisibilité : « Mes commandes » ── */
+.cm-carte{border:1px solid var(--brd);border-left:5px solid var(--ac);border-radius:12px;padding:14px;margin-bottom:14px;background:#fff;}
+.cm-entete{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:4px;font-size:15px;}
+.cm-statut{flex-shrink:0;font-size:11.5px;font-weight:800;border:1.5px solid;border-radius:20px;padding:3px 10px;background:#fff;}
+.cm-date{font-size:12px;color:var(--mu);margin-bottom:10px;}
+.cm-sec{border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--brd);}
+.cm-titre{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;margin-bottom:7px;}
+.cm-ligne{font-size:13px;line-height:1.5;margin-bottom:3px;}
+.cm-livr{background:rgba(59,130,246,.07);border-color:rgba(59,130,246,.25);}.cm-livr .cm-titre{color:#1d4ed8;}
+.cm-paie{background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.26);}.cm-paie .cm-titre{color:#15803d;}
+.cm-suite{background:rgba(139,92,246,.07);border-color:rgba(139,92,246,.26);}.cm-suite .cm-titre{color:#6d28d9;}
+.cm-pied{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-top:2px;}
+.cm-pied button{margin-left:0!important;}
+.mi-s-danger{background:rgba(220,38,38,.06);border-color:rgba(220,38,38,.26);}
+.mi-s-danger .mi-section-titre{color:#b91c1c;}
+.mi-resume{display:flex;gap:10px;align-items:flex-start;border-radius:12px;padding:11px 14px;margin:0 0 12px;font-size:13px;line-height:1.5;background:#f8fafc;border:1px solid var(--brd);color:var(--mu2);}
+.mi-resume:empty{display:none;}
+.mi-aide{font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;}
+.mi-note{border-radius:10px;padding:10px 12px;margin:0 0 12px;font-size:12px;line-height:1.55;background:#f8fafc;border:1px dashed var(--b2);color:var(--mu);}
+.mi-note:empty{display:none;}
+.modal-actions .btn-primary{font-weight:700;}
 .mi-section select,.mi-section textarea{width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;}
+.mi-section .modal-field input{box-sizing:border-box;}
+.mi-section .act-choix{background:#fff;}
 .mi-section .modal-field input[type=checkbox]{width:auto;flex:none;padding:0;margin-top:3px;}
 </style>
 <script src="https://js.stripe.com/v3/"></script>
@@ -1278,17 +1328,23 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-overlay" id="modal-remboursement">
 <div class="modal-box">
 <h3>Rembourser une commande</h3>
-<p id="rb-resume" style="font-size:13px;color:var(--mu2);margin-bottom:14px;line-height:1.5;"></p>
+<p id="rb-resume" class="mi-resume"></p>
+<div class="mi-section mi-s-danger">
+<div class="mi-section-titre">↩️ Combien rendre au client</div>
 <div class="modal-field">
 <label>Montant à rembourser (€)</label>
 <input id="rb-montant" min="0.01" oninput="majApercuRemboursement()" step="0.01" type="number"/>
 </div>
+</div>
+<div class="mi-section mi-s-quand">
+<div class="mi-section-titre">💬 Pourquoi</div>
 <div class="modal-field">
 <label>Motif (facultatif)</label>
 <input id="rb-motif" maxlength="200" oninput="majStockSelonMotif()" placeholder="Ex : commande annulée, article indisponible" type="text"/>
 </div>
 <label id="rb-stock-ligne" style="display:none;align-items:flex-start;gap:8px;font-size:12.5px;margin-bottom:10px;cursor:pointer;line-height:1.4;"><input id="rb-stock" onchange="_rbStockTouche=true" style="margin-top:2px;" type="checkbox"/><span>Remettre les articles en stock <span style="color:var(--mu);">(si le stock du produit est suivi)</span></span></label>
-<p id="rb-info" style="font-size:12px;color:var(--mu);margin-bottom:10px;line-height:1.5;"></p>
+</div>
+<p id="rb-info" class="mi-note"></p>
 <div id="rb-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>
 <div class="modal-actions">
 <button class="btn-primary" id="btn-rb-confirmer" onclick="confirmerRemboursement()">Confirmer le remboursement</button>
@@ -1503,10 +1559,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-overlay" id="modal-activites">
 <div class="modal-box">
 <h3>✨ Qu'est-ce que vous faites ?</h3>
-<p style="font-size:14px;line-height:1.5;margin:0 0 12px;">Cochez ce qui vous concerne : je mettrai en avant les onglets utiles et j'estomperai les autres. <strong>Rien n'est supprimé</strong>, vous pouvez changer quand vous voulez.</p>
+<p class="mi-resume" style="display:block;">Cochez ce qui vous concerne : je mettrai en avant les onglets utiles et j'estomperai les autres. <strong>Rien n'est supprimé</strong>, vous pouvez changer quand vous voulez.</p>
+<div class="mi-section mi-s-profil" style="padding-bottom:2px;">
+<div class="mi-section-titre">✅ Mon activité</div>
 <label class="act-choix"><input type="checkbox" id="act-interventions"/><div><strong>🔧 Je me déplace ou je travaille chez mes clients</strong><span>Interventions, rendez-vous, planning, fournitures.</span></div></label>
 <label class="act-choix"><input type="checkbox" id="act-boutique"/><div><strong>🛍️ Je vends des produits</strong><span>Boutique en ligne, commandes, stock de produits.</span></div></label>
 <label class="act-choix"><input type="checkbox" id="act-livraison"/><div><strong>🚚 Je livre mes clients</strong><span>Tournée de livraison et regroupement des commandes.</span></div></label>
+</div>
 <div id="act-erreur" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:8px;">Cochez au moins une case.</div>
 <div class="modal-actions" style="flex-direction:column;gap:8px;">
 <button class="btn-primary" id="act-btn-suivant" onclick="repondreQuestionActivites()">Suivant</button>
@@ -1709,7 +1768,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-overlay" id="modal-impossible">
 <div class="modal-box">
 <h3>🚫 Impossible d'honorer ce rendez-vous</h3>
-<p id="imp-resume" style="font-size:13px;color:var(--mu2);margin:6px 0 12px;"></p>
+<p id="imp-resume" class="mi-resume"></p>
+<div class="mi-section mi-s-statut">
+<div class="mi-section-titre">❓ Pourquoi</div>
 <div class="modal-field"><label>Motif</label>
 <select id="imp-motif" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
 <option value="imprevu">Imprévu de dernière minute</option>
@@ -1718,11 +1779,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <option value="materiel">Matériel / approvisionnement</option>
 <option value="autre">Autre empêchement</option>
 </select></div>
+</div>
+<div class="mi-section mi-s-quand">
+<div class="mi-section-titre">💬 Ce que reçoit votre client</div>
 <div class="modal-field"><label>Message pour votre client (facultatif)</label>
 <textarea id="imp-message" maxlength="500" rows="3" placeholder="Ex : Toutes mes excuses, je vous rappelle dès demain pour convenir d'un autre jour." style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;resize:vertical;"></textarea></div>
 <div class="modal-field"><label>Nouvelle date proposée (facultatif)</label>
 <input id="imp-date" maxlength="100" placeholder="Ex : jeudi 22 octobre, le matin" type="text"/></div>
-<div id="imp-note" style="font-size:12px;color:var(--mu);line-height:1.5;margin-bottom:6px;"></div>
+</div>
+<div id="imp-note" class="mi-note"></div>
 <div class="modal-actions">
 <button class="btn-primary" id="btn-impossible" onclick="confirmerImpossibleHonorer()">Annuler et prévenir mon client</button>
 <button class="btn-secondary" onclick="fermerModale('modal-impossible')">Retour</button>
@@ -1732,9 +1797,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-overlay" id="modal-demander-paiement">
 <div class="modal-box">
 <h3>💶 Demander un paiement</h3>
-<p id="dp-resume" style="font-size:13px;color:var(--mu2);margin:6px 0 12px;"></p>
+<p id="dp-resume" class="mi-resume"></p>
+<div class="mi-section mi-s-quand">
+<div class="mi-section-titre">💶 Le montant</div>
 <div class="modal-field"><label>Montant à payer (€)</label><input id="dp-montant" type="text" inputmode="decimal" placeholder="Ex. 180 ou 180,50"/>
-<div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Saisissez le montant de votre devis / de votre facture. Si le client a déjà payé des frais en ligne, tenez-en compte.</div></div>
+<div class="mi-aide">Saisissez le montant de votre devis / de votre facture. Si le client a déjà payé des frais en ligne, tenez-en compte.</div></div>
+</div>
 <div class="mi-section mi-s-frais" id="dp-geste-bloc">
 <div class="mi-section-titre">🤝 Geste commercial (facultatif)</div>
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -1745,11 +1813,17 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div style="font-size:11.5px;color:var(--mu);margin-top:6px;line-height:1.4;">Une remise rien que pour ce client (ex. pour un désagrément). Elle est calculée sur le montant ci-dessus, <strong>remplace les remises automatiques</strong> et reste gratuite, quelle que soit votre offre.</div>
 <div id="dp-total" style="margin-top:10px;font-size:13.5px;font-weight:700;"></div>
 </div>
-<div id="dp-remises-info" style="font-size:12px;color:var(--mu);line-height:1.5;margin:0 0 12px;"></div>
+<div id="dp-remises-info" class="mi-note"></div>
+<div class="mi-section mi-s-client">
+<div class="mi-section-titre">✉️ Ce que voit votre client</div>
 <div class="modal-field"><label>Pour quoi ? (facultatif — visible par le client)</label><input id="dp-description" maxlength="300" placeholder="Ex : Remplacement du chauffe-eau" type="text"/></div>
 <div class="modal-field" id="dp-email-wrap"><label>Email du client</label><input id="dp-email" type="email" placeholder="client@exemple.com"/></div>
-<div class="modal-field"><label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-weight:600;"><input id="dp-relance-auto" type="checkbox" checked style="margin-top:3px;"/><span>Relancer automatiquement mon client s'il ne paie pas <span style="font-size:10.5px;font-weight:700;color:var(--ac);border:1px solid var(--ac);border-radius:10px;padding:1px 7px;margin-left:4px;">PRO</span></span></label><div id="dp-relance-note" style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;"></div></div>
-<div id="dp-note" style="font-size:12px;color:var(--mu);line-height:1.5;margin-bottom:6px;"></div>
+</div>
+<div class="mi-section mi-s-profil">
+<div class="mi-section-titre">🔁 Relance</div>
+<div class="modal-field"><label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-weight:600;"><input id="dp-relance-auto" type="checkbox" checked style="margin-top:3px;"/><span>Relancer automatiquement mon client s'il ne paie pas <span style="font-size:10.5px;font-weight:700;color:var(--ac);border:1px solid var(--ac);border-radius:10px;padding:1px 7px;margin-left:4px;">PRO</span></span></label><div id="dp-relance-note" class="mi-aide"></div></div>
+</div>
+<div id="dp-note" class="mi-note"></div>
 <div class="modal-actions">
 <button class="btn-primary" id="btn-dp" onclick="confirmerDemandePaiement()">Envoyer la demande de paiement</button>
 <button class="btn-secondary" onclick="fermerModale('modal-demander-paiement')">Retour</button>
@@ -1921,6 +1995,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-overlay" id="modal-fourniture">
 <div class="modal-box" style="max-width:420px;">
 <h3 id="titre-modal-fourniture">Nouvelle fourniture</h3>
+<div class="mi-section mi-s-lieu">
+<div class="mi-section-titre">📦 Le produit</div>
 <div class="modal-field"><label>Nom</label><input id="fourn-nom" placeholder="Ex : Vernis rouge, Farine, Dissolvant…" type="text"/></div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
 <div class="modal-field"><label>Quantité actuelle</label><input id="fourn-quantite" min="0" step="0.1" type="number" value="0"/></div>
@@ -1935,7 +2011,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </select>
 </div>
 </div>
-<div class="modal-field"><label>Seuil d'alerte (optionnel)</label><input id="fourn-seuil" min="0" placeholder="Ex : 5 — prévenu si le stock passe en dessous" step="0.1" type="number"/></div>
+</div>
+<div class="mi-section mi-s-frais">
+<div class="mi-section-titre">🔔 Alerte de stock bas</div>
+<div class="modal-field"><label>Seuil d'alerte (optionnel)</label><input id="fourn-seuil" min="0" placeholder="Ex : 5 — prévenu si le stock passe en dessous" step="0.1" type="number"/>
+<div class="mi-aide">Quand la quantité passe sous ce chiffre, je vous préviens pour recommander à temps.</div></div>
+</div>
 <div class="modal-actions">
 <button class="btn-primary" id="btn-fourn-sauver" onclick="sauverFourniture()">Ajouter</button>
 <button class="btn-secondary" onclick="fermerModale('modal-fourniture')">Annuler</button>
