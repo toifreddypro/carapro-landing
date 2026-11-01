@@ -119,17 +119,94 @@ function poserQuestionFAQ() {
 // ════════════════════════════════════════
 var _mpaAiFeed = [];
 
-function mpaAiDire(message, type, cta) {
-  var icone = type === 'important' ? '🔴' : type === 'warning' ? '⚠️' : '✨';
-  _mpaAiFeed.unshift({ message: message, icone: icone, type: type, time: new Date(), cta: cta });
-  renderMpaAiFeed();
+// Démarrage : tout ce que MPA-AI a à dire à l'ouverture est mis en file d'attente, puis montré UN À LA FOIS dans une grande fenêtre
+// (s'il y a au moins deux messages, ou un message important). La petite fenêtre ne garde que le premier. Après le démarrage, seuls les
+// messages « importants » passent en grand ; le reste s'affiche comme avant dans la petite fenêtre.
+var _mpaAiDemarrage = false, _mpaAiFileDemarrage = [], _mpaAiGrand = null;
 
+function mpaAiIcone(type) { return type === 'important' ? '🔴' : type === 'warning' ? '⚠️' : '✨'; }
+
+function mpaAiAjouterAuFeed(m, ouvrir) {
+  _mpaAiFeed.unshift({ message: m.message, icone: m.icone, type: m.type, time: m.time || new Date(), cta: m.cta });
+  renderMpaAiFeed();
   var dot = document.getElementById('mpa-ai-dot');
   dot.classList.add('show');
-  dot.className = 'mpa-ai-dot show' + (type === 'important' ? ' important' : type === 'warning' ? ' warning' : '');
-
-  if (type === 'important' || type === 'pro') {
+  dot.className = 'mpa-ai-dot show' + (m.type === 'important' ? ' important' : m.type === 'warning' ? ' warning' : '');
+  if (ouvrir && (m.type === 'important' || m.type === 'pro')) {
     document.getElementById('mpa-ai-panel').classList.add('open');
+  }
+}
+
+function mpaAiDire(message, type, cta) {
+  var m = { message: message, icone: mpaAiIcone(type), type: type, time: new Date(), cta: cta };
+  if (_mpaAiDemarrage) { _mpaAiFileDemarrage.push(m); return; }
+  if (type === 'important') { mpaAiGrandAjouter([m]); return; }
+  mpaAiAjouterAuFeed(m, true);
+}
+
+function mpaAiDemarrageDebut() { _mpaAiDemarrage = true; _mpaAiFileDemarrage = []; }
+function mpaAiDemarrageFin() {
+  _mpaAiDemarrage = false;
+  var liste = _mpaAiFileDemarrage; _mpaAiFileDemarrage = [];
+  if (!liste.length) return; // rien à dire : rien ne s'ouvre
+  if (liste.length === 1 && liste[0].type !== 'important') { mpaAiAjouterAuFeed(liste[0], true); return; }
+  mpaAiGrandAjouter(liste);
+}
+
+function mpaAiGrandAjouter(msgs) {
+  if (_mpaAiGrand && document.getElementById('mpa-ai-grand')) { // déjà ouverte : ces messages passent à la suite
+    msgs.forEach(function(m) { _mpaAiGrand.liste.push(m); });
+    mpaAiGrandRendre(); return;
+  }
+  var liste = msgs.filter(function(m) { return m.type === 'important'; }).concat(msgs.filter(function(m) { return m.type !== 'important'; }));
+  _mpaAiGrand = { liste: liste, i: 0, atteint: 0 };
+  mpaAiAjouterAuFeed(liste[0], false); // le premier message reste dans la petite fenêtre
+  var fond = document.createElement('div');
+  fond.className = 'mpa-ai-grand'; fond.id = 'mpa-ai-grand';
+  fond.setAttribute('role', 'dialog'); fond.setAttribute('aria-modal', 'true'); fond.setAttribute('aria-label', 'MPA AI');
+  document.body.appendChild(fond);
+  document.addEventListener('keydown', mpaAiGrandTouche);
+  mpaAiGrandRendre();
+}
+function mpaAiGrandTouche(e) { if (e.key === 'Escape') mpaAiGrandFermer(); }
+
+function mpaAiGrandRendre() {
+  var g = _mpaAiGrand, fond = document.getElementById('mpa-ai-grand');
+  if (!g || !fond) return;
+  var m = g.liste[g.i], n = g.liste.length, dernier = g.i >= n - 1;
+  g.atteint = Math.max(g.atteint, g.i);
+  var couleur = m.type === 'important' ? '#dc2626' : m.type === 'warning' ? '#f59e0b' : '#B5502F';
+  var loader = document.querySelector('#mpa-ai-fab .mpa-ai-loader');
+  var ctas = [].concat(m.cta || []).map(function(c) {
+    return '<button type="button" class="mpa-ai-grand-cta" onclick="mpaAiGrandFermer();' + c.action + '">' + c.label + '</button>';
+  }).join('');
+  var points = '';
+  if (n > 1) { for (var k = 0; k < n; k++) points += '<span class="mpa-ai-grand-point' + (k === g.i ? ' actif' : '') + '"></span>'; }
+  fond.innerHTML =
+    '<div class="mpa-ai-grand-box" style="border-top-color:' + couleur + ';">' +
+      '<div class="mpa-ai-grand-loader">' + (loader ? loader.outerHTML : '✨') + '</div>' +
+      '<div class="mpa-ai-grand-msg">' + m.message + '</div>' +
+      ctas +
+      (points ? '<div class="mpa-ai-grand-points">' + points + '</div>' : '') +
+      '<div class="mpa-ai-grand-pied">' +
+        (dernier ? '' : '<button type="button" class="mpa-ai-grand-plus-tard" onclick="mpaAiGrandFermer()">Plus tard</button>') +
+        '<button type="button" class="mpa-ai-grand-suivant" onclick="' + (dernier ? 'mpaAiGrandFermer()' : 'mpaAiGrandSuivant()') + '">' +
+          (dernier ? (n > 1 ? 'Terminé' : 'Compris') : 'Suivant (' + (g.i + 1) + ' sur ' + n + ')') + '</button>' +
+      '</div>' +
+    '</div>';
+}
+function mpaAiGrandSuivant() { if (!_mpaAiGrand) return; if (_mpaAiGrand.i < _mpaAiGrand.liste.length - 1) _mpaAiGrand.i++; mpaAiGrandRendre(); }
+// Ferme la grande fenêtre. Ce qui n'a pas été vu rejoint la petite fenêtre ; si tout a été vu, la pastille s'éteint.
+function mpaAiGrandFermer() {
+  var g = _mpaAiGrand;
+  var fond = document.getElementById('mpa-ai-grand');
+  if (fond) fond.remove();
+  document.removeEventListener('keydown', mpaAiGrandTouche);
+  _mpaAiGrand = null;
+  if (!g) return;
+  g.liste.slice(g.atteint + 1).forEach(function(m) { mpaAiAjouterAuFeed(m, false); });
+  if (g.atteint >= g.liste.length - 1) {
+    var dot = document.getElementById('mpa-ai-dot'); if (dot) { dot.classList.remove('show'); dot.className = 'mpa-ai-dot'; }
   }
 }
 
@@ -569,6 +646,7 @@ async function init() {
     return;
   }
   _artisan = artisan;
+  mpaAiDemarrageDebut(); // les messages de MPA-AI à l'ouverture sont mis en file, puis montrés un par un en grand
   await synchroniserStatutStripe(); // au retour de Stripe (ou tant que « en cours ») : lit l'état réel du compte chez Stripe
   majInfoAbonnementMpaAi();
 
@@ -602,6 +680,7 @@ async function init() {
   await verifierNouveautes();
   renderMonOffre();
   traiterRetourAbonnement(); // sans attendre : peut patienter jusqu'à 30 s le temps que Stripe prévienne le serveur
+  setTimeout(mpaAiDemarrageFin, 2500); // laisse arriver les messages tardifs, puis montre la file de MPA-AI
 }
 
 // Met en forme la description : une ligne par idée, « Libellé : texte » avec le libellé en gras.

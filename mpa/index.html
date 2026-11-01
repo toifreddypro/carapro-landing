@@ -224,6 +224,29 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .mpa-b5{width:14px;height:14px;top:13px;left:17px;transform-origin:130% -10%;animation:mpa-spin var(--t) linear infinite;}
 .mpa-b6{width:13px;height:13px;top:14px;left:17px;transform-origin:130% -10%;animation:mpa-spin var(--t) linear infinite;animation-delay:calc(var(--t) / -1.5);}
 @keyframes mpa-spin{to{transform:rotate(360deg);}}
+/* ── MPA AI — grande fenêtre d'accueil : un message à la fois, plein écran sur téléphone ── */
+.mpa-ai-grand{position:fixed;inset:0;z-index:1200;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px;}
+.mpa-ai-grand-box{box-sizing:border-box;background:var(--panel,#fff);width:100%;max-width:520px;max-height:92vh;overflow-y:auto;border-radius:20px;border-top:6px solid #B5502F;
+  padding:26px 26px 22px;box-shadow:0 24px 60px rgba(0,0,0,.35);text-align:center;display:flex;flex-direction:column;}
+.mpa-ai-grand-loader{width:112px;height:112px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.mpa-ai-grand-loader .mpa-ai-loader{transform:scale(2.2);}
+.mpa-ai-grand-msg{font-size:17px;line-height:1.6;margin:8px 0 18px;text-align:left;}
+.mpa-ai-grand-cta{display:block;width:100%;padding:15px 18px;margin:0 0 10px;border-radius:12px;border:none;background:#B5502F;color:#fff;
+  font-family:'Outfit',sans-serif;font-size:16px;font-weight:700;cursor:pointer;}
+.mpa-ai-grand-points{display:flex;justify-content:center;gap:7px;margin:6px 0 14px;}
+.mpa-ai-grand-point{width:9px;height:9px;border-radius:50%;background:var(--brd,#d6dce8);}
+.mpa-ai-grand-point.actif{background:#B5502F;}
+.mpa-ai-grand-pied{display:flex;gap:10px;}
+.mpa-ai-grand-plus-tard,.mpa-ai-grand-suivant{flex:1;padding:14px 16px;border-radius:12px;font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;cursor:pointer;}
+.mpa-ai-grand-plus-tard{background:transparent;border:1.5px solid var(--brd,#d6dce8);color:var(--mu,#6b7c96);}
+.mpa-ai-grand-suivant{background:var(--tx,#1a2332);border:1.5px solid var(--tx,#1a2332);color:var(--panel,#fff);}
+@media (max-width:600px){
+  .mpa-ai-grand{padding:0;}
+  .mpa-ai-grand-box{max-width:none;max-height:100vh;height:100%;border-radius:0;justify-content:center;padding:28px 20px 24px;}
+  .mpa-ai-grand-msg{font-size:18px;}
+  .mpa-ai-grand-cta,.mpa-ai-grand-plus-tard,.mpa-ai-grand-suivant{min-height:56px;font-size:17px;}
+}
+
 @keyframes mpa-colorize{
   0%{filter:hue-rotate(0deg);} 20%{filter:hue-rotate(-15deg);}
   40%{filter:hue-rotate(-30deg);} 60%{filter:hue-rotate(-15deg);}
