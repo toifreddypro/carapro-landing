@@ -899,8 +899,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div style="padding:14px 16px;font-size:13px;line-height:1.6;">
 <p style="margin:0 0 10px;">Trois outils pour faire revenir vos clients. Ils s'appliquent <strong>tout seuls</strong> sur la page de paiement : vous n'avez rien à faire une fois réglés.</p>
 <table class="dtbl" style="font-size:12.5px;"><thead><tr><th>Outil</th><th>Boutique</th><th>Interventions</th><th>Offre</th></tr></thead><tbody>
-<tr><td>💚 Cashback</td><td>Oui</td><td>Oui</td><td>Pro</td></tr>
-<tr><td>🎁 Code promo</td><td>Oui</td><td>Oui</td><td>Pro</td></tr>
+<tr><td>💚 Cashback</td><td>Au choix</td><td>Au choix</td><td>Pro</td></tr>
+<tr><td>🎁 Code promo</td><td>Au choix</td><td>Au choix</td><td>Pro</td></tr>
 <tr><td>🤝 Client fidèle</td><td>Non</td><td>Oui</td><td>Pro</td></tr>
 <tr><td>🎯 Geste commercial</td><td>—</td><td>Oui, pour un client précis</td><td>Toutes</td></tr>
 </tbody></table>
@@ -916,6 +916,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <button class="addb" id="btn-code-promo" onclick="sauverCodePromo()" style="flex-shrink:0;">Enregistrer</button>
 </div>
 <label style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;margin-top:9px;line-height:1.45;cursor:pointer;"><input type="checkbox" id="boutique-code-promo-visible" checked style="margin-top:3px;"><span><strong>Afficher ce code sur CaraLink</strong> (bandeau de la boutique et fiche). Décochez-le pour un <strong>code partenaire</strong> (donné dans une vidéo, une affiche, un partenariat…) : seuls ceux qui le connaissent pourront l'utiliser, la case « J'ai un code promo » reste disponible dans le panier.</span></label>
+<div style="margin-top:10px;padding:9px 12px;border-radius:10px;background:rgba(15,157,120,.07);border:1px solid rgba(15,157,120,.25);font-size:12.5px;line-height:1.5;"><div style="font-weight:700;margin-bottom:4px;">Où ça s'applique ? <span style="font-weight:500;color:var(--mu);">(cochez ce que vous voulez)</span></div><div style="display:flex;gap:16px;flex-wrap:wrap;"><label style="display:flex;gap:6px;align-items:center;cursor:pointer;"><input type="checkbox" id="code-promo-ventes" checked style="width:auto;margin:0;"><span>🛍️ Sur mes ventes</span></label><label style="display:flex;gap:6px;align-items:center;cursor:pointer;"><input type="checkbox" id="code-promo-interventions" checked style="width:auto;margin:0;"><span>🔧 Sur mes interventions</span></label></div></div>
 <div id="code-promo-statut" style="font-size:12px;color:var(--mu);margin-top:8px;"></div>
 <div id="code-promo-usage" style="font-size:12.5px;margin-top:6px;"></div>
 </div></div>
@@ -926,8 +927,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <button class="addb" id="btn-cashback" onclick="sauverCashback()" style="flex-shrink:0;">Enregistrer</button>
 <span style="font-size:12px;color:var(--mu);">Vide = pas de cashback.</span>
 </div>
+<div style="margin-top:10px;padding:9px 12px;border-radius:10px;background:rgba(15,157,120,.07);border:1px solid rgba(15,157,120,.25);font-size:12.5px;line-height:1.5;"><div style="font-weight:700;margin-bottom:4px;">Où ça s'applique ? <span style="font-weight:500;color:var(--mu);">(cochez ce que vous voulez)</span></div><div style="display:flex;gap:16px;flex-wrap:wrap;"><label style="display:flex;gap:6px;align-items:center;cursor:pointer;"><input type="checkbox" id="cashback-ventes" checked style="width:auto;margin:0;"><span>🛍️ Sur mes ventes</span></label><label style="display:flex;gap:6px;align-items:center;cursor:pointer;"><input type="checkbox" id="cashback-interventions" checked style="width:auto;margin:0;"><span>🔧 Sur mes interventions</span></label></div></div>
 <div id="cashback-statut" style="font-size:12px;color:var(--mu);margin-top:8px;"></div>
-<div style="font-size:12px;color:var(--mu);margin-top:10px;line-height:1.5;">💡 Le cashback s'applique à vos <strong>commandes de la boutique</strong> comme à vos <strong>interventions payées en ligne</strong> (crédit gagné quand le client règle le paiement final).</div>
+<div style="font-size:12px;color:var(--mu);margin-top:10px;line-height:1.5;">💡 Selon les cases cochées, le cashback s'applique à vos <strong>commandes de la boutique</strong> et/ou à vos <strong>interventions payées en ligne</strong> (crédit gagné quand le client règle le paiement final). Le crédit gagné reste utilisable des deux côtés.</div>
 </div></div>
 <div class="dcard carte-repliable" style="margin-top:16px;"><div class="dchdr fam-orange" role="button" tabindex="0" aria-expanded="true" onclick="basculerCarte(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();basculerCarte(this);}"><div class="dctit">🤝 Remise « client fidèle » <span style="font-size:11px;font-weight:700;color:var(--ac);">Offre Pro</span></div><span class="hdr-sub">Automatique pour un client déjà venu</span><span class="chev" aria-hidden="true">▾</span></div><div class="carte-corps" style="padding:16px;">
 <div style="font-size:12px;color:var(--mu);margin-bottom:8px;line-height:1.5;">Un client <strong>déjà venu chez vous</strong> (intervention terminée) a automatiquement cette remise sur le paiement final de sa nouvelle intervention. Il n'y a rien à faire. <strong>Une seule remise sur le prix</strong> : s'il utilise aussi un code promo, c'est la plus avantageuse des deux qui compte.</div>
@@ -2130,6 +2132,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=202611010934"></script>
+<script src="/mpa/mpa-artisans.js?v=202611011003"></script>
 </body>
 </html>

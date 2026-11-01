@@ -219,7 +219,7 @@
   .panier-vider{font-size:12px;color:var(--mu);text-decoration:underline;cursor:pointer;background:none;border:none;padding:0;margin-top:8px;}
 </style>
 <script src="https://js.stripe.com/v3/" async></script>
-<script src="tr-artisans.js?v=202611010934"></script>
+<script src="tr-artisans.js?v=202611011003"></script>
 </head>
 <body>
 
@@ -371,6 +371,7 @@ async function appliquerCodePromo() {
       msg.textContent = data.error === 'code_invalide' ? T('cat_promo_invalide')
         : data.error === 'code_deja_utilise' ? T('cat_promo_deja')
         : data.error === 'connexion_requise' ? T('cat_promo_connexion')
+        : data.error === 'code_hors_perimetre' ? T('cat_promo_ventes')
         : data.error;
       return;
     }

@@ -205,7 +205,7 @@ Deno.serve(async (req: Request) => {
     if (await limiteAtteinte(sb, `dispo-${mode}:` + ipVisiteur(req), mode === "creneaux" ? 30 : 300, 60)) return reponseTropDeRequetes(corsHeaders);
 
     // L'artisan doit exister ET être actif : jamais les horaires ni le code promo d'un artisan désactivé.
-    const { data: artisanPublic, error: errArt } = await sb.from("artisans").select("id, slug_catalogue, code_promo, code_promo_pct, code_promo_fin, code_promo_visible, stripe_connect_statut, boutique_en_pause, plan").eq("id", artisan_id).eq("actif", true).maybeSingle();
+    const { data: artisanPublic, error: errArt } = await sb.from("artisans").select("id, slug_catalogue, code_promo, code_promo_pct, code_promo_fin, code_promo_visible, stripe_connect_statut, boutique_en_pause, plan, cashback_pct, cashback_ventes, cashback_interventions, code_promo_ventes, code_promo_interventions").eq("id", artisan_id).eq("actif", true).maybeSingle();
     if (errArt) throw errArt;
     if (!artisanPublic) return json({ error: "Artisan introuvable." }, 404);
     // Règle du 15/10/2026 : sans paiements en ligne actifs, plus de réservation de créneau (deux semaines de grâce, jusqu'au 1er/11/2026).
@@ -218,6 +218,7 @@ Deno.serve(async (req: Request) => {
     let produitsPhares: Array<{ nom: string; url_photo: string | null }> = [];
     let slugCatalogue: string | null = null;
     let codePromo: string | null = null;
+    let avantages: any = null; // cashback / code promo avec leur périmètre (ventes, interventions), pour la vignette
     if (mode === "apercu") {
       const { data: svc } = await sb.from("artisans_services")
         .select("nom_service").eq("artisan_id", artisan_id).order("ordre", { ascending: true }).limit(20);
@@ -225,6 +226,17 @@ Deno.serve(async (req: Request) => {
 
       slugCatalogue = artisanPublic.slug_catalogue ?? null;
       codePromo = (codePromoValide(artisanPublic, (artisanPublic as any).plan) && (artisanPublic as any).code_promo_visible !== false) ? (artisanPublic.code_promo ?? null) : null;
+      {
+        const ap: any = artisanPublic;
+        const pro = ap.plan === "pro" || ap.plan === "pro_offert";
+        const paiementsActifs = ap.stripe_connect_statut === "actif";
+        const pct = Number(ap.cashback_pct);
+        const cbVentes = ap.cashback_ventes !== false && ap.boutique_en_pause !== true, cbInterv = ap.cashback_interventions !== false;
+        const cb = pro && paiementsActifs && pct >= 1 && pct <= 10 && (cbVentes || cbInterv) ? { pct, ventes: cbVentes, interventions: cbInterv } : null;
+        const cpVentes = ap.code_promo_ventes !== false && ap.boutique_en_pause !== true, cpInterv = ap.code_promo_interventions !== false;
+        const cp = codePromo && paiementsActifs && (cpVentes || cpInterv) ? { code: codePromo, pct: Number(ap.code_promo_pct), ventes: cpVentes, interventions: cpInterv } : null;
+        avantages = (cb || cp) ? { cashback: cb, code_promo: cp } : null;
+      }
 
       // Produits phares : choisis à la main par l'artisan, sinon repli sur les meilleures
       // ventes (1 en gratuit, 4 en Pro) (jamais un compteur stocké — toujours recalculé sur les commandes réglées).
@@ -253,7 +265,7 @@ Deno.serve(async (req: Request) => {
     // Boutique mise en pause par l'artisan : rien n'est mis en avant tant qu'elle est fermée.
     if (artisanPublic.boutique_en_pause === true) { produitsPhares = []; slugCatalogue = null; codePromo = null; }
 
-    if (mode === "apercu") apercuPartiel = { services, produits_phares: produitsPhares, slug_catalogue: slugCatalogue, code_promo: codePromo };
+    if (mode === "apercu") apercuPartiel = { services, produits_phares: produitsPhares, slug_catalogue: slugCatalogue, code_promo: codePromo, avantages };
 
     const { data: horaires, error: errH } = await sb.from("artisans_horaires")
       .select("*").eq("artisan_id", artisan_id).order("heure_debut", { ascending: true });
@@ -261,7 +273,7 @@ Deno.serve(async (req: Request) => {
     if (!horaires || !horaires.length) {
       const message = "Cet artisan n'a pas encore renseigné ses horaires habituels.";
       return mode === "apercu"
-        ? json({ prochaine_date: null, label: null, semaine: [], services, produits_phares: produitsPhares, slug_catalogue: slugCatalogue, code_promo: codePromo, message })
+        ? json({ prochaine_date: null, label: null, semaine: [], services, produits_phares: produitsPhares, slug_catalogue: slugCatalogue, code_promo: codePromo, avantages, message })
         : json({ jours: [], message });
     }
 
@@ -361,11 +373,11 @@ Deno.serve(async (req: Request) => {
             services,
             produits_phares: produitsPhares,
             slug_catalogue: slugCatalogue,
-            code_promo: codePromo,
+            code_promo: codePromo, avantages,
           });
         }
       }
-      return json({ prochaine_date: null, label: null, semaine, services, produits_phares: produitsPhares, slug_catalogue: slugCatalogue, code_promo: codePromo, message: "Aucune disponibilité dans les " + HORIZON_JOURS + " prochains jours." });
+      return json({ prochaine_date: null, label: null, semaine, services, produits_phares: produitsPhares, slug_catalogue: slugCatalogue, code_promo: codePromo, avantages, message: "Aucune disponibilité dans les " + HORIZON_JOURS + " prochains jours." });
     }
 
     // ═══ MODE CRÉNEAUX — vrai calcul avec trajet, une fois l'adresse connue ═══

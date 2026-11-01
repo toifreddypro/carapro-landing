@@ -656,6 +656,18 @@ function badgeNouveauCarte(a) {
 function badgeVerifieCarte(a) {
   return a.verifie ? '<span class="badge-trust bt-green" title="SIRET et assurance vérifiés">✅ ' + escHtml(T('badge_verifie')) + '</span>' : '';
 }
+// « sur les produits » / « sur les prestations » / les deux : où un cashback ou un code promo s'applique.
+function libelleScopeAvantage(ventes, interventions) {
+  return T(ventes && interventions ? 'avt_s_vi' : (ventes ? 'avt_s_v' : 'avt_s_i'));
+}
+// Pastilles de la vignette : cashback et code promo, avec ce qu'ils couvrent (jamais un code « partenaire » masqué : le serveur ne l'envoie pas).
+function avantagesCarteHtml(av) {
+  if (!av) return '';
+  var h = '';
+  if (av.cashback) h += '<span class="badge-trust bt-green">' + escHtml(T('perk_cashback').replace('{p}', Math.round(av.cashback.pct)) + ' ' + libelleScopeAvantage(av.cashback.ventes, av.cashback.interventions)) + '</span>';
+  if (av.code_promo) h += '<span class="badge-trust bt-accent">' + escHtml(T('avt_code').replace('{c}', av.code_promo.code).replace('{p}', Math.round(av.code_promo.pct)) + ' ' + libelleScopeAvantage(av.code_promo.ventes, av.code_promo.interventions)) + '</span>';
+  return h;
+}
 function pastillesSpecialesCarte(a) {
   var h = '';
   if (a.alternance_niveau >= 2) h += '<span class="badge-trust bt-purple" title="Cette entreprise s\'engage activement pour la formation locale">🟠 Tremplin des jeunes</span>';
@@ -708,6 +720,7 @@ function renderArtisanCard(a) {
     '</div>' +
     (a.a_photos ? '<div style="font-size:12px;color:var(--mu2,#777);margin:2px 0 6px;">📷 ' + escHtml(T('badge_photos')) + '</div>' : '') +
     '<div class="dispo-grid" id="grille-carte-' + escHtml(a.id) + '" style="display:none;"></div>' +
+    '<div id="avantages-carte-' + escHtml(a.id) + '" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>' +
     '<div id="phares-carte-' + escHtml(a.id) + '"></div>' +
   '</div>';
 }
@@ -719,6 +732,7 @@ async function chargerApercuCarte(id) {
   var zoneDispo = document.getElementById('dispo-carte-' + id);
   var grille = document.getElementById('grille-carte-' + id);
   var zonePhares = document.getElementById('phares-carte-' + id);
+  var zoneAvantages = document.getElementById('avantages-carte-' + id);
   if (!a || !zoneTags) return;
   try {
     var res = await fetch(SUPABASE_URL + '/functions/v1/verifier-disponibilite-artisan', {
@@ -730,6 +744,7 @@ async function chargerApercuCarte(id) {
     if (data.error) return;
 
     zoneTags.innerHTML = badgeNouveauCarte(a) + pastillesServicesCarte(data.services) + pastillesSpecialesCarte(a);
+    if (zoneAvantages) zoneAvantages.innerHTML = avantagesCarteHtml(data.avantages);
 
     if (data.semaine && data.semaine.length && zoneDispo && grille) {
       var dispo = data.prochaine_date
@@ -749,7 +764,8 @@ async function chargerApercuCarte(id) {
       var lienBoutique = data.slug_catalogue
         ? '<a href="catalogue.html?s=' + encodeURIComponent(data.slug_catalogue) + '" class="phares-lien" target="_blank" rel="noopener" onclick="event.stopPropagation();" style="display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:999px;background:var(--ac);color:#fff;font-size:13px;font-weight:700;text-decoration:none;box-shadow:0 2px 8px rgba(181,80,47,.28);">🛍️ ' + escHtml(T('phares_voir_boutique')) + ' →</a>'
         : '';
-      var promo = data.code_promo
+      var promoVentes = !data.avantages || !data.avantages.code_promo || data.avantages.code_promo.ventes !== false; // code réservé aux interventions : pas à côté de la boutique
+      var promo = (data.code_promo && promoVentes)
         ? '<span class="phares-code-promo">🎁 ' + escHtml(data.code_promo) + '</span>'
         : '';
       zonePhares.innerHTML =
@@ -904,7 +920,7 @@ function buildProfilHTML(data) {
         }).join('') +
       '</div>' +
       (data.artisan.slug_catalogue ? '<a href="catalogue.html?s=' + encodeURIComponent(data.artisan.slug_catalogue) + '" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:12px;padding:10px 14px;border-radius:999px;background:var(--ac,#B5502F);color:#fff;font-size:13.5px;font-weight:700;text-decoration:none;box-shadow:0 2px 8px rgba(181,80,47,.28);">🛍️ Voir toute la boutique →</a>' : '') +
-      (data.artisan.code_promo ? '<div style="text-align:center;margin-top:8px;font-family:monospace;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:7px;background:rgba(181,80,47,.08);color:var(--ac,#B5502F);border:1px dashed var(--ac,#B5502F);display:inline-block;">🎁 ' + escHtml(data.artisan.code_promo) + '</div>' : '')
+      ((data.artisan.code_promo && data.artisan.code_promo_ventes !== false) ? '<div style="text-align:center;margin-top:8px;font-family:monospace;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:7px;background:rgba(181,80,47,.08);color:var(--ac,#B5502F);border:1px dashed var(--ac,#B5502F);display:inline-block;">🎁 ' + escHtml(data.artisan.code_promo) + '</div>' : '')
     : '';
 
   var avisHtml = data.avis.length
@@ -935,8 +951,9 @@ function buildProfilHTML(data) {
         '</div>' +
       '</div>' +
       (a.nouveau ? '<p style="font-size:12.5px;color:var(--mu2,#777);margin:-6px 0 14px;">' + escHtml(T('badge_nouveau_info')) + '</p>' : '') +
-      ((a.cashback_pct || a.remise_fidele_pct) ? '<div style="margin:0 0 14px;padding:10px 12px;border-radius:10px;background:rgba(15,157,120,.08);border:1px solid rgba(15,157,120,.25);font-size:13px;line-height:1.5;">' +
-        (a.cashback_pct ? '<div style="font-weight:700;">' + escHtml(T('perk_cashback').replace('{p}', Math.round(a.cashback_pct))) + '</div>' : '') +
+      ((a.cashback_pct || a.remise_fidele_pct || a.code_promo) ? '<div style="margin:0 0 14px;padding:10px 12px;border-radius:10px;background:rgba(15,157,120,.08);border:1px solid rgba(15,157,120,.25);font-size:13px;line-height:1.5;">' +
+        (a.cashback_pct ? '<div style="font-weight:700;">' + escHtml(T('perk_cashback').replace('{p}', Math.round(a.cashback_pct)) + ' ' + libelleScopeAvantage(a.cashback_ventes !== false, a.cashback_interventions !== false)) + '</div>' : '') +
+        (a.code_promo && Number(a.code_promo_pct) >= 1 ? '<div style="font-weight:700;">' + escHtml(T('avt_code').replace('{c}', a.code_promo).replace('{p}', Math.round(Number(a.code_promo_pct))) + ' ' + libelleScopeAvantage(a.code_promo_ventes !== false, a.code_promo_interventions !== false)) + '</div>' : '') +
         (a.remise_fidele_pct ? '<div style="font-weight:700;">' + escHtml(T('perk_fidele').replace('{p}', Math.round(a.remise_fidele_pct))) + '</div>' : '') +
         '<div style="font-size:11.5px;color:var(--mu2,#777);margin-top:2px;">' + escHtml(T('perk_info')) + '</div></div>' : '') +
       (a.bio ? '<p style="font-size:14px;line-height:1.6;margin-bottom:18px;">' + escHtml(a.bio) + '</p>' : '') +

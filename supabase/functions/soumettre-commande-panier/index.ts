@@ -175,7 +175,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data: artisan, error: errA } = await sb.from("artisans")
-      .select("nom_entreprise, email, plan, cashback_pct, code_promo, code_promo_pct, code_promo_fin, livraison_delai_jours, latitude, longitude, livraison_forfait_base, livraison_km_inclus, livraison_prix_km_supp, stripe_connect_statut, boutique_en_pause")
+      .select("nom_entreprise, email, plan, cashback_pct, cashback_ventes, code_promo_ventes, code_promo, code_promo_pct, code_promo_fin, livraison_delai_jours, latitude, longitude, livraison_forfait_base, livraison_km_inclus, livraison_prix_km_supp, stripe_connect_statut, boutique_en_pause")
       .eq("id", artisan_id).maybeSingle();
     if (errA) throw errA;
     if (!artisan) return json({ error: "Boutique introuvable." }, 404);
@@ -205,7 +205,7 @@ Deno.serve(async (req: Request) => {
       } catch (_) { sessionInvalide = true; }
     }
     // Le cashback n'est proposé que par un artisan Pro qui a fixé un pourcentage (1 à 10 %).
-    const cashbackPct = ((artisan as any).plan === "pro" || (artisan as any).plan === "pro_offert") && Number((artisan as any).cashback_pct) >= 1 && Number((artisan as any).cashback_pct) <= 10
+    const cashbackPct = ((artisan as any).plan === "pro" || (artisan as any).plan === "pro_offert") && (artisan as any).cashback_ventes !== false && Number((artisan as any).cashback_pct) >= 1 && Number((artisan as any).cashback_pct) <= 10
       ? Number((artisan as any).cashback_pct) : null;
 
     // Stock insuffisant — refusé proprement, jamais une vente silencieuse de ce qu'il n'y a pas.
@@ -240,6 +240,9 @@ Deno.serve(async (req: Request) => {
     if (saisi) {
       if (!codePromoValide(artisan, (artisan as any).plan) || String((artisan as any).code_promo).trim().toLowerCase() !== saisi.toLowerCase()) {
         return json({ error: "Ce code promo n'est pas valide ou a expiré." }, 422);
+      }
+      if ((artisan as any).code_promo_ventes === false) {
+        return json({ error: "Ce code promo ne s'applique pas aux achats de la boutique : il est réservé aux interventions." }, 422);
       }
       if (!(articles as any[]).some((a) => !a.promo_pct)) {
         return json({ error: "Ce code ne s'applique pas aux produits déjà en remise de votre panier." }, 422);

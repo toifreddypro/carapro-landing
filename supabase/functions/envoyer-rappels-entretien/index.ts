@@ -84,12 +84,12 @@ function avantagesHtml(l: any, aujourdhui: string): string {
   if (l.indisponible || !estPro(l.plan) || !l.stripe_actif) return "";
   const lignes: string[] = [];
   const pctCode = Number(l.code_promo_pct);
-  const codeUtilisable = l.code_promo && String(l.code_promo).trim() && l.code_promo_visible !== false && pctCode >= 1 && pctCode <= 50
+  const codeUtilisable = l.code_promo && String(l.code_promo).trim() && l.code_promo_visible !== false && l.code_promo_interventions !== false && pctCode >= 1 && pctCode <= 50
     && (!l.code_promo_fin || String(l.code_promo_fin).slice(0, 10) >= aujourdhui);
   const pctFid = Number(l.remise_fidele_pct), pctCb = Number(l.cashback_pct);
   if (pctFid >= 1 && pctFid <= 20) lignes.push(`🤝 <strong>${escHtml(String(pctFid).replace(".", ","))} % de remise</strong> sur le paiement final, parce que vous êtes déjà venu : elle s'applique toute seule.`);
   if (codeUtilisable) lignes.push(`🎁 Code promo <strong>${escHtml(String(l.code_promo).trim())}</strong> : ${escHtml(String(pctCode).replace(".", ","))} % de remise (la plus avantageuse des deux remises s'applique).`);
-  if (pctCb >= 1 && pctCb <= 10) lignes.push(`💚 <strong>${escHtml(String(pctCb).replace(".", ","))} % de cashback</strong> : un crédit offert pour votre prochaine intervention.`);
+  if (pctCb >= 1 && pctCb <= 10 && l.cashback_interventions !== false) lignes.push(`💚 <strong>${escHtml(String(pctCb).replace(".", ","))} % de cashback</strong> : un crédit offert pour votre prochaine intervention.`);
   if (!lignes.length) return "";
   return `<div style="margin:10px 0 0;padding:10px 14px;border-radius:8px;background:#f0fdf4;border:1px solid #bbf7d0;font-size:13px;color:#166534;line-height:1.55;">${lignes.join("<br>")}<div style="font-size:11.5px;color:#4b7a5c;margin-top:4px;">Avantages proposés par cet artisan quand vous payez en ligne via CaraLink.</div></div>`;
 }

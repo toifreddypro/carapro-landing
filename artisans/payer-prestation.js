@@ -74,7 +74,7 @@
     d.appendChild(ligne('À payer', euros(infos.montant), 'total'));
     return d;
   }
-  var MSG_CODE = { invalide: "Ce code n'est pas valable pour cet artisan.", deja_utilise: 'Vous avez déjà utilisé ce code chez cet artisan : il ne sert qu\'une fois.', connexion_requise: 'Connectez-vous à votre compte CaraLink pour utiliser un code promo.', geste_remplace: 'Le geste commercial de votre artisan remplace les codes promo : il est déjà appliqué.', fidele_plus_avantageuse: 'Votre remise « client fidèle » est plus avantageuse : elle est appliquée, votre code reste utilisable une prochaine fois.' };
+  var MSG_CODE = { invalide: "Ce code n'est pas valable pour cet artisan.", hors_perimetre: "Ce code est réservé aux achats de la boutique : il ne s'applique pas aux interventions.", deja_utilise: 'Vous avez déjà utilisé ce code chez cet artisan : il ne sert qu\'une fois.', connexion_requise: 'Connectez-vous à votre compte CaraLink pour utiliser un code promo.', geste_remplace: 'Le geste commercial de votre artisan remplace les codes promo : il est déjà appliqué.', fidele_plus_avantageuse: 'Votre remise « client fidèle » est plus avantageuse : elle est appliquée, votre code reste utilisable une prochaine fois.' };
   async function recalculer() { try { infos = await appel({ action: 'infos' }); } catch (e) { /* on garde l'écran */ } afficherPaiement(); }
   function optionsRemise() {
     var z = el('div', 'options');

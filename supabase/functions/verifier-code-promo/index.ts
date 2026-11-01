@@ -72,9 +72,10 @@ Deno.serve(async (req: Request) => {
     if (!clientId) return json({ error: "connexion_requise" }, 401);
 
     const { data: a } = await sb.from("artisans")
-      .select("plan, code_promo, code_promo_pct, code_promo_fin, stripe_connect_statut, boutique_en_pause, actif").eq("id", artisanId).maybeSingle();
+      .select("plan, code_promo, code_promo_pct, code_promo_fin, code_promo_ventes, stripe_connect_statut, boutique_en_pause, actif").eq("id", artisanId).maybeSingle();
     if (!a || a.actif === false || a.stripe_connect_statut !== "actif" || a.boutique_en_pause === true) return json({ error: "code_invalide" }, 422);
     if (!codePromoValide(a, a.plan) || String(a.code_promo).trim().toLowerCase() !== saisi.toLowerCase()) return json({ error: "code_invalide" }, 422);
+    if (a.code_promo_ventes === false) return json({ error: "code_hors_perimetre" }, 422); // code réservé aux interventions : pas pour la boutique
     // Une seule utilisation par client et par boutique (une commande payée avec un code, non remboursée en totalité).
     const { data: dejaUtilise, error: errUtilise } = await sb.rpc("code_promo_deja_utilise", { p_user: clientId, p_artisan: artisanId });
     if (errUtilise) throw errUtilise;

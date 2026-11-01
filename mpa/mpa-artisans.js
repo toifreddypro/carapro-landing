@@ -2722,8 +2722,8 @@ function afficherInfoRemisesDemande() {
   if (!z) return;
   var actifs = [];
   if (estPro()) {
-    if (Number(_artisan.cashback_pct) >= 1) actifs.push('💚 cashback ' + Math.round(Number(_artisan.cashback_pct)) + ' %');
-    if (_artisan.code_promo && Number(_artisan.code_promo_pct) >= 1) actifs.push('🎁 code promo ' + escHtml(_artisan.code_promo) + ' (' + Math.round(Number(_artisan.code_promo_pct)) + ' %)');
+    if (Number(_artisan.cashback_pct) >= 1 && _artisan.cashback_interventions !== false) actifs.push('💚 cashback ' + Math.round(Number(_artisan.cashback_pct)) + ' %');
+    if (_artisan.code_promo && Number(_artisan.code_promo_pct) >= 1 && _artisan.code_promo_interventions !== false) actifs.push('🎁 code promo ' + escHtml(_artisan.code_promo) + ' (' + Math.round(Number(_artisan.code_promo_pct)) + ' %)');
     if (Number(_artisan.remise_fidele_pct) >= 1) actifs.push('🤝 client fidèle ' + Math.round(Number(_artisan.remise_fidele_pct)) + ' %');
   }
   var lien = ' <a href="#" onclick="allerRemises();return false;" style="color:var(--ac);font-weight:700;">';
@@ -5363,6 +5363,9 @@ async function chargerCatalogue() {
   if (champFin) champFin.value = _artisan.code_promo_fin || '';
   var champVis = document.getElementById('boutique-code-promo-visible');
   if (champVis) champVis.checked = _artisan.code_promo_visible !== false;
+  var cpv = document.getElementById('code-promo-ventes'), cpi = document.getElementById('code-promo-interventions');
+  if (cpv) cpv.checked = _artisan.code_promo_ventes !== false;
+  if (cpi) cpi.checked = _artisan.code_promo_interventions !== false;
   afficherStatutCodePromo();
   afficherCashback();
   afficherRemiseFidele();
@@ -5616,7 +5619,7 @@ function afficherStatutCodePromo() {
   if (!(pct >= 1 && pct <= 50)) { z.innerHTML = '⚠️ Indiquez le pourcentage de remise : sans lui, le code n\'est pas proposé à vos clients.'; return; }
   if (fin && String(fin).slice(0, 10) < aujourdhui) { z.innerHTML = '⌛ Ce code a expiré le ' + new Date(fin + 'T12:00:00').toLocaleDateString('fr-FR') + '.'; return; }
   var nbRemises = (_catalogueCache || []).filter(function(c) { return c.promo_pct && c.en_vente !== false; }).length;
-  z.innerHTML = '✅ Actif : <strong>' + escHtml(code) + '</strong> donne −' + pct + ' %' + (fin ? ' jusqu\'au ' + new Date(fin + 'T12:00:00').toLocaleDateString('fr-FR') : '') + (_artisan.code_promo_visible === false ? ' · 🔒 non affiché sur CaraLink' : ' · affiché sur CaraLink') + '.' +
+  z.innerHTML = '✅ Actif : <strong>' + escHtml(code) + '</strong> donne −' + pct + ' %' + (fin ? ' jusqu\'au ' + new Date(fin + 'T12:00:00').toLocaleDateString('fr-FR') : '') + (_artisan.code_promo_visible === false ? ' · 🔒 non affiché sur CaraLink' : ' · affiché sur CaraLink') + ' · ' + libellePorteeAvantage(_artisan.code_promo_ventes !== false, _artisan.code_promo_interventions !== false) + '.' +
     (nbRemises ? ' <span style="color:var(--mu);">' + nbRemises + ' produit' + (nbRemises > 1 ? 's' : '') + ' ' + (nbRemises > 1 ? 'ont' : 'a') + ' déjà une remise : le code ne s\'y applique pas.</span>' : '');
 }
 
@@ -5986,8 +5989,23 @@ async function sauverPersonnalisation() {
   document.getElementById('pers-statut').textContent = '✓ Boutique mise à jour : visible dès maintenant par vos clients.';
 }
 
+// Où s'applique un avantage : « ventes » (boutique) et/ou « interventions ». Tout est coché tant que l'artisan n'a rien changé.
+function libellePorteeAvantage(ventes, interventions) {
+  if (ventes && interventions) return 'sur vos ventes et vos interventions';
+  if (ventes) return 'sur vos ventes (boutique) seulement';
+  if (interventions) return 'sur vos interventions seulement';
+  return 'nulle part (aucune case cochée)';
+}
+function lirePorteeAvantage(prefixe) {
+  var v = document.getElementById(prefixe + '-ventes'), i = document.getElementById(prefixe + '-interventions');
+  return { ventes: !!(v && v.checked), interventions: !!(i && i.checked) };
+}
+
 // ── Cashback fidélité (offre Pro) : pourcentage choisi par l'artisan, crédits financés par lui ──
 async function afficherCashback() {
+  var cv = document.getElementById('cashback-ventes'), ci = document.getElementById('cashback-interventions');
+  if (cv) cv.checked = _artisan.cashback_ventes !== false;
+  if (ci) ci.checked = _artisan.cashback_interventions !== false;
   var champ = document.getElementById('boutique-cashback-pct');
   var z = document.getElementById('cashback-statut');
   if (!champ || !z) return;
@@ -5995,7 +6013,7 @@ async function afficherCashback() {
   var pct = Number(_artisan.cashback_pct);
   if (!(pct >= 1)) { z.innerHTML = ''; }
   else if (!estPro()) { z.innerHTML = '⚠️ Réglé à ' + pct + ' %, mais <strong>inactif</strong> : le cashback fait partie de l\'offre Pro. Les crédits déjà gagnés par vos clients restent utilisables.'; }
-  else { z.innerHTML = '✅ Actif : vos clients avec un compte gagnent <strong>' + pct + ' %</strong> en crédit sur chaque commande livrée.'; }
+  else { z.innerHTML = '✅ Actif : vos clients avec un compte gagnent <strong>' + pct + ' %</strong> en crédit ' + libellePorteeAvantage(_artisan.cashback_ventes !== false, _artisan.cashback_interventions !== false) + '.'; }
   try {
     var r = await sb.rpc('cashback_stats_artisan');
     var st = r.data;
@@ -6011,12 +6029,14 @@ async function sauverCashback() {
   var pct = brut === '' ? null : parseInt(brut, 10);
   if (pct !== null && !exigerPro('cashback')) return;
   if (pct !== null && (!(pct >= 1) || pct > 10)) { alert('Indiquez un pourcentage entre 1 % et 10 %, ou laissez vide pour ne pas proposer de cashback.'); return; }
+  var portee = lirePorteeAvantage('cashback');
+  if (pct !== null && !portee.ventes && !portee.interventions) { alert('Cochez au moins une case : « Sur mes ventes » et/ou « Sur mes interventions ». Pour ne plus proposer de cashback, videz le pourcentage.'); return; }
   var btn = document.getElementById('btn-cashback');
   btn.disabled = true; btn.textContent = 'Enregistrement…';
-  var { error } = await sb.from('artisans').update({ cashback_pct: pct }).eq('id', _artisan.id);
+  var { error } = await sb.from('artisans').update({ cashback_pct: pct, cashback_ventes: portee.ventes, cashback_interventions: portee.interventions }).eq('id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); }
   else {
-    _artisan.cashback_pct = pct;
+    _artisan.cashback_pct = pct; _artisan.cashback_ventes = portee.ventes; _artisan.cashback_interventions = portee.interventions;
     mpaAiDire(pct ? '💚 Cashback réglé à ' + pct + ' % : vos clients avec un compte gagneront du crédit sur chaque commande livrée, valable 12 mois dans votre boutique. Pensez à en parler sur votre boutique et vos réseaux : c\'est un vrai argument pour qu\'ils reviennent.' : '💚 Cashback désactivé. Les crédits déjà gagnés par vos clients restent utilisables.');
   }
   btn.disabled = false; btn.textContent = 'Enregistrer';
@@ -6063,16 +6083,18 @@ async function sauverCodePromo() {
   var pct = pctBrut === '' ? null : parseInt(pctBrut, 10);
   if (code && (!pct || pct < 1 || pct > 50)) { alert('Indiquez une remise entre 1 % et 50 %.'); return; }
   if (!code) { pct = null; fin = null; } // pas de code : on efface tout
+  var portee = lirePorteeAvantage('code-promo');
+  if (code && !portee.ventes && !portee.interventions) { alert('Cochez au moins une case : « Sur mes ventes » et/ou « Sur mes interventions ». Pour ne plus proposer de code, videz le champ du code.'); return; }
   var btn = document.getElementById('btn-code-promo');
   btn.disabled = true; btn.textContent = 'Enregistrement…';
   var visible = document.getElementById('boutique-code-promo-visible').checked;
-  var maj = { code_promo: code || null, code_promo_pct: pct, code_promo_fin: fin, code_promo_visible: code ? visible : true };
+  var maj = { code_promo: code || null, code_promo_pct: pct, code_promo_fin: fin, code_promo_visible: code ? visible : true, code_promo_ventes: portee.ventes, code_promo_interventions: portee.interventions };
   var { error } = await sb.from('artisans').update(maj).eq('id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); }
   else {
-    _artisan.code_promo = maj.code_promo; _artisan.code_promo_pct = maj.code_promo_pct; _artisan.code_promo_fin = maj.code_promo_fin; _artisan.code_promo_visible = maj.code_promo_visible;
+    _artisan.code_promo = maj.code_promo; _artisan.code_promo_pct = maj.code_promo_pct; _artisan.code_promo_fin = maj.code_promo_fin; _artisan.code_promo_visible = maj.code_promo_visible; _artisan.code_promo_ventes = maj.code_promo_ventes; _artisan.code_promo_interventions = maj.code_promo_interventions;
     document.getElementById('boutique-code-promo').value = code;
-    mpaAiDire(code ? '🎁 Code promo ' + escHtml(code) + ' enregistré : −' + pct + ' % sur les produits qui n\'ont pas déjà une remise' + (visible ? '.' : ' (code partenaire : non affiché sur CaraLink).') : '🎁 Code promo supprimé.', 'info');
+    mpaAiDire(code ? '🎁 Code promo ' + escHtml(code) + ' enregistré : −' + pct + ' % sur les produits qui n\'ont pas déjà une remise (' + libellePorteeAvantage(portee.ventes, portee.interventions) + ')' + (visible ? '.' : ' (code partenaire : non affiché sur CaraLink).') : '🎁 Code promo supprimé.', 'info');
   }
   btn.disabled = false; btn.textContent = 'Enregistrer';
   afficherStatutCodePromo();

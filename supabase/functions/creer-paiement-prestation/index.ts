@@ -75,6 +75,11 @@ async function dejaFactureCeMoisCentimes(sb: any, artisanId: string, sauf?: stri
 
 const estPro = (plan: string | null | undefined) => plan === "pro" || plan === "pro_offert";
 
+// Cashback sur les INTERVENTIONS : seulement si l'artisan est Pro, a fixé un pourcentage, et n'a pas décoché « Sur mes interventions ».
+function cashbackInterventions(a: any): number | null {
+  return estPro(a?.plan) && a?.cashback_interventions !== false && Number(a?.cashback_pct) >= 1 ? Number(a.cashback_pct) : null;
+}
+
 function codePromoValide(a: any): boolean {
   if (!a || !a.code_promo || !String(a.code_promo).trim() || !estPro(a.plan)) return false;
   const pct = Number(a.code_promo_pct);
@@ -131,6 +136,7 @@ async function calculerPrix(sb: any, p: any, artisan: any, userId: string | null
   if (codeSaisi) {
     if (!userId) res.codeStatut = "connexion_requise";
     else if (!codePromoValide(artisan) || String(artisan.code_promo).trim().toLowerCase() !== codeSaisi.toLowerCase()) res.codeStatut = "invalide";
+    else if (artisan.code_promo_interventions === false) res.codeStatut = "hors_perimetre"; // code réservé aux ventes de la boutique
     else {
       const { data: deja, error } = await sb.rpc("code_promo_deja_utilise", { p_user: userId, p_artisan: artisan.id });
       if (error) throw error;
@@ -221,7 +227,7 @@ Deno.serve(async (req: Request) => {
     if (!p) return json({ error: "Ce lien de paiement n'existe pas ou n'est plus valable." }, 404);
 
     const { data: artisan, error: errA } = await sb.from("artisans")
-      .select("id, nom_entreprise, stripe_connect_account_id, stripe_connect_statut, plan, code_promo, code_promo_pct, code_promo_fin, cashback_pct, remise_fidele_pct").eq("id", p.artisan_id).maybeSingle();
+      .select("id, nom_entreprise, stripe_connect_account_id, stripe_connect_statut, plan, code_promo, code_promo_pct, code_promo_fin, cashback_pct, remise_fidele_pct, cashback_interventions, code_promo_interventions").eq("id", p.artisan_id).maybeSingle();
     if (errA) throw errA;
     if (!artisan) return json({ error: "Artisan introuvable." }, 404);
 
@@ -256,7 +262,7 @@ Deno.serve(async (req: Request) => {
         type: p.type, statut: statutEffectif, montant: statutEffectif === "en_attente" ? prix.net / 100 : montant, artisan: artisan.nom_entreprise,
         montant_brut: prix.brut / 100, remise: prix.remise / 100, remise_origine: prix.origine, remise_motif: p.remise_origine === "geste" ? p.remise_motif : null, fidele_pct: prix.fidelePct,
         connecte: !!userId, credit_disponible: prix.creditDisponible / 100, credit_applique: prix.credit / 100, code_statut: prix.codeStatut,
-        cashback_pct: estPro(artisan.plan) && Number(artisan.cashback_pct) >= 1 ? Number(artisan.cashback_pct) : null,
+        cashback_pct: cashbackInterventions(artisan),
         client_nom: p.client_nom, description: p.description,
         date_affichee: demande?.date_intervention ? dateFr(demande.date_intervention) : null,
         heure: demande?.heure_debut ? String(demande.heure_debut).slice(0, 5) : null,
@@ -303,7 +309,7 @@ Deno.serve(async (req: Request) => {
       const { error: errPrix } = await sb.from("paiements_prestations").update({
         montant_brut: prix.brut / 100, montant: prix.net / 100, remise_montant: prix.remise / 100, remise_origine: prix.origine,
         code_promo: prix.origine === "geste" ? null : prix.codeRetenu, cashback_utilise: prix.credit / 100,
-        cashback_pct: estPro(artisan.plan) && Number(artisan.cashback_pct) >= 1 ? Number(artisan.cashback_pct) : null,
+        cashback_pct: cashbackInterventions(artisan),
         client_user_id: userId ?? p.client_user_id ?? null, updated_at: new Date().toISOString(),
       }).eq("id", p.id).eq("statut", "en_attente");
       if (errPrix) throw errPrix;
