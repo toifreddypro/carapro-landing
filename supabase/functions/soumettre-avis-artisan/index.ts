@@ -44,15 +44,19 @@ function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), { status, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" } });
 }
 
+// Règle B (01/11) : une intervention ouvre droit à un avis seulement si le client a RÉELLEMENT payé en ligne au moins 15 € nets (après remboursements).
+// Sans ce plancher, un artisan pouvait se « payer » 0,50 € avec sa propre carte pour fabriquer un avis (coût : quelques centimes de frais Stripe).
+const MONTANT_MIN_AVIS_EUROS = 15;
 async function payeeEnLigne(sb: any, interventionId: string): Promise<boolean> {
-  const { data: pa, error: e1 } = await sb.from("paiements_prestations").select("id")
-    .eq("intervention_id", interventionId).in("statut", ["paye", "partiellement_rembourse"]).limit(1);
+  const { data: pa, error: e1 } = await sb.from("paiements_prestations").select("montant, montant_rembourse")
+    .eq("intervention_id", interventionId).in("statut", ["paye", "partiellement_rembourse"]);
   if (e1) throw e1;
-  if (pa && pa.length) return true;
-  const { data: co, error: e2 } = await sb.from("commandes_catalogue").select("id")
-    .eq("intervention_id", interventionId).in("paiement_statut", ["paye", "partiellement_rembourse"]).limit(1);
+  const { data: co, error: e2 } = await sb.from("commandes_catalogue").select("montant_total, montant_rembourse")
+    .eq("intervention_id", interventionId).in("paiement_statut", ["paye", "partiellement_rembourse"]);
   if (e2) throw e2;
-  return !!(co && co.length);
+  const net = [...(pa || []).map((x: any) => Number(x.montant) - Number(x.montant_rembourse || 0)), ...(co || []).map((x: any) => Number(x.montant_total) - Number(x.montant_rembourse || 0))]
+    .reduce((s: number, n: number) => s + (Number.isFinite(n) ? n : 0), 0);
+  return net >= MONTANT_MIN_AVIS_EUROS;
 }
 
 Deno.serve(async (req: Request) => {
@@ -116,7 +120,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── POST : enregistrement ──
-    if (!(await payeeEnLigne(sb, intervention.id))) return json({ error: "Les avis ne sont ouverts que pour les interventions payées en ligne via CaraLink.", code: "non_eligible" }, 403);
+    if (!(await payeeEnLigne(sb, intervention.id))) return json({ error: "Les avis ne sont ouverts que pour les interventions payées en ligne via CaraLink (15 € au moins).", code: "non_eligible" }, 403);
     if (!encoreModifiable) return json({ error: "Le délai de 7 jours pour modifier votre avis est dépassé.", code: "delai_depasse" }, 410);
     if (!Number.isInteger(note)) return json({ error: "Merci de choisir une note entre 1 et 5 étoiles.", code: "note_manquante" }, 400);
 

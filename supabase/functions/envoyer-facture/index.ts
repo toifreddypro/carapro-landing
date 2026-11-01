@@ -85,6 +85,7 @@ Deno.serve(async (req: Request) => {
     if (!client) return json({ error: "Cette facture n'a pas de client." }, 400);
 
     if (await limiteAtteinte(sbAdmin, `envoyer-facture:artisan:${artisan.id}`, 30, 3600)) return json({ error: "Trop d'envois. Réessayez dans une heure." }, 429);
+    if (await limiteAtteinte(sbAdmin, `envoyer-facture:artisan-jour:${artisan.id}`, 80, 86400)) return json({ error: "Trop d'envois aujourd'hui. Réessayez demain." }, 429);
     if (await limiteAtteinte(sbAdmin, `envoyer-facture:facture:${facture.id}`, 5, 86400)) return json({ error: "Cette facture a déjà été envoyée plusieurs fois aujourd'hui." }, 429);
 
     // Adresse du client : celle de sa fiche, sinon celle saisie par l'artisan (puis enregistrée sur la fiche).

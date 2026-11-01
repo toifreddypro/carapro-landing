@@ -54,6 +54,23 @@ function escHtml(s: unknown): string {
 }
 function texteHtml(s: unknown): string { return escHtml(s).replace(/\r?\n/g, "<br>"); }
 
+// Audit 01/11 : la description part par email à jusqu'à 15 artisans et s'affiche dans MPA. Comme dans la messagerie, elle ne peut contenir
+// ni téléphone, ni email, ni lien, ni nom de messagerie : sinon n'importe quel compte client pouvait faire envoyer un lien (hameçonnage, publicité)
+// depuis l'adresse de la plateforme, et le client perdait la protection de ses coordonnées.
+const MOTS_CHIFFRES = "zero|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingt|trente|quarante|cinquante|soixante|cent";
+function contientCoordonnees(texte: string): boolean {
+  const t = texte.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (/\d(?:[\s.\-()_*]*\d){7,}/.test(t)) return true;
+  if (/\d(?:[a-z.\-_]{0,2}\d){7,}/.test(t)) return true;
+  if (new RegExp("(?:\\b(?:" + MOTS_CHIFFRES + ")\\b[\\s.,\\-]*){6,}").test(t)) return true;
+  if (new RegExp("(?:(?:\\d|\\b(?:" + MOTS_CHIFFRES + ")\\b)[\\s.,\\-]*){7,}").test(t)) return true;
+  if (/@|\barobase\b|\(at\)|\[at\]|\bat\s+(gmail|hotmail|outlook|yahoo|orange|wanadoo|icloud|live|free|sfr)/.test(t)) return true;
+  if (/(https?:\/\/|www\.)/.test(t)) return true;
+  if (/\b[a-z0-9][a-z0-9-]{1,}\s?(?:\.|point|dot)\s?(?:com|fr|net|org|io|gp|app|me|info|eu|biz|co|site|shop)\b/.test(t)) return true;
+  if (/\b(gmail|hotmail|outlook|yahoo|icloud|whats\s?app|watsap|telegram|messenger|snap\s?chat|tik\s?tok|facebook|instagram|insta|signal app)\b/.test(t)) return true;
+  return false;
+}
+
 async function envoyerEmail(to: string, subject: string, html: string) {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   if (!apiKey) { console.warn("[publier-projet] RESEND_API_KEY absente — email non envoyé."); return; }
@@ -176,6 +193,9 @@ Deno.serve(async (req: Request) => {
     if (communeNom.length < 2) return json({ error: "Indiquez votre commune." }, 400);
     if (communeNom.length > 100) return json({ error: "Texte trop long pour « La commune » (100 caractères maximum)." }, 400);
     if (cp != null && cp.length > 12) return json({ error: "Code postal invalide." }, 400);
+    if (contientCoordonnees(texte) || contientCoordonnees(communeNom)) {
+      return json({ error: "Pour votre sécurité, n'écrivez ni numéro de téléphone, ni email, ni lien, ni nom de messagerie dans votre projet : vos coordonnées restent cachées, et c'est vous qui déciderez de les donner à l'artisan que vous choisirez.", code: "coordonnees" }, 400);
+    }
 
     // ── Le besoin doit exister et être actif ; la famille vient de LUI ──
     const { data: besoin, error: errBesoin } = await sb.from("besoins").select("code, famille, label_fr").eq("code", codeBesoin).eq("actif", true).maybeSingle();

@@ -91,6 +91,13 @@ Deno.serve(async (req: Request) => {
     if (emailSaisi && (emailSaisi.length > 200 || !REGEX_EMAIL.test(emailSaisi))) return json({ error: "Adresse email invalide." }, 400);
 
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    // Audit 01/11 : chaque demande envoie un email (texte libre de l'artisan) à une adresse qu'il peut choisir. Plafonds par artisan et par rendez-vous.
+    for (const [cle, max, fenetre] of [[`demander-paiement:artisan:${user.id}`, 30, 3600], [`demander-paiement:artisan-jour:${user.id}`, 100, 86400], [`demander-paiement:rdv:${intervention_id}`, 5, 86400]] as [string, number, number][]) {
+      try {
+        const { data: ok } = await sb.rpc("limiter_appel", { p_cle: cle, p_max: max, p_fenetre_s: fenetre });
+        if (ok === false) return json({ error: "Trop de demandes de paiement. Réessayez plus tard." }, 429);
+      } catch (e) { console.error("[limiter_appel]", e); }
+    }
     const { data: artisan } = await sb.from("artisans").select("id, nom_entreprise, stripe_connect_account_id, stripe_connect_statut, plan").eq("user_id", user.id).maybeSingle();
     if (!artisan) return json({ error: "Aucun profil artisan trouvé." }, 404);
     if (!artisan.stripe_connect_account_id || artisan.stripe_connect_statut !== "actif") {

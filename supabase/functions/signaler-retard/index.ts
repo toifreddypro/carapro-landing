@@ -56,9 +56,17 @@ Deno.serve(async (req: Request) => {
     if (artisan.plan !== "pro" && artisan.plan !== "pro_offert") return json({ error: "retard_reserve_pro" }, 403);
 
     const body = await req.json().catch(() => null);
-    const minutes = Number(body?.minutes);
-    if (!body?.intervention_id) return json({ error: "intervention_id manquant." }, 400);
+    const minutes = Math.round(Number(body?.minutes));
+    if (typeof body?.intervention_id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.intervention_id)) return json({ error: "intervention_id manquant." }, 400);
     if (!minutes || minutes <= 0 || minutes > 600) return json({ error: "Nombre de minutes invalide." }, 400);
+
+    // Audit 01/11 : chaque appel envoie un email à un vrai client. 4 prévenances par rendez-vous et par jour, 30 par heure et par artisan.
+    for (const [cle, max, fenetre] of [[`retard:rdv:${body.intervention_id}`, 4, 86400], [`retard:artisan:${artisan.id}`, 30, 3600]] as [string, number, number][]) {
+      try {
+        const { data: ok } = await sbAdmin.rpc("limiter_appel", { p_cle: cle, p_max: max, p_fenetre_s: fenetre });
+        if (ok === false) return json({ error: "Trop de prévenances envoyées. Réessayez plus tard." }, 429);
+      } catch (e) { console.error("[limiter_appel]", e); }
+    }
 
     const { data: intervention, error: errI } = await sbAdmin.from("mpa_artisans_interventions")
       .select("id, artisan_id, heure_debut, mpa_artisans_clients(nom, email)")
@@ -81,6 +89,6 @@ Deno.serve(async (req: Request) => {
 
   } catch (e) {
     console.error("[signaler-retard]", e);
-    return json({ error: (e as Error).message }, 500);
+    return json({ error: "Une erreur est survenue. Réessayez dans un instant." }, 500); // le détail reste dans les journaux
   }
 });

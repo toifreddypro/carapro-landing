@@ -33,15 +33,19 @@ const PAGE_AVIS = "https://caralink.app/artisans/avis.html";
 const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
 
 // Vrai si l'intervention a été réglée en ligne (paiement encaissé, même partiellement remboursé) : réservation/solde, ou commande boutique livrée.
+// Règle B (01/11) : une intervention ouvre droit à un avis seulement si le client a RÉELLEMENT payé en ligne au moins 15 € nets (après remboursements).
+// Sans ce plancher, un artisan pouvait se « payer » 0,50 € avec sa propre carte pour fabriquer un avis (coût : quelques centimes de frais Stripe).
+const MONTANT_MIN_AVIS_EUROS = 15;
 async function payeeEnLigne(sb: any, interventionId: string): Promise<boolean> {
-  const { data: pa, error: e1 } = await sb.from("paiements_prestations").select("id")
-    .eq("intervention_id", interventionId).in("statut", ["paye", "partiellement_rembourse"]).limit(1);
+  const { data: pa, error: e1 } = await sb.from("paiements_prestations").select("montant, montant_rembourse")
+    .eq("intervention_id", interventionId).in("statut", ["paye", "partiellement_rembourse"]);
   if (e1) throw e1;
-  if (pa && pa.length) return true;
-  const { data: co, error: e2 } = await sb.from("commandes_catalogue").select("id")
-    .eq("intervention_id", interventionId).in("paiement_statut", ["paye", "partiellement_rembourse"]).limit(1);
+  const { data: co, error: e2 } = await sb.from("commandes_catalogue").select("montant_total, montant_rembourse")
+    .eq("intervention_id", interventionId).in("paiement_statut", ["paye", "partiellement_rembourse"]);
   if (e2) throw e2;
-  return !!(co && co.length);
+  const net = [...(pa || []).map((x: any) => Number(x.montant) - Number(x.montant_rembourse || 0)), ...(co || []).map((x: any) => Number(x.montant_total) - Number(x.montant_rembourse || 0))]
+    .reduce((s: number, n: number) => s + (Number.isFinite(n) ? n : 0), 0);
+  return net >= MONTANT_MIN_AVIS_EUROS;
 }
 async function limiteAtteinte(sb: any, cle: string, max: number, fenetreSecondes: number): Promise<boolean> {
   try {
@@ -102,7 +106,7 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Cette intervention doit être marquée Terminée ou Payée avant de demander un avis." }, 400);
     }
     if (!(await payeeEnLigne(sbAdmin, intervention.id))) {
-      return json({ error: "Un avis ne peut être demandé que pour une intervention payée en ligne via CaraLink : c'est ce qui garantit que les avis affichés sont authentiques." }, 400);
+      return json({ error: "Un avis ne peut être demandé que pour une intervention réellement payée en ligne via CaraLink (15 € au moins) : c'est ce qui garantit que les avis affichés sont authentiques." }, 400);
     }
     const client = (intervention as any).mpa_artisans_clients;
     if (!client?.email) return json({ error: "Ce client n'a pas d'adresse email enregistrée — impossible de lui envoyer la demande." }, 400);
