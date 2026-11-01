@@ -596,6 +596,7 @@ async function chargerArtisans() {
       : '<div class="etat-vide"><div class="etat-vide-titre">' + T('aucun_artisan_titre') + '</div>' + T('aucun_artisan_texte') + '</div>';
 
     artisans.forEach(function(a) { chargerApercuCarte(a.id); });
+    planifierCoeurs();
     demarrerPubAlternanceMobile();
 
     mettreAJourCarte(artisans);
@@ -695,6 +696,75 @@ function colonneJourCarte(j) {
   return '<div class="dispo-day"><div class="dispo-day-label">' + escHtml(dateCourteCarte(j.date)) + '</div>' + slots + '</div>';
 }
 
+// ── Favoris (cœur) : le client connecté retrouve ses artisans dans « Mon compte → Favoris ». Sans compte, on propose d'en créer un. ──
+var _favIds = null, _favTimer = null; // _favIds : { idArtisan: true } une fois chargé ; null = pas encore connu / pas connecté
+async function jetonFav() {
+  var cle = 'sb-uzgboxfxpxazhysusewv-auth-token';
+  try {
+    var o = JSON.parse(localStorage.getItem(cle) || 'null');
+    if (!o || !o.access_token) return null;
+    if (o.expires_at && o.expires_at * 1000 > Date.now() + 30000) return o.access_token;
+    if (!o.refresh_token) return null;
+    var r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON }, body: JSON.stringify({ refresh_token: o.refresh_token }) });
+    if (!r.ok) return null;
+    var n = await r.json();
+    if (!n.access_token) return null;
+    o.access_token = n.access_token; o.refresh_token = n.refresh_token || o.refresh_token; o.expires_at = n.expires_at || (Math.floor(Date.now() / 1000) + (n.expires_in || 3600)); if (n.user) o.user = n.user;
+    try { localStorage.setItem(cle, JSON.stringify(o)); } catch (e) {}
+    return o.access_token;
+  } catch (e) { return null; }
+}
+function coeurHtml(id, enLigne) {
+  return '<button type="button" class="coeur-btn' + (enLigne ? ' coeur-inline' : '') + '" data-coeur="' + escHtml(id) + '" aria-pressed="false" title="' + escHtml(T('coeur_ajouter')) + '" aria-label="' + escHtml(T('coeur_ajouter')) + '" onclick="basculerCoeur(event, ' + jsAttr(id) + ')">♡</button>';
+}
+function peindreCoeurs() {
+  if (!document.getElementById('style-coeur')) {
+    var st = document.createElement('style'); st.id = 'style-coeur';
+    st.textContent = '.coeur-btn{position:absolute;top:10px;right:12px;z-index:2;width:34px;height:34px;border-radius:50%;border:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.92);color:#B5502F;font-size:19px;line-height:1;cursor:pointer;padding:0;}' +
+      '.coeur-btn.coeur-inline{position:static;display:inline-block;vertical-align:middle;margin-left:10px;width:32px;height:32px;font-size:18px;}' +
+      '.coeur-btn.on{background:#B5502F;color:#fff;border-color:#B5502F;}';
+    document.head.appendChild(st);
+  }
+  var tous = document.querySelectorAll('[data-coeur]');
+  for (var i = 0; i < tous.length; i++) {
+    var b = tous[i], on = !!(_favIds && _favIds[b.getAttribute('data-coeur')]);
+    b.textContent = on ? '♥' : '♡';
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.title = T(on ? 'coeur_retirer' : 'coeur_ajouter'); b.setAttribute('aria-label', b.title);
+  }
+}
+function planifierCoeurs() { clearTimeout(_favTimer); _favTimer = setTimeout(majCoeurs, 60); }
+async function majCoeurs() {
+  peindreCoeurs();
+  var jeton = await jetonFav();
+  if (!jeton) return;
+  if (_favIds === null) {
+    try {
+      var r = await fetch(SUPABASE_URL + '/rest/v1/rpc/mes_favoris_ids', { method: 'POST', headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + jeton, 'Content-Type': 'application/json' }, body: '{}' });
+      if (r.ok) { var ids = await r.json(); _favIds = {}; (Array.isArray(ids) ? ids : []).forEach(function(x) { _favIds[x] = true; }); }
+    } catch (e) { /* les cœurs restent vides : jamais bloquant */ }
+  }
+  peindreCoeurs();
+}
+async function basculerCoeur(ev, id) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  var jeton = await jetonFav();
+  if (!jeton) {
+    if (confirm(T('coeur_connexion'))) location.href = 'compte.html?retour=' + encodeURIComponent(location.href.split('#')[0]);
+    return;
+  }
+  if (_favIds === null) await majCoeurs();
+  if (_favIds === null) _favIds = {};
+  var veut = !_favIds[id];
+  try {
+    var r = await fetch(SUPABASE_URL + '/rest/v1/rpc/favori_basculer', { method: 'POST', headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + jeton, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_artisan: id, p_actif: veut }) });
+    var d = r.ok ? await r.json() : null;
+    if (d && d.ok) { if (veut) _favIds[id] = true; else delete _favIds[id]; peindreCoeurs(); return; }
+    alert(d && d.erreur === 'limite' ? T('coeur_limite') : T('cpt_err_generique'));
+  } catch (e) { alert(T('cpt_err_generique')); }
+}
+
 function renderArtisanCard(a) {
   _artisansCartes[a.id] = a;
   var ini = initiales(a.nom_entreprise);
@@ -703,7 +773,7 @@ function renderArtisanCard(a) {
     : '<div class="avatar card-avatar">' + ini + '</div>';
   var noteAff = a.note_moyenne != null ? Number(a.note_moyenne) : 0;
   var nb = a.nb_avis || 0;
-  return '<div class="formateur-card" onclick="ouvrirProfil(' + jsAttr(a.id) + ')">' +
+  return '<div class="formateur-card" style="position:relative;" onclick="ouvrirProfil(' + jsAttr(a.id) + ')">' + coeurHtml(a.id, false) +
     '<div class="card-top-row">' + photo +
       '<div class="card-info">' +
         '<div class="card-name">' + escHtml(a.nom_entreprise) + '</div>' +
