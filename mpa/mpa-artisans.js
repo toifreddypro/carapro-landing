@@ -802,16 +802,15 @@ function renderCreneauHtml(creneau, dateStr, liste) {
 }
 
 function ouvrirJourDetail(dateStr, creneau) {
-  // Version simple pour l'instant : ouvre directement la création,
-  // la vue "détail du jour" pourra venir plus tard si le besoin se confirme.
-  ouvrirNouvelleIntervention(dateStr, creneau);
+  // « +2 autres » : la liste de toutes les interventions du jour (clic sur l'une d'elles = ouvre ses détails).
+  ouvrirDetailJourMobile(dateStr);
 }
 
 // ── Détail du jour — vue compacte mobile (tap sur un jour du calendrier) ──
 function ouvrirDetailJourMobile(dateStr) {
   if (!dateStr) return;
   var interDuJour = _interventionsCache.filter(function(i) { return i.date_intervention === dateStr; })
-    .sort(function(a, b) { return (a.heure_debut || '').localeCompare(b.heure_debut || ''); });
+    .sort(function(a, b) { return (a.creneau === 'apres_midi' ? 1 : 0) - (b.creneau === 'apres_midi' ? 1 : 0) || (a.heure_debut || '').localeCompare(b.heure_debut || ''); });
 
   var dateAff = new Date(dateStr + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   var LABEL_STATUT = { planifiee: 'Planifiée', en_cours: 'En cours', terminee: 'Terminée', payee: 'Payée', annulee: 'Annulée' };
@@ -826,7 +825,7 @@ function ouvrirDetailJourMobile(dateStr) {
           '<span class="cal-status-dot cal-status-' + statut + '" style="flex-shrink:0;"></span>' +
           '<div style="flex:1;">' +
             '<div style="font-size:13.5px;font-weight:600;">' + (heure ? heure + ' — ' : '') + escHtml(service) + '</div>' +
-            '<div style="font-size:12px;color:var(--mu);">' + escHtml(client) + ' · ' + LABEL_STATUT[statut] + '</div>' +
+            '<div style="font-size:12px;color:var(--mu);">' + escHtml(client) + ' · ' + (i.creneau === 'apres_midi' ? 'Après-midi' : 'Matin') + ' · ' + LABEL_STATUT[statut] + '</div>' +
           '</div>' +
         '</div>';
       }).join('')
