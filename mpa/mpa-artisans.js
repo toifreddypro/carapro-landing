@@ -2671,6 +2671,9 @@ function ouvrirDemandePaiement() {
   var reste = i.prix ? Math.round((Number(i.prix) - acompte) * 100) / 100 : 0;
   document.getElementById('dp-montant').value = reste > 0 ? String(reste).replace('.', ',') : '';
   document.getElementById('dp-description').value = '';
+  document.getElementById('dp-geste-val').value = ''; document.getElementById('dp-geste-type').value = 'pct'; document.getElementById('dp-geste-motif').value = '';
+  document.getElementById('dp-montant').oninput = majTotalDemande;
+  majTotalDemande(); afficherInfoRemisesDemande();
   document.getElementById('dp-email').value = client.email || '';
   var dejaPaye = _paiementsIntervention.filter(function(p) { return ['paye', 'partiellement_rembourse'].indexOf(p.statut) !== -1; }).reduce(function(s, p) { return s + Number(p.montant) - Number(p.montant_rembourse || 0); }, 0);
   var autresPayes = Math.round((dejaPaye - acompte) * 100) / 100;
@@ -2690,12 +2693,65 @@ function ouvrirDemandePaiement() {
   ouvrirModale('modal-demander-paiement');
 }
 
+// Navigation vers la carte « Remises et fidélité » (Mes services → 4e sous-onglet), depuis n'importe où.
+function allerRemises() {
+  ['modal-demander-paiement'].forEach(function(m) { try { fermerModale(m); } catch (e) {} });
+  switchTab(3);
+  switchSousOnglet('nav-interventions', 'conteneur-interventions', 3);
+  var z = document.getElementById('bp-remises'); if (z && z.scrollIntoView) z.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Ligne d'information dans « Demander un paiement » : ce qui est réglé, ou comment le régler.
+function afficherInfoRemisesDemande() {
+  var z = document.getElementById('dp-remises-info');
+  if (!z) return;
+  var actifs = [];
+  if (estPro()) {
+    if (Number(_artisan.cashback_pct) >= 1) actifs.push('💚 cashback ' + Math.round(Number(_artisan.cashback_pct)) + ' %');
+    if (_artisan.code_promo && Number(_artisan.code_promo_pct) >= 1) actifs.push('🎁 code promo ' + escHtml(_artisan.code_promo) + ' (' + Math.round(Number(_artisan.code_promo_pct)) + ' %)');
+    if (Number(_artisan.remise_fidele_pct) >= 1) actifs.push('🤝 client fidèle ' + Math.round(Number(_artisan.remise_fidele_pct)) + ' %');
+  }
+  var lien = ' <a href="#" onclick="allerRemises();return false;" style="color:var(--ac);font-weight:700;">';
+  if (!estPro()) z.innerHTML = '🎁 L\'offre Pro permet de proposer à vos clients un cashback, un code promo et une remise « client fidèle »,' + lien + 'voir Remises et fidélité</a>. Pour un client précis, le geste commercial ci-dessus est gratuit.';
+  else if (!actifs.length) z.innerHTML = '🎁 <strong>Vos clients peuvent bénéficier d\'un cashback, d\'un code promo ou d\'une remise « client fidèle »</strong> : aucun n\'est réglé pour l\'instant.' + lien + 'Régler mes remises</a>';
+  else z.innerHTML = '✅ Appliqués automatiquement si votre client y a droit : ' + actifs.join(' · ') + '.' + lien + 'Modifier</a>';
+}
+
+// Geste commercial : valeur saisie → montant de la remise (sur le montant demandé), jamais moins de 0,50 € pour le client.
+function calculerGesteDemande() {
+  var montant = Number(String(document.getElementById('dp-montant').value).replace(/\s/g, '').replace('€', '').replace(',', '.'));
+  var v = Number(String(document.getElementById('dp-geste-val').value).replace(/\s/g, '').replace('%', '').replace('€', '').replace(',', '.'));
+  var type = document.getElementById('dp-geste-type').value;
+  var res = { montant: montant, valeur: v, type: type, geste: 0, net: montant, erreur: '' };
+  if (!document.getElementById('dp-geste-val').value.trim()) return res;
+  if (!isFinite(v) || v <= 0) { res.erreur = 'Indiquez un geste supérieur à 0.'; return res; }
+  if (type === 'pct' && v > 90) { res.erreur = 'Le geste en pourcentage va de 1 % à 90 %.'; return res; }
+  if (!isFinite(montant) || montant <= 0) return res;
+  res.geste = type === 'pct' ? Math.round(montant * v) / 100 : Math.round(v * 100) / 100;
+  res.net = Math.round((montant - res.geste) * 100) / 100;
+  if (res.net < 0.5) res.erreur = 'Avec ce geste, le client paierait moins de 0,50 € : réduisez-le.';
+  return res;
+}
+function majTotalDemande() {
+  var z = document.getElementById('dp-total');
+  if (!z) return;
+  var g = calculerGesteDemande();
+  if (g.erreur) { z.style.color = 'var(--danger,#dc2626)'; z.textContent = g.erreur; return; }
+  if (!(g.geste > 0)) { z.style.color = ''; z.textContent = g.montant > 0 ? 'Le client paiera ' + eurosMPA(g.montant) + '.' : ''; return; }
+  z.style.color = '#0f7a52';
+  z.textContent = '🤝 ' + eurosMPA(g.montant) + ' − ' + eurosMPA(g.geste) + (g.type === 'pct' ? ' (' + String(g.valeur).replace('.', ',') + ' %)' : '') + ' = le client paiera ' + eurosMPA(g.net) + '.';
+}
+
 async function confirmerDemandePaiement() {
   var i = _interventionsCache.find(function(x) { return x.id === _interventionEnCours; });
   if (!i) return;
   var brut = document.getElementById('dp-montant').value.replace(/\s/g, '').replace('€', '').replace(',', '.');
   var montant = Number(brut);
   if (!/^\d+(\.\d{1,2})?$/.test(brut) || !isFinite(montant) || montant < 0.5 || montant > 10000) { alert('Indiquez un montant valide (de 0,50 € à 10 000 €), par exemple 180 ou 180,50.'); return; }
+  var gesteDemande = calculerGesteDemande();
+  if (gesteDemande.erreur) { alert(gesteDemande.erreur); return; }
+  var montantBrutDemande = montant;
+  montant = gesteDemande.net; // ce que le client paiera réellement : sert aux contrôles de prix et au chiffre d'affaires ci-dessous
   // Cohérence avec le prix de l'intervention : ce que le client a déjà payé + ce qu'on lui demande ne doit pas dépasser le prix enregistré.
   var dejaPayeNet = _paiementsIntervention.filter(function(p) { return ['paye', 'partiellement_rembourse'].indexOf(p.statut) !== -1; }).reduce(function(t, p) { return t + Number(p.montant) - Number(p.montant_rembourse || 0); }, 0);
   var totalAttendu = Math.round((montant + dejaPayeNet) * 100) / 100;
@@ -2712,12 +2768,18 @@ async function confirmerDemandePaiement() {
     var res = await fetch(SUPABASE_URL + '/functions/v1/demander-paiement-prestation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
-      body: JSON.stringify({ intervention_id: i.id, montant: montant, description: document.getElementById('dp-description').value, client_email: document.getElementById('dp-email').value.trim(), relance_auto: !!(document.getElementById('dp-relance-auto') && document.getElementById('dp-relance-auto').checked) }),
+      body: JSON.stringify({ intervention_id: i.id, montant: montantBrutDemande, geste_type: gesteDemande.geste > 0 ? gesteDemande.type : undefined, geste_valeur: gesteDemande.geste > 0 ? gesteDemande.valeur : undefined, geste_motif: gesteDemande.geste > 0 ? document.getElementById('dp-geste-motif').value.trim() : undefined, description: document.getElementById('dp-description').value, client_email: document.getElementById('dp-email').value.trim(), relance_auto: !!(document.getElementById('dp-relance-auto') && document.getElementById('dp-relance-auto').checked) }),
     });
     var data = await res.json();
     if (data.error === 'paiement_deja_en_attente') throw new Error('Un paiement est déjà en attente pour cette intervention : utilisez « Relancer » (ou « Renvoyer le même lien »).');
     if (data.error) throw new Error(data.error);
     fermerModale('modal-demander-paiement');
+    // Geste commercial : le prix réel de l'intervention baisse d'autant (chiffre d'affaires et facture justes).
+    if (gesteDemande.geste > 0 && i.prix != null && i.prix !== '') {
+      var prixApresGeste = Math.round((montant + (Number(data.deja_paye_en_ligne) || 0)) * 100) / 100;
+      var { error: errGeste } = await sb.from('mpa_artisans_interventions').update({ prix: prixApresGeste }).eq('id', i.id).eq('artisan_id', _artisan.id);
+      if (!errGeste) { i.prix = prixApresGeste; mpaAiDire('🤝 Geste commercial de ' + eurosMPA(gesteDemande.geste) + ' enregistré : le prix de l\'intervention passe à ' + eurosMPA(prixApresGeste) + '.', 'info'); }
+    }
     // Sans prix sur l'intervention, elle compterait pour 0 € dans le chiffre d'affaires et ne pourrait pas être facturée : on le renseigne.
     if (i.prix == null || i.prix === '') {
       var prixTotal = Math.round((montant + (Number(data.deja_paye_en_ligne) || 0)) * 100) / 100;

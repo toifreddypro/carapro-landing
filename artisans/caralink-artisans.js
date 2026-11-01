@@ -935,6 +935,10 @@ function buildProfilHTML(data) {
         '</div>' +
       '</div>' +
       (a.nouveau ? '<p style="font-size:12.5px;color:var(--mu2,#777);margin:-6px 0 14px;">' + escHtml(T('badge_nouveau_info')) + '</p>' : '') +
+      ((a.cashback_pct || a.remise_fidele_pct) ? '<div style="margin:0 0 14px;padding:10px 12px;border-radius:10px;background:rgba(15,157,120,.08);border:1px solid rgba(15,157,120,.25);font-size:13px;line-height:1.5;">' +
+        (a.cashback_pct ? '<div style="font-weight:700;">' + escHtml(T('perk_cashback').replace('{p}', Math.round(a.cashback_pct))) + '</div>' : '') +
+        (a.remise_fidele_pct ? '<div style="font-weight:700;">' + escHtml(T('perk_fidele').replace('{p}', Math.round(a.remise_fidele_pct))) + '</div>' : '') +
+        '<div style="font-size:11.5px;color:var(--mu2,#777);margin-top:2px;">' + escHtml(T('perk_info')) + '</div></div>' : '') +
       (a.bio ? '<p style="font-size:14px;line-height:1.6;margin-bottom:18px;">' + escHtml(a.bio) + '</p>' : '') +
       '<div style="font-weight:700;margin-bottom:6px;">' + T('services_titre') + '</div>' + servicesHtml +
       photosHtml +

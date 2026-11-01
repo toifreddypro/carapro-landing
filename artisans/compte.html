@@ -480,12 +480,26 @@ function carteRdv(r){
     + quand + badgePaiement(p, nature)
     + '<div class="cmd-info'+(ok?' ok':'')+'">'+esc(etat)+'</div>' + actions + tel + '</div>';
 }
+// Détail du prix quand une remise a été appliquée : prix d'origine, puis la remise (code, client fidèle ou geste de l'artisan) et le crédit utilisé.
+function detailRemises(p){
+  if (!(Number(p.remise_montant)>0) && !(Number(p.cashback_utilise)>0)) return '';
+  var brut = Number(p.montant_brut)>0 ? Number(p.montant_brut) : Number(p.montant)+Number(p.remise_montant||0)+Number(p.cashback_utilise||0);
+  var lib = p.remise_origine==='geste' ? T('cpt_remise_geste') : p.remise_origine==='code' ? T('cpt_remise_code') : T('cpt_remise_fidele');
+  var h = '<div class="cmd-lignes">'+esc(T('cpt_prix_prestation'))+' : '+esc(euros(brut))+'</div>';
+  if (Number(p.remise_montant)>0) h += '<div class="cmd-info ok">🎁 '+esc(lib)+' : − '+esc(euros(p.remise_montant))+(p.remise_origine==='geste'&&p.remise_motif?' ('+esc(p.remise_motif)+')':'')+'</div>';
+  if (Number(p.cashback_utilise)>0) h += '<div class="cmd-info ok">💚 '+esc(fill(T('cpt_cb_utilise'),{m:euros(p.cashback_utilise)}))+'</div>';
+  return h;
+}
+function gainCredit(p){
+  return Number(p.cashback_gagne)>0 ? '<div class="cmd-info ok">🎁 '+esc(fill(T('cpt_cb_gagne'),{m:euros(p.cashback_gagne)}))+'</div>' : '';
+}
 function cartePaiement(p){
   var t = p.statut==='paye' ? T('cpt_pay_paye') : p.statut==='en_attente' ? T('cpt_pay_attente') : p.statut==='rembourse' ? T('cpt_pay_rembourse') : fill(T('cpt_pay_rembourse_part'),{m:euros(p.montant_rembourse)});
   var lien = p.statut==='en_attente' ? '<a class="btn" style="display:block;text-align:center;text-decoration:none;margin-top:10px;" href="'+BASE_PAGES+'payer-prestation.html?token='+encodeURIComponent(p.token)+'">'+esc(T('cpt_btn_payer'))+'</a>' : '';
   return '<div class="card"><div class="cmd-tete"><div class="cmd-art">'+esc(p.artisan||'')+'</div><div class="cmd-date">'+esc(dateLongueGP(p.created_at))+'</div></div>'
     + '<div class="cmd-lignes">'+esc(p.description||T('cpt_paiement_solde'))+'</div>'
-    + '<div class="cmd-total">'+esc(T('cpt_total'))+' <b>'+esc(euros(p.montant))+'</b> — '+esc(t)+'</div>'+lien+'</div>';
+    + detailRemises(p)
+    + '<div class="cmd-total">'+esc(T('cpt_total'))+' <b>'+esc(euros(p.montant))+'</b> — '+esc(t)+'</div>'+gainCredit(p)+lien+'</div>';
 }
 async function chargerRdv(){
   var zone = document.getElementById('p-rdv');

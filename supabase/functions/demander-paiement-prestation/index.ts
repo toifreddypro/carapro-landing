@@ -6,7 +6,9 @@
 // pour une intervention ; le client reçoit un email avec un lien de paiement sécurisé (carte, sur le compte Stripe de l'artisan).
 // L'artisan peut aussi copier le lien et l'envoyer lui-même (SMS, WhatsApp).
 //
-// POST { intervention_id, montant, description?, client_email? }   — artisan connecté
+// POST { intervention_id, montant, description?, client_email?, geste_type?, geste_valeur?, geste_motif? }   — artisan connecté
+//   geste_type 'pct' | 'eur' : geste commercial pour CE client (gratuit, toutes offres). Il REMPLACE les remises automatiques
+//   (code promo, client fidèle) : c'est l'artisan qui décide. Le client le voit détaillé sur sa page de paiement et dans son email.
 //   → { ok, lien, email_envoye, deja_paye_en_ligne }
 //
 // Sécurité :
@@ -68,6 +70,22 @@ Deno.serve(async (req: Request) => {
     if (typeof intervention_id !== "string" || !REGEX_UUID.test(intervention_id)) return json({ error: "Intervention invalide." }, 400);
     const montant = Math.round(Number(body.montant) * 100) / 100;
     if (!Number.isFinite(montant) || montant < MONTANT_MIN || montant > MONTANT_MAX) return json({ error: `Le montant doit être compris entre ${euros(MONTANT_MIN)} et ${euros(MONTANT_MAX)}.` }, 400);
+    // Geste commercial (facultatif) : calculé ICI, jamais pris tel quel d'un total envoyé par la page.
+    let geste = 0, gestePct: number | null = null;
+    const gesteMotif = typeof body.geste_motif === "string" ? body.geste_motif.replace(/[\u0000-\u001f\u007f]+/g, " ").trim().slice(0, 120) : "";
+    if (body.geste_type !== undefined && body.geste_type !== null && body.geste_type !== "") {
+      const v = Number(body.geste_valeur);
+      if (body.geste_type === "pct") {
+        if (!Number.isFinite(v) || v <= 0 || v > 90) return json({ error: "Le geste commercial en pourcentage doit être compris entre 1 % et 90 %." }, 400);
+        gestePct = Math.round(v * 100) / 100; geste = Math.round(montant * gestePct) / 100;
+      } else if (body.geste_type === "eur") {
+        if (!Number.isFinite(v) || v <= 0) return json({ error: "Indiquez un geste commercial supérieur à 0 €." }, 400);
+        geste = Math.round(v * 100) / 100;
+      } else return json({ error: "Type de geste commercial invalide." }, 400);
+      geste = Math.round(geste * 100) / 100;
+      if (montant - geste < MONTANT_MIN) return json({ error: `Avec ce geste commercial, le client paierait moins de ${euros(MONTANT_MIN)} : réduisez-le.` }, 400);
+    }
+    const montantNet = Math.round((montant - geste) * 100) / 100;
     const description = typeof body.description === "string" ? body.description.trim().slice(0, 300) : "";
     const emailSaisi = typeof body.client_email === "string" ? body.client_email.trim() : "";
     if (emailSaisi && (emailSaisi.length > 200 || !REGEX_EMAIL.test(emailSaisi))) return json({ error: "Adresse email invalide." }, 400);
@@ -87,7 +105,14 @@ Deno.serve(async (req: Request) => {
     const client = (inter as any).mpa_artisans_clients;
     const emailClient = emailSaisi || client?.email || "";
 
-    // Jamais deux liens de paiement vivants pour la même intervention.
+    // Un lien est déjà en attente et encore valable : on n'en crée pas un second (le client recevrait deux emails, et la limite de relances serait contournée).
+    const { data: enAttente } = await sb.from("paiements_prestations").select("id, created_at")
+      .eq("intervention_id", intervention_id).eq("type", "solde").eq("statut", "en_attente");
+    if ((enAttente || []).some((x: any) => Date.now() - new Date(x.created_at).getTime() < 14 * 24 * 3600 * 1000)) {
+      return json({ error: "paiement_deja_en_attente" }, 409);
+    }
+
+    // Jamais deux liens de paiement vivants pour la même intervention (ici : seulement des liens périmés).
     await sb.from("paiements_prestations").update({ statut: "annule", annule_par: "artisan", annule_le: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq("intervention_id", intervention_id).eq("type", "solde").eq("statut", "en_attente");
 
@@ -98,7 +123,9 @@ Deno.serve(async (req: Request) => {
     const { data: pai, error: errP } = await sb.from("paiements_prestations").insert({
       artisan_id: artisan.id, type: "solde", intervention_id,
       client_nom: client?.nom || null, client_email: emailClient || null, client_telephone: client?.telephone || null,
-      description: description || null, montant, statut: "en_attente",
+      description: description || null, montant: montantNet, statut: "en_attente",
+      // Geste commercial : le prix d'origine est gardé (« montant_brut »), le client règle « montant ».
+      ...(geste > 0 ? { montant_brut: montant, remise_montant: geste, remise_origine: "geste", remise_motif: gesteMotif || null } : {}),
       // Relances automatiques (offre Pro) : cochées par défaut, jamais pour une autre offre (et refusées aussi côté serveur).
       relance_auto: body.relance_auto !== false && (artisan.plan === "pro" || artisan.plan === "pro_offert") && !!emailClient,
     }).select("token").single();
@@ -107,16 +134,17 @@ Deno.serve(async (req: Request) => {
 
     let emailEnvoye = false;
     if (emailClient) {
-      emailEnvoye = await envoyerEmail(emailClient, `Paiement demandé par ${String(artisan.nom_entreprise || "votre artisan").replace(/[\u0000-\u001f\u007f]+/g, " ").slice(0, 80)} — ${euros(montant)}`,
+      emailEnvoye = await envoyerEmail(emailClient, `Paiement demandé par ${String(artisan.nom_entreprise || "votre artisan").replace(/[\u0000-\u001f\u007f]+/g, " ").slice(0, 80)} — ${euros(montantNet)}`,
         `<div style="font-family:sans-serif;max-width:480px;">
           <h2 style="color:#B5502F;">💶 Paiement demandé</h2>
-          <p>Bonjour ${escHtml(client?.nom || "")}, <strong>${escHtml(artisan.nom_entreprise)}</strong> vous demande de régler <strong>${escHtml(euros(montant))}</strong>${description ? ` pour : ${escHtml(description)}` : ""}.</p>
+          <p>Bonjour ${escHtml(client?.nom || "")}, <strong>${escHtml(artisan.nom_entreprise)}</strong> vous demande de régler <strong>${escHtml(euros(montantNet))}</strong>${description ? ` pour : ${escHtml(description)}` : ""}.</p>
+          ${geste > 0 ? `<p style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:13.5px;color:#166534;">🤝 <strong>Geste commercial de ${escHtml(artisan.nom_entreprise)}</strong> : ${escHtml(euros(geste))} de remise${gestePct ? ` (${escHtml(String(gestePct).replace(".", ","))} %)` : ""} sur ${escHtml(euros(montant))}.${gesteMotif ? ` ${escHtml(gesteMotif)}` : ""}</p>` : ""}
           ${dejaPayeEnLigne > 0 ? `<p style="font-size:12.5px;color:#475569;">Vous avez déjà réglé ${escHtml(euros(dejaPayeEnLigne))} en ligne (frais de réservation / de déplacement) : l'artisan en tient compte dans le montant demandé.</p>` : ""}
           <p style="text-align:center;margin:22px 0;"><a href="${escHtml(lien)}" style="display:inline-block;background:#B5502F;color:#ffffff;padding:13px 26px;border-radius:8px;text-decoration:none;font-weight:700;">Payer en ligne</a></p>
           <p style="font-size:12px;color:#6b7c96;">Paiement sécurisé par carte (Stripe). Le lien est valable 14 jours.</p>
         </div>`);
     }
-    return json({ ok: true, lien, email_envoye: emailEnvoye, sans_email: !emailClient, deja_paye_en_ligne: dejaPayeEnLigne });
+    return json({ ok: true, lien, email_envoye: emailEnvoye, sans_email: !emailClient, deja_paye_en_ligne: dejaPayeEnLigne, montant_net: montantNet, geste });
   } catch (e) {
     console.error("[demander-paiement-prestation]", e);
     return json({ error: MSG_ERREUR_GENERIQUE }, 500);

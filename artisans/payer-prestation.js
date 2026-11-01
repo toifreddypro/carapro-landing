@@ -65,12 +65,16 @@
   function detailPrix() {
     var d = el('div', 'detail');
     d.appendChild(ligne('Prix de la prestation', euros(infos.montant_brut)));
-    if (infos.remise > 0) d.appendChild(ligne(infos.remise_origine === 'code' ? 'Code promo' : 'Remise « client fidèle »' + (infos.fidele_pct ? ' (' + infos.fidele_pct + ' %)' : ''), '− ' + euros(infos.remise), 'vert'));
+    if (infos.remise > 0) {
+      var libelle = infos.remise_origine === 'geste' ? '🤝 Geste commercial de ' + infos.artisan : infos.remise_origine === 'code' ? 'Code promo' : 'Remise « client fidèle »' + (infos.fidele_pct ? ' (' + infos.fidele_pct + ' %)' : '');
+      d.appendChild(ligne(libelle, '− ' + euros(infos.remise), 'vert'));
+      if (infos.remise_origine === 'geste' && infos.remise_motif) d.appendChild(el('div', 'motif', infos.remise_motif));
+    }
     if (infos.credit_applique > 0) d.appendChild(ligne('Votre crédit CaraLink', '− ' + euros(infos.credit_applique), 'vert'));
     d.appendChild(ligne('À payer', euros(infos.montant), 'total'));
     return d;
   }
-  var MSG_CODE = { invalide: "Ce code n'est pas valable pour cet artisan.", deja_utilise: 'Vous avez déjà utilisé ce code chez cet artisan : il ne sert qu\'une fois.', connexion_requise: 'Connectez-vous à votre compte CaraLink pour utiliser un code promo.', fidele_plus_avantageuse: 'Votre remise « client fidèle » est plus avantageuse : elle est appliquée, votre code reste utilisable une prochaine fois.' };
+  var MSG_CODE = { invalide: "Ce code n'est pas valable pour cet artisan.", deja_utilise: 'Vous avez déjà utilisé ce code chez cet artisan : il ne sert qu\'une fois.', connexion_requise: 'Connectez-vous à votre compte CaraLink pour utiliser un code promo.', geste_remplace: 'Le geste commercial de votre artisan remplace les codes promo : il est déjà appliqué.', fidele_plus_avantageuse: 'Votre remise « client fidèle » est plus avantageuse : elle est appliquée, votre code reste utilisable une prochaine fois.' };
   async function recalculer() { try { infos = await appel({ action: 'infos' }); } catch (e) { /* on garde l'écran */ } afficherPaiement(); }
   function optionsRemise() {
     var z = el('div', 'options');
@@ -85,10 +89,12 @@
       cb.addEventListener('change', function () { choix.credit = cb.checked; recalculer(); });
       z.appendChild(lab);
     }
+    var geste = infos.remise_origine === 'geste';
     var rang = el('div', 'rang-code'); var inp = document.createElement('input'); inp.type = 'text'; inp.placeholder = 'Code promo'; inp.maxLength = 40; inp.value = choix.code; inp.setAttribute('aria-label', 'Code promo'); inp.autocomplete = 'off';
     var ok = el('button', 'secondaire', 'Appliquer'); ok.type = 'button';
     ok.addEventListener('click', function () { choix.code = inp.value.trim(); recalculer(); });
-    rang.appendChild(inp); rang.appendChild(ok); z.appendChild(rang);
+    rang.appendChild(inp); rang.appendChild(ok); if (!geste) z.appendChild(rang); // un geste commercial de l'artisan remplace les codes
+    if (geste) z.appendChild(el('p', 'astuce', 'Ce geste commercial remplace les autres remises. Votre crédit CaraLink reste utilisable en plus.'));
     if (choix.code && infos.code_statut && infos.code_statut !== 'ok') z.appendChild(el('p', 'alerte', MSG_CODE[infos.code_statut] || 'Code non appliqué.'));
     if (infos.cashback_pct) z.appendChild(el('p', 'astuce', infos.cashback_pct + ' % de ce paiement vous seront rendus en crédit chez ' + infos.artisan + '.'));
     return z;

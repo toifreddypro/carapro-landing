@@ -109,6 +109,14 @@ async function calculerPrix(sb: any, p: any, artisan: any, userId: string | null
   if (p.type !== "solde" || p.statut !== "en_attente") return res;
   const plafond = Math.max(0, brut - MONTANT_MINIMUM_CENTIMES); // jamais moins de 0,50 € à payer par carte
 
+  // 0) Geste commercial décidé par l'artisan pour CE client : il remplace toutes les remises automatiques (code, client fidèle).
+  //    Seul le crédit cashback du client peut s'y ajouter.
+  if (p.remise_origine === "geste") {
+    res.remise = Math.min(Math.round(Number(p.remise_montant || 0) * 100), plafond); res.origine = "geste";
+    if (codeSaisi) res.codeStatut = "geste_remplace";
+    return await ajouterCredit(sb, p, artisan, userId, utiliserCredit, res, plafond);
+  }
+
   // 1) Remise « client déjà venu » (automatique, offre Pro).
   let remiseFidele = 0;
   const pctF = Number(artisan.remise_fidele_pct);
@@ -137,7 +145,11 @@ async function calculerPrix(sb: any, p: any, artisan: any, userId: string | null
   res.remise = Math.min(res.remise, plafond);
   if (res.remise <= 0) { res.remise = 0; res.origine = null; res.codeRetenu = null; }
 
-  // 3) Crédit cashback (s'ajoute à la remise). On remet dans le disponible ce que CE paiement a déjà réservé (le client peut changer d'avis).
+  return await ajouterCredit(sb, p, artisan, userId, utiliserCredit, res, plafond);
+}
+
+// Crédit cashback (s'ajoute à la remise). On remet dans le disponible ce que CE paiement a déjà réservé (le client peut changer d'avis).
+async function ajouterCredit(sb: any, p: any, artisan: any, userId: string | null, utiliserCredit: boolean, res: Prix, plafond: number): Promise<Prix> {
   if (userId) {
     const { data: solde, error } = await sb.rpc("cashback_solde", { p_user: userId, p_artisan: artisan.id });
     if (error) throw error;
@@ -145,7 +157,7 @@ async function calculerPrix(sb: any, p: any, artisan: any, userId: string | null
     res.creditDisponible = Math.max(0, Math.round(Number(solde || 0) * 100) + dejaReserve);
     if (utiliserCredit) res.credit = Math.max(0, Math.min(res.creditDisponible, plafond - res.remise));
   }
-  res.net = brut - res.remise - res.credit;
+  res.net = res.brut - res.remise - res.credit;
   return res;
 }
 
@@ -242,7 +254,7 @@ Deno.serve(async (req: Request) => {
     if (action === "infos") {
       return json({
         type: p.type, statut: statutEffectif, montant: statutEffectif === "en_attente" ? prix.net / 100 : montant, artisan: artisan.nom_entreprise,
-        montant_brut: prix.brut / 100, remise: prix.remise / 100, remise_origine: prix.origine, fidele_pct: prix.fidelePct,
+        montant_brut: prix.brut / 100, remise: prix.remise / 100, remise_origine: prix.origine, remise_motif: p.remise_origine === "geste" ? p.remise_motif : null, fidele_pct: prix.fidelePct,
         connecte: !!userId, credit_disponible: prix.creditDisponible / 100, credit_applique: prix.credit / 100, code_statut: prix.codeStatut,
         cashback_pct: estPro(artisan.plan) && Number(artisan.cashback_pct) >= 1 ? Number(artisan.cashback_pct) : null,
         client_nom: p.client_nom, description: p.description,
@@ -290,7 +302,7 @@ Deno.serve(async (req: Request) => {
       }
       const { error: errPrix } = await sb.from("paiements_prestations").update({
         montant_brut: prix.brut / 100, montant: prix.net / 100, remise_montant: prix.remise / 100, remise_origine: prix.origine,
-        code_promo: prix.codeRetenu, cashback_utilise: prix.credit / 100,
+        code_promo: prix.origine === "geste" ? null : prix.codeRetenu, cashback_utilise: prix.credit / 100,
         cashback_pct: estPro(artisan.plan) && Number(artisan.cashback_pct) >= 1 ? Number(artisan.cashback_pct) : null,
         client_user_id: userId ?? p.client_user_id ?? null, updated_at: new Date().toISOString(),
       }).eq("id", p.id).eq("statut", "en_attente");
