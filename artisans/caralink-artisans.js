@@ -321,30 +321,29 @@ function renderNav() {
 // ════════════════════════════════════════
 var _searchState = { secteur:'', commune:'', nom:'', tri:'' };
 
-// Bouton « boutique » doré à paillettes (même esprit que l'enseigne « BOUTIQUE » : lettres dorées scintillantes).
+// Bouton « boutique » : fond ardoise sombre, lettres dorées à paillettes (comme l'enseigne « BOUTIQUE »).
 (function() {
   if (document.getElementById('style-boutique-or')) return;
   var st = document.createElement('style'); st.id = 'style-boutique-or';
   st.textContent =
-    '.btn-boutique-or{position:relative;display:inline-flex;align-items:center;gap:6px;padding:9px 17px;border-radius:999px;overflow:hidden;' +
-      'font-size:13px;font-weight:800;letter-spacing:.3px;text-decoration:none;color:#3b2704;text-shadow:0 1px 0 rgba(255,244,196,.7);' +
-      'border:1px solid #9a7412;' +
+    '.btn-boutique-or{position:relative;display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:999px;overflow:hidden;' +
+      'font-size:13.5px;font-weight:800;letter-spacing:.6px;text-decoration:none;' +
+      'border:1px solid #b8923a;' +
+      'background:radial-gradient(circle at 20% 25%,rgba(255,255,255,.07) 0 1px,transparent 1.6px),radial-gradient(circle at 70% 70%,rgba(255,255,255,.05) 0 1px,transparent 1.6px),linear-gradient(180deg,#3a3d42,#2a2d31);' +
+      'background-size:19px 15px,23px 17px,100% 100%;' +
+      'box-shadow:0 2px 8px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08);}' +
+    '.btn-or-txt{display:inline-block;color:#e8c34e;' +
       'background:' +
-        'radial-gradient(circle at 18% 30%,rgba(255,255,255,.95) 0 1.2px,transparent 1.7px),' +
-        'radial-gradient(circle at 42% 72%,rgba(255,255,255,.85) 0 1px,transparent 1.5px),' +
-        'radial-gradient(circle at 63% 28%,rgba(255,255,255,.9) 0 1.3px,transparent 1.8px),' +
-        'radial-gradient(circle at 82% 66%,rgba(255,255,255,.85) 0 1px,transparent 1.5px),' +
-        'radial-gradient(circle at 30% 50%,rgba(120,80,0,.35) 0 .9px,transparent 1.4px),' +
-        'radial-gradient(circle at 72% 45%,rgba(120,80,0,.3) 0 .9px,transparent 1.4px),' +
-        'linear-gradient(135deg,#f6dc82 0%,#d9a928 28%,#f9e9a1 50%,#c9951a 72%,#efce62 100%);' +
-      'background-size:26px 20px,31px 22px,23px 19px,29px 21px,17px 15px,21px 17px,100% 100%;' +
-      'box-shadow:0 2px 8px rgba(154,116,18,.4),inset 0 1px 0 rgba(255,255,255,.55);}' +
-    '.btn-boutique-or::after{content:"";position:absolute;top:0;left:-70%;width:45%;height:100%;' +
-      'background:linear-gradient(100deg,transparent,rgba(255,255,255,.65),transparent);transform:skewX(-18deg);animation:boutique-or-brille 3.6s ease-in-out infinite;}' +
-    '@keyframes boutique-or-brille{0%,55%{left:-70%}100%{left:130%}}' +
-    '.btn-boutique-or:hover{filter:brightness(1.06);box-shadow:0 3px 12px rgba(154,116,18,.55),inset 0 1px 0 rgba(255,255,255,.6);}' +
-    '.btn-boutique-or-large{display:flex;justify-content:center;margin-top:12px;padding:11px 16px;font-size:13.5px;}' +
-    '@media (prefers-reduced-motion:reduce){.btn-boutique-or::after{animation:none;display:none;}}';
+        'radial-gradient(circle at 12% 40%,#fff 0 .9px,transparent 1.3px),radial-gradient(circle at 38% 65%,#fff7d1 0 .8px,transparent 1.2px),' +
+        'radial-gradient(circle at 61% 30%,#fff 0 .9px,transparent 1.3px),radial-gradient(circle at 85% 60%,#fff7d1 0 .8px,transparent 1.2px),' +
+        'linear-gradient(135deg,#f7dc7a 0%,#d4a52a 30%,#fbeaa0 50%,#c28f1c 72%,#efcd5e 100%);' +
+      'background-size:17px 13px,21px 15px,15px 12px,19px 14px,100% 100%;' +
+      '-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;' +
+      'filter:drop-shadow(0 1px 1px rgba(0,0,0,.55));animation:boutique-or-scintille 2.8s ease-in-out infinite;}' +
+    '@keyframes boutique-or-scintille{0%,100%{filter:drop-shadow(0 1px 1px rgba(0,0,0,.55)) brightness(1)}50%{filter:drop-shadow(0 1px 1px rgba(0,0,0,.55)) brightness(1.25)}}' +
+    '.btn-boutique-or:hover{border-color:#e8c34e;box-shadow:0 3px 12px rgba(0,0,0,.45),0 0 0 2px rgba(232,195,78,.25);}' +
+    '.btn-boutique-or-large{display:flex;justify-content:center;margin-top:12px;padding:11px 16px;font-size:14px;}' +
+    '@media (prefers-reduced-motion:reduce){.btn-or-txt{animation:none;}}';
   document.head.appendChild(st);
 })();
 
@@ -379,7 +378,6 @@ function renderHero() {
           '</button>' +
         '</div>' +
         '<div class="filters-wrap">' +
-          '<button class="filter-pill" title="' + T('filter_bientot_title') + '" style="opacity:.55;cursor:not-allowed;" onclick="return false;">' + T('filter_dispo') + '</button>' +
           '<button class="filter-pill' + (_searchState.tri==='note'?' active':'') + '" onclick="trierPar(\'note\')">' + T('filter_note') + '</button>' +
         '</div>' +
         '<div class="infos-defil" id="infos-defil" aria-live="polite"><span id="infos-defil-txt"></span></div>' +
@@ -941,7 +939,7 @@ async function chargerApercuCarte(id) {
           : '<div class="phare-mini phare-mini-vide" title="' + escHtml(p.nom) + '">📦</div>';
       }).join('');
       var lienBoutique = data.slug_catalogue
-        ? '<a href="catalogue.html?s=' + encodeURIComponent(data.slug_catalogue) + '" class="phares-lien btn-boutique-or" target="_blank" rel="noopener" onclick="event.stopPropagation();">🛍️ ' + escHtml(T('phares_voir_boutique')) + ' →</a>'
+        ? '<a href="catalogue.html?s=' + encodeURIComponent(data.slug_catalogue) + '" class="phares-lien btn-boutique-or" target="_blank" rel="noopener" onclick="event.stopPropagation();">🛍️<span class="btn-or-txt">' + escHtml(T('phares_voir_boutique')) + ' →</span></a>'
         : '';
       var promoVentes = !data.avantages || !data.avantages.code_promo || data.avantages.code_promo.ventes !== false; // code réservé aux interventions : pas à côté de la boutique
       var promo = (data.code_promo && promoVentes)
@@ -1098,7 +1096,7 @@ function buildProfilHTML(data) {
           '</div>';
         }).join('') +
       '</div>' +
-      (data.artisan.slug_catalogue ? '<a href="catalogue.html?s=' + encodeURIComponent(data.artisan.slug_catalogue) + '" target="_blank" rel="noopener" class="btn-boutique-or btn-boutique-or-large">🛍️ Voir toute la boutique →</a>' : '') +
+      (data.artisan.slug_catalogue ? '<a href="catalogue.html?s=' + encodeURIComponent(data.artisan.slug_catalogue) + '" target="_blank" rel="noopener" class="btn-boutique-or btn-boutique-or-large">🛍️<span class="btn-or-txt">Voir toute la boutique →</span></a>' : '') +
       ((data.artisan.code_promo && data.artisan.code_promo_ventes !== false) ? '<div style="text-align:center;margin-top:8px;font-family:monospace;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:7px;background:rgba(181,80,47,.08);color:var(--ac,#B5502F);border:1px dashed var(--ac,#B5502F);display:inline-block;">🎁 ' + escHtml(data.artisan.code_promo) + '</div>' : '')
     : '';
 
