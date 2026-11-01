@@ -2353,6 +2353,7 @@ async function ouvrirIntervention(id) {
   _interventionEnCours = id;
   document.getElementById('mi-titre').textContent = 'Modifier l\'intervention';
   var _commandeLiee = (_commandesCache || []).find(function(c) { return c.intervention_id === id; }) || null;
+  if (_commandeLiee) { ouvrirMaLivraison(i, _commandeLiee); return; } // une livraison a sa propre fenêtre « Ma livraison »
   document.getElementById('mi-date').value = i.date_intervention;
   document.getElementById('mi-creneau').value = i.creneau || 'matin';
   document.getElementById('mi-heure-debut').value = i.heure_debut ? i.heure_debut.slice(0,5) : '';
@@ -6999,6 +7000,107 @@ async function confirmerPlanificationLivraison() {
   }
   fermerModale('modal-planif-livraison');
   mpaAiDire(messageLivraisonPlanifiee(_planifLivraison.jourChoisi, r), r.probleme ? 'warning' : 'info');
+}
+// ════════════════════════════════════════
+//  FENÊTRE « MA LIVRAISON » (31/10/2026)
+//  La livraison reste enregistrée comme une intervention (planning, regroupement, comptabilité), mais s'affiche dans sa propre fenêtre :
+//  statut, jour, client et objet livré d'abord ; coordonnées du client ensuite ; détails et actions en bas.
+// ════════════════════════════════════════
+var _maLivraison = null;
+function ouvrirMaLivraison(i, c) {
+  _maLivraison = { interventionId: i.id, commandeId: c.id };
+  _interventionEnCours = i.id;
+  var modale = document.getElementById('modal-ma-livraison');
+  if (!modale) {
+    modale = document.createElement('div');
+    modale.className = 'modal-overlay'; modale.id = 'modal-ma-livraison';
+    modale.innerHTML = '<div class="modal-box"><div id="ml-contenu"></div></div>';
+    document.body.appendChild(modale);
+  }
+  var lignes = _lignesCommandesCache[c.id];
+  var objet = (c.catalogue_id == null && lignes && lignes.length)
+    ? lignes.map(function(l) { return l.quantite + ' × ' + escHtml(l.nom_article); }).join('<br>')
+    : (c.quantite + ' × ' + escHtml(c.nom_article));
+  var statut = i.statut || 'planifiee';
+  var ouverte = ['planifiee', 'en_cours'].indexOf(statut) !== -1;
+  var etat = statut === 'annulee' ? '<span style="color:#dc2626;">🚫 Annulée</span>'
+    : (statut === 'terminee' || statut === 'payee') ? '<span style="color:#16a34a;">✅ Livrée</span>'
+    : c.livraison_confirmee_le ? '<span style="color:#16a34a;">✉️ Client prévenu</span>'
+    : '<span style="color:#b45309;">🕓 Provisoire — client pas encore prévenu</span>';
+  var ligneInfo = function(icone, texte) { return texte ? '<div style="margin:3px 0;">' + icone + ' ' + texte + '</div>' : ''; };
+  var tel = c.client_telephone ? '<a href="tel:' + escHtml(String(c.client_telephone).replace(/[^+\d]/g, '')) + '" style="color:inherit;">' + escHtml(c.client_telephone) + '</a>' : '';
+  var adresse = [c.adresse_livraison, [c.code_postal_livraison, c.commune_livraison].filter(Boolean).join(' ')].filter(Boolean).map(escHtml).join(', ');
+  var champ = 'width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:\'Outfit\',sans-serif;font-size:13px;box-sizing:border-box;';
+  var select = function(id, options, valeur, desactive) {
+    return '<select id="' + id + '" style="' + champ + '"' + (desactive ? ' disabled' : '') + '>' + options.map(function(o) { return '<option value="' + o[0] + '"' + (o[0] === valeur ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
+  };
+  var statuts = [['planifiee', 'Planifiée'], ['en_cours', 'En cours'], ['terminee', 'Livrée'], ['payee', 'Livrée et encaissée']];
+  var actions = '';
+  if (ouverte) {
+    if (!c.livraison_confirmee_le) actions += '<button class="btn-secondary" onclick="prevenirDepuisMaLivraison()">✉️ Prévenir le client maintenant</button>';
+    actions += '<button class="btn-secondary" style="color:#dc2626;" onclick="annulerDepuisMaLivraison()">🚫 Impossible de livrer</button>';
+  }
+  document.getElementById('ml-contenu').innerHTML =
+    '<h3>🚚 Ma livraison</h3>' +
+    '<div style="font-size:13px;font-weight:700;margin:-4px 0 12px;">' + etat + '</div>' +
+    '<div class="modal-row" style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;">' +
+      '<div class="modal-field" style="flex:1;min-width:140px;"><label>Statut</label>' + (statut === 'annulee' ? select('ml-statut', [['annulee', 'Annulée']], 'annulee', true) : select('ml-statut', statuts, statut)) + '</div>' +
+      '<div class="modal-field" style="flex:1;min-width:140px;"><label>Jour</label><input id="ml-date" type="date" value="' + escHtml(i.date_intervention) + '"' + (ouverte ? '' : ' disabled') + ' style="' + champ + '"/></div>' +
+      '<div class="modal-field" style="flex:1;min-width:140px;"><label>Créneau</label>' + select('ml-creneau', [['matin', 'Matin'], ['apres_midi', 'Après-midi']], i.creneau || 'matin', !ouverte) + '</div>' +
+    '</div>' +
+    '<div style="font-size:12.5px;font-weight:700;margin:12px 0 4px;">📦 Objet livré</div>' +
+    '<div style="font-size:13.5px;line-height:1.55;">' + objet + '</div>' +
+    '<div style="font-size:12.5px;font-weight:700;margin:14px 0 4px;">👤 Client</div>' +
+    '<div style="font-size:13.5px;line-height:1.55;">' +
+      '<strong>' + escHtml(c.client_nom) + '</strong>' + ligneInfo('📞', tel) + ligneInfo('✉️', escHtml(c.client_email || '')) + ligneInfo('📍', adresse) +
+    '</div>' +
+    '<div style="font-size:12.5px;font-weight:700;margin:14px 0 4px;">ℹ️ Détails</div>' +
+    '<div style="font-size:12.5px;line-height:1.6;color:var(--mu);">' +
+      '<div>Frais de livraison déjà payés avec la commande : <strong>' + eurosFR(c.frais_livraison || 0) + '</strong></div>' +
+      (c.livraison_debut && c.livraison_fin ? '<div>Fenêtre annoncée au client : du <strong>' + dateCourteFR(c.livraison_debut) + '</strong> au <strong>' + dateCourteFR(c.livraison_fin) + '</strong></div>' : '') +
+      (c.notes ? '<div>Note du client : ' + escHtml(c.notes) + '</div>' : '') +
+      (ouverte ? '<div>' + (c.livraison_confirmee_le ? '✉️ Déplacer cette livraison envoie un nouvel email au client.' : '🕓 Vous pouvez la déplacer sans rien envoyer : le client est prévenu 2 jours avant.') + '</div>' : '') +
+    '</div>' +
+    '<div class="modal-actions" style="margin-top:16px;flex-wrap:wrap;">' +
+      '<button id="ml-valider" class="btn-primary" onclick="enregistrerMaLivraison()"' + (statut === 'annulee' ? ' disabled' : '') + '>Enregistrer</button>' +
+      '<button class="btn-secondary" onclick="fermerModale(\'modal-ma-livraison\')">Fermer</button>' +
+    '</div>' +
+    (actions ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">' + actions + '</div>' : '');
+  ouvrirModale('modal-ma-livraison');
+}
+async function enregistrerMaLivraison() {
+  if (!verifierAccesEcriture() || !_maLivraison) return;
+  var i = _interventionsCache.find(function(x) { return x.id === _maLivraison.interventionId; });
+  if (!i) return;
+  var date = document.getElementById('ml-date').value, creneau = document.getElementById('ml-creneau').value, statut = document.getElementById('ml-statut').value;
+  if (!date) { alert('Choisissez le jour de la livraison.'); return; }
+  var ancienStatut = i.statut || 'planifiee';
+  var maj = { date_intervention: date, creneau: creneau, statut: statut };
+  if (['terminee', 'payee'].indexOf(statut) !== -1) {
+    if (i.prix == null) maj.prix = 0;
+    maj.date_paiement = statut === 'payee' ? (i.date_paiement || jourGuadeloupe()) : null;
+  }
+  var changementDate = ['planifiee', 'en_cours'].indexOf(ancienStatut) !== -1 && ['planifiee', 'en_cours'].indexOf(statut) !== -1 && (i.date_intervention !== date || (i.creneau || '') !== creneau);
+  var btn = document.getElementById('ml-valider'); btn.disabled = true; btn.textContent = 'Enregistrement…';
+  var res = await sb.from('mpa_artisans_interventions').update(maj).eq('id', i.id).eq('artisan_id', _artisan.id).select().single();
+  if (res.error) { btn.disabled = false; btn.textContent = 'Enregistrer'; alert('Erreur : ' + res.error.message); return; }
+  fermerModale('modal-ma-livraison');
+  await chargerInterventions();
+  if (['terminee', 'payee'].indexOf(statut) !== -1 && ['terminee', 'payee'].indexOf(ancienStatut) === -1) { suiteInterventionTerminee(i.id); chargerCommandes(); }
+  if (changementDate) await prevenirClientDeplacement(i.id, i.date_intervention);
+  else { await chargerCommandes(); await chargerLivraisons(); }
+  if (['planifiee', 'en_cours'].indexOf(statut) !== -1) verifierFaisabiliteJour(date);
+}
+async function prevenirDepuisMaLivraison() {
+  if (!_maLivraison) return;
+  fermerModale('modal-ma-livraison');
+  await prevenirClientLivraisonMaintenant(_maLivraison.commandeId);
+}
+function annulerDepuisMaLivraison() {
+  if (!_maLivraison) return;
+  _interventionEnCours = _maLivraison.interventionId;
+  fermerModale('modal-ma-livraison');
+  ouvrirImpossibleHonorer();
 }
 function messageLivraisonPlanifiee(date, r) {
   if (r.immediat) return r.probleme ? '🚚 Livraison planifiée le ' + dateCourteFR(date) + ', mais ' + r.probleme : '🚚 Livraison planifiée le ' + dateCourteFR(date) + ' : c\'est dans moins de 2 jours, j\'ai donc prévenu votre client par email tout de suite.';
