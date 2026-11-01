@@ -252,7 +252,7 @@ Deno.serve(async (req: Request) => {
     const codeSaisi = typeof body.code_promo === "string" ? body.code_promo.trim().slice(0, 40) : "";
     const utiliserCredit = body.utiliser_credit === true;
     if (codeSaisi) {
-      const ip = (req.headers.get("x-forwarded-for") || "inconnue").split(",")[0].trim();
+      const ip = (req.headers.get("cf-connecting-ip") || (req.headers.get("x-forwarded-for") || "inconnue").split(",")[0].trim());
       if (await limiteAtteinte(sb, `code-promo-presta:${p.id}:${ip}`, 15, 600)) return json({ error: "Trop d'essais. Réessayez dans quelques minutes." }, 429);
     }
     const prix = await calculerPrix(sb, p, artisan, userId, codeSaisi, utiliserCredit);

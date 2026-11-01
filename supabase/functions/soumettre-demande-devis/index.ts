@@ -566,6 +566,12 @@ Deno.serve(async (req: Request) => {
           }
           candidats.sort((x, y) => x.km - y.km);
           await Promise.allSettled(candidats.slice(0, MAX_ARTISANS_NOTIFIES).map(async (a) => {
+            // Audit du 01/11 : plafond par artisan (4 mails de « demande ouverte » par heure). Avec des adresses IP changeantes, on pourrait sinon
+            // inonder la boîte d'un artisan de demandes. La demande reste visible dans son espace MPA ; seul l'email est retenu. Limiteur en panne : on laisse passer.
+            try {
+              const { data: ok } = await sb.rpc("limiter_appel", { p_cle: `demande-ouverte-mail:${a.user_id}`, p_max: 4, p_fenetre_s: 3600 });
+              if (ok === false) return;
+            } catch (e) { console.error("[soumettre-demande-devis] limiter_appel (artisan) :", e); }
             const { data: userData } = await sb.auth.admin.getUserById(a.user_id);
             if (userData?.user?.email) await envoyerEmail(userData.user.email, `Un client vous cherche à ${communeNom}`, emailOuverte);
           }));

@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
     if (!REGEX_UUID.test(artisanId) || !saisi || saisi.length > 40) return json({ error: "code_invalide" }, 422);
 
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const ip = (req.headers.get("x-forwarded-for") || "inconnue").split(",")[0].trim();
+    const ip = (req.headers.get("cf-connecting-ip") || (req.headers.get("x-forwarded-for") || "inconnue").split(",")[0].trim());
     if (await limiteAtteinte(sb, `code-promo:${artisanId}:${ip}`, 15, 600)) return json({ error: "Trop d'essais. Réessayez dans quelques minutes." }, 429);
 
     // Un code promo n'est utilisable qu'avec un COMPTE CLIENT connecté (règle du 23/10 : une seule utilisation par client).

@@ -158,7 +158,7 @@ Deno.serve(async (req: Request) => {
 
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     if (apercu) {
-      const ip = (req.headers.get("x-forwarded-for") || "inconnue").split(",")[0].trim();
+      const ip = (req.headers.get("cf-connecting-ip") || (req.headers.get("x-forwarded-for") || "inconnue").split(",")[0].trim());
       try {
         const { data: ok } = await sb.rpc("limiter_appel", { p_cle: `apercu-livraison:${artisan_id}:${ip}`, p_max: 30, p_fenetre_s: 600 });
         if (ok === false) return json({ error: "Trop de demandes. Réessayez dans quelques minutes." }, 429);
