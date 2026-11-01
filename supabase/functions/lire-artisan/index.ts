@@ -164,6 +164,8 @@ Deno.serve(async (req: Request) => {
       && new Date(dateInscription.created_at).getTime() > Date.now() - 90 * 24 * 3600 * 1000
       && notes.length < 3;
     artisan.nouveau = nouveau;
+    // « Profil complet » (même règle que l'annuaire) : photo de profil, description d'au moins 40 caractères, au moins un service.
+    artisan.profil_complet = !!artisan.photo_profil_url && String(artisan.bio || "").trim().length >= 40 && (services || []).length > 0;
 
     return json({
       artisan,

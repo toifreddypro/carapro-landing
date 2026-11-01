@@ -643,18 +643,21 @@ function etoilesCarte(note) {
 function pastillesServicesCarte(services) {
   if (!services || !services.length) return '';
   var html = services.slice(0, 4).map(function(nom, i) {
-    return '<span class="badge-trust ' + CLASSES_PASTILLES_CARTE[i % CLASSES_PASTILLES_CARTE.length] + '">' + escHtml(nom) + '</span>';
+    return '<span class="badge-trust bt-accent">' + escHtml(nom) + '</span>'; // toutes les prestations ont la même couleur
   }).join('');
   if (services.length > 4) html += '<span class="badge-trust bt-more">+' + (services.length - 4) + '</span>';
   return html;
 }
+// « Nouveau sur CaraLink » : TOUJOURS la première pastille, en bleu neutre (ni étoile ni doré), jamais une recommandation.
+function badgeNouveauCarte(a) {
+  return a.nouveau ? '<span class="badge-trust bt-blue" title="' + escHtml(T('badge_nouveau_info')) + '">' + escHtml(T('badge_nouveau')) + '</span>' : '';
+}
+// « Vérifié » en vert, à droite de la carte (là où se trouvait « Disponibilités en temps réel »).
+function badgeVerifieCarte(a) {
+  return a.verifie ? '<span class="badge-trust bt-green" title="SIRET et assurance vérifiés">✅ ' + escHtml(T('badge_verifie')) + '</span>' : '';
+}
 function pastillesSpecialesCarte(a) {
   var h = '';
-  // « Nouveau sur CaraLink » : neutre (ni étoile ni doré), jamais une recommandation. Le texte complet est dans l'infobulle et sur la fiche.
-  if (a.nouveau) h += '<span class="badge-trust bt-blue" title="' + escHtml(T('badge_nouveau_info')) + '">' + escHtml(T('badge_nouveau')) + '</span>';
-  if (a.verifie) h += '<span class="badge-trust bt-green" title="SIRET et assurance vérifiés">✅ ' + T('badge_verifie') + '</span>';
-  if (a.a_photos) h += '<span class="badge-trust bt-more">📷 ' + escHtml(T('badge_photos')) + '</span>';
-  if (a.profil_complet) h += '<span class="badge-trust bt-more">📝 ' + escHtml(T('badge_complet')) + '</span>';
   if (a.alternance_niveau >= 2) h += '<span class="badge-trust bt-purple" title="Cette entreprise s\'engage activement pour la formation locale">🟠 Tremplin des jeunes</span>';
   if (a.tarif_min != null) h += '<span class="badge-trust bt-accent">' + T('des_prefix') + ' ' + a.tarif_min + '€</span>';
   return h;
@@ -693,7 +696,7 @@ function renderArtisanCard(a) {
       '<div class="card-info">' +
         '<div class="card-name">' + escHtml(a.nom_entreprise) + '</div>' +
         '<div class="card-title">' + secteurLabel(a.secteur) + ' · 📍 ' + escHtml(a.commune) + '</div>' +
-        '<div class="card-tags" id="tags-carte-' + escHtml(a.id) + '">' + pastillesSpecialesCarte(a) + '</div>' +
+        '<div class="card-tags" id="tags-carte-' + escHtml(a.id) + '">' + badgeNouveauCarte(a) + pastillesSpecialesCarte(a) + '</div>' +
       '</div>' +
     '</div>' +
     (a.bio ? '<div class="card-bio">' + escHtml(a.bio) + '</div>' : '') +
@@ -701,8 +704,9 @@ function renderArtisanCard(a) {
       (nb > 0
         ? '<div class="card-stars">' + etoilesCarte(noteAff) + '<span>' + noteAff.toFixed(1) + ' (' + nb + ' ' + (nb === 1 ? T('avis_un') : T('avis_plusieurs')) + ')</span></div>'
         : '<div class="card-stars"><span style="color:var(--mu2,#777);">' + escHtml(T('avis_aucun_court')) + '</span></div>') +
-      '<div class="card-badges" id="dispo-carte-' + escHtml(a.id) + '"></div>' +
+      '<div class="card-badges" id="dispo-carte-' + escHtml(a.id) + '">' + badgeVerifieCarte(a) + '</div>' +
     '</div>' +
+    (a.a_photos ? '<div style="font-size:12px;color:var(--mu2,#777);margin:2px 0 6px;">📷 ' + escHtml(T('badge_photos')) + '</div>' : '') +
     '<div class="dispo-grid" id="grille-carte-' + escHtml(a.id) + '" style="display:none;"></div>' +
     '<div id="phares-carte-' + escHtml(a.id) + '"></div>' +
   '</div>';
@@ -725,13 +729,13 @@ async function chargerApercuCarte(id) {
     var data = await res.json();
     if (data.error) return;
 
-    zoneTags.innerHTML = pastillesServicesCarte(data.services) + pastillesSpecialesCarte(a);
+    zoneTags.innerHTML = badgeNouveauCarte(a) + pastillesServicesCarte(data.services) + pastillesSpecialesCarte(a);
 
     if (data.semaine && data.semaine.length && zoneDispo && grille) {
       var dispo = data.prochaine_date
         ? '<span class="card-dispo now"><span class="dispo-dot now"></span>' + escHtml(libelleProchaineDispo(data.prochaine_date)) + '</span>'
         : '<span class="card-dispo none"><span class="dispo-dot none"></span>' + escHtml(T('dispo_aucune_carte')) + '</span>';
-      zoneDispo.innerHTML = '<span class="badge-realtime"><span class="dot"></span>' + escHtml(T('dispo_temps_reel')) + '</span>' + dispo;
+      zoneDispo.innerHTML = badgeVerifieCarte(a) + dispo;
       grille.innerHTML = data.semaine.map(colonneJourCarte).join('');
       grille.style.display = 'grid';
     }
@@ -921,6 +925,7 @@ function buildProfilHTML(data) {
           '<div style="font-size:13px;color:var(--mu2,#777);">' + secteurLabel(a.secteur) + ' · 📍 ' + escHtml(a.commune) + '</div>' +
           (a.nouveau ? '<span class="badge-trust bt-blue" style="margin-top:4px;margin-right:6px;display:inline-block;">' + escHtml(T('badge_nouveau')) + '</span>' : '') +
           (a.verifie ? '<span class="badge-trust bt-green" style="margin-top:4px;display:inline-block;">✅ ' + T('badge_verifie') + '</span>' : '') +
+          (a.profil_complet ? '<span class="badge-trust bt-more" style="margin-top:4px;margin-left:6px;display:inline-block;">📝 ' + escHtml(T('badge_complet')) + '</span>' : '') +
           (a.alternance_niveau >= 2 ? '<span title="Cette entreprise s\'engage activement pour la formation locale" style="margin-top:4px;margin-left:6px;display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,158,11,.12);color:#b45309;">🟠 Tremplin des jeunes</span>' : '') +
           '</div>' +
         '</div>' +
