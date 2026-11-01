@@ -469,20 +469,28 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .cal-day-num{font-size:12.5px;font-weight:700;color:var(--tx);margin-bottom:5px;}
 .cal-halves{display:flex;flex-direction:column;gap:4px;}
 .cal-halves{gap:0;}
-.cal-half{padding:4px 2px;min-height:24px;}
-.cal-half + .cal-half{border-top:1px solid var(--brd);}
-.cal-half-label{font-size:9.5px;font-weight:700;color:var(--mu);letter-spacing:.2px;padding:0 3px 2px;}
-.cal-pill-ico{font-size:10px;margin-right:3px;}
-.cal-pill{display:flex;align-items:center;justify-content:space-between;gap:3px;background:var(--panel);border:1px solid var(--brd);border-left:3px solid #f59e0b;border-radius:5px;padding:2px 5px;margin-bottom:2px;font-size:10px;cursor:pointer;overflow:hidden;}
+.cal-half{padding:4px 4px 5px;min-height:24px;border-radius:7px;}
+.cal-half + .cal-half{margin-top:4px;}
+/* Créneau vide : presque invisible. Créneau occupé : léger fond, pour voir d'un coup d'œil où il y a du travail. */
+.cal-half-vide{background:transparent;border:1px dashed var(--brd);}
+.cal-half-vide .cal-half-label{opacity:.55;}
+.cal-half-occupe.cal-half-matin{background:rgba(245,158,11,.09);border:1px solid rgba(245,158,11,.22);}
+.cal-half-occupe.cal-half-am{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.22);}
+.cal-half-label{font-size:9px;font-weight:600;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;padding:0 1px 3px;}
+.cal-half-occupe.cal-half-matin .cal-half-label{color:#b45309;}
+.cal-half-occupe.cal-half-am .cal-half-label{color:#1d4ed8;}
+.cal-pill-ico{font-size:12px;margin-right:4px;}
+.cal-pill{display:flex;align-items:center;justify-content:space-between;gap:3px;background:var(--panel);border:1px solid var(--brd);border-left:4px solid #f59e0b;border-radius:6px;padding:4px 7px;margin-bottom:2px;font-size:12.5px;font-weight:700;color:var(--tx);cursor:pointer;overflow:hidden;}
 .cal-pill-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
 .cal-pill.st-planifiee{border-left-color:#f59e0b;background:rgba(245,158,11,.06);}
 .cal-pill.st-en_cours{border-left-color:#6d28d9;background:rgba(109,40,217,.06);}
 .cal-pill.st-terminee{border-left-color:#3b82f6;background:rgba(59,130,246,.06);}
 .cal-pill.st-payee{border-left-color:#22c55e;background:rgba(34,197,94,.08);}
 .cal-pill.st-annulee{border-left-color:var(--mu);background:var(--p2);opacity:.55;text-decoration:line-through;}
-.cal-status-dot{flex-shrink:0;width:9px;height:9px;border-radius:50%;cursor:pointer;box-shadow:0 0 0 2px var(--panel);}
+.cal-status-dot{flex-shrink:0;width:11px;height:11px;border-radius:50%;cursor:pointer;box-shadow:0 0 0 2px var(--panel);}
 .cal-status-dot:hover{transform:scale(1.25);}
 .cal-status-dot.cal-status-planifiee{background:#f59e0b;}
+.cal-status-dot.cal-status-en_cours{background:#6d28d9;}
 .cal-status-dot.cal-status-terminee{background:#3b82f6;}
 .cal-status-dot.cal-status-payee{background:#22c55e;}
 .cal-compact{display:none;}
@@ -493,10 +501,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .cal-compact-dots{display:flex;gap:3px;}
 }
 .cal-pill:hover{border-color:var(--ac);transform:translateX(1px);}
-.cal-pill-heure{color:var(--mu);font-family:'JetBrains Mono',monospace;font-size:9px;}
+.cal-pill-heure{color:var(--mu2);font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;}
 .cal-add-btn{width:100%;text-align:center;font-size:9px;color:var(--mu);background:none;border:1px dashed var(--b2);border-radius:5px;cursor:pointer;padding:2px 0;opacity:0;transition:opacity .15s;}
 .cal-half:hover .cal-add-btn{opacity:1;}
-.cal-more{font-size:9px;color:var(--ac);font-weight:700;padding:1px 3px;cursor:pointer;}
+.cal-more{font-size:11px;color:var(--ac);font-weight:700;padding:2px 4px;cursor:pointer;}
 .mi-section{border-radius:12px;padding:12px 14px 2px;margin-bottom:12px;border:1px solid var(--brd);}
 .mi-section-titre{font-size:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;margin-bottom:10px;}
 .mi-s-statut{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.28);}
@@ -2122,6 +2130,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=202611010916"></script>
+<script src="/mpa/mpa-artisans.js?v=202611010922"></script>
 </body>
 </html>

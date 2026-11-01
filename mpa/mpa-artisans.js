@@ -878,7 +878,7 @@ function renderCreneauHtml(creneau, dateStr, liste) {
 
   var plus = reste > 0 ? '<div class="cal-more" onclick="event.stopPropagation();ouvrirJourDetail(\'' + dateStr + '\',\'' + creneau + '\')">+' + reste + ' autre' + (reste>1?'s':'') + '</div>' : '';
 
-  return '<div class="cal-half cal-half-' + (creneau==='matin'?'matin':'am') + '">' +
+  return '<div class="cal-half cal-half-' + (creneau==='matin'?'matin':'am') + (liste.length ? ' cal-half-occupe' : ' cal-half-vide') + '">' +
     '<div class="cal-half-label">' + (creneau==='matin'?'☀️ Matin':'🌇 Après-midi') + '</div>' +
     pills + plus +
     '<button class="cal-add-btn" onclick="event.stopPropagation();ouvrirNouvelleIntervention(\'' + dateStr + '\',\'' + creneau + '\')">+</button>' +
