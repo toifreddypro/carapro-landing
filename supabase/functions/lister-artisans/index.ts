@@ -74,6 +74,11 @@ Deno.serve(async (req: Request) => {
   );
 
   try {
+    try {
+      const ip = req.headers.get("cf-connecting-ip") || (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "inconnue";
+      const { data: autorise } = await sb.rpc("limiter_appel", { p_cle: `lister-artisans:${ip}`, p_max: 120, p_fenetre_s: 60 });
+      if (autorise === false) return new Response(JSON.stringify({ error: "Trop de requêtes. Réessayez dans une minute." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" } });
+    } catch (e) { console.error("[lister-artisans] limiter_appel :", e); }
     const url = new URL(req.url);
     const secteur = url.searchParams.get("secteur");
     const commune = url.searchParams.get("commune");
@@ -91,7 +96,11 @@ Deno.serve(async (req: Request) => {
 
     if (secteur) requete = requete.eq("secteur", secteur);
     if (commune) requete = requete.ilike("commune", "%" + commune + "%");
-    if (q) requete = requete.or("nom_entreprise.ilike.%" + q + "%,bio.ilike.%" + q + "%");
+    // Audit du 01/11 : le texte cherché entrait tel quel dans le filtre « .or(...) » de la base. Avec une virgule, un visiteur pouvait y glisser
+    // une condition sur une colonne PRIVÉE (téléphone, email, SIRET) et deviner ces valeurs en regardant quels artisans apparaissent.
+    // On ne garde donc que lettres, chiffres, espaces, tiret et apostrophe : plus aucun caractère qui a un sens dans un filtre.
+    const recherche = (q || "").replace(/[^\p{L}\p{N} '\-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+    if (recherche) requete = requete.or("nom_entreprise.ilike.%" + recherche + "%,bio.ilike.%" + recherche + "%");
 
     const { data, error } = await requete;
     if (error) throw error;
@@ -135,7 +144,6 @@ Deno.serve(async (req: Request) => {
 
   } catch (e) {
     console.error("[lister-artisans]", e);
-    const msg = (e instanceof Error) ? e.message : "Erreur serveur.";
-    return json({ error: msg }, 500);
+    return json({ error: "Une erreur est survenue. Réessayez dans un instant." }, 500); // le détail reste dans les journaux
   }
 });
