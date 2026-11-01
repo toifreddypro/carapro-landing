@@ -497,6 +497,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .cal-add-btn{width:100%;text-align:center;font-size:9px;color:var(--mu);background:none;border:1px dashed var(--b2);border-radius:5px;cursor:pointer;padding:2px 0;opacity:0;transition:opacity .15s;}
 .cal-half:hover .cal-add-btn{opacity:1;}
 .cal-more{font-size:9px;color:var(--ac);font-weight:700;padding:1px 3px;cursor:pointer;}
+.mi-section{border-radius:12px;padding:12px 14px 2px;margin-bottom:12px;border:1px solid var(--brd);}
+.mi-section-titre{font-size:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;margin-bottom:10px;}
+.mi-s-statut{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.28);}
+.mi-s-statut .mi-section-titre{color:#b45309;}
+.mi-s-quand{background:rgba(59,130,246,.07);border-color:rgba(59,130,246,.25);}
+.mi-s-quand .mi-section-titre{color:#1d4ed8;}
+.mi-s-client{background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.26);}
+.mi-s-client .mi-section-titre{color:#15803d;}
+.mi-s-presta{background:rgba(181,80,47,.07);border-color:rgba(181,80,47,.26);}
+.mi-s-presta .mi-section-titre{color:#b5502f;}
 </style>
 <script src="https://js.stripe.com/v3/"></script>
 </head>
@@ -1634,8 +1644,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-overlay" id="modal-intervention">
 <div class="modal-box">
 <h3 id="mi-titre">Nouvelle intervention</h3>
-<div class="modal-field"><label>Statut de l'intervention</label>
-<select id="mi-statut" onchange="toggleDatePaiement()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
+<div class="mi-section mi-s-statut">
+<div class="mi-section-titre">🔖 Statut</div>
+<div class="modal-field"><select id="mi-statut" onchange="toggleDatePaiement()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
 <option value="planifiee">🟠 Planifiée</option>
 <option value="terminee">🔵 Terminée</option>
 <option value="payee" hidden disabled>🟢 Payée</option>
@@ -1647,24 +1658,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <label>Date de paiement réelle</label>
 <input id="mi-date-paiement" type="date"/>
 </div>
-<div class="modal-field"><label>Date</label><input id="mi-date" onchange="calculerCreneaux()" type="date"/></div>
-<div class="modal-field"><label>Client</label>
-<select id="mi-client" onchange="preRemplirAdresseIntervention()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;"></select>
-<div id="mi-client-note" style="display:none;font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">🔒 Ce client vient de l'annuaire CaraLink : il ne peut pas être changé sur cette intervention.</div>
 </div>
-<div class="modal-field"><label>Adresse de l'intervention</label><input id="mi-adr" oninput="calculerCreneaux()" placeholder="Peut différer de l'adresse habituelle du client" type="text"/></div>
-<div class="modal-row" style="display:flex;gap:10px;">
-<div class="modal-field" style="flex:1;"><label>Code postal</label><input id="mi-cp" oninput="calculerCreneaux()" type="text"/></div>
-<div class="modal-field" style="flex:2;"><label>Commune</label><input id="mi-com" oninput="calculerCreneaux()" type="text"/></div>
-</div>
-<div class="modal-field"><label>Service</label>
-<select id="mi-service" onchange="preRemplirDureeIntervention()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;"></select>
-</div>
-<div class="modal-field" style="max-width:160px;">
-<label>Durée estimée</label>
-<div style="display:flex;align-items:center;gap:6px;">
-<input id="mi-duree" min="0" oninput="surDureeChangee()" placeholder="60" step="15" type="number"/>
-<span style="font-size:12px;color:var(--mu);">min</span>
+<div class="mi-section mi-s-quand">
+<div class="mi-section-titre">📅 Quand</div>
+<div class="modal-row" style="display:flex;gap:10px;flex-wrap:wrap;">
+<div class="modal-field" style="flex:1;min-width:150px;"><label>Date</label><input id="mi-date" onchange="calculerCreneaux()" type="date"/></div>
+<div class="modal-field" style="flex:1;min-width:150px;"><label>Créneau</label>
+<select id="mi-creneau" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
+<option value="matin">☀️ Matin</option>
+<option value="apres_midi">🌇 Après-midi</option>
+</select>
 </div>
 </div>
 <div class="modal-field" id="mi-creneaux-wrap">
@@ -1675,14 +1678,34 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-field" style="flex:1;"><label>Heure début</label><input id="mi-heure-debut" onchange="recalculerHeureFin()" type="time"/></div>
 <div class="modal-field" style="flex:1;"><label>Heure fin</label><input id="mi-heure-fin" type="time"/></div>
 </div>
-<div class="modal-field"><label>Créneau</label>
-<select id="mi-creneau" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
-<option value="matin">Matin</option>
-<option value="apres_midi">Après-midi</option>
-</select>
 </div>
-<div class="modal-field"><label>Prix (€)</label><input id="mi-prix" oninput="this.dataset.auto='0'" step="0.01" type="number"/><div id="mi-prix-hint" style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;"></div></div>
+<div class="mi-section mi-s-client">
+<div class="mi-section-titre">👤 Client et lieu</div>
+<div class="modal-field"><label>Client</label>
+<select id="mi-client" onchange="preRemplirAdresseIntervention()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;"></select>
+<div id="mi-client-note" style="display:none;font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">🔒 Ce client vient de l'annuaire CaraLink : il ne peut pas être changé sur cette intervention.</div>
+</div>
+<div class="modal-field"><label>Adresse de l'intervention</label><input id="mi-adr" oninput="calculerCreneaux()" placeholder="Peut différer de l'adresse habituelle du client" type="text"/></div>
+<div class="modal-row" style="display:flex;gap:10px;">
+<div class="modal-field" style="flex:1;"><label>Code postal</label><input id="mi-cp" oninput="calculerCreneaux()" type="text"/></div>
+<div class="modal-field" style="flex:2;"><label>Commune</label><input id="mi-com" oninput="calculerCreneaux()" type="text"/></div>
+</div>
+</div>
+<div class="mi-section mi-s-presta">
+<div class="mi-section-titre">🛠️ Prestation et prix</div>
+<div class="modal-field"><label>Service</label>
+<select id="mi-service" onchange="preRemplirDureeIntervention()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;"></select>
+</div>
+<div class="modal-row" style="display:flex;gap:10px;">
+<div class="modal-field" style="flex:1;">
+<label>Durée estimée (min)</label>
+<input id="mi-duree" min="0" oninput="surDureeChangee()" placeholder="60" step="15" type="number"/>
+</div>
+<div class="modal-field" style="flex:1;"><label>Prix (€)</label><input id="mi-prix" oninput="this.dataset.auto='0'" step="0.01" type="number"/></div>
+</div>
+<div id="mi-prix-hint" style="font-size:11.5px;color:var(--mu);margin:-6px 0 10px;line-height:1.4;"></div>
 <div class="modal-field"><label>Notes</label><input id="mi-notes" placeholder="Optionnel" type="text"/></div>
+</div>
 <div class="modal-actions">
 <button class="btn-primary" onclick="sauverIntervention()">Enregistrer</button>
 <button class="btn-secondary" onclick="fermerModale('modal-intervention')">Annuler</button>
