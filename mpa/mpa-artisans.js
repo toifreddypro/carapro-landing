@@ -3838,6 +3838,20 @@ function recalculerPanier() {
   if (el) el.textContent = total.toFixed(2) + '€';
 }
 
+// Remise déjà payée en ligne par le client (code promo, client fidèle, crédit cashback) pour des interventions, et indication « un paiement en ligne
+// est encore attendu ». Une facture ne se modifie pas après coup : on prévient AVANT de la créer. Si la fonction n'est pas encore activée, on facture comme avant.
+async function lireRemisesInterventions(ids) {
+  try {
+    var { data, error } = await sb.rpc('remise_interventions', { p_ids: ids });
+    if (error || !Array.isArray(data)) return { remise: 0, attendu: false };
+    var remise = data.reduce(function(t, r) { return t + (Number(r.remise) || 0); }, 0);
+    return { remise: Math.round(remise * 100) / 100, attendu: data.some(function(r) { return r.paiement_attendu; }) };
+  } catch (e) { return { remise: 0, attendu: false }; }
+}
+function confirmerFactureAvantPaiement() {
+  return confirm('⚠️ Un paiement en ligne est encore attendu pour cette intervention.\n\nSi le client a un code promo, une remise « client fidèle » ou du crédit, elle sera appliquée à son paiement, mais la facture que vous créez maintenant sera au prix plein : une facture ne se modifie pas après coup.\n\nAttendre le paiement du client avant de facturer évite cet écart.\n\nFacturer quand même au prix plein ?');
+}
+
 function genererFacture() { return avecVerrouFacture('basket', _genererFacture); }
 async function _genererFacture() {
   if (!verifierAccesEcriture()) return;
@@ -3847,6 +3861,10 @@ async function _genererFacture() {
 
   var idsSelectionnes = checked.map(function(cb) { return cb.dataset.id; });
   var montantTotal = checked.reduce(function(s, cb) { return s + (parseFloat(cb.dataset.prix) || 0); }, 0);
+  var infoRemise = await lireRemisesInterventions(idsSelectionnes);
+  if (infoRemise.attendu && !confirmerFactureAvantPaiement()) return;
+  // Le client a déjà payé avec une remise : le total de la facture est celui qu'il a réellement dû (la facture affiche la ligne « Remise / crédit cashback »).
+  if (infoRemise.remise > 0) montantTotal = Math.max(Math.round((montantTotal - infoRemise.remise) * 100) / 100, 0.01);
 
   // Numérotation simple : ANNÉE-XXX, séquentiel par artisan
   var { count } = await sb.from('mpa_artisans_factures').select('id', { count: 'exact', head: true }).eq('artisan_id', _artisan.id);
@@ -3960,6 +3978,8 @@ async function _facturerIntervention(id, envoyer) {
   if (i.facture_id) { if (envoyer) envoyerFacture(i.facture_id); else imprimerFacture(i.facture_id); return; }
   if (!i.client_id) { alert('Choisissez d\'abord un client pour cette intervention, puis enregistrez.'); return; }
   if (!(Number(i.prix) > 0)) { alert('Cette intervention n\'a pas de prix.'); return; }
+  var infoRemise = await lireRemisesInterventions([id]);
+  if (infoRemise.attendu && !confirmerFactureAvantPaiement()) return;
   // Tout se passe dans la base, d'un seul bloc : verrou de l'intervention, contrôle Pro, numéro attribué, facture créée et liée.
   var { data: facture, error } = await sb.rpc('facturer_intervention', { p_intervention_id: id });
   if (error) {
@@ -4643,9 +4663,81 @@ function majOffreBandeau() {
   z.innerHTML = ' - <strong style="color:' + couleur + ';">' + texte + '</strong>';
 }
 
+// ── Badge RGE : l'artisan déclare (attestation + date de fin de validité), l'administrateur valide à la main ──
+function renderRge() {
+  var zone = document.getElementById('zone-rge');
+  if (!zone || !_artisan) return;
+  var st = _artisan.rge_statut || 'aucun';
+  var auj = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+  var expire = st === 'valide' && _artisan.rge_valide_jusqu && _artisan.rge_valide_jusqu < auj;
+  var etat, corps;
+  if (st === 'valide' && !expire) {
+    etat = '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(15,157,120,.12);color:#0f9d78;">🌿 Badge affiché</span>';
+    corps = 'Votre qualification RGE est validée : le badge « 🌿 RGE » s\'affiche sur votre fiche jusqu\'au <strong>' + dateFR(_artisan.rge_valide_jusqu) + '</strong>, puis s\'éteint tout seul. Pensez à envoyer votre nouvelle attestation avant cette date.';
+  } else if (expire) {
+    etat = '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(220,38,38,.1);color:var(--danger);">Expirée</span>';
+    corps = 'Votre attestation est arrivée à échéance (' + dateFR(_artisan.rge_valide_jusqu) + ') : le badge n\'est plus affiché. Envoyez votre nouvelle attestation pour le retrouver.';
+  } else if (st === 'en_attente') {
+    etat = '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(217,119,6,.12);color:#b45309;">En cours de vérification</span>';
+    corps = 'Votre attestation est bien reçue (fin de validité déclarée : ' + dateFR(_artisan.rge_date_declaree) + '). Elle est vérifiée à la main par notre équipe : le badge apparaîtra une fois validée.';
+  } else if (st === 'refuse') {
+    etat = '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(220,38,38,.1);color:var(--danger);">Non validée</span>';
+    corps = 'Votre attestation n\'a pas pu être validée' + (_artisan.rge_motif_refus ? ' : <em>' + escHtml(_artisan.rge_motif_refus) + '</em>' : '') + '. Vous pouvez en envoyer une autre.';
+  } else {
+    etat = '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(0,0,0,.06);color:var(--mu2);">Facultatif</span>';
+    corps = 'Vous êtes certifié RGE (Reconnu Garant de l\'Environnement) ? Envoyez votre attestation : après vérification, un badge « 🌿 RGE » s\'affiche sur votre fiche et vous apparaissez dans le filtre RGE de l\'annuaire.';
+  }
+  var peutEnvoyer = true;
+  var btnRetirer = st !== 'aucun' ? '<button type="button" onclick="retirerRge()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--bd,#ddd);background:#fff;cursor:pointer;font-size:12.5px;">Retirer ma demande</button>' : '';
+  zone.innerHTML = '<div style="border:1px solid var(--bd,#e5e5e5);border-radius:12px;padding:14px 16px;background:#fff;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;"><strong>🌿 Qualification RGE</strong>' + etat + '</div>' +
+    '<div style="font-size:12.5px;line-height:1.5;color:var(--mu);margin-bottom:10px;">' + corps + '</div>' +
+    (peutEnvoyer ? '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
+      '<input type="file" id="rge-fichier" accept=".pdf,.jpg,.jpeg,.png" style="font-size:12px;max-width:230px;">' +
+      '<label style="font-size:12px;">Fin de validité <input type="date" id="rge-date" style="margin-left:4px;"></label>' +
+      '<button type="button" onclick="envoyerRge()" id="rge-btn" style="padding:8px 12px;border-radius:8px;border:none;background:var(--ac,#B5502F);color:#fff;font-weight:700;cursor:pointer;font-size:12.5px;">Envoyer</button>' + btnRetirer + '</div>' : '') +
+    '<div id="rge-msg" style="font-size:12px;margin-top:8px;color:var(--danger);"></div></div>';
+}
+
+async function envoyerRge() {
+  var msg = document.getElementById('rge-msg'); msg.textContent = '';
+  var f = document.getElementById('rge-fichier').files[0];
+  var d = document.getElementById('rge-date').value;
+  var auj = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+  if (!f) { msg.textContent = 'Choisissez d\'abord votre attestation (PDF, JPG ou PNG).'; return; }
+  if (f.size > 8 * 1024 * 1024) { msg.textContent = 'Fichier trop lourd (8 Mo maximum).'; return; }
+  if (!d || d <= auj) { msg.textContent = 'Indiquez la date de fin de validité de l\'attestation (elle doit être à venir).'; return; }
+  var btn = document.getElementById('rge-btn'); btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    var chemin = _artisan.user_id + '/' + Date.now() + '_rge_' + f.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    var up = await sb.storage.from('artisans-documents').upload(chemin, f);
+    if (up.error) throw new Error(up.error.message);
+    var ancien = _artisan.rge_document_path;
+    var r = await sb.from('artisans').update({ rge_document_path: chemin, rge_date_declaree: d }).eq('id', _artisan.id).select('*').single();
+    if (r.error) throw new Error(r.error.message);
+    _artisan = r.data;
+    if (ancien) { try { await sb.storage.from('artisans-documents').remove([ancien]); } catch (e) {} }
+    renderRge();
+  } catch (e) {
+    msg.textContent = 'Envoi impossible : ' + e.message;
+    btn.disabled = false; btn.textContent = 'Envoyer';
+  }
+}
+
+async function retirerRge() {
+  if (!confirm('Retirer votre demande RGE ? Le badge ne sera plus affiché.')) return;
+  var ancien = _artisan.rge_document_path;
+  var r = await sb.from('artisans').update({ rge_document_path: null }).eq('id', _artisan.id).select('*').single();
+  if (r.error) { document.getElementById('rge-msg').textContent = 'Impossible : ' + r.error.message; return; }
+  _artisan = r.data;
+  if (ancien) { try { await sb.storage.from('artisans-documents').remove([ancien]); } catch (e) {} }
+  renderRge();
+}
+
 function renderMonOffre() {
   var zone = document.getElementById('zone-mon-offre');
   majOffreBandeau();
+  renderRge();
   if (!zone || !_artisan) return;
   var plan = _artisan.plan || 'gratuit';
   var fin = dateFR(_artisan.abonnement_echeance);
