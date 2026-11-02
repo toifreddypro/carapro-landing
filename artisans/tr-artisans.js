@@ -71,6 +71,8 @@ var AT_TR = {
     badge_photos: "Photos de réalisations",
     badge_complet: "Profil complet",
     avis_aucun_court: "Pas encore d'avis",
+    carte_grisee_titre: "Réservation en ligne bientôt disponible",
+    carte_grisee_texte: "Cet artisan n'a pas encore activé son paiement en ligne : vous ne pouvez pas le réserver pour le moment. Sa fiche sera ouverte dès que ce sera fait.",
     des_prefix: "Dès",
 
     sur_devis: "Sur devis",
@@ -363,6 +365,8 @@ var AT_TR = {
     badge_photos: "Photos of past work",
     badge_complet: "Complete profile",
     avis_aucun_court: "No reviews yet",
+    carte_grisee_titre: "Online booking coming soon",
+    carte_grisee_texte: "This craftsperson has not yet activated online payment, so you cannot book them for now. Their profile will open as soon as it is done.",
     des_prefix: "From",
 
     sur_devis: "Quote on request",
@@ -655,6 +659,8 @@ var AT_TR = {
     badge_photos: "Fotos de trabajos realizados",
     badge_complet: "Perfil completo",
     avis_aucun_court: "Aún sin reseñas",
+    carte_grisee_titre: "Reserva en línea próximamente",
+    carte_grisee_texte: "Este artesano aún no ha activado el pago en línea, por lo que no puede reservarlo por ahora. Su ficha se abrirá en cuanto lo haga.",
     des_prefix: "Desde",
 
     sur_devis: "Presupuesto a medida",

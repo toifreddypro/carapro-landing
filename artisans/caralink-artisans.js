@@ -774,7 +774,7 @@ async function chargerArtisans() {
       ? cartesHtml.join('')
       : '<div class="etat-vide"><div class="etat-vide-titre">' + T('aucun_artisan_titre') + '</div>' + T('aucun_artisan_texte') + '</div>';
 
-    artisans.forEach(function(a) { chargerApercuCarte(a.id); });
+    artisans.forEach(function(a) { if (a.paiement_en_ligne !== false) chargerApercuCarte(a.id); });
     planifierCoeurs();
     demarrerPubAlternanceMobile();
 
@@ -977,7 +977,15 @@ function renderArtisanCard(a) {
     : '<div class="avatar card-avatar">' + ini + '</div>';
   var noteAff = a.note_moyenne != null ? Number(a.note_moyenne) : 0;
   var nb = a.nb_avis || 0;
-  return '<div class="formateur-card" style="position:relative;" onclick="ouvrirProfil(' + jsAttr(a.id) + ')">' + coeurHtml(a.id, false) +
+  var grise = a.paiement_en_ligne === false; // Stripe pas finalisé : visible mais non réservable
+  if (grise && !document.getElementById('style-carte-grisee')) {
+    var stg = document.createElement('style'); stg.id = 'style-carte-grisee';
+    stg.textContent = '.formateur-card.carte-grisee{cursor:default;}.formateur-card.carte-grisee .card-top-row,.formateur-card.carte-grisee .card-bio,.formateur-card.carte-grisee .card-meta{opacity:.5;filter:grayscale(1);}' +
+      '.carte-grisee-note{margin-top:10px;padding:9px 12px;border-radius:10px;background:#f3f4f6;border:1px solid #d9dce1;color:#4b5563;font-size:12.5px;line-height:1.5;}.carte-grisee-note b{color:#374151;}';
+    document.head.appendChild(stg);
+  }
+  var noteGrisee = grise ? '<div class="carte-grisee-note"><b>' + escHtml(T('carte_grisee_titre')) + '</b><br>' + escHtml(T('carte_grisee_texte')) + '</div>' : '';
+  return '<div class="formateur-card' + (grise ? ' carte-grisee' : '') + '" style="position:relative;"' + (grise ? ' aria-disabled="true"' : ' onclick="ouvrirProfil(' + jsAttr(a.id) + ')"') + '>' + (grise ? '' : coeurHtml(a.id, false)) +
     '<div class="card-top-row">' + photo +
       '<div class="card-info">' +
         '<div class="card-name">' + escHtml(a.nom_entreprise) + '</div>' +
@@ -995,7 +1003,7 @@ function renderArtisanCard(a) {
     (a.a_photos ? '<div style="font-size:12px;color:var(--mu2,#777);margin:2px 0 6px;">📷 ' + escHtml(T('badge_photos')) + '</div>' : '') +
     '<div class="dispo-grid" id="grille-carte-' + escHtml(a.id) + '" style="display:none;"></div>' +
     '<div id="avantages-carte-' + escHtml(a.id) + '" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>' +
-    '<div id="phares-carte-' + escHtml(a.id) + '"></div>' +
+    '<div id="phares-carte-' + escHtml(a.id) + '"></div>' + noteGrisee +
   '</div>';
 }
 
