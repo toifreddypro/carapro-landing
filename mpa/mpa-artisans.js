@@ -3901,7 +3901,7 @@ function renderStatistiques(vue, annee, pro) {
   zoneTop.innerHTML = top.length ? top.map(function(c, i) {
     return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--brd);">' +
       '<span>' + medailles[i] + ' <strong>' + escHtml(c.nom) + '</strong><br><span style="font-size:11.5px;color:var(--mu);">' + c.nb + ' fois · dernière : ' + c.derniere.toLocaleDateString('fr-FR') + '</span></span>' +
-      '<span style="text-align:right;"><strong>' + _fmtCA(c.ca) + ' €</strong><br><span style="font-size:11.5px;color:var(--mu);">' + Math.round(c.ca / total * 100) + ' % du CA</span></span></div>';
+      '<span style="text-align:right;"><strong>' + _fmtCA(c.ca) + ' €</strong><br><span style="font-size:11.5px;color:var(--mu);">' + Math.round(c.ca / total * 100) + ' % de vos gains</span></span></div>';
   }).join('') : '<p style="color:var(--mu);margin:0;">Aucun client identifié cette année.</p>';
 
   // Fidélité, répartition, meilleur mois (tout de suite) ; part en ligne (après chargement)
@@ -3913,13 +3913,15 @@ function renderStatistiques(vue, annee, pro) {
   var meilleur = 0; parMois.forEach(function(v, i) { if (v > parMois[meilleur]) meilleur = i; });
   var html = '';
   if (clients.length) {
-    html += '<div style="margin-bottom:6px;">Clients fidèles (2 fois ou plus) : <strong>' + fideles.length + ' sur ' + clients.length + '</strong></div>' +
-      _barreStat('Part du CA des clients fidèles', caClients > 0 ? caFideles / caClients * 100 : 0, caClients > 0 ? Math.round(caFideles / caClients * 100) + ' %' : '—');
+    html += '<div style="margin-bottom:2px;">Clients qui sont revenus : <strong>' + fideles.length + ' sur ' + clients.length + '</strong></div>' +
+      '<div style="font-size:11.5px;color:var(--mu);margin-bottom:8px;">Un client « qui revient » a fait appel à vous au moins 2 fois.</div>' +
+      _barreStat('Part de ce que vous avez gagné grâce à eux', caClients > 0 ? caFideles / caClients * 100 : 0, caClients > 0 ? Math.round(caFideles / caClients * 100) + ' %' : '—');
   }
-  html += '<div style="margin:12px 0 2px;font-weight:700;">Répartition</div>' +
+  html += '<div style="margin:14px 0 2px;font-weight:700;">D\'où vient votre argent</div>' +
+    '<div style="font-size:11.5px;color:var(--mu);margin-bottom:6px;">Ce que vous avez gagné, selon le type d\'activité.</div>' +
     FAMILLES_CA.map(function(f) { return _barreStat(_FAM_LIBELLE[f], parFam[f] / total * 100, _fmtCA(parFam[f]) + ' € · ' + Math.round(parFam[f] / total * 100) + ' %'); }).join('') +
     '<div style="margin-top:10px;">Meilleur mois : <strong>' + MOIS_NOMS[meilleur] + '</strong> (' + _fmtCA(parMois[meilleur]) + ' €)</div>' +
-    '<div id="stats-en-ligne" style="margin-top:10px;color:var(--mu);">Part encaissée en ligne : calcul…</div>';
+    '<div id="stats-en-ligne" style="margin-top:10px;color:var(--mu);">Part payée en ligne : calcul…</div>';
   zoneFid.innerHTML = html;
 
   var seq = ++_statsSeq;
@@ -3928,7 +3930,7 @@ function renderStatistiques(vue, annee, pro) {
     var el = document.getElementById('stats-en-ligne');
     if (!el) return;
     var ligne = lignes.reduce(function(s, x) { return s + ((x.l.fam === 'ventes' || (x.l.id && enLigne[x.l.id])) ? x.l.montant : 0); }, 0);
-    el.innerHTML = '<span style="color:var(--tx);">' + _barreStat('💳 Encaissé en ligne via CaraLink', total > 0 ? ligne / total * 100 : 0, Math.round(total > 0 ? ligne / total * 100 : 0) + ' %').replace('margin:7px 0;', 'margin:0;') + '</span>';
+    el.innerHTML = '<span style="color:var(--tx);">' + _barreStat('💳 Payé en ligne par vos clients (CaraLink)', total > 0 ? ligne / total * 100 : 0, Math.round(total > 0 ? ligne / total * 100 : 0) + ' %').replace('margin:7px 0;', 'margin:0;') + '</span>';
   });
 }
 
@@ -4703,7 +4705,7 @@ function proposerPassagePro(raison) {
     : raison === 'detail_client'
     ? '🔒 Le détail du chiffre d\'affaires par client fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Le récapitulatif par mois (interventions, ventes, livraisons) reste gratuit.' + texteEssai()
     : raison === 'statistiques'
-    ? '📈 Les statistiques détaillées (Top 5 clients, clients fidèles, répartition de votre activité, part encaissée en ligne) font partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Les chiffres clés de l\'année restent gratuits.'
+    ? '📈 Les statistiques détaillées (vos 5 meilleurs clients, ceux qui reviennent, d\'où vient votre argent, la part payée en ligne) font partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Les chiffres clés de l\'année restent gratuits.'
     : raison === 'facture_rapide'
     ? '🧾 La facture en 1 clic (depuis une intervention ou une commande de la boutique) fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Le panier de facturation classique reste gratuit.' + texteEssai()
     : raison === 'agenda'
