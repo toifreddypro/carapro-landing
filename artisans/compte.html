@@ -155,6 +155,7 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
     <button class="tab" id="t-credits" onclick="ongletApp('credits')" data-i18n="cpt_onglet_credits"></button>
     <button class="tab" id="t-rdv" onclick="ongletApp('rdv')" data-i18n="cpt_onglet_rdv"></button>
     <button class="tab" id="t-carnet" onclick="ongletApp('carnet')" data-i18n="cpt_onglet_carnet"></button>
+    <button class="tab" id="t-favoris" onclick="ongletApp('favoris')" data-i18n="fav_onglet"></button>
     <button class="tab" id="t-projets" onclick="ongletApp('projets')" data-i18n="prj_onglet"></button>
     <button class="tab" id="t-profil" onclick="ongletApp('profil')" data-i18n="cpt_onglet_profil"></button>
   </div>
@@ -166,6 +167,8 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
   <div id="p-rdv" style="display:none;"><div class="vide" data-i18n="cpt_chargement"></div></div>
 
   <div id="p-carnet" style="display:none;"><div class="vide" data-i18n="cpt_chargement"></div></div>
+
+  <div id="p-favoris" style="display:none;"><div class="vide" data-i18n="cpt_chargement"></div></div>
 
   <div id="p-projets" style="display:none;">
     <div id="prj-ok" class="msg ok"></div>
@@ -195,6 +198,7 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
         <div class="prj-choix" id="prj-choix"></div>
         <form onsubmit="event.preventDefault();publierProjet();">
           <div class="field"><label for="prj-desc" data-i18n="prj_q_description"></label><textarea id="prj-desc" rows="5" maxlength="2000"></textarea></div>
+          <div class="field" id="prj-adresses-zone" style="display:none;"><label for="prj-adresses" data-i18n="adr_choisir"></label><select id="prj-adresses" onchange="choisirAdresseProjet(this.value)"></select></div>
           <div class="field"><label for="prj-commune" data-i18n="prj_commune"></label><input type="text" id="prj-commune" maxlength="100" autocomplete="address-level2"></div>
           <div class="field"><label for="prj-cp" data-i18n="prj_cp"></label><input type="text" id="prj-cp" maxlength="10" autocomplete="postal-code"></div>
           <div class="field"><label data-i18n="prj_photos"></label>
@@ -226,6 +230,23 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
         <div class="hint" style="margin-bottom:12px;" data-i18n="cpt_adresse_aide"></div>
         <button type="submit" class="btn" id="btn-prof" data-i18n="cpt_enregistrer"></button>
       </form>
+    </div>
+    <div class="card" id="adr-carte">
+      <h2 data-i18n="adr_titre"></h2>
+      <div class="hint" style="margin:-4px 0 12px;" data-i18n="adr_aide"></div>
+      <div id="adr-err" class="msg err"></div><div id="adr-ok" class="msg ok"></div>
+      <div id="adr-liste"></div>
+      <form id="adr-form" style="display:none;" onsubmit="event.preventDefault();sauverAdresse();">
+        <input type="hidden" id="adr-id">
+        <div class="field"><label for="adr-libelle" data-i18n="adr_libelle"></label><input type="text" id="adr-libelle" maxlength="40"></div>
+        <div class="field"><label for="adr-adresse" data-i18n="cat_adresse"></label><input type="text" id="adr-adresse" maxlength="200" autocomplete="off"></div>
+        <div class="field"><label for="adr-cp" data-i18n="cat_code_postal"></label><input type="text" id="adr-cp" maxlength="10" autocomplete="off"></div>
+        <div class="field"><label for="adr-commune" data-i18n="cat_commune"></label><input type="text" id="adr-commune" maxlength="100" autocomplete="off"></div>
+        <label style="display:flex;gap:8px;align-items:center;margin:4px 0 12px;font-size:13.5px;cursor:pointer;"><input type="checkbox" id="adr-defaut" style="width:18px;height:18px;"> <span data-i18n="adr_defaut"></span></label>
+        <button type="submit" class="btn" id="btn-adr" data-i18n="cpt_enregistrer"></button>
+        <button type="button" class="btn sec" style="margin-top:8px;" onclick="fermerFormAdresse()" data-i18n="adr_annuler"></button>
+      </form>
+      <button type="button" class="btn sec" id="adr-ajouter" onclick="ouvrirFormAdresse()" data-i18n="adr_ajouter"></button>
     </div>
     <div class="card">
       <h2 data-i18n="cpt_mdp_titre"></h2>
@@ -270,7 +291,7 @@ function lienRetourBoutique(){
     var r = new URLSearchParams(location.search).get('retour');
     if (!r) return null;
     var u = new URL(r, location.href);
-    if (u.origin !== location.origin || !/(catalogue\.html|\/artisans\/|\/artisans\/index\.html)$/.test(u.pathname)) return null;
+    if (u.origin !== location.origin || !/(catalogue\.html|payer-prestation\.html|\/artisans\/|\/artisans\/index\.html)$/.test(u.pathname)) return null;
     return u.href;
   } catch(e) { return null; }
 }
@@ -279,7 +300,7 @@ function lienRetourBoutique(){
   if (!href) return;
   var b = document.getElementById('bloc-retour'), a = document.getElementById('lien-retour');
   if (!b || !a) return;
-  a.href = href; a.textContent = '← ' + T(/catalogue\.html$/.test(a.pathname) ? 'cpt_retour_boutique' : 'cpt_retour_artisan'); b.style.display = 'block';
+  a.href = href; a.textContent = '← ' + T(/catalogue\.html$/.test(a.pathname) ? 'cpt_retour_boutique' : /payer-prestation\.html$/.test(a.pathname) ? 'cpt_retour_paiement' : 'cpt_retour_artisan'); b.style.display = 'block';
 })();
 function voirMdp(id, b){ var i=document.getElementById(id); i.type = i.type==='password'?'text':'password'; }
 function euros(n){ return Number(n||0).toLocaleString(AT_LANG==='en'?'en-GB':AT_LANG==='es'?'es-ES':'fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
@@ -312,6 +333,9 @@ async function soumettreAuth(){
     if (mode==='login') {
       var r = await sb.auth.signInWithPassword({email:email, password:mdp});
       if (r.error) { show('auth-err', T('cpt_err_identifiants')); return; }
+      // Venu de la page de paiement : on y retourne tout de suite (le client a ouvert un lien de paiement, c'est là qu'il veut être).
+      var _ret = lienRetourBoutique();
+      if (_ret && /payer-prestation\.html$/.test(new URL(_ret).pathname)) { location.href = _ret; return; }
       await ouvrirEspace(r.data.user);
     } else {
       var nom = document.getElementById('f-nom').value.trim(), tel = document.getElementById('f-tel').value.trim();
@@ -374,7 +398,7 @@ async function ouvrirEspace(user){
   document.getElementById('p-com').value = PROFIL.commune || '';
   document.getElementById('p-email').value = user.email || '';
   document.getElementById('bandeau-infos').style.display = (PROFIL.adresse && PROFIL.commune && PROFIL.telephone) ? 'none' : '';
-  vue('v-app'); ongletApp((VEUT_PROJET || VEUT_LISTE) ? 'projets' : 'cmd'); chargerCommandes(); chargerRdv(); chargerCarnet(); chargerCredits(); chargerProjets(); chargerEtatModeration();
+  vue('v-app'); ongletApp((VEUT_PROJET || VEUT_LISTE) ? 'projets' : 'cmd'); chargerCommandes(); chargerRdv(); chargerCarnet(); chargerCredits(); chargerFavoris(); chargerAdresses(); chargerProjets(); chargerEtatModeration();
   if (VEUT_PROJET) ouvrirFormProjet();
 }
 function ongletApp(o){
@@ -384,6 +408,8 @@ function ongletApp(o){
   document.getElementById('t-carnet').classList.toggle('on', o==='carnet');
   document.getElementById('p-credits').style.display = o==='credits'?'':'none';
   document.getElementById('t-credits').classList.toggle('on', o==='credits');
+  document.getElementById('p-favoris').style.display = o==='favoris'?'':'none';
+  document.getElementById('t-favoris').classList.toggle('on', o==='favoris');
   document.getElementById('p-projets').style.display = o==='projets'?'':'none';
   document.getElementById('t-projets').classList.toggle('on', o==='projets');
   document.getElementById('p-profil').style.display = o==='profil'?'':'none';
@@ -564,8 +590,131 @@ async function chargerCredits(){
   zone.innerHTML = '<p class="sub">'+esc(T('cpt_credits_info'))+'</p>' + l.map(function(c){
     var exp = (Number(c.montant_expirant) > 0 && c.expire_le) ? '<div class="hint">'+esc(fill(T('cpt_credit_expire'),{m:euros(c.montant_expirant),d:dateLongueGP(c.expire_le)}))+'</div>' : '';
     var lien = c.slug ? '<a class="btn sec" style="display:block;text-align:center;text-decoration:none;margin-top:12px;" href="catalogue.html?s='+encodeURIComponent(c.slug)+'">'+esc(T('cpt_credit_voir'))+'</a>' : '';
-    return '<div class="card"><div class="cmd-tete"><div class="cmd-art">'+esc(c.nom_entreprise||'')+'</div><div style="font-family:Fraunces,serif;font-size:22px;font-weight:700;color:var(--ok);">'+esc(euros(c.solde))+'</div></div>'+exp+lien+'</div>';
+    return '<div class="card"><div class="cmd-tete"><div class="cmd-art">'+esc(c.nom_entreprise||'')+'</div><div style="font-family:Fraunces,serif;font-size:22px;font-weight:700;color:var(--ok);">'+esc(euros(c.solde))+'</div></div>'+exp+lien+'<button type="button" class="lien" style="margin-top:10px;" onclick="basculerJournal(\''+esc(c.artisan_id)+'\',this)">'+esc(T('jr_voir'))+'</button><div id="jr-'+esc(c.artisan_id)+'" style="display:none;"></div></div>';
   }).join('');
+}
+
+// ── Journal détaillé du crédit chez un artisan (gains, utilisations, restitutions, expirations) ──
+var JOURNAUX_OUVERTS = {};
+async function basculerJournal(artisanId, bouton){
+  var zone = document.getElementById('jr-'+artisanId);
+  if (!zone) return;
+  if (JOURNAUX_OUVERTS[artisanId]) { JOURNAUX_OUVERTS[artisanId] = false; zone.style.display = 'none'; bouton.textContent = T('jr_voir'); return; }
+  JOURNAUX_OUVERTS[artisanId] = true; zone.style.display = ''; bouton.textContent = T('jr_masquer');
+  zone.innerHTML = '<div class="hint">'+esc(T('cpt_chargement'))+'</div>';
+  var r = await sb.rpc('mon_journal_credit', {p_artisan: artisanId});
+  if (r.error || !r.data) { zone.innerHTML = '<div class="hint">'+esc(T('cpt_err_generique'))+'</div>'; return; }
+  var lignes = r.data.lignes || [];
+  if (!lignes.length) { zone.innerHTML = '<div class="hint">'+esc(T('jr_vide'))+'</div>'; return; }
+  var ICONES = {gain:'➕', utilisation:'➖', restitution:'↩️', annulation_gain:'⛔', expiration:'⌛'};
+  zone.innerHTML = '<div style="border-top:1px solid var(--line);margin-top:10px;">' + lignes.map(function(l){
+    var plus = (l.type === 'gain' || l.type === 'restitution');
+    var lib = T('jr_'+l.type) + (l.libelle ? ' — '+l.libelle : '');
+    var sous = dateLongueGP(l.le) + ((l.type === 'gain' && l.expire_le) ? ' · '+fill(T('jr_valable'),{d:dateLongueGP(l.expire_le)}) : '');
+    return '<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px;">'
+      + '<span>'+(ICONES[l.type]||'•')+' '+esc(lib)+'<br><span class="hint">'+esc(sous)+'</span></span>'
+      + '<strong style="white-space:nowrap;color:'+(plus?'var(--ok)':'var(--mute)')+';">'+(plus?'+':'−')+esc(euros(l.montant))+'</strong></div>';
+  }).join('') + '</div><div class="hint" style="margin-top:6px;">'+esc(T('jr_limite'))+'</div>';
+}
+
+// ── Mes favoris (artisans) ──
+async function chargerFavoris(){
+  var zone = document.getElementById('p-favoris');
+  var r = await sb.rpc('mes_favoris');
+  if (r.error) { zone.innerHTML = '<div class="vide">'+esc(T('cpt_err_generique'))+'</div>'; return; }
+  var l = r.data || [];
+  var t = document.getElementById('t-favoris');
+  t.textContent = T('fav_onglet') + (l.length ? ' (' + l.length + ')' : '');
+  if (!l.length) { zone.innerHTML = '<div class="vide">'+esc(T('fav_aucun'))+'</div><p class="sub" style="text-align:center;">'+esc(T('fav_info'))+'</p><a class="btn sec" style="display:block;text-align:center;text-decoration:none;" href="'+BASE_PAGES+'">'+esc(T('cpt_carnet_trouver'))+'</a>'; return; }
+  zone.innerHTML = l.map(function(a){
+    var photo = (a.photo_profil_url && /^https:\/\//i.test(a.photo_profil_url)) ? '<img src="'+esc(a.photo_profil_url)+'" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex:none;">' : '<div style="width:44px;height:44px;border-radius:50%;background:var(--line);flex:none;"></div>';
+    var boutique = a.slug ? '<a class="btn sec" style="flex:1;text-align:center;text-decoration:none;" href="catalogue.html?s='+encodeURIComponent(a.slug)+'">'+esc(T('cpt_credit_voir'))+'</a>' : '';
+    return '<div class="card"><div style="display:flex;gap:12px;align-items:center;">'+photo
+      + '<div style="min-width:0;flex:1;"><div class="cmd-art">'+esc(a.nom_entreprise||'')+(a.verifie?' ✅':'')+'</div><div class="hint">'+esc((a.commune||''))+'</div></div></div>'
+      + '<div style="display:flex;gap:8px;margin-top:12px;"><a class="btn" style="flex:1;text-align:center;text-decoration:none;" href="'+BASE_PAGES+'?artisan='+encodeURIComponent(a.artisan_id)+'">'+esc(T('cpt_carnet_reprendre'))+'</a>'+boutique+'</div>'
+      + '<button type="button" class="lien" style="margin-top:10px;" onclick="retirerFavori(\''+esc(a.artisan_id)+'\')">'+esc(T('fav_retirer'))+'</button></div>';
+  }).join('');
+}
+async function retirerFavori(id){
+  var r = await sb.rpc('favori_basculer', {p_artisan:id, p_actif:false});
+  if (r.error || !r.data || !r.data.ok) { alert(T('cpt_err_generique')); return; }
+  chargerFavoris();
+}
+
+// ── Mes adresses (5 au plus) ──
+var ADRESSES = [];
+async function chargerAdresses(){
+  var r = await sb.rpc('mes_adresses');
+  ADRESSES = (r && !r.error && Array.isArray(r.data)) ? r.data : [];
+  dessinerAdresses();
+}
+function dessinerAdresses(){
+  var zone = document.getElementById('adr-liste');
+  if (!zone) return;
+  zone.innerHTML = ADRESSES.length ? ADRESSES.map(function(a){
+    var ligne = [a.adresse, [a.code_postal, a.commune].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    return '<div style="padding:10px 0;border-bottom:1px solid var(--line);"><div style="display:flex;justify-content:space-between;gap:10px;"><strong>'+esc(a.libelle)+(a.par_defaut?' <span class="hint" style="margin:0;">· '+esc(T('adr_par_defaut'))+'</span>':'')+'</strong></div>'
+      + '<div class="hint" style="margin-top:2px;">'+esc(ligne)+'</div>'
+      + '<div style="margin-top:6px;display:flex;gap:14px;"><button type="button" class="lien" onclick="ouvrirFormAdresse(\''+esc(a.id)+'\')">'+esc(T('adr_modifier'))+'</button>'
+      + '<button type="button" class="lien" style="color:var(--danger);" onclick="supprimerAdresse(\''+esc(a.id)+'\')">'+esc(T('adr_supprimer'))+'</button></div></div>';
+  }).join('') : '<div class="hint" style="margin-bottom:10px;">'+esc(T('adr_aucune'))+'</div>';
+  document.getElementById('adr-ajouter').style.display = (ADRESSES.length >= 5 || document.getElementById('adr-form').style.display !== 'none') ? 'none' : '';
+}
+function ouvrirFormAdresse(id){
+  show('adr-err'); show('adr-ok');
+  var a = id ? ADRESSES.filter(function(x){ return x.id === id; })[0] : null;
+  document.getElementById('adr-id').value = a ? a.id : '';
+  document.getElementById('adr-libelle').placeholder = T('adr_libelle_ph');
+  document.getElementById('adr-libelle').value = a ? a.libelle : '';
+  document.getElementById('adr-adresse').value = a ? a.adresse : '';
+  document.getElementById('adr-cp').value = a ? (a.code_postal||'') : '';
+  document.getElementById('adr-commune').value = a ? a.commune : '';
+  document.getElementById('adr-defaut').checked = a ? !!a.par_defaut : ADRESSES.length === 0;
+  document.getElementById('adr-form').style.display = '';
+  dessinerAdresses();
+  document.getElementById('adr-libelle').focus();
+}
+function fermerFormAdresse(){ document.getElementById('adr-form').style.display = 'none'; show('adr-err'); dessinerAdresses(); }
+async function sauverAdresse(){
+  show('adr-err'); show('adr-ok');
+  var id = document.getElementById('adr-id').value || null;
+  var btn = document.getElementById('btn-adr'); btn.disabled = true;
+  var r = await sb.rpc('adresse_enregistrer', {
+    p_id: id, p_libelle: document.getElementById('adr-libelle').value, p_adresse: document.getElementById('adr-adresse').value,
+    p_code_postal: document.getElementById('adr-cp').value, p_commune: document.getElementById('adr-commune').value,
+    p_defaut: document.getElementById('adr-defaut').checked
+  });
+  btn.disabled = false;
+  if (r.error || !r.data) { show('adr-err', T('cpt_err_generique')); return; }
+  if (!r.data.ok) { show('adr-err', T('adr_err_'+r.data.erreur)); return; }
+  fermerFormAdresse();
+  show('adr-ok', T('cpt_enregistre'));
+  await chargerAdresses();
+}
+async function supprimerAdresse(id){
+  if (!confirm(T('adr_confirmer_suppr'))) return;
+  show('adr-err'); show('adr-ok');
+  var r = await sb.rpc('adresse_supprimer', {p_id:id});
+  if (r.error || !r.data || !r.data.ok) { show('adr-err', T('cpt_err_generique')); return; }
+  await chargerAdresses();
+}
+// Dans « Publier un projet » : choisir une adresse enregistrée remplit la commune et le code postal (jamais l'adresse exacte : elle reste cachée).
+function remplirChoixAdressesProjet(){
+  var zone = document.getElementById('prj-adresses-zone'), sel = document.getElementById('prj-adresses');
+  if (!zone || !sel) return;
+  if (!ADRESSES.length) { zone.style.display = 'none'; return; }
+  sel.innerHTML = '<option value="">—</option>' + ADRESSES.map(function(a){
+    return '<option value="'+esc(a.id)+'">'+esc(a.libelle)+' — '+esc(a.commune)+'</option>';
+  }).join('');
+  zone.style.display = '';
+  var def = ADRESSES.filter(function(a){ return a.par_defaut; })[0];
+  if (def && !document.getElementById('prj-commune').value) { sel.value = def.id; choisirAdresseProjet(def.id); }
+}
+function choisirAdresseProjet(id){
+  var a = ADRESSES.filter(function(x){ return x.id === id; })[0];
+  if (!a) return;
+  document.getElementById('prj-commune').value = a.commune || '';
+  document.getElementById('prj-cp').value = a.code_postal || '';
 }
 
 // ── Projets (demande générale : un besoin, une description, des photos — jamais le téléphone ni l'email) ──
@@ -585,6 +734,7 @@ async function ouvrirFormProjet(){
   document.getElementById('prj-desc').placeholder = T('prj_ph_description');
   document.getElementById('prj-commune').value = (PROFIL && PROFIL.commune) || '';
   document.getElementById('prj-cp').value = (PROFIL && PROFIL.code_postal) || '';
+  remplirChoixAdressesProjet();
   document.getElementById('prj-fichiers').value = '';
   dessinerMiniatures();
   document.getElementById('prj-intro').style.display = 'none';

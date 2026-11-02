@@ -11,7 +11,7 @@
   var racine = document.getElementById('contenu');
   var SUPABASE_URL = 'https://uzgboxfxpxazhysusewv.supabase.co';
   var SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
-  var PAGE_COMPTE = 'compte.html';
+  var PAGE_COMPTE = 'compte.html?retour=' + encodeURIComponent(location.href); // le lien de paiement complet (avec son jeton) : après connexion, le client revient ici
   var infos = null, stripe = null, elements = null;
   var choix = { code: '', credit: false }; // ce que le client a demandé ; le prix, lui, est toujours recalculé par le serveur
 

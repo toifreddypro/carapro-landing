@@ -1151,6 +1151,19 @@ function fermerMenuPartage(e) { if (e && e.target !== e.currentTarget) return; v
 
 function fermerProfil(e) { if (e && e.target !== e.currentTarget) return; var div = document.getElementById('modal-profil'); if (div) div.innerHTML = ''; }
 
+// Fiche artisan : chaque thème dans sa propre carte (fond très clair, fine bordure, titre en petites capitales grises) pour une lecture claire et sobre.
+function sectionFiche(cleTitre, icone, contenu) {
+  if (!contenu) return '';
+  if (!document.getElementById('style-fiche-sec')) {
+    var st = document.createElement('style'); st.id = 'style-fiche-sec';
+    st.textContent = '.fiche-sec{border:1px solid var(--line,#e3eaf4);border-radius:12px;padding:14px 16px;margin:0 0 12px;background:var(--p2,#f8fafd);}' +
+      '.fiche-sec-titre{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--mu2,#5b6b82);margin:0 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line,#e3eaf4);}' +
+      '.fiche-sec-titre span{font-size:14px;letter-spacing:0;}';
+    document.head.appendChild(st);
+  }
+  return '<section class="fiche-sec"><div class="fiche-sec-titre"><span>' + icone + '</span>' + escHtml(T(cleTitre)) + '</div>' + contenu + '</section>';
+}
+
 function buildProfilHTML(data) {
   var a = data.artisan;
   var ini = initiales(a.nom_entreprise);
@@ -1169,14 +1182,13 @@ function buildProfilHTML(data) {
     : '<div style="color:var(--mu,#999);font-size:13px;">' + T('aucun_service') + '</div>';
 
   var photosHtml = data.photos.length
-    ? '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;">' +
+    ? '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">' +
         data.photos.map(function(p){ return '<img src="' + escHtml(p.url_photo) + '" style="width:100%;height:90px;object-fit:cover;border-radius:8px;" alt="' + escHtml(p.legende||'') + '">'; }).join('') +
       '</div>'
     : '';
 
-  var pharesHtml = data.produits_phares.length
-    ? '<div style="font-weight:700;margin:18px 0 10px;">⭐ Les produits phares</div>' +
-      '<div class="phares-grille" style="display:grid;grid-template-columns:repeat(' + (data.produits_phares.length >= 4 ? 4 : 3) + ',1fr);gap:12px;">' +
+  var pharesInner = data.produits_phares.length
+    ? '<div class="phares-grille" style="display:grid;grid-template-columns:repeat(' + (data.produits_phares.length >= 4 ? 4 : 3) + ',1fr);gap:12px;">' +
         data.produits_phares.map(function(p) {
           var prixRemise = p.prix != null && p.promo_pct ? Math.round(p.prix * (1 - p.promo_pct / 100) * 100) / 100 : null;
           var photo = p.url_photo
@@ -1196,6 +1208,7 @@ function buildProfilHTML(data) {
       (data.artisan.slug_catalogue ? '<a href="catalogue.html?s=' + encodeURIComponent(data.artisan.slug_catalogue) + '" target="_blank" rel="noopener" class="btn-boutique-or btn-boutique-or-large">🛍️<span class="btn-or-txt">Voir toute la boutique →</span></a>' : '') +
       ((data.artisan.code_promo && data.artisan.code_promo_ventes !== false) ? '<div style="text-align:center;margin-top:8px;font-family:monospace;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:7px;background:rgba(181,80,47,.08);color:var(--ac,#B5502F);border:1px dashed var(--ac,#B5502F);display:inline-block;">🎁 ' + escHtml(data.artisan.code_promo) + '</div>' : '')
     : '';
+  var pharesHtml = sectionFiche('fiche_boutique', '🛍️', pharesInner);
 
   var avisHtml = data.avis.length
     ? data.avis.map(function(av) {
@@ -1225,18 +1238,17 @@ function buildProfilHTML(data) {
           '<button onclick="fermerProfil({target:this,currentTarget:this})" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--mu,#999);">✕</button>' +
         '</div>' +
       '</div>' +
-      (a.nouveau ? '<p style="font-size:12.5px;color:var(--mu2,#777);margin:-6px 0 14px;">' + escHtml(T('badge_nouveau_info')) + '</p>' : '') +
-      ((a.cashback_pct || a.remise_fidele_pct || a.code_promo) ? '<div style="margin:0 0 14px;padding:10px 12px;border-radius:10px;background:rgba(15,157,120,.08);border:1px solid rgba(15,157,120,.25);font-size:13px;line-height:1.5;">' +
-        (a.cashback_pct ? '<div style="font-weight:700;">' + escHtml(T('perk_cashback').replace('{p}', Math.round(a.cashback_pct)) + ' ' + libelleScopeAvantage(a.cashback_ventes !== false, a.cashback_interventions !== false)) + '</div>' : '') +
-        (a.code_promo && Number(a.code_promo_pct) >= 1 ? '<div style="font-weight:700;">' + escHtml(T('avt_code').replace('{c}', a.code_promo).replace('{p}', Math.round(Number(a.code_promo_pct))) + ' ' + libelleScopeAvantage(a.code_promo_ventes !== false, a.code_promo_interventions !== false)) + '</div>' : '') +
-        (a.remise_fidele_pct ? '<div style="font-weight:700;">' + escHtml(T('perk_fidele').replace('{p}', Math.round(a.remise_fidele_pct))) + '</div>' : '') +
-        '<div style="font-size:11.5px;color:var(--mu2,#777);margin-top:2px;">' + escHtml(T('perk_info')) + '</div></div>' : '') +
-      (a.bio ? '<p style="font-size:14px;line-height:1.6;margin-bottom:18px;">' + escHtml(a.bio) + '</p>' : '') +
-      '<div style="font-weight:700;margin-bottom:6px;">' + T('services_titre') + '</div>' + servicesHtml +
-      photosHtml +
+      sectionFiche('fiche_presentation', '👤', ((a.bio ? '<p style="font-size:14px;line-height:1.6;margin:0;">' + escHtml(a.bio) + '</p>' : '') + (a.nouveau ? '<p style="font-size:12.5px;color:var(--mu2,#777);margin:' + (a.bio ? '10px' : '0') + ' 0 0;">' + escHtml(T('badge_nouveau_info')) + '</p>' : ''))) +
+      sectionFiche('fiche_avantages', '🎁', ((a.cashback_pct || a.remise_fidele_pct || a.code_promo) ? (
+        (a.cashback_pct ? '<div style="font-weight:600;font-size:13px;line-height:1.5;">' + escHtml(T('perk_cashback').replace('{p}', Math.round(a.cashback_pct)) + ' ' + libelleScopeAvantage(a.cashback_ventes !== false, a.cashback_interventions !== false)) + '</div>' : '') +
+        (a.code_promo && Number(a.code_promo_pct) >= 1 ? '<div style="font-weight:600;font-size:13px;line-height:1.5;">' + escHtml(T('avt_code').replace('{c}', a.code_promo).replace('{p}', Math.round(Number(a.code_promo_pct))) + ' ' + libelleScopeAvantage(a.code_promo_ventes !== false, a.code_promo_interventions !== false)) + '</div>' : '') +
+        (a.remise_fidele_pct ? '<div style="font-weight:600;font-size:13px;line-height:1.5;">' + escHtml(T('perk_fidele').replace('{p}', Math.round(a.remise_fidele_pct))) + '</div>' : '') +
+        '<div style="font-size:11.5px;color:var(--mu2,#777);margin-top:4px;">' + escHtml(T('perk_info')) + '</div>') : '')) +
+      sectionFiche('services_titre', '🛠️', servicesHtml) +
+      sectionFiche('fiche_realisations', '📷', photosHtml) +
       pharesHtml +
-      '<div id="dispo-zone-' + escHtml(a.id) + '" style="margin:16px 0;"><div style="font-size:12.5px;color:var(--mu,#999);">⏳ Vérification des disponibilités…</div></div>' +
-      '<div style="font-weight:700;margin:18px 0 6px;">' + T('avis_titre') + (data.note_moyenne ? ' — ' + data.note_moyenne + '/5 (' + data.nb_avis + ')' : '') + '</div>' + avisHtml +
+      sectionFiche('fiche_dispos', '📅', '<div id="dispo-zone-' + escHtml(a.id) + '"><div style="font-size:12.5px;color:var(--mu,#999);">⏳ Vérification des disponibilités…</div></div>') +
+      sectionFiche('avis_titre', '⭐', (data.note_moyenne ? '<div style="font-size:13px;font-weight:700;margin-bottom:4px;">' + data.note_moyenne + '/5 (' + data.nb_avis + ')</div>' : '') + avisHtml) +
       '<button onclick="ouvrirModalDevis(' + jsAttr(a.id) + ',' + jsAttr(a.nom_entreprise) + ',' + jsAttr(a.secteur) + ')" style="width:100%;margin-top:18px;padding:13px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">' + T('demander_devis') + '</button>' +
     '</div>' +
   '</div>';
