@@ -319,7 +319,7 @@ function renderNav() {
 // ════════════════════════════════════════
 //  HERO / RECHERCHE — secteur + commune, jamais de date (V2)
 // ════════════════════════════════════════
-var _searchState = { secteur:'', commune:'', nom:'', tri:'' };
+var _searchState = { secteur:'', commune:'', nom:'', tri:'', rge:false };
 
 // Bouton « boutique » : fond ardoise sombre, lettres dorées à paillettes (comme l'enseigne « BOUTIQUE »).
 (function() {
@@ -379,8 +379,10 @@ function renderHero() {
         '</div>' +
         '<div class="filters-wrap">' +
           '<button class="filter-pill' + (_searchState.tri==='note'?' active':'') + '" onclick="trierPar(\'note\')">' + T('filter_note') + '</button>' +
+          '<button class="filter-pill' + (_searchState.rge?' active':'') + '" onclick="filtrerRge()">' + T('filter_rge') + '</button>' +
         '</div>' +
         '<div class="infos-defil" id="infos-defil" aria-live="polite"><span id="infos-defil-txt"></span></div>' +
+        htmlAidesInfo() +
         '<div style="margin-top:14px;font-size:12.5px;color:var(--mu);">' +
           '📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">' + T('hero_devisgen_lien') + '</a>' +
           T('hero_devisgen_suite') +
@@ -473,6 +475,12 @@ async function demarrerInfosAnnuaire() {
     if (c && c.dataset.pause) return;
     afficherInfoAuHasard();
   }, 6000);
+}
+
+function filtrerRge() {
+  _searchState.rge = !_searchState.rge;
+  renderHero();
+  chargerArtisans();
 }
 
 function trierPar(critere) {
@@ -728,6 +736,7 @@ async function chargerArtisans() {
     var params = new URLSearchParams();
     if (_searchState.secteur) params.set('secteur', _searchState.secteur);
     if (_searchState.commune) params.set('commune', _searchState.commune);
+    if (_searchState.rge) params.set('rge', '1');
 
     var res = await fetch(SUPABASE_URL + '/functions/v1/lister-artisans?' + params.toString(), {
       headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON }
@@ -824,8 +833,33 @@ function badgeNouveauCarte(a) {
   return a.nouveau ? '<span class="badge-trust bt-blue" title="' + escHtml(T('badge_nouveau_info')) + '">' + escHtml(T('badge_nouveau')) + '</span>' : '';
 }
 // « Vérifié » en vert, à droite de la carte (là où se trouvait « Disponibilités en temps réel »).
+// Bloc d'information « aides à la rénovation » : INFORMATION SEULEMENT (aucun montant, aucune promesse d'aide, aucun calcul).
+// Source des règles : france-renov.gouv.fr (page « MaPrimeRénov' en Outre-mer »). Le lien renvoie vers le site officiel.
+function htmlAidesInfo() {
+  if (!document.getElementById('style-aides-info')) {
+    var st = document.createElement('style'); st.id = 'style-aides-info';
+    st.textContent = '.aides-info{margin:12px auto 0;max-width:560px;text-align:left;border:1px solid var(--line,#e3eaf4);border-radius:14px;background:rgba(255,255,255,.75);font-size:13px;color:var(--ink,#13223c);}' +
+      '.aides-info summary{cursor:pointer;padding:10px 16px;font-weight:600;list-style:none;}' +
+      '.aides-info summary::-webkit-details-marker{display:none;}' +
+      '.aides-info .aides-corps{padding:0 16px 14px;line-height:1.55;}' +
+      '.aides-info .aides-corps ul{margin:6px 0 8px 18px;padding:0;}' +
+      '.aides-info .aides-note{font-size:12px;color:var(--mu,#6b7a90);margin-top:8px;}';
+    document.head.appendChild(st);
+  }
+  return '<details class="aides-info"><summary>🌿 ' + escHtml(T('aides_titre')) + '</summary><div class="aides-corps">' +
+    '<p>' + escHtml(T('aides_intro')) + '</p>' +
+    '<ul><li>' + escHtml(T('aides_p1')) + '</li><li>' + escHtml(T('aides_p2')) + '</li><li>' + escHtml(T('aides_p3')) + '</li></ul>' +
+    '<p><a href="https://france-renov.gouv.fr/aides/mpr-outremer" target="_blank" rel="noopener noreferrer" style="color:var(--ac,#B5502F);font-weight:700;">' + escHtml(T('aides_lien')) + ' →</a></p>' +
+    '<p class="aides-note">' + escHtml(T('aides_avert')) + '</p></div></details>';
+}
+
+function badgeRgeTexte(a) {
+  if (!a.rge) return '';
+  var d = a.rge_jusqu ? new Date(a.rge_jusqu + 'T12:00:00Z').toLocaleDateString() : '';
+  return '<span class="badge-trust bt-green" title="' + escHtml(T('badge_rge_titre')) + (d ? ' — ' + escHtml(T('badge_rge_jusqu')) + ' ' + escHtml(d) : '') + '">🌿 RGE</span>';
+}
 function badgeVerifieCarte(a) {
-  return a.verifie ? '<span class="badge-trust bt-green" title="SIRET et assurance vérifiés">✅ ' + escHtml(T('badge_verifie')) + '</span>' : '';
+  return (a.verifie ? '<span class="badge-trust bt-green" title="SIRET et assurance vérifiés">✅ ' + escHtml(T('badge_verifie')) + '</span>' : '') + badgeRgeTexte(a);
 }
 // « sur les produits » / « sur les prestations » / les deux : où un cashback ou un code promo s'applique.
 function libelleScopeAvantage(ventes, interventions) {
@@ -1181,6 +1215,7 @@ function buildProfilHTML(data) {
           '<div style="font-size:13px;color:var(--mu2,#777);">' + secteurLabel(a.secteur) + ' · 📍 ' + escHtml(a.commune) + '</div>' +
           (a.nouveau ? '<span class="badge-trust bt-blue" style="margin-top:4px;margin-right:6px;display:inline-block;">' + escHtml(T('badge_nouveau')) + '</span>' : '') +
           (a.verifie ? '<span class="badge-trust bt-green" style="margin-top:4px;display:inline-block;">✅ ' + T('badge_verifie') + '</span>' : '') +
+          (a.rge ? '<span style="margin-top:4px;margin-left:6px;display:inline-block;">' + badgeRgeTexte(a) + '</span>' : '') +
           (a.profil_complet ? '<span class="badge-trust bt-more" style="margin-top:4px;margin-left:6px;display:inline-block;">📝 ' + escHtml(T('badge_complet')) + '</span>' : '') +
           (a.alternance_niveau >= 2 ? '<span title="Cette entreprise s\'engage activement pour la formation locale" style="margin-top:4px;margin-left:6px;display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,158,11,.12);color:#b45309;">🟠 Tremplin des jeunes</span>' : '') +
           '</div>' +
