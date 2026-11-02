@@ -5,7 +5,7 @@
 // aux échanges après mise en relation via un devis. Champs vitrine
 // uniquement (nom, secteur, commune, bio, photo, vérification).
 //
-// Après le 1er novembre 2026 : seuls les artisans avec Stripe actif sont listés.
+// Les artisans sans Stripe actif restent AFFICHÉS mais marqués paiement_en_ligne = false : la vignette est grisée et expliquée (décision du 02/11/2026).
 // GET ?secteur=X&commune=Y&q=texte
 //
 // ORDRE DE L'ANNUAIRE (règles du 31/10/2026 — « visibilité ≠ réputation ») :
@@ -85,14 +85,15 @@ Deno.serve(async (req: Request) => {
     const q = url.searchParams.get("q");
 
     let requete = sb.from("artisans")
-      .select("id, nom_entreprise, secteur, commune, bio, photo_profil_url, verifie, rayon_intervention_km, created_at")
+      .select("id, nom_entreprise, secteur, commune, bio, photo_profil_url, verifie, rayon_intervention_km, created_at, rge_statut, rge_valide_jusqu, stripe_connect_statut")
       .eq("actif", true)
       .eq("suspendu_commission", false);
 
-    // Après la période de grâce (1er novembre 2026), seuls les artisans dont les paiements en ligne (Stripe) sont actifs apparaissent
-    // dans l'annuaire : sans paiement en ligne, ils ne peuvent pas recevoir de réservation. Le filtre est fait côté serveur.
+    // Un artisan sans paiement en ligne (Stripe) ne peut pas encaisser une réservation ni une commande : il reste visible dans l'annuaire,
+    // mais sa vignette est grisée (champ paiement_en_ligne). La fiche détaillée reste fermée tant que Stripe n'est pas finalisé.
     const aujourdhui = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10); // date en Guadeloupe (UTC-4)
-    if (aujourdhui > FIN_PERIODE_GRACE) requete = requete.eq("stripe_connect_statut", "actif");
+    // Filtre « artisans RGE » : uniquement un badge validé par l'administrateur ET encore dans sa date de validité.
+    if (url.searchParams.get("rge") === "1") requete = requete.eq("rge_statut", "valide").gte("rge_valide_jusqu", aujourdhui);
 
     if (secteur) requete = requete.eq("secteur", secteur);
     if (commune) requete = requete.ilike("commune", "%" + commune + "%");
@@ -120,13 +121,17 @@ Deno.serve(async (req: Request) => {
       const st = stats.get(a.id) || {};
       const nbAvis = Number(st.nb_avis || 0);
       const nouveau = new Date(a.created_at).getTime() > limiteNouveau && nbAvis < AVIS_NOUVEAU;
-      const { created_at: _c, ...publics } = a; // la date d'inscription n'est pas publique
+      const { created_at: _c, rge_statut: _rs, rge_valide_jusqu: _rv, stripe_connect_statut: _sc, ...publics } = a; // la date d'inscription et l'état interne du dossier RGE ne sont pas publics
+      const rgeActif = a.rge_statut === "valide" && !!a.rge_valide_jusqu && a.rge_valide_jusqu >= aujourdhui;
       return {
         cle: await cleDuJour(jour, a.id),
         nouveau,
         artisan: {
           ...publics,
           nouveau,
+          paiement_en_ligne: a.stripe_connect_statut === "actif",
+          rge: rgeActif,
+          rge_jusqu: rgeActif ? a.rge_valide_jusqu : null,
           nb_avis: nbAvis,
           note_moyenne: nbAvis > 0 && st.note_moyenne != null ? Number(st.note_moyenne) : null, // null = pas encore d'avis (jamais 0)
           a_photos: Number(st.nb_photos || 0) > 0,
@@ -140,7 +145,10 @@ Deno.serve(async (req: Request) => {
     const ordinaires = enrichis.filter((e) => !e.nouveau).sort(parCle).map((e) => e.artisan);
     const nouveaux = enrichis.filter((e) => e.nouveau).sort(parCle).map((e) => e.artisan);
 
-    return json({ artisans: intercalerDecouverte(ordinaires, nouveaux), jour });
+    // Les vignettes réservables d'abord, les grisées ensuite (ordre du mélange conservé dans chaque groupe).
+    const ordre = intercalerDecouverte(ordinaires, nouveaux);
+    const resultat = ordre.filter((x: any) => x.paiement_en_ligne).concat(ordre.filter((x: any) => !x.paiement_en_ligne));
+    return json({ artisans: resultat, jour });
 
   } catch (e) {
     console.error("[lister-artisans]", e);
