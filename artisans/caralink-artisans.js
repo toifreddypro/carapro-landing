@@ -577,10 +577,73 @@ function allerBesoinAlternancePublic(i) {
   setTimeout(remplacer, 350);
 }
 
+// ════════════════════════════════════════
+//  PUB DE L'ANNUAIRE : jusqu'à 4 logos qui défilent sous le panneau CaraLink Alternance (colonne de gauche).
+//  Allumée ou éteinte depuis la page d'administration (onglet « Pub »). Éteinte : rien ne s'affiche.
+// ════════════════════════════════════════
+var _pubListe = null, _pubIndex = 0, _pubTimer = null, _pubPause = false;
+var PUB_URL_LOGOS_OK = SUPABASE_URL + '/storage/v1/object/public/pub-logos/';
+
+function htmlPubLogo(a) {
+  var logo = '<div style="height:96px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--brd);border-radius:10px;padding:8px;">' +
+    '<img src="' + escHtml(a.logo_url) + '" alt="' + escHtml(a.nom) + '" style="max-width:100%;max-height:100%;object-fit:contain;" loading="lazy" decoding="async"></div>' +
+    '<div style="font-size:12.5px;font-weight:700;color:var(--tx);text-align:center;margin-top:8px;line-height:1.3;">' + escHtml(a.nom) + '</div>';
+  return a.lien ? '<a href="' + escHtml(a.lien) + '" target="_blank" rel="noopener sponsored" style="display:block;text-decoration:none;color:inherit;">' + logo + '</a>' : logo;
+}
+function htmlPubPoints() {
+  return _pubListe.map(function(_, i) {
+    var actif = i === _pubIndex;
+    return '<button type="button" onclick="allerPub(' + i + ')" aria-label="' + (i + 1) + '" aria-current="' + (actif ? 'true' : 'false') + '" style="width:' + (actif ? '18px' : '8px') + ';height:8px;border-radius:999px;border:none;padding:0;cursor:pointer;background:' + (actif ? 'var(--ac)' : 'var(--brd)') + ';transition:width .2s;"></button>';
+  }).join('');
+}
+function allerPub(i) {
+  var zone = document.getElementById('pub-zone'), points = document.getElementById('pub-points');
+  if (!zone || !_pubListe || !_pubListe.length) return;
+  _pubIndex = (i + _pubListe.length) % _pubListe.length;
+  var calme = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function remplacer() { zone.innerHTML = htmlPubLogo(_pubListe[_pubIndex]); if (points) points.innerHTML = htmlPubPoints(); zone.style.opacity = '1'; }
+  if (calme) { remplacer(); return; }
+  zone.style.opacity = '0';
+  setTimeout(remplacer, 300);
+}
+async function chargerPubAnnuaire() {
+  var carte = document.getElementById('pub-carte');
+  if (!carte) return;
+  try {
+    if (!_pubListe) {
+      var res = await fetch(SUPABASE_URL + '/rest/v1/rpc/pub_annonces_actives', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON, 'Content-Type': 'application/json' },
+        body: '{}'
+      });
+      var data = await res.json();
+      // Défense en plus : un logo ne vient que de notre dossier de logos, un lien que en https.
+      _pubListe = (Array.isArray(data) ? data : []).filter(function(a) { return a && a.logo_url && String(a.logo_url).indexOf(PUB_URL_LOGOS_OK) === 0; })
+        .map(function(a) { return { nom: String(a.nom || ''), logo_url: a.logo_url, lien: /^https:\/\//i.test(a.lien || '') ? a.lien : null }; });
+    }
+    if (!_pubListe.length) { carte.innerHTML = ''; return; }
+    if (!document.getElementById('style-pub-annuaire')) {
+      var st = document.createElement('style'); st.id = 'style-pub-annuaire';
+      st.textContent = '.partner-panel{max-height:calc(100vh - 96px);overflow-y:auto;scrollbar-width:thin;}';
+      document.head.appendChild(st);
+    }
+    if (_pubIndex >= _pubListe.length) _pubIndex = 0;
+    carte.innerHTML = '<div style="border-top:1px solid var(--brd);margin-top:16px;padding-top:12px;">' +
+      '<div style="font-size:10.5px;font-weight:700;color:var(--mu2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px;display:flex;justify-content:space-between;"><span>' + escHtml(T('pub_titre')) + '</span><span style="font-weight:600;opacity:.7;">' + escHtml(T('pub_mention')) + '</span></div>' +
+      '<div id="pub-zone" style="transition:opacity .3s;">' + htmlPubLogo(_pubListe[_pubIndex]) + '</div>' +
+      (_pubListe.length > 1 ? '<div id="pub-points" style="display:flex;justify-content:center;gap:6px;margin-top:10px;">' + htmlPubPoints() + '</div>' : '') + '</div>';
+    carte.onmouseenter = function() { _pubPause = true; };
+    carte.onmouseleave = function() { _pubPause = false; };
+    clearInterval(_pubTimer);
+    if (_pubListe.length > 1) _pubTimer = setInterval(function() { if (_pubPause || document.hidden) return; allerPub(_pubIndex + 1); }, 5000);
+  } catch (e) { carte.innerHTML = ''; /* la pub ne doit jamais gêner l'annuaire */ }
+}
+
 function renderPartnerPanel() {
   var zone = document.getElementById('partner-panel');
   if (!zone) return;
-  zone.innerHTML = htmlPartnerPanel();
+  zone.innerHTML = htmlPartnerPanel() + '<div id="pub-carte"></div>';
+  chargerPubAnnuaire();
   BESOINS_ALTERNANCE_PUBLIC.forEach(function(b) { var im = new Image(); im.src = b.img; }); // les 4 photos sont prêtes avant d'être affichées
   zone.onmouseenter = function() { _pauseBesoinAlternancePublic = true; };
   zone.onmouseleave = function() { _pauseBesoinAlternancePublic = false; };

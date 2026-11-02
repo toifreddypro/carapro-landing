@@ -39,6 +39,7 @@ var AT_TR = {
     filter_tarif: "💶 Tarif",
     filter_note: "⭐ Note",
     info_total_avant: "Déjà", info_total_apres: "présents sur CaraLink Artisans", info_commune: "à", info_secteur_avant: "Dans le secteur",
+    pub_titre: "Partenaires locaux", pub_mention: "Publicité",
     filter_bientot_title: "Bientôt disponible",
 
     partner_titre: "Espace partenaire",
@@ -315,6 +316,7 @@ var AT_TR = {
     filter_tarif: "💶 Price",
     filter_note: "⭐ Rating",
     info_total_avant: "Already", info_total_apres: "on CaraLink Artisans", info_commune: "in", info_secteur_avant: "In the sector",
+    pub_titre: "Local partners", pub_mention: "Advertisement",
     filter_bientot_title: "Coming soon",
 
     partner_titre: "Partner space",
@@ -591,6 +593,7 @@ var AT_TR = {
     filter_tarif: "💶 Tarifa",
     filter_note: "⭐ Valoración",
     info_total_avant: "Ya hay", info_total_apres: "en CaraLink Artisans", info_commune: "en", info_secteur_avant: "En el sector",
+    pub_titre: "Socios locales", pub_mention: "Publicidad",
     filter_bientot_title: "Próximamente",
 
     partner_titre: "Espacio para socios",
