@@ -446,18 +446,39 @@ function renderSuggestionsPanier() {
   var idsTries = Object.keys(scores).sort(function(a, b) { return scores[b] - scores[a]; }).slice(0, 3);
   var suggestions = idsTries.map(function(id) { return DATA.produits.find(function(x) { return x.id === id; }); }).filter(Boolean);
 
-  if (!suggestions.length) { zone.innerHTML = ''; return; }
+  // « Vous aimerez peut-être » : quand l'historique des commandes ne suffit pas (boutique récente), on complète avec des produits
+  // d'une AUTRE catégorie de la même boutique (ex. un gâteau → des bougies rangées ailleurs). Jamais un produit déjà dans le panier,
+  // jamais sans catégorie (sinon on ne sait pas s'il va avec), les produits phares en premier. Rien d'inventé : ce sont les vrais produits de l'artisan.
+  var idsDejaSuggeres = {};
+  suggestions.forEach(function(p) { idsDejaSuggeres[p.id] = true; });
+  var catsPanier = {}, panierAvecCat = false;
+  PANIER.forEach(function(l) {
+    var p = DATA.produits.find(function(x) { return x.id === l.catalogue_id; });
+    if (p && p.categorie) { catsPanier[p.categorie] = true; panierAvecCat = true; }
+  });
+  var aimerez = [];
+  if (panierAvecCat && suggestions.length < 3) {
+    aimerez = DATA.produits.filter(function(p) {
+      return p.categorie && !catsPanier[p.categorie] && !idsDansPanier[p.id] && !idsDejaSuggeres[p.id];
+    }).sort(function(a, b) { return (b.est_phare ? 1 : 0) - (a.est_phare ? 1 : 0); }).slice(0, 3 - suggestions.length);
+  }
 
-  zone.innerHTML = '<div style="font-size:11.5px;font-weight:700;color:var(--mu2);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 8px;">' + T('cat_souvent_achete_avec') + '</div>' +
-    '<div style="display:flex;flex-direction:column;gap:8px;">' +
-    suggestions.map(function(p) {
-      var photo = p.url_photo ? '<img src="' + escHtml(p.url_photo) + '" class="ligne-panier-photo">' : '<div class="ligne-panier-photo" style="display:flex;align-items:center;justify-content:center;">📦</div>';
-      return '<div class="ligne-panier" style="align-items:center;">' + photo +
-        '<div class="ligne-panier-info"><div class="ligne-panier-nom">' + escHtml(p.nom) + '</div><div class="ligne-panier-prix">' + prixEffectifProduit(p) + ' €</div></div>' +
-        '<button onclick="ajouterAuPanier(' + jsAttr(p.id) + ')" style="padding:7px 12px;border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">+ ' + T('cat_ajouter') + '</button>' +
+  if (!suggestions.length && !aimerez.length) { zone.innerHTML = ''; return; }
+
+  function bloc(titreCle, liste) {
+    if (!liste.length) return '';
+    return '<div style="font-size:11.5px;font-weight:700;color:var(--mu2);text-transform:uppercase;letter-spacing:.3px;margin:14px 0 8px;">' + T(titreCle) + '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:8px;">' +
+      liste.map(function(p) {
+        var photo = p.url_photo ? '<img src="' + escHtml(p.url_photo) + '" class="ligne-panier-photo">' : '<div class="ligne-panier-photo" style="display:flex;align-items:center;justify-content:center;">📦</div>';
+        return '<div class="ligne-panier" style="align-items:center;">' + photo +
+          '<div class="ligne-panier-info"><div class="ligne-panier-nom">' + escHtml(p.nom) + '</div><div class="ligne-panier-prix">' + prixEffectifProduit(p) + ' €</div></div>' +
+          '<button onclick="ajouterAuPanier(' + jsAttr(p.id) + ')" style="padding:7px 12px;border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">+ ' + T('cat_ajouter') + '</button>' +
+        '</div>';
+      }).join('') +
       '</div>';
-    }).join('') +
-    '</div>';
+  }
+  zone.innerHTML = bloc('cat_souvent_achete_avec', suggestions) + bloc('cat_vous_aimerez', aimerez);
 }
 
 function ouvrirPanier() { renderPanier(); document.getElementById('modal-panier').classList.add('show'); }
