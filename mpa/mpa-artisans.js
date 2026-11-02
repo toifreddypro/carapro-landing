@@ -167,8 +167,9 @@ function ouvrirReglagesMpaAi() {
   o.addEventListener('click', function(e) { if (e.target === o) fermer(); });
   document.getElementById('ai-pref-x').onclick = fermer;
   document.getElementById('ai-pref-ok').onclick = async function() {
-    var prefs = { avis: document.getElementById('ai-pref-avis').checked, paiements: document.getElementById('ai-pref-paiements').checked,
-      encours: document.getElementById('ai-pref-encours').checked, grand: document.getElementById('ai-pref-grand').checked };
+    var prefs = Object.assign({}, (_artisan.mpa_ai_prefs && typeof _artisan.mpa_ai_prefs === 'object') ? _artisan.mpa_ai_prefs : {}, // garde les autres réglages (ex. bilan_vu)
+      { avis: document.getElementById('ai-pref-avis').checked, paiements: document.getElementById('ai-pref-paiements').checked,
+        encours: document.getElementById('ai-pref-encours').checked, grand: document.getElementById('ai-pref-grand').checked });
     var r = await sb.from('artisans').update({ mpa_ai_prefs: prefs }).eq('id', _artisan.id).select('mpa_ai_prefs').single();
     if (r.error) { document.getElementById('ai-pref-msg').textContent = 'Enregistrement impossible : ' + r.error.message; return; }
     _artisan.mpa_ai_prefs = r.data.mpa_ai_prefs;
@@ -330,6 +331,61 @@ function toggleMpaAi() {
 })();
 
 // ── Déclencheurs proactifs propres au métier d'artisan ──
+// ── Bilan mensuel « Essentiel contre Pro » ──
+// Une fois par mois (le mois écoulé, heure de la Guadeloupe), grande fenêtre de MPA-AI : ce que la commission a coûté
+// et ce que le Pro aurait changé (ou a changé). Chiffres calculés par la base (bilan_mensuel_commission), mêmes règles que le serveur.
+// Pour un artisan en Essentiel c'est une SIMULATION, et le message le dit. Décision de Freddy (02/11) : le bilan ne s'affiche QUE si le Pro est gagnant ;
+// un mois calme n'est pas la faute du Pro, et le Pro sert aussi à faciliter la vie, pas seulement à économiser : on n'affiche donc jamais de bilan négatif.
+async function verifierBilanMensuel() {
+  try {
+    var r = await sb.rpc('bilan_mensuel_commission');
+    if (r.error || !r.data) return;
+    var b = r.data;
+    var cle = String(b.mois || '').slice(0, 7);
+    var prefsActuelles = (_artisan.mpa_ai_prefs && typeof _artisan.mpa_ai_prefs === 'object') ? _artisan.mpa_ai_prefs : {};
+    if (!cle || prefsActuelles.bilan_vu === cle) return;                       // déjà montré ce mois-ci
+    var ventes = Number(b.ventes || 0), prest = Number(b.prestations || 0);
+    if (ventes + prest <= 0) return;                                           // rien vendu le mois dernier : pas de bilan
+    var base = Number(b.base_commissionnee || 0);
+    var comEss = Number(b.commission_essentiel || 0), comPro = Number(b.commission_pro || 0);
+    var estPro = _artisan.plan === 'pro' || _artisan.plan === 'pro_offert';
+    var offert = _artisan.plan === 'pro_offert';
+    var abo = offert ? 0 : 9.9;
+    var e = eurosMPA;
+    if (comEss - comPro - abo <= 0) return;                                    // Pro pas rentable ce mois-là : on ne montre rien
+    var moisLib = new Date(b.mois + 'T12:00:00').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    var ligne = function(l, v, fort) {
+      return '<div style="display:flex;justify-content:space-between;gap:14px;padding:6px 0;border-top:1px solid var(--brd,#e3eaf4);' + (fort ? 'font-weight:800;font-size:1.05em;' : '') + '"><span>' + l + '</span><span style="white-space:nowrap;">' + v + '</span></div>';
+    };
+    var html = '<strong>📊 Votre bilan ' + (/^[aeiouéû]/i.test(moisLib) ? 'd\'' : 'de ') + escHtml(moisLib) + '</strong>' +
+      '<div style="margin-top:10px;text-align:left;">' +
+        ligne('Ventes en ligne de la boutique', e(ventes)) +
+        ligne('Prestations de vos clients CaraLink', e(prest)) +
+        ligne('Part au-dessus de la franchise gratuite (' + Number(b.franchise || 200) + ' € par type)', e(base));
+    var conclusion;
+    if (estPro) {
+      var net = comEss - comPro - abo;
+      html += ligne('Commission à 7 % (Essentiel)', e(comEss)) +
+        ligne('Commission à 5 % (votre offre Pro)', e(comPro)) +
+        ligne(offert ? 'Abonnement Pro' : 'Abonnement Pro du mois', offert ? 'offert' : e(abo)) +
+        ligne('Gain grâce au Pro', '+ ' + e(net), true);
+      conclusion = 'Le Pro vous a fait économiser <strong>' + e(net) + '</strong> ce mois-ci.';
+    } else {
+      var gain = comEss - comPro - abo;
+      html += ligne('Commission à 7 % (votre offre Essentiel)', e(comEss)) +
+        ligne('Avec le Pro : commission à 5 %', e(comPro)) +
+        ligne('Avec le Pro : abonnement', e(abo)) +
+        ligne('Économie qu\'aurait permise le Pro', '+ ' + e(gain), true);
+      conclusion = 'Avec le Pro, vous auriez économisé <strong>' + e(gain) + '</strong> ce mois-ci.';
+    }
+    html += '</div><div style="margin-top:12px;">' + conclusion + '</div>' +
+      (estPro ? '' : '<div style="margin-top:8px;font-size:.85em;opacity:.8;">Ceci est une simulation : vous n\'étiez pas abonné. Le Pro apporte aussi d\'autres fonctions (catalogue illimité, fournitures, cashback), non comptées ici.</div>');
+    mpaAiDire(html, 'important', estPro ? [] : [{ label: 'Découvrir le Pro', action: 'lancerAbonnement()' }]);
+    var maj = await sb.from('artisans').update({ mpa_ai_prefs: Object.assign({}, prefsActuelles, { bilan_vu: cle }) }).eq('id', _artisan.id).select('mpa_ai_prefs').single();
+    if (!maj.error && maj.data) _artisan.mpa_ai_prefs = maj.data.mpa_ai_prefs;
+  } catch (err) { console.warn('bilan mensuel :', err && err.message); }
+}
+
 async function verifierAlertesMpaAi() {
   // 1) Plafond micro-entreprise proche — critique dès 90 % (services 83 600 € ou ensemble 203 100 €, le plus proche des deux).
   var anneeAuj = new Date().getFullYear();
@@ -738,6 +794,7 @@ async function init() {
   await initDashboard();
   renderMpaAiFeed();
   await verifierAlertesMpaAi();
+  await verifierBilanMensuel();
   appliquerActivites();
   // Une seule question à la fois : d'abord l'activité, puis l'impôt (versement libératoire), la visite d'estimation en dernier.
   if (!(await demanderActivites()) && !(await demanderRegimeFiscal())) await demanderAssistantReglages(false); // après les autres alertes : la question de MPA-AI est la plus visible
