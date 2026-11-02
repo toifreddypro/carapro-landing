@@ -137,6 +137,54 @@ function mpaAiAjouterAuFeed(m, ouvrir) {
   }
 }
 
+// ── Réglages de MPA-AI : ce que l'artisan veut voir. Rien n'est coupé par défaut ; les alertes importantes (impayés, plafond, paiement d'abonnement…) restent toujours visibles. ──
+function prefsMpaAi() {
+  var p = (_artisan && _artisan.mpa_ai_prefs && typeof _artisan.mpa_ai_prefs === 'object') ? _artisan.mpa_ai_prefs : {};
+  return { avis: p.avis !== false, paiements: p.paiements !== false, encours: p.encours !== false, grand: p.grand !== false };
+}
+function ouvrirReglagesMpaAi() {
+  var fermer = function() { var o = document.getElementById('mpa-ai-reglages'); if (o) o.remove(); };
+  fermer();
+  var pr = prefsMpaAi();
+  var ligne = function(id, titre, aide, coche) {
+    return '<label style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--brd,#e5e5e5);cursor:pointer;">' +
+      '<input type="checkbox" id="ai-pref-' + id + '"' + (coche ? ' checked' : '') + ' style="margin-top:3px;width:auto;">' +
+      '<span><strong style="font-size:13.5px;">' + titre + '</strong><br><span style="font-size:12px;color:var(--mu);">' + aide + '</span></span></label>';
+  };
+  var o = document.createElement('div');
+  o.id = 'mpa-ai-reglages';
+  o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10050;display:flex;align-items:center;justify-content:center;padding:14px;';
+  o.innerHTML = '<div style="background:var(--panel,#fff);color:var(--tx,#222);border-radius:14px;padding:20px 22px;max-width:440px;width:100%;max-height:88vh;overflow-y:auto;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><strong style="font-size:16px;">⚙️ Réglages de MPA-AI</strong><button type="button" id="ai-pref-x" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--mu);">✕</button></div>' +
+    '<div style="font-size:12.5px;color:var(--mu);margin-bottom:6px;">Cochez ce que vous voulez voir. Les alertes importantes (impayés, plafond, paiement de l\'abonnement…) restent toujours affichées.</div>' +
+    ligne('avis', '✨ Suggestions de demande d\'avis', 'Le message « le bon moment pour lui demander un avis » 48 h après une intervention. Pour un seul client, utilisez plutôt « Pas pour ce client » dans le message.', pr.avis) +
+    ligne('paiements', '💶 Rappels de paiements en attente', 'Quand un client n\'a pas encore payé le lien envoyé.', pr.paiements) +
+    ligne('encours', '📅 Rappels des interventions « En cours » anciennes', 'Interventions toujours « En cours » depuis plus de deux mois.', pr.encours) +
+    ligne('grand', '🖥️ Grande fenêtre plein écran à l\'ouverture', 'Décochée : les messages arrivent seulement dans la petite fenêtre MPA-AI (seules les alertes importantes s\'ouvrent en grand).', pr.grand) +
+    '<div id="ai-pref-msg" style="font-size:12px;color:var(--danger);margin-top:8px;"></div>' +
+    '<button type="button" id="ai-pref-ok" class="btn-primary" style="width:100%;margin-top:12px;">Enregistrer</button></div>';
+  document.body.appendChild(o);
+  o.addEventListener('click', function(e) { if (e.target === o) fermer(); });
+  document.getElementById('ai-pref-x').onclick = fermer;
+  document.getElementById('ai-pref-ok').onclick = async function() {
+    var prefs = { avis: document.getElementById('ai-pref-avis').checked, paiements: document.getElementById('ai-pref-paiements').checked,
+      encours: document.getElementById('ai-pref-encours').checked, grand: document.getElementById('ai-pref-grand').checked };
+    var r = await sb.from('artisans').update({ mpa_ai_prefs: prefs }).eq('id', _artisan.id).select('mpa_ai_prefs').single();
+    if (r.error) { document.getElementById('ai-pref-msg').textContent = 'Enregistrement impossible : ' + r.error.message; return; }
+    _artisan.mpa_ai_prefs = r.data.mpa_ai_prefs;
+    fermer();
+    mpaAiDire('✅ Réglages enregistrés. Ils s\'appliquent dès maintenant aux prochains messages.', 'info');
+  };
+}
+// « Pas pour ce client » : on ne lui suggérera plus jamais de demande d'avis (le bouton « Demander un avis » de l'intervention reste utilisable à la main).
+async function refuserAvisClient(interventionId) {
+  var r = await sb.from('mpa_artisans_interventions').select('client_id').eq('id', interventionId).eq('artisan_id', _artisan.id).maybeSingle();
+  if (r.error || !r.data || !r.data.client_id) { mpaAiDire('Je n\'ai pas pu retrouver ce client. Réessayez depuis le planning.', 'warning'); return; }
+  var u = await sb.from('mpa_artisans_clients').update({ ne_pas_demander_avis: true }).eq('id', r.data.client_id).eq('artisan_id', _artisan.id);
+  if (u.error) { mpaAiDire('Impossible d\'enregistrer ce choix : ' + escHtml(u.error.message), 'warning'); return; }
+  mpaAiDire('👌 C\'est noté : je ne proposerai plus de demander un avis à ce client.', 'info');
+}
+
 function mpaAiDire(message, type, cta) {
   var m = { message: message, icone: mpaAiIcone(type), type: type, time: new Date(), cta: cta };
   if (_mpaAiDemarrage) { _mpaAiFileDemarrage.push(m); return; }
@@ -150,6 +198,13 @@ function mpaAiDemarrageFin() {
   var liste = _mpaAiFileDemarrage; _mpaAiFileDemarrage = [];
   if (!liste.length) return; // rien à dire : rien ne s'ouvre
   if (liste.length === 1 && liste[0].type !== 'important') { mpaAiAjouterAuFeed(liste[0], true); return; }
+  // Grande fenêtre désactivée dans les réglages : seuls les messages « important » s'ouvrent en grand, le reste arrive dans la petite fenêtre.
+  if (!prefsMpaAi().grand) {
+    var importants = liste.filter(function(m) { return m.type === 'important'; });
+    liste.filter(function(m) { return m.type !== 'important'; }).forEach(function(m) { mpaAiAjouterAuFeed(m, true); });
+    if (importants.length) mpaAiGrandAjouter(importants);
+    return;
+  }
   mpaAiGrandAjouter(liste);
 }
 
@@ -393,7 +448,7 @@ async function verifierAlertesMpaAi() {
     var ilYa7j = Date.now() - 7 * 86400000;
     var enAttente = (impayes || []).filter(function(x) { return x.statut === 'en_attente' && Date.now() - new Date(x.created_at).getTime() > 2 * 86400000; });
     var expires = (impayes || []).filter(function(x) { return x.statut === 'expire' && x.annule_le && new Date(x.annule_le).getTime() > ilYa7j; });
-    if (enAttente.length || expires.length) {
+    if ((enAttente.length || expires.length) && prefsMpaAi().paiements) {
       var parties = [];
       if (enAttente.length === 1) { var a1 = enAttente[0]; parties.push(escHtml(a1.client_nom || 'Un client') + ' n\'a pas encore payé ' + eurosMPA(a1.montant) + ' (demande envoyée il y a ' + Math.floor((Date.now() - new Date(a1.created_at).getTime()) / 86400000) + ' jours)'); }
       else if (enAttente.length > 1) parties.push(enAttente.length + ' demandes de paiement ne sont pas encore réglées (' + eurosMPA(enAttente.reduce(function(t, x) { return t + Number(x.montant); }, 0)) + ' au total)');
@@ -406,20 +461,20 @@ async function verifierAlertesMpaAi() {
   // 5) Interventions "En cours" qui traînent depuis plus de 60 jours — un simple rappel, jamais
   // bloquant (contrairement au seuil des 90 jours, qui lui empêche de planifier du nouveau).
   var nbEnCoursAnciennes = await compterInterventionsEnCoursAnciennes();
-  if (nbEnCoursAnciennes > 0) {
+  if (nbEnCoursAnciennes > 0 && prefsMpaAi().encours) {
     mpaAiDire('📅 ' + nbEnCoursAnciennes + ' intervention' + (nbEnCoursAnciennes > 1 ? 's sont' : ' est') + ' toujours "En cours" depuis plus de ' + DELAI_ALERTE_EN_COURS_JOURS + ' jours. Vérifiez leur statut pour garder votre planning à jour.', 'warning',
       { label: 'Voir mon planning', action: "switchTab(2)" });
   }
 
   // 6) Avis à demander — 48h après une intervention terminée, c'est le bon moment.
-  var aProposerAvis = estPro() ? await trouverInterventionsAvisAProposer() : []; // suggestion réservée à l'offre Pro
+  var aProposerAvis = (estPro() && prefsMpaAi().avis) ? await trouverInterventionsAvisAProposer() : []; // suggestion réservée à l'offre Pro, désactivable dans les réglages de MPA-AI
   if (aProposerAvis.length === 1) {
     var seule = aProposerAvis[0];
     var nomClient = seule.mpa_artisans_clients.nom;
-    mpaAiDire('✨ L\'intervention chez ' + escHtml(nomClient) + ' s\'est terminée il y a 48h. Le bon moment pour lui demander un avis.', 'info',
+    mpaAiDire('✨ L\'intervention chez ' + escHtml(nomClient) + ' s\'est terminée il y a 48h. Le bon moment pour lui demander un avis. <a href="#" onclick="refuserAvisClient(\'' + seule.id + '\');return false;" style="color:inherit;text-decoration:underline;white-space:nowrap;">Pas pour ce client</a> · <a href="#" onclick="ouvrirReglagesMpaAi();return false;" style="color:inherit;text-decoration:underline;white-space:nowrap;">Régler mes notifications</a>', 'info',
       { label: 'Demander un avis', action: "demanderAvis('" + seule.id + "')" });
   } else if (aProposerAvis.length > 1) {
-    mpaAiDire('✨ ' + aProposerAvis.length + ' interventions terminées il y a 48h n\'ont pas encore reçu de demande d\'avis.', 'info',
+    mpaAiDire('✨ ' + aProposerAvis.length + ' interventions terminées il y a 48h n\'ont pas encore reçu de demande d\'avis. <a href="#" onclick="ouvrirReglagesMpaAi();return false;" style="color:inherit;text-decoration:underline;white-space:nowrap;">Régler mes notifications</a>', 'info',
       { label: 'Voir mon planning', action: "switchTab(2)" });
   }
 
@@ -4310,7 +4365,7 @@ async function trouverInterventionsAvisAProposer() {
   var il48h = new Date(); il48h.setDate(il48h.getDate() - 2);
   var il72h = new Date(); il72h.setDate(il72h.getDate() - 3);
   var { data, error } = await sb.from('mpa_artisans_interventions')
-    .select('id, date_intervention, mpa_artisans_clients(nom, email)')
+    .select('id, date_intervention, mpa_artisans_clients(nom, email, ne_pas_demander_avis)')
     .eq('artisan_id', _artisan.id)
     .in('statut', ['terminee', 'payee'])
     .is('avis_demande_le', null)
@@ -4318,7 +4373,7 @@ async function trouverInterventionsAvisAProposer() {
     .lte('date_intervention', il48h.toISOString().slice(0, 10));
   if (error) { console.error(error); return []; }
   // Un avis ne sert à rien à demander sans email pour l'envoyer.
-  return (data || []).filter(function(i) { return i.mpa_artisans_clients && i.mpa_artisans_clients.email; });
+  return (data || []).filter(function(i) { return i.mpa_artisans_clients && i.mpa_artisans_clients.email && i.mpa_artisans_clients.ne_pas_demander_avis !== true; });
 }
 
 async function compterInterventionsACloturer() {
@@ -4830,7 +4885,9 @@ function renderEncartAlternance() {
     return;
   }
 
-  demarrerEncartAlternance();
+  // Encart publicitaire « Un artisan a aussi besoin de… » retiré de Mon planning (décision du 02/11 : celui de l'annuaire suffit). On ne montre plus que le remerciement du badge « Tremplin des jeunes ».
+  if (_timerBesoinAlternance) { clearInterval(_timerBesoinAlternance); _timerBesoinAlternance = null; }
+  zone.innerHTML = '';
 }
 
 function htmlEncartAlternance() {
@@ -5386,6 +5443,7 @@ function openAjouterClient() {
   document.getElementById('c-cp').value = '';
   document.getElementById('c-com').value = '';
   document.getElementById('c-delai').value = 30;
+  if (document.getElementById('c-pas-avis')) document.getElementById('c-pas-avis').checked = false;
   ouvrirModale('modal-client');
 }
 
@@ -5401,6 +5459,7 @@ async function sauverClient() {
     code_postal: document.getElementById('c-cp').value.trim() || null,
     commune: document.getElementById('c-com').value.trim() || null,
     delai_paiement: parseInt(document.getElementById('c-delai').value, 10) || 30,
+    ne_pas_demander_avis: !!(document.getElementById('c-pas-avis') && document.getElementById('c-pas-avis').checked),
   };
   var { error } = await sb.from('mpa_artisans_clients').insert(nouveau);
   if (error) { alert('Erreur : ' + error.message); return; }

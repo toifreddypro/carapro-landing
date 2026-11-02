@@ -381,7 +381,6 @@ function renderHero() {
           '<button class="filter-pill' + (_searchState.tri==='note'?' active':'') + '" onclick="trierPar(\'note\')">' + T('filter_note') + '</button>' +
           '<button class="filter-pill' + (_searchState.rge?' active':'') + '" onclick="filtrerRge()">' + T('filter_rge') + '</button>' +
         '</div>' +
-        '<div class="infos-defil" id="infos-defil" aria-live="polite"><span id="infos-defil-txt"></span></div>' +
         htmlAidesInfo() +
         '<div style="margin-top:14px;font-size:12.5px;color:var(--mu);">' +
           '📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">' + T('hero_devisgen_lien') + '</a>' +
@@ -394,7 +393,6 @@ function renderHero() {
         '</div>' +
       '</div>' +
     '</div>';
-  demarrerInfosAnnuaire();
 }
 
 // ════════════════════════════════════════
@@ -446,7 +444,7 @@ function afficherInfoAuHasard() {
 async function demarrerInfosAnnuaire() {
   if (!document.getElementById('style-infos-defil')) {
     var st = document.createElement('style'); st.id = 'style-infos-defil';
-    st.textContent = '.infos-defil{display:none;margin:16px auto 0;max-width:560px;padding:9px 18px;border-radius:999px;background:rgba(255,255,255,.75);border:1px solid var(--line,#e3eaf4);font-size:13.5px;color:var(--ink,#13223c);text-align:center;min-height:20px;}' +
+    st.textContent = '.infos-defil{display:none;margin:10px 0 0;padding:9px 14px;border-radius:12px;background:rgba(255,255,255,.75);border:1px solid var(--line,#e3eaf4);font-size:13.5px;color:var(--ink,#13223c);text-align:center;min-height:20px;}' +
       '.infos-defil b{color:var(--ac,#B5502F);}' +
       '#infos-defil-txt{display:inline-block;transition:opacity .25s ease;}' +
       '@media (prefers-reduced-motion:reduce){#infos-defil-txt{transition:none;}}';
@@ -520,9 +518,11 @@ function renderResults() {
           '<span class="map-label">' + T('map_label') + '</span>' +
         '</div>' +
         '<div id="leaflet-map" style="width:100%;height:280px;border-radius:12px;border:1px solid var(--brd);overflow:hidden;"></div>' +
+        '<div class="infos-defil" id="infos-defil" aria-live="polite"><span id="infos-defil-txt"></span></div>' +
       '</div>' +
     '</div>';
   renderPartnerPanel();
+  demarrerInfosAnnuaire();
   chargerArtisans();
   setTimeout(initCarte, 100);
 }
@@ -919,7 +919,7 @@ async function jetonFav() {
   } catch (e) { return null; }
 }
 function coeurHtml(id, enLigne) {
-  return '<button type="button" class="coeur-btn' + (enLigne ? ' coeur-inline' : '') + '" data-coeur="' + escHtml(id) + '" aria-pressed="false" title="' + escHtml(T('coeur_ajouter')) + '" aria-label="' + escHtml(T('coeur_ajouter')) + '" onclick="basculerCoeur(event, ' + jsAttr(id) + ')">♡</button>';
+  return '<button type="button" class="coeur-btn' + (enLigne ? ' coeur-inline' : '') + '" data-coeur="' + escHtml(id) + '" aria-pressed="false" title="' + escHtml(T('coeur_ajouter')) + '" aria-label="' + escHtml(T('coeur_ajouter')) + '" onclick="basculerCoeur(event, ' + jsAttr(id) + ')">☆</button>';
 }
 function peindreCoeurs() {
   if (!document.getElementById('style-coeur')) {
@@ -932,7 +932,7 @@ function peindreCoeurs() {
   var tous = document.querySelectorAll('[data-coeur]');
   for (var i = 0; i < tous.length; i++) {
     var b = tous[i], on = !!(_favIds && _favIds[b.getAttribute('data-coeur')]);
-    b.textContent = on ? '♥' : '♡';
+    b.textContent = on ? '★' : '☆';
     b.classList.toggle('on', on);
     b.setAttribute('aria-pressed', on ? 'true' : 'false');
     b.title = T(on ? 'coeur_retirer' : 'coeur_ajouter'); b.setAttribute('aria-label', b.title);
