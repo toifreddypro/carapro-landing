@@ -177,12 +177,23 @@ function ouvrirReglagesMpaAi() {
   };
 }
 // « Pas pour ce client » : on ne lui suggérera plus jamais de demande d'avis (le bouton « Demander un avis » de l'intervention reste utilisable à la main).
-async function refuserAvisClient(interventionId) {
+async function refuserAvisClient(interventionId, el) {
+  // Retour visible immédiat sur le lien cliqué (le message peut être dans une fenêtre déjà ouverte).
+  var marquer = function(texte, ok) {
+    if (!el) return;
+    var s = document.createElement('span');
+    s.style.cssText = 'font-weight:700;' + (ok ? '' : 'color:#b91c1c;');
+    s.textContent = texte;
+    if (el.parentNode) el.parentNode.replaceChild(s, el);
+    el = null;
+  };
+  if (el) { el.style.pointerEvents = 'none'; el.style.opacity = '.6'; }
   var r = await sb.from('mpa_artisans_interventions').select('client_id').eq('id', interventionId).eq('artisan_id', _artisan.id).maybeSingle();
-  if (r.error || !r.data || !r.data.client_id) { mpaAiDire('Je n\'ai pas pu retrouver ce client. Réessayez depuis le planning.', 'warning'); return; }
+  if (r.error || !r.data || !r.data.client_id) { marquer('Client introuvable, réessayez depuis le planning.', false); mpaAiDire('Je n\'ai pas pu retrouver ce client. Réessayez depuis le planning.', 'warning'); return; }
   var u = await sb.from('mpa_artisans_clients').update({ ne_pas_demander_avis: true }).eq('id', r.data.client_id).eq('artisan_id', _artisan.id);
-  if (u.error) { mpaAiDire('Impossible d\'enregistrer ce choix : ' + escHtml(u.error.message), 'warning'); return; }
-  mpaAiDire('👌 C\'est noté : je ne proposerai plus de demander un avis à ce client.', 'info');
+  if (u.error) { marquer('Échec de l\'enregistrement, réessayez.', false); mpaAiDire('Impossible d\'enregistrer ce choix : ' + escHtml(u.error.message), 'warning'); return; }
+  if (el) { marquer('✓ Noté : plus de demande d\'avis pour ce client', true); }
+  else { mpaAiDire('👌 C\'est noté : je ne proposerai plus de demander un avis à ce client.', 'info'); }
 }
 
 function mpaAiDire(message, type, cta) {
@@ -471,7 +482,7 @@ async function verifierAlertesMpaAi() {
   if (aProposerAvis.length === 1) {
     var seule = aProposerAvis[0];
     var nomClient = seule.mpa_artisans_clients.nom;
-    mpaAiDire('✨ L\'intervention chez ' + escHtml(nomClient) + ' s\'est terminée il y a 48h. Le bon moment pour lui demander un avis. <a href="#" onclick="refuserAvisClient(\'' + seule.id + '\');return false;" style="color:inherit;text-decoration:underline;white-space:nowrap;">Pas pour ce client</a> · <a href="#" onclick="ouvrirReglagesMpaAi();return false;" style="color:inherit;text-decoration:underline;white-space:nowrap;">Régler mes notifications</a>', 'info',
+    mpaAiDire('✨ L\'intervention chez ' + escHtml(nomClient) + ' s\'est terminée il y a 48h. Le bon moment pour lui demander un avis. <a href="#" onclick="refuserAvisClient(\'' + seule.id + '\', this);return false;" style="color:inherit;text-decoration:underline;white-space:nowrap;">Pas pour ce client</a> · <a href="#" onclick="ouvrirReglagesMpaAi();return false;" style="color:inherit;text-decoration:underline;white-space:nowrap;">Régler mes notifications</a>', 'info',
       { label: 'Demander un avis', action: "demanderAvis('" + seule.id + "')" });
   } else if (aProposerAvis.length > 1) {
     mpaAiDire('✨ ' + aProposerAvis.length + ' interventions terminées il y a 48h n\'ont pas encore reçu de demande d\'avis. <a href="#" onclick="ouvrirReglagesMpaAi();return false;" style="color:inherit;text-decoration:underline;white-space:nowrap;">Régler mes notifications</a>', 'info',
@@ -7799,6 +7810,8 @@ async function dessinerCarteItineraire(interventions) {
   // Trace le trajet réel (service IGN, même moteur que Smart Dispatch) entre chaque étape consécutive, départ compris.
   for (var j = 0; j < etapes.length - 1; j++) {
     var a = etapes[j], b = etapes[j + 1];
+    // Deux étapes au même endroit : rien à tracer (le service IGN renvoie une erreur 400).
+    if (a.latitude === b.latitude && a.longitude === b.longitude) continue;
     try {
       var url = 'https://data.geopf.fr/navigation/itineraire?resource=bdtopo-osrm&profile=car&optimization=fastest&geometryFormat=geojson&distanceUnit=meter&timeUnit=second&start=' + a.longitude + ',' + a.latitude + '&end=' + b.longitude + ',' + b.latitude;
       var res = await fetch(url);
