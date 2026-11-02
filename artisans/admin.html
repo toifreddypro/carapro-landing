@@ -72,6 +72,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);min-he
   <button class="atab" onclick="switchAdminTab(4)">Prélèvements</button>
   <button class="atab" onclick="switchAdminTab(5)">Litiges</button>
   <button class="atab" onclick="switchAdminTab(6)">Signalements <span id="cnt-signalements"></span></button>
+  <button class="atab" onclick="switchAdminTab(7)">Pub</button>
 </div>
 
 <div id="wrap">
@@ -238,7 +239,8 @@ async function init() {
     '<div class="apnl" id="zone-avis-produit"></div>' +
     '<div class="apnl" id="zone-prelevement-prestations"></div>' +
     '<div class="apnl" id="zone-litiges"></div>' +
-    '<div class="apnl" id="zone-signalements"></div>';
+    '<div class="apnl" id="zone-signalements"></div>' +
+    '<div class="apnl" id="zone-pub"></div>';
   await chargerSecteurs();
   await chargerNouveautes();
   await chargerAvisProduit();
@@ -246,9 +248,93 @@ async function init() {
   await chargerArtisans();
   await chargerLitiges();
   await chargerSignalements();
+  await chargerPub();
   if (location.hash === '#signalements') switchAdminTab(6);
+  if (location.hash === '#pub') switchAdminTab(7);
 }
 
+
+// ── Pub : 4 logos qui défilent dans l'annuaire, un seul interrupteur pour tout allumer ou couper ──
+var _pubAnnonces = {}, _pubActif = false;
+var PUB_URL_LOGOS = SUPABASE_URL + '/storage/v1/object/public/pub-logos/';
+async function chargerPub() {
+  var zone = document.getElementById('zone-pub');
+  if (!zone) return;
+  var r1 = await sb.from('pub_reglages').select('actif').eq('id', 1).maybeSingle();
+  var r2 = await sb.from('pub_annonces').select('*').order('position');
+  if (r1.error || r2.error) {
+    zone.innerHTML = '<div class="dcard" style="padding:20px;color:var(--danger);">Erreur : ' + escHtml((r1.error || r2.error).message) + ' — le fichier pub-annonces.sql a-t-il été lancé dans Supabase ?</div>';
+    return;
+  }
+  _pubActif = !!(r1.data && r1.data.actif);
+  _pubAnnonces = {};
+  (r2.data || []).forEach(function(a) { _pubAnnonces[a.position] = a; });
+  var cartes = [1, 2, 3, 4].map(function(n) {
+    var a = _pubAnnonces[n];
+    return '<div class="dcard" style="margin-bottom:14px;"><div class="dchdr"><span>Emplacement ' + n + '</span>' + (a ? '<span class="badge-ok">En place</span>' : '<span class="badge-abo">Vide</span>') + '</div>' +
+      '<div style="padding:16px 18px;display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:start;">' +
+        '<div style="border:1px solid var(--brd);border-radius:10px;height:100px;display:flex;align-items:center;justify-content:center;background:var(--p2);overflow:hidden;">' +
+          (a ? '<img src="' + escHtml(a.logo_url) + '" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">' : '<span style="color:var(--mu);font-size:12px;">Aucun logo</span>') + '</div>' +
+        '<div style="display:grid;gap:8px;">' +
+          '<input id="pub-nom-' + n + '" placeholder="Nom de l\'entreprise" maxlength="80" value="' + escHtml(a ? a.nom : '') + '" style="padding:8px 10px;border:1px solid var(--b2);border-radius:8px;font-family:inherit;">' +
+          '<input id="pub-lien-' + n + '" placeholder="Lien (https://…) — facultatif" maxlength="300" value="' + escHtml(a && a.lien ? a.lien : '') + '" style="padding:8px 10px;border:1px solid var(--b2);border-radius:8px;font-family:inherit;">' +
+          '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--mu2);">Du <input type="date" id="pub-debut-' + n + '" value="' + escHtml(a && a.debut ? a.debut : '') + '" style="padding:6px;border:1px solid var(--b2);border-radius:8px;font-family:inherit;"> au <input type="date" id="pub-fin-' + n + '" value="' + escHtml(a && a.fin ? a.fin : '') + '" style="padding:6px;border:1px solid var(--b2);border-radius:8px;font-family:inherit;"> <span>(facultatif)</span></div>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
+            '<input type="file" id="pub-logo-' + n + '" accept="image/png,image/jpeg,image/webp" style="font-size:12px;max-width:230px;">' +
+            '<button onclick="enregistrerPub(' + n + ')" style="padding:8px 16px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-weight:700;cursor:pointer;font-family:inherit;">Enregistrer</button>' +
+            (a ? '<button class="btn-del" onclick="supprimerPub(' + n + ')">Vider</button>' : '') +
+          '</div>' +
+          '<div style="font-size:11.5px;color:var(--mu);">Logo : PNG, JPEG ou WebP, 1 Mo maximum, de préférence sur fond transparent ou blanc. ' + (a ? 'Sans nouveau fichier, le logo actuel est gardé.' : '') + '</div>' +
+        '</div></div></div>';
+  }).join('');
+  zone.innerHTML =
+    '<div class="dcard"><div class="dchdr"><span>📢 Pub dans l\'annuaire</span>' + (_pubActif ? '<span class="badge-ok">Allumée</span>' : '<span class="badge-attente">Éteinte</span>') + '</div>' +
+      '<div style="padding:16px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;">' +
+        '<button onclick="basculerPub()" style="padding:10px 20px;border-radius:999px;border:none;font-weight:800;cursor:pointer;font-family:inherit;color:#fff;background:' + (_pubActif ? '#dc2626' : '#16a34a') + ';">' + (_pubActif ? 'Éteindre la pub' : 'Allumer la pub') + '</button>' +
+        '<span style="font-size:13px;color:var(--mu2);">Interrupteur général : éteint, aucun logo ne s\'affiche, même si les emplacements sont remplis.</span></div>' +
+      '<div class="note">Les logos défilent dans la colonne de gauche de l\'annuaire (ordinateur), sous le panneau CaraLink Alternance. Un emplacement dont la date de fin est passée disparaît tout seul.</div></div>' +
+    cartes;
+}
+async function basculerPub() {
+  var { error } = await sb.from('pub_reglages').update({ actif: !_pubActif, updated_at: new Date().toISOString() }).eq('id', 1);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerPub();
+}
+async function enregistrerPub(n) {
+  var nom = document.getElementById('pub-nom-' + n).value.trim();
+  var lien = document.getElementById('pub-lien-' + n).value.trim();
+  var debut = document.getElementById('pub-debut-' + n).value || null;
+  var fin = document.getElementById('pub-fin-' + n).value || null;
+  var fichier = document.getElementById('pub-logo-' + n).files[0];
+  var existant = _pubAnnonces[n];
+  if (!nom) { alert('Le nom de l\'entreprise est obligatoire.'); return; }
+  if (lien && !/^https:\/\/\S{4,300}$/i.test(lien)) { alert('Le lien doit commencer par https://'); return; }
+  if (debut && fin && fin < debut) { alert('La date de fin est avant la date de début.'); return; }
+  var logoUrl = existant ? existant.logo_url : null, ancienChemin = null;
+  if (fichier) {
+    if (['image/png', 'image/jpeg', 'image/webp'].indexOf(fichier.type) === -1) { alert('Logo : PNG, JPEG ou WebP uniquement.'); return; }
+    if (fichier.size > 1048576) { alert('Logo trop lourd (1 Mo maximum).'); return; }
+    var ext = fichier.type === 'image/png' ? 'png' : fichier.type === 'image/webp' ? 'webp' : 'jpg';
+    var chemin = 'emplacement-' + n + '-' + Date.now() + '.' + ext;
+    var up = await sb.storage.from('pub-logos').upload(chemin, fichier, { contentType: fichier.type, upsert: false });
+    if (up.error) { alert('Erreur d\'envoi du logo : ' + up.error.message); return; }
+    if (existant && existant.logo_url && existant.logo_url.indexOf(PUB_URL_LOGOS) === 0) ancienChemin = existant.logo_url.slice(PUB_URL_LOGOS.length);
+    logoUrl = PUB_URL_LOGOS + chemin;
+  }
+  if (!logoUrl) { alert('Ajoute un logo pour cet emplacement.'); return; }
+  var { error } = await sb.from('pub_annonces').upsert({ position: n, nom: nom, lien: lien || null, logo_url: logoUrl, debut: debut, fin: fin, updated_at: new Date().toISOString() });
+  if (error) { alert('Erreur : ' + error.message); return; }
+  if (ancienChemin) await sb.storage.from('pub-logos').remove([ancienChemin]);
+  await chargerPub();
+}
+async function supprimerPub(n) {
+  var a = _pubAnnonces[n];
+  if (!a || !confirm('Vider l\'emplacement ' + n + ' (' + a.nom + ') ?')) return;
+  var { error } = await sb.from('pub_annonces').delete().eq('position', n);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  if (a.logo_url && a.logo_url.indexOf(PUB_URL_LOGOS) === 0) await sb.storage.from('pub-logos').remove([a.logo_url.slice(PUB_URL_LOGOS.length)]);
+  await chargerPub();
+}
 
 // ── Signalements de messages (modération) ──
 var _signalements = [];
@@ -323,7 +409,7 @@ function renderZonePrelevementPrestations() {
     '<div class="dcard">' +
       '<div class="dchdr"><span>Prélèvement mensuel — commission prestations</span></div>' +
       '<div class="dcbdy" style="padding:16px;">' +
-        '<p style="font-size:12.5px;color:var(--mu);margin-bottom:12px;">Calcule et débite, pour chaque artisan ayant une carte enregistrée, 7 % (5 % pour un artisan Pro) de la part au-dessus de 200 € de prestations "annuaire" sur le mois choisi. Un mois déjà traité n\'est jamais retraité.</p>' +
+        '<p style="font-size:12.5px;color:var(--mu);margin-bottom:12px;">Calcule et débite, pour chaque artisan ayant une carte enregistrée, 7 % (5 % pour un artisan Pro) de la part au-dessus de 200 € de prestations "annuaire" sur le mois choisi (le Pro offert compte comme Pro). Ce qui a déjà été payé en ligne ce mois-là est compté dans les 200 € et sa commission déjà prélevée est déduite : jamais deux fois. Un mois déjà traité n\'est jamais retraité.</p>' +
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">' +
           '<label style="font-size:12.5px;color:var(--mu2);">Mois à traiter :</label>' +
           '<input type="month" id="pp-mois" value="' + moisDernierISO().slice(0, 7) + '" style="padding:6px 10px;border-radius:7px;border:1px solid var(--brd);">' +
