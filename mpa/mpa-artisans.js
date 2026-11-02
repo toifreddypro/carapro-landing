@@ -559,18 +559,38 @@ async function verifierAlertesMpaAi() {
   }
 
   // 4 ter) Demandes de paiement non réglées : le silence est ce qui décourage l'artisan, on le lui dit.
+  // Le message donne tout ce qu'il faut pour agir sans chercher : client, montant, date de l'intervention, ancienneté de la demande,
+  // relances déjà envoyées, et un lien direct qui ouvre l'intervention.
   try {
-    var { data: impayes } = await sb.from('paiements_prestations').select('id, client_nom, montant, statut, created_at, annule_le')
+    var { data: impayes } = await sb.from('paiements_prestations').select('id, intervention_id, client_nom, montant, statut, created_at, annule_le, relances_nb, derniere_relance_le, relance_auto')
       .eq('artisan_id', _artisan.id).eq('type', 'solde').in('statut', ['en_attente', 'expire']).order('created_at', { ascending: true });
     var ilYa7j = Date.now() - 7 * 86400000;
     var enAttente = (impayes || []).filter(function(x) { return x.statut === 'en_attente' && Date.now() - new Date(x.created_at).getTime() > 2 * 86400000; });
     var expires = (impayes || []).filter(function(x) { return x.statut === 'expire' && x.annule_le && new Date(x.annule_le).getTime() > ilYa7j; });
     if ((enAttente.length || expires.length) && prefsMpaAi().paiements) {
-      var parties = [];
-      if (enAttente.length === 1) { var a1 = enAttente[0]; parties.push(escHtml(a1.client_nom || 'Un client') + ' n\'a pas encore payé ' + eurosMPA(a1.montant) + ' (demande envoyée il y a ' + Math.floor((Date.now() - new Date(a1.created_at).getTime()) / 86400000) + ' jours)'); }
-      else if (enAttente.length > 1) parties.push(enAttente.length + ' demandes de paiement ne sont pas encore réglées (' + eurosMPA(enAttente.reduce(function(t, x) { return t + Number(x.montant); }, 0)) + ' au total)');
-      if (expires.length) parties.push(expires.length === 1 ? 'le lien de ' + escHtml(expires[0].client_nom || 'un client') + ' a expiré sans paiement' : expires.length + ' liens ont expiré sans paiement');
-      mpaAiDire('💶 ' + parties.join(' ; ') + '. Ouvrez l\'intervention pour relancer votre client, copier le lien ou créer un nouveau lien.', 'warning',
+      var jourFR = function(iso) { return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: 'America/Guadeloupe' }); };
+      var lignePaiement = function(x) {
+        var inter = (typeof _interventionsCache !== 'undefined' && _interventionsCache) ? _interventionsCache.find(function(i) { return i.id === x.intervention_id; }) : null;
+        var service = inter && inter.artisans_services && inter.artisans_services.nom_service ? ' (' + escHtml(inter.artisans_services.nom_service) + ')' : '';
+        var quand = inter && inter.date_intervention ? 'Intervention du ' + escHtml(dateCourteFR(inter.date_intervention)) + service + ' · ' : '';
+        var jours = Math.floor((Date.now() - new Date(x.created_at).getTime()) / 86400000);
+        var nbR = Number(x.relances_nb || 0);
+        var relances = x.statut === 'expire' ? 'lien expiré' :
+          nbR >= 2 ? '2 relances envoyées (la dernière le ' + jourFR(x.derniere_relance_le) + ')' :
+          nbR === 1 ? '1 relance envoyée le ' + jourFR(x.derniere_relance_le) :
+          (x.relance_auto ? 'aucune relance encore (automatique pour votre offre)' : 'aucune relance envoyée');
+        var ouvrir = x.intervention_id ? ' <a href="#" onclick="mpaAiGrandFermer();ouvrirIntervention(\'' + escHtml(x.intervention_id) + '\');return false;" style="color:inherit;text-decoration:underline;white-space:nowrap;">Ouvrir →</a>' : '';
+        return '<strong>' + escHtml(x.client_nom || 'Un client') + '</strong> — ' + eurosMPA(x.montant) + '<br><span style="font-size:.92em;opacity:.85;">' + quand +
+          (x.statut === 'expire' ? 'demande du ' + jourFR(x.created_at) : 'demande envoyée il y a ' + jours + ' jour' + (jours > 1 ? 's' : '')) + ' · ' + relances + '</span>' + ouvrir;
+      };
+      var lignes = enAttente.concat(expires).slice(0, 6).map(function(x) { return '<div style="margin-top:8px;text-align:left;">' + lignePaiement(x) + '</div>'; }).join('');
+      var reste = enAttente.length + expires.length - 6;
+      var titreP = enAttente.length && expires.length
+        ? enAttente.length + ' demande' + (enAttente.length > 1 ? 's' : '') + ' de paiement en attente, ' + expires.length + ' lien' + (expires.length > 1 ? 's' : '') + ' expiré' + (expires.length > 1 ? 's' : '')
+        : enAttente.length ? (enAttente.length === 1 ? 'Une demande de paiement n\'est pas encore réglée' : enAttente.length + ' demandes de paiement ne sont pas encore réglées (' + eurosMPA(enAttente.reduce(function(t, x) { return t + Number(x.montant); }, 0)) + ' au total)')
+        : (expires.length === 1 ? 'Un lien de paiement a expiré sans règlement' : expires.length + ' liens de paiement ont expiré sans règlement');
+      mpaAiDire('💶 <strong>' + titreP + '</strong>' + lignes + (reste > 0 ? '<div style="margin-top:8px;">… et ' + reste + ' autre' + (reste > 1 ? 's' : '') + '.</div>' : '') +
+        '<div style="margin-top:10px;">Ouvrez l\'intervention pour relancer votre client, copier le lien ou créer un nouveau lien.</div>', 'warning',
         { label: 'Voir mon planning', action: "switchTab(2)" });
     }
   } catch (e) { /* table ou colonnes pas encore créées : rien à signaler */ }
