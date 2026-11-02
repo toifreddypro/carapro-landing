@@ -331,6 +331,56 @@ function toggleMpaAi() {
 })();
 
 // ── Déclencheurs proactifs propres au métier d'artisan ──
+// ── Premiers pas : liste « Pour être prêt à recevoir vos premiers clients » (en haut de Ma journée) ──
+// Les cases se cochent toutes seules d'après les vraies données de l'artisan. La carte disparaît quand tout est fait,
+// ou quand l'artisan la masque (réglage mpa_ai_prefs.premiers_pas_ferme, valable sur tous ses appareils). Aucune grande fenêtre, aucun message en plus.
+function etapesPremiersPas() {
+  var a = _artisan || {};
+  return [
+    { fait: !!a.photo_profil_url && String(a.bio || '').trim().length >= 20, icone: '🖼️', titre: 'Photo et présentation',
+      aide: 'Une photo et quelques lignes sur vous : c\'est ce que vos clients voient en premier dans l\'annuaire.', bouton: 'Compléter ma fiche', action: 'switchTab(1)' },
+    { fait: (_servicesCache || []).some(function(sv) { return Number(sv.prix_indicatif) > 0; }), icone: '🛠️', titre: 'Un premier service avec un prix',
+      aide: 'Ce que vous proposez et à quel tarif : les clients peuvent alors vous réserver.', bouton: 'Ajouter un service', action: 'switchTab(3)' },
+    { fait: (_horairesCache || []).length > 0, icone: '🕒', titre: 'Vos horaires',
+      aide: 'Les jours et heures où vous travaillez : ils alimentent vos disponibilités.', bouton: 'Régler mes horaires', action: 'switchTab(1)' },
+    { fait: a.stripe_connect_statut === 'actif', icone: '💳', titre: 'Les paiements en ligne',
+      aide: 'Sans cela, votre carte reste grisée dans l\'annuaire et vos clients ne peuvent pas vous réserver ni commander.', bouton: 'Activer les paiements', action: 'switchTab(4)' }
+  ];
+}
+function renderPremiersPas() {
+  var zone = document.getElementById('zone-premiers-pas');
+  if (!zone) return;
+  var prefs = (_artisan && _artisan.mpa_ai_prefs && typeof _artisan.mpa_ai_prefs === 'object') ? _artisan.mpa_ai_prefs : {};
+  var etapes = etapesPremiersPas();
+  var nbFaites = etapes.filter(function(x) { return x.fait; }).length;
+  if (!_artisan || prefs.premiers_pas_ferme === true || nbFaites === etapes.length) { zone.innerHTML = ''; return; }
+  var pct = Math.round(nbFaites / etapes.length * 100);
+  var lignes = etapes.map(function(x) {
+    return '<div style="display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--brd,#e3eaf4);' + (x.fait ? 'opacity:.6;' : '') + '">' +
+      '<div style="font-size:20px;line-height:1.2;">' + (x.fait ? '✅' : x.icone) + '</div>' +
+      '<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:13.5px;' + (x.fait ? 'text-decoration:line-through;' : '') + '">' + x.titre + '</div>' +
+      (x.fait ? '' : '<div style="font-size:12.5px;color:var(--mu2);margin-top:2px;line-height:1.5;">' + x.aide + '</div>') + '</div>' +
+      (x.fait ? '' : '<button type="button" class="addb" style="flex-shrink:0;white-space:nowrap;" onclick="' + x.action + '">' + x.bouton + ' →</button>') +
+    '</div>';
+  }).join('');
+  zone.innerHTML = '<div class="dcard" style="margin-bottom:16px;"><div class="dchdr"><div class="dctit">🚀 Pour être prêt à recevoir vos premiers clients</div>' +
+    '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--p2);color:var(--mu2);">' + nbFaites + ' / ' + etapes.length + '</span></div>' +
+    '<div class="dcbdy" style="padding:6px 16px 12px;">' +
+      '<div style="height:6px;border-radius:99px;background:var(--p2);overflow:hidden;margin:6px 0 4px;"><div style="height:100%;width:' + pct + '%;background:#0f9d78;border-radius:99px;transition:width .4s;"></div></div>' +
+      lignes +
+      '<div style="text-align:right;border-top:1px solid var(--brd,#e3eaf4);padding-top:8px;"><button type="button" onclick="masquerPremiersPas()" style="background:none;border:none;color:var(--mu);font-size:12px;cursor:pointer;text-decoration:underline;font-family:inherit;">Masquer cette liste</button></div>' +
+    '</div></div>';
+}
+async function masquerPremiersPas() {
+  var zone = document.getElementById('zone-premiers-pas');
+  if (zone) zone.innerHTML = '';
+  try {
+    var prefs = Object.assign({}, (_artisan.mpa_ai_prefs && typeof _artisan.mpa_ai_prefs === 'object') ? _artisan.mpa_ai_prefs : {}, { premiers_pas_ferme: true });
+    var r = await sb.from('artisans').update({ mpa_ai_prefs: prefs }).eq('id', _artisan.id).select('mpa_ai_prefs').single();
+    if (!r.error && r.data) _artisan.mpa_ai_prefs = r.data.mpa_ai_prefs;
+  } catch (e) { console.warn('premiers pas :', e && e.message); }
+}
+
 // ── Bilan mensuel « Essentiel contre Pro » ──
 // Une fois par mois (le mois écoulé, heure de la Guadeloupe), grande fenêtre de MPA-AI : ce que la commission a coûté
 // et ce que le Pro aurait changé (ou a changé). Chiffres calculés par la base (bilan_mensuel_commission), mêmes règles que le serveur.
@@ -422,7 +472,7 @@ async function verifierAlertesMpaAi() {
 
   // 3) Nouvel utilisateur — aucun client ni service configuré.
   if (!_clientsCache.length && !_servicesCache.length) {
-    mpaAiDire('Bienvenue sur MPA Artisans, ' + escHtml(nomAccueil()) + ' ! Commencez par ajouter un client habituel dans "Mon profil", ou ajoutez vos services dans "Mes interventions".', 'info');
+    mpaAiDire('Bienvenue sur MPA Artisans, ' + escHtml(nomAccueil()) + ' ! Suivez la liste « Pour être prêt à recevoir vos premiers clients » en haut de « Ma journée » : elle vous guide pas à pas.', 'info');
   }
 
   // 4) Demandes et commandes en attente — réutilise les chiffres déjà calculés par
@@ -584,6 +634,7 @@ async function verifierAlertesMpaAi() {
 var TAB_PANNEAUX = ['p-journee', 'p-profil', 'p0', 'p-interventions', 'p-ventes', 'p-livraisons', 'p-stock', 'p-compta'];
 var TAB_BOUTONS  = ['nt-planning', 'nt-profil', 'nt-planning', 'nt-interventions', 'nt-ventes', 'nt-livraisons', 'nt-stock', 'nt-compta'];
 function switchTab(i) {
+  if (i === 0 && typeof renderPremiersPas === 'function') setTimeout(renderPremiersPas, 0); // la liste « premiers pas » se remet à jour en revenant sur Ma journée
   document.querySelectorAll('#nav .ntab').forEach(function(b) { b.classList.remove('active'); });
   var bouton = document.getElementById(TAB_BOUTONS[i]);
   if (bouton) { bouton.classList.add('active'); if (bouton.style.display === 'none') bouton.style.display = ''; } // un onglet masqué qu'on ouvre quand même (lien de MPA-AI…) réapparaît
@@ -802,6 +853,7 @@ async function init() {
   rappelerStripeReservations();
   await verifierNouveautes();
   renderMonOffre();
+  renderPremiersPas();
   traiterRetourAbonnement(); // sans attendre : peut patienter jusqu'à 30 s le temps que Stripe prévienne le serveur
   setTimeout(mpaAiDemarrageFin, 2500); // laisse arriver les messages tardifs, puis montre la file de MPA-AI
 }
