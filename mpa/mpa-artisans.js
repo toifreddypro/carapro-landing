@@ -568,9 +568,15 @@ async function verifierAlertesMpaAi() {
     var enAttente = (impayes || []).filter(function(x) { return x.statut === 'en_attente' && Date.now() - new Date(x.created_at).getTime() > 2 * 86400000; });
     var expires = (impayes || []).filter(function(x) { return x.statut === 'expire' && x.annule_le && new Date(x.annule_le).getTime() > ilYa7j; });
     if ((enAttente.length || expires.length) && prefsMpaAi().paiements) {
+      var idsInter = enAttente.concat(expires).map(function(x) { return x.intervention_id; }).filter(Boolean);
+      var parInter = {};
+      if (idsInter.length) {
+        var rInter = await sb.from('mpa_artisans_interventions').select('id, date_intervention, artisans_services(nom_service)').in('id', idsInter);
+        (rInter.data || []).forEach(function(i) { parInter[i.id] = i; });
+      }
       var jourFR = function(iso) { return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: 'America/Guadeloupe' }); };
       var lignePaiement = function(x) {
-        var inter = (typeof _interventionsCache !== 'undefined' && _interventionsCache) ? _interventionsCache.find(function(i) { return i.id === x.intervention_id; }) : null;
+        var inter = parInter[x.intervention_id] || null;
         var service = inter && inter.artisans_services && inter.artisans_services.nom_service ? ' (' + escHtml(inter.artisans_services.nom_service) + ')' : '';
         var quand = inter && inter.date_intervention ? 'Intervention du ' + escHtml(dateCourteFR(inter.date_intervention)) + service + ' · ' : '';
         var jours = Math.floor((Date.now() - new Date(x.created_at).getTime()) / 86400000);
@@ -579,7 +585,7 @@ async function verifierAlertesMpaAi() {
           nbR >= 2 ? '2 relances envoyées (la dernière le ' + jourFR(x.derniere_relance_le) + ')' :
           nbR === 1 ? '1 relance envoyée le ' + jourFR(x.derniere_relance_le) :
           (x.relance_auto ? 'aucune relance encore (automatique pour votre offre)' : 'aucune relance envoyée');
-        var ouvrir = x.intervention_id ? ' <a href="#" onclick="mpaAiGrandFermer();ouvrirIntervention(\'' + escHtml(x.intervention_id) + '\');return false;" style="color:inherit;text-decoration:underline;white-space:nowrap;">Ouvrir →</a>' : '';
+        var ouvrir = x.intervention_id ? ' <a href="#" onclick="mpaAiGrandFermer();ouvrirInterventionParId(\'' + escHtml(x.intervention_id) + '\');return false;" style="color:inherit;text-decoration:underline;white-space:nowrap;">Ouvrir →</a>' : '';
         return '<strong>' + escHtml(x.client_nom || 'Un client') + '</strong> — ' + eurosMPA(x.montant) + '<br><span style="font-size:.92em;opacity:.85;">' + quand +
           (x.statut === 'expire' ? 'demande du ' + jourFR(x.created_at) : 'demande envoyée il y a ' + jours + ' jour' + (jours > 1 ? 's' : '')) + ' · ' + relances + '</span>' + ouvrir;
       };
@@ -2648,6 +2654,20 @@ function majVerrouLivraisonIntervention(commande, nouvelle) {
           : '<br>🕓 <strong>Livraison provisoire</strong> : le client n\'a encore reçu aucune date (il sera prévenu 2 jours avant). Vous pouvez la déplacer sans rien envoyer.')
       : 'Choisissez le <strong>jour, le créneau et les heures</strong>.');
   ban.style.display = 'block';
+}
+
+// Ouvre une intervention même si elle n'est pas dans le mois affiché au planning (ex. lien depuis un message de MPA-AI) : on va la chercher si besoin.
+async function ouvrirInterventionParId(id) {
+  if (!(_interventionsCache || []).some(function(x) { return x.id === id; })) {
+    var res = null;
+    for (var champs of ['nom, email, telephone', 'nom, email']) {
+      res = await sb.from('mpa_artisans_interventions').select('*, mpa_artisans_clients(' + champs + '), artisans_services(nom_service)').eq('id', id).eq('artisan_id', _artisan.id).maybeSingle();
+      if (!res.error || res.error.code !== '42703') break;
+    }
+    if (res.error || !res.data) { mpaAiDire('Je n\'ai pas retrouvé cette intervention. Cherchez-la dans le planning, au mois concerné.', 'warning'); return; }
+    _interventionsCache = (_interventionsCache || []).concat([res.data]); // le planning la remplacera au prochain chargement
+  }
+  return ouvrirIntervention(id);
 }
 
 async function ouvrirIntervention(id) {
@@ -7957,7 +7977,11 @@ async function dessinerCarteItineraire(interventions) {
           icon: L.divIcon({ className: '', html: '<div style="background:#fff;border:1px solid var(--brd,#e3eaf4);border-radius:7px;padding:2px 7px;font-size:11px;font-weight:700;color:#B5502F;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.15);">' + minutes + ' min · ' + km + ' km</div>', iconSize: null }),
         }).addTo(_itinMap);
       }
-    } catch (e) { console.warn('Tracé itinéraire échoué :', e); }
+      else { L.polyline([[a.latitude, a.longitude], [b.latitude, b.longitude]], { color: '#9aa7b8', weight: 3, opacity: 0.8, dashArray: '6 8' }).addTo(_itinMap); } // route introuvable : trait direct pointillé
+    } catch (e) {
+      console.warn('Tracé itinéraire échoué :', e);
+      try { L.polyline([[a.latitude, a.longitude], [b.latitude, b.longitude]], { color: '#9aa7b8', weight: 3, opacity: 0.8, dashArray: '6 8' }).addTo(_itinMap); } catch (e2) {}
+    }
   }
 }
 
