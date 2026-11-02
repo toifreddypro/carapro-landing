@@ -1062,20 +1062,20 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <p style="font-size:12.5px;color:var(--mu);margin-bottom:14px;">Vos kilomètres sont facturés automatiquement au client selon la distance, au moment de la commande. Mettez 0 € pour une livraison gratuite.<br><strong>Exemple :</strong> 0,50 € de forfait, 5 km inclus, 0,50 € par km au-delà. Pour 10 km, le client paie 3,00 € ; pour 30 km, 13,00 €. Gardez en tête que la distance compte à l'aller seulement, par la route.</p>
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
 <div>
-<label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;">Forfait de base (€)</label>
+<label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;" for="livraison-base">Forfait de base (€)</label>
 <input id="livraison-base" placeholder="ex : 0,5" min="0" oninput="afficherExempleLivraison()" step="0.5" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--b2);font-size:13px;" type="number"/>
 </div>
 <div>
-<label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;">Distance incluse (km)</label>
+<label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;" for="livraison-km-inclus">Distance incluse (km)</label>
 <input id="livraison-km-inclus" placeholder="ex : 5" min="0" oninput="afficherExempleLivraison()" step="1" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--b2);font-size:13px;" type="number"/>
 </div>
 <div>
-<label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;">€/km au-delà</label>
+<label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;" for="livraison-prix-km">€/km au-delà</label>
 <input id="livraison-prix-km" placeholder="ex : 0,5" min="0" oninput="afficherExempleLivraison()" step="0.1" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--b2);font-size:13px;" type="number"/>
 </div>
 </div>
 <div style="margin-top:14px;max-width:340px;">
-<label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;">Délai de préparation (jours)</label>
+<label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;" for="livraison-delai-jours">Délai de préparation (jours)</label>
 <input id="livraison-delai-jours" placeholder="7" min="0" max="30" step="1" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--b2);font-size:13px;" type="number"/>
 <div style="font-size:12px;color:var(--mu);margin-top:4px;">Le client est prévenu d'une livraison « entre J+délai et J+délai+6 jours » à partir de sa commande. Exemple : commande le 1er, délai de 7 jours → livraison estimée entre le 8 et le 14. Vous avez jusqu'au début de cette fenêtre pour passer la commande en « Prête ».</div>
 </div>
@@ -1232,7 +1232,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div>
 <div class="cpv2-fact-field">
-<label>Client</label>
+<label for="fact-client">Client</label>
 <select class="cpv2-select" id="fact-client" onchange="chargerPanierClient()">
 <option value="">— Choisir un client —</option>
 </select>
@@ -1340,8 +1340,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-box">
 <h3>Votre avis sur CaraLink Artisans</h3>
 <p style="font-size:13px;color:var(--mu);margin-bottom:14px;">Comment se passe votre expérience avec CaraLink Artisans et MPA Artisans ? Votre avis pourra être affiché sur nos pages, après vérification.</p>
-<div class="modal-field"><label>Nom à afficher (ex : votre prénom ou le nom de votre entreprise)</label><input id="ap-nom" placeholder="Ex : Le Cocon d'Auré" type="text"/></div>
-<div class="modal-field"><label>Votre avis</label><textarea id="ap-texte" placeholder="Qu'est-ce que CaraLink Artisans a changé pour vous ?" rows="4"></textarea></div>
+<div class="modal-field"><label for="ap-nom">Nom à afficher (ex : votre prénom ou le nom de votre entreprise)</label><input id="ap-nom" placeholder="Ex : Le Cocon d'Auré" type="text"/></div>
+<div class="modal-field"><label for="ap-texte">Votre avis</label><textarea id="ap-texte" placeholder="Qu'est-ce que CaraLink Artisans a changé pour vous ?" rows="4"></textarea></div>
 <div id="ap-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>
 <div id="ap-ok" style="display:none;color:#0f9d78;font-size:12.5px;margin-bottom:10px;"></div>
 <div class="modal-actions">
@@ -1398,14 +1398,14 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="mi-section mi-s-danger">
 <div class="mi-section-titre">↩️ Combien rendre au client</div>
 <div class="modal-field">
-<label>Montant à rembourser (€)</label>
+<label for="rb-montant">Montant à rembourser (€)</label>
 <input id="rb-montant" min="0.01" oninput="majApercuRemboursement()" step="0.01" type="number"/>
 </div>
 </div>
 <div class="mi-section mi-s-quand">
 <div class="mi-section-titre">💬 Pourquoi</div>
 <div class="modal-field">
-<label>Motif (facultatif)</label>
+<label for="rb-motif">Motif (facultatif)</label>
 <input id="rb-motif" maxlength="200" oninput="majStockSelonMotif()" placeholder="Ex : commande annulée, article indisponible" type="text"/>
 </div>
 <label id="rb-stock-ligne" style="display:none;align-items:flex-start;gap:8px;font-size:12.5px;margin-bottom:10px;cursor:pointer;line-height:1.4;"><input id="rb-stock" onchange="_rbStockTouche=true" style="margin-top:2px;" type="checkbox"/><span>Remettre les articles en stock <span style="color:var(--mu);">(si le stock du produit est suivi)</span></span></label>
@@ -1426,7 +1426,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
       Cette action est <strong>définitive et irréversible</strong>. Seront supprimés : votre fiche, vos services, vos photos, vos horaires, vos clients habituels, vos interventions, vos factures et vos demandes de devis. Votre abonnement en cours sera résilié.
     </p>
 <div class="modal-field">
-<label>Pour confirmer, tapez SUPPRIMER ci-dessous</label>
+<label for="suppr-confirm-texte">Pour confirmer, tapez SUPPRIMER ci-dessous</label>
 <input id="suppr-confirm-texte" placeholder="SUPPRIMER" type="text"/>
 </div>
 <div id="suppr-err" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:10px;"></div>
@@ -1443,7 +1443,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="mi-section mi-s-profil">
 <div class="mi-section-titre">🖼️ Mon profil public</div>
 <div class="modal-field">
-<label>Logo / Photo de profil</label>
+<label for="btn-logo">Logo / Photo de profil</label>
 <div style="display:flex;align-items:center;gap:14px;">
 <div id="apercu-logo" style="width:64px;height:64px;border-radius:50%;background:var(--p2,#f6f9fe);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:22px;color:var(--mu);">—</div>
 <div>
@@ -1453,45 +1453,45 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div>
 </div>
-<div class="modal-field"><label>Présentation (visible sur votre fiche publique)</label><textarea id="m-bio" rows="3"></textarea></div>
+<div class="modal-field"><label for="m-bio">Présentation (visible sur votre fiche publique)</label><textarea id="m-bio" rows="3"></textarea></div>
 </div>
 <div class="mi-section mi-s-entreprise">
 <div class="mi-section-titre">🏢 Mon entreprise</div>
-<div class="modal-field"><label>Nom / Raison sociale</label><input id="m-nom" type="text"/></div>
-<div class="modal-field"><label>Secteur</label><select id="m-secteur"></select></div>
+<div class="modal-field"><label for="m-nom">Nom / Raison sociale</label><input id="m-nom" type="text"/></div>
+<div class="modal-field"><label for="m-secteur">Secteur</label><select id="m-secteur"></select></div>
 <div class="modal-row" style="display:flex;gap:10px;flex-wrap:wrap;">
-<div class="modal-field" style="flex:1;min-width:140px;"><label>Statut</label><input id="m-statut" placeholder="Artisan Indépendant" type="text"/></div>
-<div class="modal-field" style="flex:1;min-width:140px;"><label>SIRET</label><input id="m-siret" type="text"/></div>
+<div class="modal-field" style="flex:1;min-width:140px;"><label for="m-statut">Statut</label><input id="m-statut" placeholder="Artisan Indépendant" type="text"/></div>
+<div class="modal-field" style="flex:1;min-width:140px;"><label for="m-siret">SIRET</label><input id="m-siret" type="text"/></div>
 </div>
 <div class="modal-row" style="display:flex;gap:10px;flex-wrap:wrap;">
-<div class="modal-field" style="flex:1;min-width:140px;"><label>APE</label><input id="m-ape" type="text"/></div>
-<div class="modal-field" style="flex:1;min-width:140px;"><label>N° TVA intra</label><input id="m-tva-intra" type="text"/></div>
+<div class="modal-field" style="flex:1;min-width:140px;"><label for="m-ape">APE</label><input id="m-ape" type="text"/></div>
+<div class="modal-field" style="flex:1;min-width:140px;"><label for="m-tva-intra">N° TVA intra</label><input id="m-tva-intra" type="text"/></div>
 </div>
 </div>
 <div class="mi-section mi-s-contact">
 <div class="mi-section-titre">📞 Me contacter</div>
 <div class="modal-row" style="display:flex;gap:10px;flex-wrap:wrap;">
-<div class="modal-field" style="flex:1;min-width:140px;"><label>Téléphone</label><input id="m-tel" type="text"/></div>
-<div class="modal-field" style="flex:1;min-width:140px;"><label>E-mail</label><input id="m-email" type="text"/></div>
+<div class="modal-field" style="flex:1;min-width:140px;"><label for="m-tel">Téléphone</label><input id="m-tel" type="text"/></div>
+<div class="modal-field" style="flex:1;min-width:140px;"><label for="m-email">E-mail</label><input id="m-email" type="text"/></div>
 </div>
-<div class="modal-field"><label>Site web</label><input id="m-web" type="text"/></div>
+<div class="modal-field"><label for="m-web">Site web</label><input id="m-web" type="text"/></div>
 </div>
 <div class="mi-section mi-s-lieu">
 <div class="mi-section-titre">📍 Où j'interviens</div>
-<div class="modal-field"><label>Adresse</label><input id="m-adr" type="text"/></div>
+<div class="modal-field"><label for="m-adr">Adresse</label><input id="m-adr" type="text"/></div>
 <div class="modal-row" style="display:flex;gap:10px;">
-<div class="modal-field" style="flex:1;"><label>Code postal</label><input id="m-cp" type="text"/></div>
-<div class="modal-field" style="flex:2;"><label>Commune</label><input id="m-com" type="text"/></div>
+<div class="modal-field" style="flex:1;"><label for="m-cp">Code postal</label><input id="m-cp" type="text"/></div>
+<div class="modal-field" style="flex:2;"><label for="m-com">Commune</label><input id="m-com" type="text"/></div>
 </div>
-<div class="modal-field"><label>Rayon d'intervention (km)</label><input id="m-rayon" type="number" value="15"/></div>
+<div class="modal-field"><label for="m-rayon">Rayon d'intervention (km)</label><input id="m-rayon" type="number" value="15"/></div>
 <div class="modal-field"><label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-weight:600;"><input id="m-distance" type="checkbox" style="margin-top:3px;"/><span>Je peux travailler à distance</span></label><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Cochée : vous recevez aussi les projets de clients qui n'ont pas besoin de déplacement (site web, assistance en ligne, conseil…), même hors de votre rayon d'intervention.</div></div>
 </div>
 <div class="mi-section mi-s-frais">
 <div class="mi-section-titre">💶 Rendez-vous, frais et annulation</div>
 <div class="modal-field"><label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-weight:600;"><input id="m-visite" type="checkbox" style="margin-top:3px;" onchange="window._visiteTouchee = true; majVisiteChamps();"/><span>Il me faut souvent aller voir le chantier avant de faire mon devis</span></label><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Cochée : vos clients peuvent vous demander de venir voir le chantier (un créneau de visite, avec vos frais de déplacement). Décochée : ils réservent directement un créneau, sans visite.</div></div>
-<div class="modal-field" id="m-frais-bloc"><label>Frais de déplacement pour une visite sur place (€) — facultatif</label><input id="m-frais" type="text" inputmode="decimal" placeholder="Ex. 25 — laissez vide : visite sans frais"/><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Le client paie votre déplacement en ligne dès sa demande : vous ne vous déplacez plus gratuitement, et la demande ne vous arrive qu'une fois payée. Il est remboursé automatiquement s'il annule dans votre délai gratuit, ou si vous refusez ou annulez. Nécessite vos paiements en ligne activés.</div></div>
-<div class="modal-field" id="m-resa-bloc"><label>Frais de réservation d'un créneau (€) — facultatif</label><input id="m-frais-resa" type="text" inputmode="decimal" placeholder="Ex. 10 — laissez vide : aucun frais"/><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">C'est un acompte payé en ligne par le client à la réservation (de 1 à 500 €). Il vous assure un revenu si le client manque le rendez-vous, et lui est renvoyé si c'est vous qui annulez, ou si vous ne répondez pas sous 48 h. Nécessite vos paiements en ligne activés.</div></div>
-<div class="modal-field" id="m-annul-bloc"><label>Annulation gratuite par le client</label><select id="m-annul-heures" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
+<div class="modal-field" id="m-frais-bloc"><label for="m-frais">Frais de déplacement pour une visite sur place (€) — facultatif</label><input id="m-frais" type="text" inputmode="decimal" placeholder="Ex. 25 — laissez vide : visite sans frais"/><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">Le client paie votre déplacement en ligne dès sa demande : vous ne vous déplacez plus gratuitement, et la demande ne vous arrive qu'une fois payée. Il est remboursé automatiquement s'il annule dans votre délai gratuit, ou si vous refusez ou annulez. Nécessite vos paiements en ligne activés.</div></div>
+<div class="modal-field" id="m-resa-bloc"><label for="m-frais-resa">Frais de réservation d'un créneau (€) — facultatif</label><input id="m-frais-resa" type="text" inputmode="decimal" placeholder="Ex. 10 — laissez vide : aucun frais"/><div style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">C'est un acompte payé en ligne par le client à la réservation (de 1 à 500 €). Il vous assure un revenu si le client manque le rendez-vous, et lui est renvoyé si c'est vous qui annulez, ou si vous ne répondez pas sous 48 h. Nécessite vos paiements en ligne activés.</div></div>
+<div class="modal-field" id="m-annul-bloc"><label for="m-annul-heures">Annulation gratuite par le client</label><select id="m-annul-heures" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
 <option value="0">Jamais — les frais restent acquis dès la confirmation</option>
 <option value="2">Jusqu'à 2 h avant le rendez-vous</option>
 <option value="6">Jusqu'à 6 h avant le rendez-vous</option>
@@ -1537,7 +1537,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-box">
 <h3>🏷️ Quel est le prix de cette intervention ?</h3>
 <p id="px-resume" style="font-size:13px;color:var(--mu2);margin:6px 0 10px;"></p>
-<div class="modal-field"><label>Prix total (€)</label><input id="px-prix" type="text" inputmode="decimal" placeholder="Ex. 120 ou 120,50"/>
+<div class="modal-field"><label for="px-prix">Prix total (€)</label><input id="px-prix" type="text" inputmode="decimal" placeholder="Ex. 120 ou 120,50"/>
 <div id="px-aide" style="font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;"></div></div>
 <div style="font-size:12px;color:var(--mu);line-height:1.5;margin-bottom:8px;">Ce prix compte dans votre chiffre d'affaires et sert à votre facture. Vous pourrez le modifier dans l'intervention.</div>
 <div id="px-erreur" style="display:none;color:var(--danger);font-size:12.5px;margin-bottom:8px;"></div>
@@ -1564,7 +1564,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-box">
 <h3>📅 Mon planning dans mon agenda</h3>
 <p style="font-size:13px;line-height:1.5;margin:0 0 12px;color:var(--mu2);">Collez ce lien <strong>une seule fois</strong> dans votre agenda : vos interventions s'y affichent, et toute modification dans MPA s'y retrouve ensuite automatiquement, avec un délai de quelques heures chez Google.</p>
-<div class="modal-field"><label>Votre lien privé</label>
+<div class="modal-field"><label for="ag-lien">Votre lien privé</label>
 <div style="display:flex;gap:8px;align-items:center;"><input id="ag-lien" readonly="" onclick="this.select()" type="text" style="flex:1;min-width:0;font-family:'JetBrains Mono',monospace;font-size:12px;"/><button class="addb" id="ag-copier" onclick="copierTextePartageArtisan('ag-lien', 'ag-copier')">📋 Copier</button></div></div>
 <div style="font-size:12.5px;line-height:1.6;color:var(--mu2);margin-bottom:12px;">
 <div id="ag-bloc-ios" style="margin-bottom:10px;padding:10px 12px;border:1px solid var(--brd);border-radius:10px;">
@@ -1600,9 +1600,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-box">
 <h3 id="pa-titre">🔗 Partager</h3>
 <p id="pa-intro" style="font-size:13px;line-height:1.5;margin:0 0 12px;color:var(--mu2);"></p>
-<div class="modal-field"><label>Le lien</label>
+<div class="modal-field"><label for="pa-lien">Le lien</label>
 <div style="display:flex;gap:8px;align-items:center;"><input id="pa-lien" readonly="" onclick="this.select()" type="text" style="flex:1;min-width:0;font-family:'JetBrains Mono',monospace;font-size:12px;"/><button class="addb" id="pa-copier-lien" onclick="copierTextePartageArtisan('pa-lien', 'pa-copier-lien')" style="flex-shrink:0;">📋 Copier</button></div></div>
-<div class="modal-field"><label>Un message prêt à envoyer à vos clients</label>
+<div class="modal-field"><label for="pa-message">Un message prêt à envoyer à vos clients</label>
 <textarea id="pa-message" readonly="" rows="3" onclick="this.select()" style="width:100%;box-sizing:border-box;font-family:inherit;font-size:13px;"></textarea>
 <button class="addb" id="pa-copier-message" onclick="copierTextePartageArtisan('pa-message', 'pa-copier-message')" style="margin-top:6px;">📋 Copier le message</button></div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
@@ -1686,20 +1686,20 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <h3>Ajouter un client habituel</h3>
 <div class="mi-section mi-s-quand">
 <div class="mi-section-titre">👤 Le client</div>
-<div class="modal-field"><label>Nom</label><input id="c-nom" type="text"/></div>
-<div class="modal-field"><label>Email (optionnel — nécessaire pour demander un avis)</label><input id="c-email" type="email"/></div>
+<div class="modal-field"><label for="c-nom">Nom</label><input id="c-nom" type="text"/></div>
+<div class="modal-field"><label for="c-email">Email (optionnel — nécessaire pour demander un avis)</label><input id="c-email" type="email"/></div>
 </div>
 <div class="mi-section mi-s-lieu">
 <div class="mi-section-titre">📍 Son adresse</div>
-<div class="modal-field"><label>Adresse</label><input id="c-adr" type="text"/></div>
+<div class="modal-field"><label for="c-adr">Adresse</label><input id="c-adr" type="text"/></div>
 <div class="modal-row" style="display:flex;gap:10px;">
-<div class="modal-field" style="flex:1;"><label>Code postal</label><input id="c-cp" type="text"/></div>
-<div class="modal-field" style="flex:2;"><label>Commune</label><input id="c-com" type="text"/></div>
+<div class="modal-field" style="flex:1;"><label for="c-cp">Code postal</label><input id="c-cp" type="text"/></div>
+<div class="modal-field" style="flex:2;"><label for="c-com">Commune</label><input id="c-com" type="text"/></div>
 </div>
 </div>
 <div class="mi-section mi-s-frais">
 <div class="mi-section-titre">💶 Paiement</div>
-<div class="modal-field"><label>Délai de paiement (jours)</label><input id="c-delai" type="number" value="30"/></div>
+<div class="modal-field"><label for="c-delai">Délai de paiement (jours)</label><input id="c-delai" type="number" value="30"/></div>
 <label style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;margin-top:8px;cursor:pointer;line-height:1.4;"><input type="checkbox" id="c-pas-avis" style="margin-top:3px;width:auto;"><span>Ne jamais lui suggérer de demande d'avis <span style="color:var(--mu);">(client sans e-mail ou outil informatique, client mécontent…)</span></span></label>
 </div>
 <div class="modal-actions">
@@ -1713,13 +1713,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <h3 id="modal-service-titre">Ajouter un service</h3>
 <div class="mi-section mi-s-quand">
 <div class="mi-section-titre">🛠️ Le service</div>
-<div class="modal-field"><label>Nom du service</label><input id="s-nom" placeholder="Ex : Tonte de pelouse" type="text"/></div>
-<div class="modal-field"><label>Description</label><input id="s-desc" placeholder="Ex : Entretien complet, évacuation des déchets comprise" type="text"/></div>
+<div class="modal-field"><label for="s-nom">Nom du service</label><input id="s-nom" placeholder="Ex : Tonte de pelouse" type="text"/></div>
+<div class="modal-field"><label for="s-desc">Description</label><input id="s-desc" placeholder="Ex : Entretien complet, évacuation des déchets comprise" type="text"/></div>
 </div>
 <div class="mi-section mi-s-frais">
 <div class="mi-section-titre">💶 Durée et tarif</div>
 <div class="modal-field">
-<label>Durée estimée</label>
+<label for="s-duree">Durée estimée</label>
 <div style="display:flex;align-items:center;gap:6px;">
 <input id="s-duree" min="0" placeholder="60" step="15" style="width:100px;" type="number"/>
 <span style="font-size:12px;color:var(--mu);">minutes</span>
@@ -1727,7 +1727,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu);margin-top:4px;">Sert de valeur de départ pour vos interventions — modifiable à chaque fois.</div>
 </div>
 <div class="modal-field">
-<label>Tarif indicatif</label>
+<label for="s-prix">Tarif indicatif</label>
 <div style="display:flex;align-items:center;gap:6px;">
 <input id="s-prix" min="0" step="0.5" style="width:100px;" type="number"/>
 <span style="font-size:13px;color:var(--mu);">€ /</span>
@@ -1748,7 +1748,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="mi-section mi-s-lieu">
 <div class="mi-section-titre">🔔 Rappel d'entretien (facultatif)</div>
 <div class="modal-field">
-<label>Rappeler mes clients tous les</label>
+<label for="s-rappel">Rappeler mes clients tous les</label>
 <div style="display:flex;align-items:center;gap:6px;">
 <select id="s-rappel" style="width:auto;min-width:150px;"><option value="">Aucun rappel</option><option value="1">1 mois</option><option value="2">2 mois</option><option value="3">3 mois</option><option value="6">6 mois</option><option value="12">12 mois (1 an)</option><option value="18">18 mois</option><option value="24">24 mois (2 ans)</option><option value="36">36 mois (3 ans)</option></select>
 </div>
@@ -1767,22 +1767,22 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <h3 id="modal-catalogue-titre">Ajouter un article au catalogue</h3>
 <div class="mi-section mi-s-quand">
 <div class="mi-section-titre">🛍️ L'article</div>
-<div class="modal-field"><label>Nom de l'article</label><input id="cat-nom" placeholder="Ex : Crème hydratante visage" type="text"/></div>
-<div class="modal-field"><label>Catégorie (facultatif)</label><input id="cat-categorie" placeholder="Ex : Soins visage, Gâteaux, Décoration…" type="text"/></div>
-<div class="modal-field"><label>Description</label><input id="cat-desc" placeholder="Ex : Hydratation longue durée, tous types de peau" type="text"/></div>
+<div class="modal-field"><label for="cat-nom">Nom de l'article</label><input id="cat-nom" placeholder="Ex : Crème hydratante visage" type="text"/></div>
+<div class="modal-field"><label for="cat-categorie">Catégorie (facultatif)</label><input id="cat-categorie" placeholder="Ex : Soins visage, Gâteaux, Décoration…" type="text"/></div>
+<div class="modal-field"><label for="cat-desc">Description</label><input id="cat-desc" placeholder="Ex : Hydratation longue durée, tous types de peau" type="text"/></div>
 </div>
 <div class="mi-section mi-s-frais">
 <div class="mi-section-titre">💶 Prix et disponibilité</div>
 <div class="modal-row" style="display:flex;gap:10px;flex-wrap:wrap;">
 <div class="modal-field" style="flex:1;min-width:130px;">
-<label>Prix</label>
+<label for="cat-prix">Prix</label>
 <div style="display:flex;align-items:center;gap:6px;">
 <input id="cat-prix" min="0" step="0.5" style="width:100px;" type="number"/>
 <span style="font-size:13px;color:var(--mu);">€</span>
 </div>
 </div>
 <div class="modal-field" style="flex:2;min-width:180px;">
-<label>Disponibilité</label>
+<label for="cat-type">Disponibilité</label>
 <select id="cat-type" onchange="document.getElementById('cat-delai-wrap').style.display = this.value === 'sur_commande' ? 'block' : 'none';">
 <option value="disponible">Disponible tout de suite</option>
 <option value="sur_commande">Sur commande</option>
@@ -1790,7 +1790,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div>
 <div class="modal-field" id="cat-delai-wrap" style="display:none;">
-<label>Délai de préparation</label>
+<label for="cat-delai">Délai de préparation</label>
 <input id="cat-delai" placeholder="Ex : 48h, 3-4 jours" type="text"/>
 </div>
 </div>
@@ -1798,12 +1798,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="mi-section-titre">📦 Stock</div>
 <div class="modal-row" style="display:flex;gap:10px;flex-wrap:wrap;">
 <div class="modal-field" style="flex:1;min-width:200px;">
-<label>Quantité en stock</label>
+<label for="cat-stock">Quantité en stock</label>
 <input id="cat-stock" min="0" placeholder="Laisser vide si illimité (ex : une formation)" step="1" type="number"/>
 <div style="font-size:11px;color:var(--mu);margin-top:4px;">Vide = toujours disponible, sans limite. Un nombre = suivi réel, mis à jour automatiquement à chaque vente.</div>
 </div>
 <div class="modal-field" style="flex:1;min-width:200px;" id="cat-seuil-wrap">
-<label>🔔 Seuil d'alerte (facultatif)</label>
+<label for="cat-seuil">🔔 Seuil d'alerte (facultatif)</label>
 <input id="cat-seuil" min="0" placeholder="Ex : 5" step="1" type="number"/>
 <div style="font-size:11px;color:var(--mu);margin-top:4px;">MPA AI vous prévient (message + email) quand le stock descend à ce nombre ou moins. Utile seulement si vous suivez un stock réel.</div>
 </div>
@@ -1812,13 +1812,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="mi-section mi-s-profil">
 <div class="mi-section-titre">📷 Photos</div>
 <div class="modal-field">
-<label>Photo principale</label>
+<label for="cat-photo-input">Photo principale</label>
 <input accept="image/*" id="cat-photo-input" type="file"/>
 <div style="font-size:11px;color:var(--mu);margin-top:4px;">📐 Idéal : une photo <strong>carrée</strong>, environ <strong>1000 × 1000 pixels</strong> (soit environ <strong>8,5 × 8,5 cm</strong> à l'impression) — sinon elle sera recadrée automatiquement au centre.</div>
 <div style="font-size:11px;color:var(--mu);margin-top:4px;">En modification : laissez vide pour garder la photo actuelle.</div>
 </div>
 <div class="modal-field" id="cat-photos-sup-wrap">
-<label>Photos supplémentaires (facultatif — jusqu'à 4)</label>
+<label for="cat-photos-sup-input">Photos supplémentaires (facultatif — jusqu'à 4)</label>
 <div id="cat-photos-sup" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;"></div>
 <input accept="image/*" id="cat-photos-sup-input" multiple="" onchange="ajouterPhotosSup()" type="file"/>
 <div style="font-size:11px;color:var(--mu);margin-top:4px;">Vos clients pourront les faire défiler et les agrandir sur votre boutique. Elles sont enregistrées en cliquant sur « Ajouter » ou « Enregistrer » en bas de cette fenêtre. La photo ci-dessus reste la photo principale, celle qu'on voit sur la vignette.</div>
@@ -1838,7 +1838,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <p id="imp-resume" class="mi-resume"></p>
 <div class="mi-section mi-s-statut">
 <div class="mi-section-titre">❓ Pourquoi</div>
-<div class="modal-field"><label>Motif</label>
+<div class="modal-field"><label for="imp-motif">Motif</label>
 <select id="imp-motif" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
 <option value="imprevu">Imprévu de dernière minute</option>
 <option value="maladie">Problème de santé</option>
@@ -1849,9 +1849,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 <div class="mi-section mi-s-quand">
 <div class="mi-section-titre">💬 Ce que reçoit votre client</div>
-<div class="modal-field"><label>Message pour votre client (facultatif)</label>
+<div class="modal-field"><label for="imp-message">Message pour votre client (facultatif)</label>
 <textarea id="imp-message" maxlength="500" rows="3" placeholder="Ex : Toutes mes excuses, je vous rappelle dès demain pour convenir d'un autre jour." style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;resize:vertical;"></textarea></div>
-<div class="modal-field"><label>Nouvelle date proposée (facultatif)</label>
+<div class="modal-field"><label for="imp-date">Nouvelle date proposée (facultatif)</label>
 <input id="imp-date" maxlength="100" placeholder="Ex : jeudi 22 octobre, le matin" type="text"/></div>
 </div>
 <div id="imp-note" class="mi-note"></div>
@@ -1867,7 +1867,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <p id="dp-resume" class="mi-resume"></p>
 <div class="mi-section mi-s-quand">
 <div class="mi-section-titre">💶 Le montant</div>
-<div class="modal-field"><label>Montant à payer (€)</label><input id="dp-montant" type="text" inputmode="decimal" placeholder="Ex. 180 ou 180,50"/>
+<div class="modal-field"><label for="dp-montant">Montant à payer (€)</label><input id="dp-montant" type="text" inputmode="decimal" placeholder="Ex. 180 ou 180,50"/>
 <div class="mi-aide">Saisissez le montant de votre devis / de votre facture. Si le client a déjà payé des frais en ligne, tenez-en compte.</div></div>
 </div>
 <div class="mi-section mi-s-frais" id="dp-geste-bloc">
@@ -1883,8 +1883,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div id="dp-remises-info" class="mi-note"></div>
 <div class="mi-section mi-s-client">
 <div class="mi-section-titre">✉️ Ce que voit votre client</div>
-<div class="modal-field"><label>Pour quoi ? (facultatif — visible par le client)</label><input id="dp-description" maxlength="300" placeholder="Ex : Remplacement du chauffe-eau" type="text"/></div>
-<div class="modal-field" id="dp-email-wrap"><label>Email du client</label><input id="dp-email" type="email" placeholder="client@exemple.com"/></div>
+<div class="modal-field"><label for="dp-description">Pour quoi ? (facultatif — visible par le client)</label><input id="dp-description" maxlength="300" placeholder="Ex : Remplacement du chauffe-eau" type="text"/></div>
+<div class="modal-field" id="dp-email-wrap"><label for="dp-email">Email du client</label><input id="dp-email" type="email" placeholder="client@exemple.com"/></div>
 </div>
 <div class="mi-section mi-s-profil">
 <div class="mi-section-titre">🔁 Relance</div>
@@ -1911,15 +1911,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div style="font-size:11px;color:var(--mu);margin-top:4px;">« Payée » s'applique toute seule quand le client paie en ligne, ou avec le bouton « 💵 Payé en main propre » d'une intervention terminée.</div>
 </div>
 <div class="modal-field" id="mi-date-paiement-wrap" style="display:none;">
-<label>Date de paiement réelle</label>
+<label for="mi-date-paiement">Date de paiement réelle</label>
 <input id="mi-date-paiement" type="date"/>
 </div>
 </div>
 <div class="mi-section mi-s-quand">
 <div class="mi-section-titre">📅 Quand</div>
 <div class="modal-row" style="display:flex;gap:10px;flex-wrap:wrap;">
-<div class="modal-field" style="flex:1;min-width:150px;"><label>Date</label><input id="mi-date" onchange="calculerCreneaux()" type="date"/></div>
-<div class="modal-field" style="flex:1;min-width:150px;"><label>Créneau</label>
+<div class="modal-field" style="flex:1;min-width:150px;"><label for="mi-date">Date</label><input id="mi-date" onchange="calculerCreneaux()" type="date"/></div>
+<div class="modal-field" style="flex:1;min-width:150px;"><label for="mi-creneau">Créneau</label>
 <select id="mi-creneau" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;">
 <option value="matin">☀️ Matin</option>
 <option value="apres_midi">🌇 Après-midi</option>
@@ -1927,40 +1927,40 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div>
 <div class="modal-field" id="mi-creneaux-wrap">
-<label>Créneaux possibles</label>
-<div id="mi-creneaux-zone" style="font-size:11.5px;color:var(--mu);">Renseignez la date, l'adresse et la durée pour voir les créneaux qui tiennent compte de vos trajets.</div>
+<div id="mi-creneaux-titre" style="display:block;font-size:12px;font-weight:600;color:var(--mu);margin-bottom:5px;">Créneaux possibles</div>
+<div id="mi-creneaux-zone" role="group" aria-labelledby="mi-creneaux-titre" style="font-size:11.5px;color:var(--mu);">Renseignez la date, l'adresse et la durée pour voir les créneaux qui tiennent compte de vos trajets.</div>
 </div>
 <div class="modal-row" style="display:flex;gap:10px;">
-<div class="modal-field" style="flex:1;"><label>Heure début</label><input id="mi-heure-debut" onchange="recalculerHeureFin()" type="time"/></div>
-<div class="modal-field" style="flex:1;"><label>Heure fin</label><input id="mi-heure-fin" type="time"/></div>
+<div class="modal-field" style="flex:1;"><label for="mi-heure-debut">Heure début</label><input id="mi-heure-debut" onchange="recalculerHeureFin()" type="time"/></div>
+<div class="modal-field" style="flex:1;"><label for="mi-heure-fin">Heure fin</label><input id="mi-heure-fin" type="time"/></div>
 </div>
 </div>
 <div class="mi-section mi-s-client">
 <div class="mi-section-titre">👤 Client et lieu</div>
-<div class="modal-field"><label>Client</label>
+<div class="modal-field"><label for="mi-client">Client</label>
 <select id="mi-client" onchange="preRemplirAdresseIntervention()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;"></select>
 <div id="mi-client-note" style="display:none;font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">🔒 Ce client vient de l'annuaire CaraLink : il ne peut pas être changé sur cette intervention.</div>
 </div>
-<div class="modal-field"><label>Adresse de l'intervention</label><input id="mi-adr" oninput="calculerCreneaux()" placeholder="Peut différer de l'adresse habituelle du client" type="text"/></div>
+<div class="modal-field"><label for="mi-adr">Adresse de l'intervention</label><input id="mi-adr" oninput="calculerCreneaux()" placeholder="Peut différer de l'adresse habituelle du client" type="text"/></div>
 <div class="modal-row" style="display:flex;gap:10px;">
-<div class="modal-field" style="flex:1;"><label>Code postal</label><input id="mi-cp" oninput="calculerCreneaux()" type="text"/></div>
-<div class="modal-field" style="flex:2;"><label>Commune</label><input id="mi-com" oninput="calculerCreneaux()" type="text"/></div>
+<div class="modal-field" style="flex:1;"><label for="mi-cp">Code postal</label><input id="mi-cp" oninput="calculerCreneaux()" type="text"/></div>
+<div class="modal-field" style="flex:2;"><label for="mi-com">Commune</label><input id="mi-com" oninput="calculerCreneaux()" type="text"/></div>
 </div>
 </div>
 <div class="mi-section mi-s-presta">
 <div class="mi-section-titre">🛠️ Prestation et prix</div>
-<div class="modal-field"><label>Service</label>
+<div class="modal-field"><label for="mi-service">Service</label>
 <select id="mi-service" onchange="preRemplirDureeIntervention()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;"></select>
 </div>
 <div class="modal-row" style="display:flex;gap:10px;">
 <div class="modal-field" style="flex:1;">
-<label>Durée estimée (min)</label>
+<label for="mi-duree">Durée estimée (min)</label>
 <input id="mi-duree" min="0" oninput="surDureeChangee()" placeholder="60" step="15" type="number"/>
 </div>
-<div class="modal-field" style="flex:1;"><label>Prix (€)</label><input id="mi-prix" oninput="this.dataset.auto='0'" step="0.01" type="number"/></div>
+<div class="modal-field" style="flex:1;"><label for="mi-prix">Prix (€)</label><input id="mi-prix" oninput="this.dataset.auto='0'" step="0.01" type="number"/></div>
 </div>
 <div id="mi-prix-hint" style="font-size:11.5px;color:var(--mu);margin:-6px 0 10px;line-height:1.4;"></div>
-<div class="modal-field"><label>Notes</label><input id="mi-notes" placeholder="Optionnel" type="text"/></div>
+<div class="modal-field"><label for="mi-notes">Notes</label><input id="mi-notes" placeholder="Optionnel" type="text"/></div>
 </div>
 <div class="modal-actions">
 <button class="btn-primary" onclick="sauverIntervention()">Enregistrer</button>
@@ -2065,10 +2065,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <h3 id="titre-modal-fourniture">Nouvelle fourniture</h3>
 <div class="mi-section mi-s-lieu">
 <div class="mi-section-titre">📦 Le produit</div>
-<div class="modal-field"><label>Nom</label><input id="fourn-nom" placeholder="Ex : Vernis rouge, Farine, Dissolvant…" type="text"/></div>
+<div class="modal-field"><label for="fourn-nom">Nom</label><input id="fourn-nom" placeholder="Ex : Vernis rouge, Farine, Dissolvant…" type="text"/></div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-<div class="modal-field"><label>Quantité actuelle</label><input id="fourn-quantite" min="0" step="0.1" type="number" value="0"/></div>
-<div class="modal-field"><label>Unité</label>
+<div class="modal-field"><label for="fourn-quantite">Quantité actuelle</label><input id="fourn-quantite" min="0" step="0.1" type="number" value="0"/></div>
+<div class="modal-field"><label for="fourn-unite">Unité</label>
 <select id="fourn-unite">
 <option value="unité">unité(s)</option>
 <option value="g">g</option>
@@ -2082,7 +2082,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 <div class="mi-section mi-s-frais">
 <div class="mi-section-titre">🔔 Alerte de stock bas</div>
-<div class="modal-field"><label>Seuil d'alerte (optionnel)</label><input id="fourn-seuil" min="0" placeholder="Ex : 5 — prévenu si le stock passe en dessous" step="0.1" type="number"/>
+<div class="modal-field"><label for="fourn-seuil">Seuil d'alerte (optionnel)</label><input id="fourn-seuil" min="0" placeholder="Ex : 5 — prévenu si le stock passe en dessous" step="0.1" type="number"/>
 <div class="mi-aide">Quand la quantité passe sous ce chiffre, je vous préviens pour recommander à temps.</div></div>
 </div>
 <div class="modal-actions">
