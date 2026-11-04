@@ -522,6 +522,65 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 }
 .bt-c{display:none;}
 @media(max-width:640px){.bt-c{display:inline;}}
+
+/* ── Ma comptabilité : version téléphone (chiffres clairs, cartes arrondies) — ordinateur inchangé ── */
+.cx-only{display:none;}
+@media(max-width:640px){
+  .cx-only{display:block;}
+  #p-compta .cpv2-card,#p-compta .dcard,#p-compta .dash-jauge-card{border:1px solid #e3e3e3 !important;border-radius:18px !important;box-shadow:none !important;background:#fff;padding:16px;}
+  #p-compta .dcard{padding:0;}
+  #p-compta .cpv2-page-wrap{gap:14px;}
+  #conteneur-compta>.bpnl:first-child .cpv2-card:first-child .cpv2-matrix-headtext,
+  #conteneur-compta>.bpnl:first-child .cpv2-kpis,#compta-recap-hint,#compta-recap-wrap,#compta-mobile,
+  #p-compta .cpv2-matrix-note,#p-compta .scroll-hint{display:none !important;}
+  #conteneur-compta>.bpnl:first-child .cpv2-card:first-child .cpv2-matrix-head{margin-bottom:12px;}
+  .cpv2-toggle button{padding:8px 14px;font-size:13px;}
+  .cx-per{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .cx-per button{width:42px;height:42px;border-radius:50%;border:1px solid #e3e3e3;background:#fff;font-size:24px;line-height:1;cursor:pointer;color:#111;padding:0 0 3px;}
+  .cx-per button:disabled{color:#d4d4d4;}
+  .cx-per span{font-size:17px;font-weight:800;color:#111;}
+  .cx-carte{border:1px solid #e3e3e3;border-radius:18px;padding:22px 16px;text-align:center;background:#fff;margin-bottom:12px;}
+  .cx-carte.net{border-color:#bfe6d6;}
+  .cx-lib{font-size:15px;font-weight:700;color:#8a8580;}
+  .cx-gros{font-family:'Bricolage Grotesque',sans-serif;font-size:46px;font-weight:800;color:#111;letter-spacing:-1px;margin-top:6px;line-height:1.1;}
+  .cx-carte.net .cx-gros{color:#0f9d78;}
+  .cx-sous{font-size:13.5px;color:#8a8580;font-weight:600;margin-top:6px;}
+  .cx-lg{display:flex;align-items:center;gap:12px;border:1px solid #e3e3e3;border-radius:16px;padding:14px 16px;margin-bottom:10px;background:#fff;}
+  .cx-lg i{font-style:normal;font-size:24px;}
+  .cx-lg span{flex:1;font-size:16px;font-weight:700;color:#111;text-align:left;}
+  .cx-lg b{font-size:17px;font-weight:800;color:#111;}
+  .cx-barres{display:flex;align-items:flex-end;gap:10px;height:150px;margin-top:16px;}
+  .cx-bcol{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px;}
+  .cx-bar{width:100%;border-radius:10px 10px 4px 4px;background:#dbe4f0;min-height:3px;}
+  .cx-bcol.now .cx-bar{background:var(--ac);}
+  .cx-bcol small{font-size:11.5px;font-weight:700;color:#8a8580;}
+  .cx-best{text-align:center;font-size:14.5px;font-weight:700;color:#0f9d78;margin-top:14px;}
+  #p-compta .dcard,#p-compta .dash-jauge-card,#p-compta .cpv2-card{border-left-width:1px !important;}
+  #p-compta .dchdr.fam-vert{background:#fff !important;}
+  .rappel-cloture>span:first-child{display:none;}
+  .rappel-cloture{display:block !important;padding:14px !important;margin-bottom:12px !important;border-radius:16px !important;}
+  .rappel-cloture>div{font-size:14px !important;color:#111 !important;line-height:1.4;}
+  .rappel-cloture strong{color:#111 !important;}
+  .rappel-cloture .rc-sep{display:none;}
+  .rappel-cloture .rc-2{display:block;color:#8a8580;font-size:13px;margin-top:4px;}
+  .rappel-cloture button{border:0 !important;background:none !important;padding:8px 0 0 !important;color:var(--ac) !important;font-size:13.5px !important;}
+  .rep-mob>.cpv2-matrix-head{cursor:pointer;margin-bottom:0 !important;align-items:center;}
+  .rep-mob>.cpv2-matrix-head::after{content:"›";font-size:26px;color:#8a8580;transition:transform .2s;}
+  .rep-mob.ouvert>.cpv2-matrix-head::after{transform:rotate(90deg);}
+  .rep-mob.ouvert>.cpv2-matrix-head{margin-bottom:14px !important;}
+  .rep-mob:not(.ouvert)>*:not(.cpv2-matrix-head){display:none !important;}
+  .rep-mob .cpv2-matrix-subtitle{display:none;}
+  #tbl-factures thead{display:none;}
+  #tbl-factures,#tbl-factures tbody{display:block;width:100%;}
+  #tbl-factures tr{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:14px;border:1px solid #e3e3e3;border-radius:16px;margin-bottom:10px;background:#fff;}
+  #tbl-factures td{display:block;border:0 !important;padding:0 !important;}
+  #tbl-factures td:nth-child(2){grid-column:1;grid-row:1;font-weight:800;font-size:16px;color:#111;}
+  #tbl-factures td:nth-child(1){grid-column:1;grid-row:2;font-size:13px;color:#8a8580;}
+  #tbl-factures td:nth-child(3){grid-column:1;grid-row:3;font-size:13px;color:#8a8580;}
+  #tbl-factures td:nth-child(4){grid-column:2;grid-row:1/4;align-self:center;font-weight:800;font-size:17px;color:var(--ac);}
+  #tbl-factures td:nth-child(5){grid-column:1/-1;grid-row:4;margin-top:8px;}
+  #tbl-factures td[colspan]{grid-column:1/-1;}
+}
 /* ── Tableau de bord ── */
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 @media(max-width:900px){.dash-grid{grid-template-columns:1fr;}}
@@ -1280,6 +1339,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div>
 </div>
+<div id="cx-ca" class="cx-only"></div>
 <div class="cpv2-kpis">
 <div class="cpv2-kpi">
 <span class="cpv2-kpi-lbl">CA brut (année)</span>
@@ -1308,7 +1368,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <p class="cpv2-matrix-note" id="compta-note">💡 Vue <strong>Production</strong> : le CA est rangé dans le mois de l'intervention, dès qu'elle est marquée "Terminée" ou "Payée".</p>
 <p class="cpv2-matrix-note" id="compta-note-cotis"></p>
 </div>
-<div class="cpv2-card" id="compta-stats-bloc" style="margin-top:16px;">
+<div class="cpv2-card rep-mob" id="compta-stats-bloc" style="margin-top:16px;">
 <div class="cpv2-matrix-head">
 <div class="cpv2-matrix-headtext">
 <p class="cpv2-matrix-title">📈 <span>Statistiques</span></p>
@@ -1345,7 +1405,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div>
 </div>
-<div class="cpv2-card" id="compta-client-bloc" style="margin-top:16px;">
+<div class="cpv2-card rep-mob" id="compta-client-bloc" style="margin-top:16px;">
 <div class="cpv2-matrix-head">
 <div class="cpv2-matrix-headtext">
 <p class="cpv2-matrix-title">👥 <span>Détail par client</span> <span class="dbg pu" style="font-size:10px;">PRO</span></p>
@@ -1410,6 +1470,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div></div><div class="bpnl"><div id="encart-rappel-cloture"></div><div id="encart-abonnement"></div><div class="dash-grid">
 <div>
+<div id="cx-barres" class="cx-only"></div>
 <div class="dash-jauge-card" id="carte-ca-mois">
 <div class="dj-header">
 <div class="dj-icon" style="background:rgba(15,157,120,.1);">
@@ -1476,7 +1537,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div>
 </div>
-</div></div><div class="bpnl"><div class="dcard" style="margin-top:16px;">
+</div></div><div class="bpnl"><div id="cx-annee" class="cx-only"></div><div class="dcard" style="margin-top:16px;">
 <div class="dchdr fam-vert">
 <div class="dctit" id="recap-int-titre">📊 Mes interventions du mois</div>
 <div class="mois-nav"><button type="button" onclick="moisPrecedent()" aria-label="Mois précédent">◀</button><button type="button" onclick="moisSuivant()" aria-label="Mois suivant">▶</button></div>
@@ -2330,6 +2391,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261104152009"></script>
+<script src="/mpa/mpa-artisans.js?v=20261104153842"></script>
 </body>
 </html>

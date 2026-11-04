@@ -4005,7 +4005,51 @@ function renderStatistiques(vue, annee, pro) {
   });
 }
 
+// ── Version téléphone : chiffres clairs en grandes cartes (même données que le tableau de l'ordinateur) ──
+function _eurM(v) { if (Math.abs(v) >= 10) v = Math.round(v); var p = _fmtCA(v).split(','); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f'); return p.join(',') + ' €'; }
+function renderComptaV2(parFam, cols, curIdx, isCurYear) {
+  var zone = document.getElementById('cx-ca'); if (!zone) return;
+  var reel = _vueCompta === 'reel';
+  function brutMois(m) { return FAMILLES_CA.reduce(function(s, f) { return s + (parFam[f][m] || 0); }, 0); }
+  // 1) Période choisie (mois ou trimestre) : gros chiffre, ce qu'il reste, détail par famille
+  var idx = _comptaMobilePeriode === null || _comptaMobilePeriode >= cols.length ? (isCurYear ? curIdx : 0) : _comptaMobilePeriode;
+  var ms = cols[idx].m, trim = ms.length > 1;
+  function somme(arr) { return ms.reduce(function(s, m) { return s + (arr[m] || 0); }, 0); }
+  var totB = 0, totC = 0, lignes = '';
+  FAMILLES_CA.forEach(function(f) {
+    var b = somme(parFam[f]); totB += b; totC += cotisationsFamille(f, b);
+    lignes += '<div class="cx-lg"><i>' + _FAM_LIBELLE[f].split(' ')[0] + '</i><span>' + _FAM_LIBELLE[f].replace(/^\S+\s/, '').replace('Ventes boutique', 'Boutique') + '</span><b>' + (b ? _eurM(b) : '—') + '</b></div>';
+  });
+  var cour = isCurYear && idx === curIdx;
+  var nomMois = MOIS_NOMS[ms[0] - 1]; nomMois = nomMois.charAt(0).toUpperCase() + nomMois.slice(1);
+  var lib = trim ? (cour ? 'Ce trimestre' : cols[idx].l + ' ' + _anneeCompta) : (cour ? 'Ce mois-ci' : nomMois + ' ' + _anneeCompta);
+  zone.innerHTML =
+    '<div class="cx-per"><button onclick="choisirPeriodeComptaMobile(' + (idx - 1) + ')"' + (idx <= 0 ? ' disabled' : '') + ' aria-label="Avant">‹</button><span>' + lib + '</span><button onclick="choisirPeriodeComptaMobile(' + (idx + 1) + ')"' + (idx >= cols.length - 1 ? ' disabled' : '') + ' aria-label="Après">›</button></div>' +
+    '<div class="cx-carte"><div class="cx-lib">💶 ' + (reel ? 'Encaissé' : 'Gagné') + '</div><div class="cx-gros">' + _eurM(totB) + '</div><div class="cx-sous">avant cotisations</div></div>' +
+    '<div class="cx-carte net"><div class="cx-lib">Il vous reste environ</div><div class="cx-gros">' + _eurM(totB - totC) + '</div><div class="cx-sous">après ' + _eurM(totC) + ' de cotisations estimées</div></div>' + lignes;
+  // 2) Tableau de bord : les 6 derniers mois en barres
+  var zb = document.getElementById('cx-barres');
+  if (zb) {
+    var fin = isCurYear ? new Date().getMonth() + 1 : 12, deb = Math.max(1, fin - 5), vals = [], max = 0, best = null;
+    for (var m = deb; m <= fin; m++) { var v = brutMois(m); vals.push({ m: m, v: v }); if (v > max) max = v; if (!best || v > best.v) best = { m: m, v: v }; }
+    zb.innerHTML = '<div class="cx-carte" style="text-align:left"><div class="cx-lib">📈 Vos ' + (vals.length > 1 ? vals.length + ' derniers mois' : 'mois') + '</div>' +
+      '<div class="cx-barres">' + vals.map(function(x) { return '<div class="cx-bcol' + (isCurYear && x.m === fin ? ' now' : '') + '"><div class="cx-bar" style="height:' + (max ? Math.round(x.v / max * 100) : 0) + '%"></div><small>' + MOIS_COURTS[x.m - 1] + '</small></div>'; }).join('') + '</div>' +
+      (best && best.v > 0 && vals.length > 1 ? '<div class="cx-best">⭐ ' + (function() { var n = MOIS_NOMS[best.m - 1]; return n.charAt(0).toUpperCase() + n.slice(1); })() + ' est votre meilleur mois</div>' : '') + '</div>';
+  }
+  // 3) Résultats : l'année en un chiffre
+  var za = document.getElementById('cx-annee');
+  if (za) {
+    var an = 0; for (var k = 1; k <= 12; k++) an += brutMois(k);
+    za.innerHTML = '<div class="cx-carte"><div class="cx-lib">🏆 Votre année ' + _anneeCompta + '</div><div class="cx-gros">' + _eurM(an) + '</div><div class="cx-sous">' + (reel ? 'encaissés' : 'gagnés') + ' ' + (isCurYear ? 'depuis janvier' : 'sur l\'année') + '</div></div>';
+  }
+}
+document.addEventListener('click', function(e) {
+  var t = e.target.closest && e.target.closest('.rep-mob>.cpv2-matrix-head');
+  if (t && window.innerWidth <= 640) t.parentElement.classList.toggle('ouvert');
+});
+
 function renderComptaMobile(parFam, parClient, clients, cols, curIdx, isCurYear, pro) {
+  if (_erreurCompta !== true) renderComptaV2(parFam, cols, curIdx, isCurYear);
   var zonePeriodes = document.getElementById('compta-mobile-periodes');
   var zoneListe = document.getElementById('compta-mobile-liste');
   if (!zonePeriodes || !zoneListe) return;
