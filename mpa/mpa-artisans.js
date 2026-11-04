@@ -6895,14 +6895,14 @@ function renderCatalogueGrille() {
 }
 
 // ── Version téléphone : chaque produit = une ligne épurée (photo, nom, état, prix) ; tout le détail s'ouvre au clic, posé par-dessus la liste. ──
-function pcWrap(prefixe, c, plein, sous, couleurSous) {
+function pcWrap(prefixe, c, plein, sous, couleurSous, etiquette) {
   var photo = c.url_photo
     ? '<img class="pl-photo" src="' + escHtml(c.url_photo) + '" alt="">'
     : '<div class="pl-photo pl-vide">📦</div>';
   return '<div class="pc-wrap" data-fid="' + prefixe + c.id + '">' +
     '<div class="pc-ligne" onclick="ouvrirFicheMobile(this)">' + photo +
       '<div class="pl-txt"><div class="pl-nom">' + escHtml(c.nom) + '</div><div class="pl-sous"' + (couleurSous ? ' style="color:' + couleurSous + '"' : '') + '>' + sous + '</div></div>' +
-      (c.prix != null ? '<div class="pl-prix">' + c.prix + ' €</div>' : '') +
+      (etiquette ? '<div class="pl-droite">' + (c.prix != null ? '<div class="pl-prix">' + c.prix + ' €</div>' : '') + etiquette + '</div>' : (c.prix != null ? '<div class="pl-prix">' + c.prix + ' €</div>' : '')) +
     '</div>' + plein + '</div>';
 }
 var _ficheMobile = null;
@@ -6964,8 +6964,8 @@ function renderProduitsStock() {
         '<button onclick="toggleEnVenteCatalogue(\'' + c.id + '\')" style="display:block;width:100%;margin-top:8px;padding:6px;border-radius:7px;border:1px solid ' + (enVente ? 'var(--brd)' : 'var(--ac)') + ';background:transparent;color:' + (enVente ? 'var(--mu2)' : 'var(--ac)') + ';font-size:11.5px;font-weight:700;cursor:pointer;">' + (enVente ? 'Retirer de la vente' : 'Mettre en vente') + '</button>' +
       '</div>' +
     '</div>';
-    var sousStk = (stockBas ? '⚠️ ' : stockAlerte ? '🔔 ' : '') + stockTexte + (enVente ? '' : ' · Pas en vente');
-    return pcWrap('stk-', c, plein, sousStk, stockBas ? 'var(--danger)' : stockAlerte ? '#b45309' : '');
+    var sousStk = (stockBas ? '⚠️ ' : stockAlerte ? '🔔 ' : '') + stockTexte;
+    return pcWrap('stk-', c, plein, sousStk, stockBas ? 'var(--danger)' : stockAlerte ? '#b45309' : '', '<span class="pl-etiq' + (enVente ? '' : ' non') + '">' + (enVente ? 'En vente' : 'Pas en vente') + '</span>');
   }).join('');
   rafraichirFicheMobile();
 }
@@ -8366,6 +8366,9 @@ async function chargerFournitures() {
 
 function renderFournituresListe() {
   var zone = document.getElementById('zone-fournitures');
+  var zm = document.getElementById('zone-fournitures-m');
+  if (zm) zm.innerHTML = _fournituresCache.length ? _fournituresCache.map(carteFournitureMobile).join('') : '<div class="etat-vide-tbl">Aucune fourniture pour l\'instant.</div>';
+  rafraichirFicheMobile();
   if (!_fournituresCache.length) {
     zone.innerHTML = '<div class="etat-vide-tbl">Aucune fourniture pour l\'instant.</div>';
     return;
@@ -8393,10 +8396,46 @@ function renderFournituresListe() {
   }).join('') + '</div>';
 }
 
+
+// ── Version téléphone : chaque fourniture = une carte épurée (nom, quantité, « Assez » ou « Stock bas ») ; au clic : stock en grand + « J'ai acheté » / « J'ai utilisé ». ──
+var ICONES_FOURN = ['🎨', '🔩', '🧤', '🧴', '🪛', '🧱', '🔌', '🪵'];
+function carteFournitureMobile(f, i) {
+  var bas = f.seuil_alerte != null && f.quantite <= f.seuil_alerte;
+  var ic = ICONES_FOURN[i % ICONES_FOURN.length];
+  var qte = f.quantite + ' ' + escHtml(f.unite);
+  var q = "'" + f.id + "'";
+  var plein = '<div class="pc-plein"><div class="fo-det"><div class="sv-tete" style="display:flex;align-items:center;gap:14px;"><div class="sv-tuile" style="background:' + (bas ? '#fee2e2' : '#e6f7ef') + '">' + ic + '</div><div><div class="sv-nom" style="font-size:20px;font-weight:800;">' + escHtml(f.nom) + '</div><div class="sv-meta" style="font-size:14px;color:#8a8580;">' + (f.seuil_alerte != null ? 'Alerte sous ' + f.seuil_alerte + ' ' + escHtml(f.unite) : 'Pas d\'alerte réglée') + '</div></div></div>' +
+    '<div class="fo-lab">En stock</div><div class="fo-big' + (bas ? ' bas' : '') + '"><b>' + f.quantite + '</b><span>' + escHtml(f.unite) + '</span></div>' +
+    '<div class="fo-q"><button type="button" onclick="ajusterQteFourniture(' + q + ',-1)">−</button><input type="number" inputmode="decimal" min="0" step="any" id="fo-q-' + f.id + '" value="1"><button type="button" onclick="ajusterQteFourniture(' + q + ',1)">＋</button></div>' +
+    '<div class="fo-btns"><button class="fo-ach" onclick="mouvementFicheFourniture(' + q + ',\'achat\')">＋ J\'ai acheté</button><button class="fo-uti" onclick="mouvementFicheFourniture(' + q + ',\'utilisation\')">－ J\'ai utilisé</button></div>' +
+    '<div class="fo-pied"><button onclick="fermerFicheMobile();genererQRFourniture(' + q + ')">▦ QR code</button><button onclick="fermerFicheMobile();ouvrirModifierFourniture(' + q + ')">✎ Modifier</button><button onclick="fermerFicheMobile();supprimerFourniture(' + q + ')">Retirer</button></div></div></div>';
+  return '<div class="pc-wrap" data-fid="fo-' + f.id + '"><div class="pc-ligne' + (bas ? ' fo-bas' : '') + '" onclick="ouvrirFicheMobile(this)"><div class="sv-tuile" style="background:' + (bas ? '#fee2e2' : '#e6f7ef') + '">' + ic + '</div>' +
+    '<div class="pl-txt"><div class="pl-nom">' + escHtml(f.nom) + '</div><div class="pl-sous">' + (bas ? '⚠️ ' : '') + qte + '</div></div>' +
+    '<span class="fo-tag' + (bas ? ' bas' : '') + '">' + (bas ? '⚠️ Stock bas' : '✔ Assez') + '</span></div>' + plein + '</div>';
+}
+function ajusterQteFourniture(id, delta) {
+  var e = document.getElementById('fo-q-' + id); if (!e) return;
+  var v = parseFloat(String(e.value).replace(',', '.')) || 0;
+  e.value = Math.max(0, Math.round((v + delta) * 100) / 100);
+}
+function mouvementFicheFourniture(id, type) {
+  var e = document.getElementById('fo-q-' + id);
+  var q = e ? parseFloat(String(e.value).replace(',', '.')) : NaN;
+  if (!q || q <= 0) { alert('Indiquez une quantité valide.'); return; }
+  enregistrerMouvementFourniture(id, type, q);
+}
+
 function renderFournitures() {
   renderFournituresListe();
   var zone = document.getElementById('zone-fournitures');
   if (!zone || estPro()) return;
+  var zoneM = document.getElementById('zone-fournitures-m');
+  var bandeauPro = (
+    '<div style="border:1px dashed var(--ac);background:rgba(181,80,47,.05);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.55;">' +
+      '🔒 <strong>Mes fournitures fait partie de l\'offre Pro</strong> (' + PRIX_PRO_AFFICHE + '). Suivez vos consommables, scannez QR codes et codes-barres, soyez prévenu avant la rupture.' + texteEssai() +
+      '<div><button class="addb" onclick="lancerAbonnement()" style="margin-top:8px;">Passer en Pro →</button></div>' +
+    '</div>');
+  if (zoneM) zoneM.insertAdjacentHTML('afterbegin', bandeauPro);
   zone.insertAdjacentHTML('afterbegin',
     '<div style="border:1px dashed var(--ac);background:rgba(181,80,47,.05);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.55;">' +
       '🔒 <strong>Mes fournitures fait partie de l\'offre Pro</strong> (' + PRIX_PRO_AFFICHE + '). Suivez vos consommables, scannez QR codes et codes-barres, soyez prévenu avant la rupture.' + texteEssai() +
@@ -8466,7 +8505,7 @@ async function supprimerFourniture(id) {
 // l'un sans l'autre, pour que le journal corresponde toujours exactement au chiffre affiché.
 // Purement un suivi interne (matériel, consommables) — aucun lien avec ce qui est vendu,
 // qui a son propre suivi de stock dans Mes produits.
-async function enregistrerMouvementFourniture(id, type) {
+async function enregistrerMouvementFourniture(id, type, qteDirecte) {
   if (!exigerPro('fournitures')) return;
   if (!verifierAccesEcriture()) return;
   var f = _fournituresCache.find(function(x) { return x.id === id; });
@@ -8478,7 +8517,7 @@ async function enregistrerMouvementFourniture(id, type) {
   if (stockFrais && stockFrais.quantite != null) f.quantite = Number(stockFrais.quantite);
   var quantiteAvant = f.quantite;
 
-  var quantiteStr = prompt('📦 ' + f.nom + '\nStock actuel : ' + quantiteAvant + ' ' + f.unite + '\n\n' + (type === 'achat' ? 'Quantité achetée' : 'Quantité utilisée') + ' (' + f.unite + ') :', '1');
+  var quantiteStr = (qteDirecte != null) ? String(qteDirecte) : prompt('📦 ' + f.nom + '\nStock actuel : ' + quantiteAvant + ' ' + f.unite + '\n\n' + (type === 'achat' ? 'Quantité achetée' : 'Quantité utilisée') + ' (' + f.unite + ') :', '1');
   if (quantiteStr === null) return;
   var quantite = parseFloat(String(quantiteStr).replace(',', '.'));
   if (!quantite || quantite <= 0) { alert('Indiquez une quantité valide.'); return; }
