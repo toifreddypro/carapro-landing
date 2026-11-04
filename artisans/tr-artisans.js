@@ -13,6 +13,7 @@ var AT_TR = {
   fr: {
     nav_connexion: "Connexion",
     nav_mon_espace: "Mon espace",
+    search_que: "Que cherchez-vous ?", search_lieu_court: "Lieu", search_nom_court: "Nom",
     nav_client_court: "Client", nav_artisan_court: "Artisan", nav_artisan_connexion: "Me connecter", nav_artisan_inscription: "Créer ma fiche gratuite",
     nav_devenir_artisan: "Devenir artisan",
 
@@ -21,7 +22,7 @@ var AT_TR = {
     sec_climatisation: "Climatisation", sec_autre: "Autre",
 
     hero_eyebrow: "CaraLink Artisans · Antilles-Guyane",
-    hero_title: "C'est le moment d'être visible et de travailler.",
+    hero_title: "C'est le moment d'être <span>visible et de travailler.</span>",
     hero_soustitre: "Trouvez l'artisan qu'il vous faut, près de chez vous.",
     hero_note: "Trouvez, réservez ! Soyez visible, travaillez !<br>Recherche gratuite, sans inscription, SIRET vérifié.",
     hero_tag1: "Trouvez, réservez !",
@@ -308,6 +309,7 @@ var AT_TR = {
   en: {
     nav_connexion: "Log in",
     nav_mon_espace: "My space",
+    search_que: "What are you looking for?", search_lieu_court: "Place", search_nom_court: "Name",
     nav_client_court: "Customer", nav_artisan_court: "Craftsman", nav_artisan_connexion: "Log in", nav_artisan_inscription: "Create my free profile",
     nav_devenir_artisan: "Become a craftsman",
 
@@ -316,7 +318,7 @@ var AT_TR = {
     sec_climatisation: "Air conditioning", sec_autre: "Other",
 
     hero_eyebrow: "CaraLink Artisans · Caribbean",
-    hero_title: "Now's the time to get visible and get to work.",
+    hero_title: "Now's the time to get <span>visible and get to work.</span>",
     hero_soustitre: "Find the craftsman you need, near you.",
     hero_note: "Find, book! Be visible, get work!<br>Free search, no sign-up, verified SIRET.",
     hero_tag1: "Find, book!",
@@ -603,6 +605,7 @@ var AT_TR = {
   es: {
     nav_connexion: "Iniciar sesión",
     nav_mon_espace: "Mi espacio",
+    search_que: "¿Qué busca?", search_lieu_court: "Lugar", search_nom_court: "Nombre",
     nav_client_court: "Cliente", nav_artisan_court: "Artesano", nav_artisan_connexion: "Iniciar sesión", nav_artisan_inscription: "Crear mi ficha gratis",
     nav_devenir_artisan: "Hazte artesano",
 
@@ -611,7 +614,7 @@ var AT_TR = {
     sec_climatisation: "Climatización", sec_autre: "Otro",
 
     hero_eyebrow: "CaraLink Artisans · Caribe",
-    hero_title: "Es el momento de ser visible y de trabajar.",
+    hero_title: "Es el momento de ser <span>visible y de trabajar.</span>",
     hero_soustitre: "Encuentra el artesano que necesitas, cerca de ti.",
     hero_note: "¡Busca, reserva! ¡Hazte visible, trabaja!<br>Búsqueda gratuita, sin registro, SIRET verificado.",
     hero_tag1: "¡Busca, reserva!",

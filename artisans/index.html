@@ -992,11 +992,12 @@ body.theme-light footer { background:#fbfcfe; }
 
 <style id="annuaire-mobile-epure">
 .nav-court{display:none;}
+.search-question{display:none;}
 #menu-artisan{display:none;}
 /* ===== ANNUAIRE MOBILE ÉPURÉ (téléphone uniquement ; l'ordinateur ne change pas) ===== */
 @media(max-width:768px){
   /* En-tête de page : on va droit à la recherche */
-  body .hero-eyebrow,body .hero-note{display:none !important;}
+  body .hero-eyebrow,body .hero-note,body .hero-soustitre{display:none !important;}
   body .hero-section{padding:20px 16px 8px !important;border-bottom:none !important;}
   body .hero-title{font-size:26px !important;line-height:1.15 !important;margin-bottom:8px !important;}
   body .hero-soustitre{font-size:16px !important;font-weight:600 !important;color:var(--mu2) !important;margin:0 0 18px !important;}
@@ -1004,9 +1005,9 @@ body.theme-light footer { background:#fbfcfe; }
   body .nav-wrap{padding:8px 14px 10px !important;gap:8px !important;justify-content:space-between !important;border-bottom:1px solid var(--brd) !important;}
   body .nav-right{margin-left:auto !important;}
   body .nav-logo{flex:1 1 0 !important;min-width:0 !important;gap:8px !important;}
-  body .nav-brand{font-size:15px !important;white-space:nowrap !important;}
-  body .nav-kk{font-size:14px !important;white-space:nowrap !important;}
-  body .nav-kk-suffix{font-size:12px !important;}
+  body .nav-brand{display:none !important;}
+  body .nav-kk{font-size:19px !important;white-space:nowrap !important;border:none !important;padding:0 !important;margin:0 !important;}
+  body .nav-kk-suffix{font-size:15px !important;}
   body .nav-right{flex:0 0 auto !important;margin-left:0 !important;}
   body .search-field input{text-overflow:ellipsis !important;font-size:17px !important;}
   body .lang-nom{display:none !important;}
@@ -1027,8 +1028,10 @@ body.theme-light footer { background:#fbfcfe; }
   body .search-field input,body .search-field select{font-size:18px !important;font-weight:600 !important;text-align:left !important;width:100% !important;color:var(--ink) !important;background:transparent !important;border:none !important;padding:4px 0 !important;}
   body .search-btn{margin:0 !important;justify-content:center !important;padding:16px !important;border-radius:18px !important;font-size:19px !important;font-weight:700 !important;width:100% !important;}
   body .filters-wrap{display:none !important;}
-  body .search-bar .search-field:nth-child(1){grid-column:1 / -1 !important;}
-  body .search-bar .search-btn{grid-column:1 / -1 !important;}
+  body .search-question{display:block !important;text-align:left !important;grid-column:1 / -1 !important;font-size:15px !important;font-weight:700 !important;color:var(--mu) !important;margin:0 0 -4px 2px !important;}
+  body .search-question + .search-field{grid-column:1 / -1 !important;}
+  body .search-field label{display:none !important;}
+  body .search-btn{display:none !important;}
   body .search-field{min-width:0 !important;}
   /* On laisse les explications au calme : seul le lien "Publier un projet" reste */
   body .aides-info{display:none !important;}
@@ -1047,12 +1050,18 @@ body.theme-light footer { background:#fbfcfe; }
   body .card-tags .badge-trust{background:transparent !important;padding:0 !important;font-size:13px !important;font-style:italic !important;font-weight:600 !important;color:#1266e3 !important;}
   body .card-tags .badge-trust.bt-purple,body .card-tags .badge-trust.bt-accent,body .card-tags .badge-trust.bt-more{display:none !important;}
   body .card-bio,body .dispo-grid,body [id^="avantages-carte-"],body [id^="phares-carte-"],body .formateur-card > div[style*="margin:2px 0 6px"]{display:none !important;}
-  body .card-meta{gap:8px !important;}
+  body .card-meta{display:flex !important;flex-direction:column !important;align-items:flex-start !important;gap:8px !important;}
+  body .card-meta .card-badges{order:-1 !important;}
+  body .card-dispo.now{background:#fff1e8 !important;color:#C2410C !important;padding:5px 12px !important;border-radius:30px !important;font-size:14px !important;font-weight:700 !important;}
+  body .card-dispo.none{display:none !important;}
   body .card-stars{font-size:15px !important;font-weight:700 !important;}
   body .card-stars .star-on,body .card-stars .star-off{font-size:17px;}
   body .card-badges .badge-trust{font-size:14px !important;font-weight:700 !important;padding:5px 12px !important;border-radius:30px !important;}
   body .card-badges .badge-trust:nth-child(n+2){display:none !important;}
   body .carte-grisee-note{font-size:13px !important;padding:8px 12px !important;margin-top:4px !important;}
+  /* Bouton d'aide : petit et discret */
+  body .faq-fab{width:38px !important;height:38px !important;bottom:16px !important;right:12px !important;opacity:.5 !important;animation:none !important;box-shadow:none !important;background:rgba(181,80,47,.55) !important;}
+  body .faq-fab svg{width:18px !important;height:18px !important;}
   /* Bloc "Vous êtes artisan ?" : on garde le texte, plus d'image */
   body .pub-alt-mobile img{display:none !important;}
   body .pub-alt-mobile{border-radius:22px !important;}
@@ -1099,8 +1108,8 @@ body.theme-light footer { background:#fbfcfe; }
       <a href="mailto:contact@learnlogicstudio.com" style="color:var(--mu2);text-decoration:none;margin:0 8px;">Contact</a>
     </div>
   </footer>
-  <script src="/artisans/tr-artisans.js?v=20261104120018"></script>
-  <script src="/artisans/caralink-artisans.js?v=20261104120018"></script>
+  <script src="/artisans/tr-artisans.js?v=20261104121936"></script>
+  <script src="/artisans/caralink-artisans.js?v=20261104121936"></script>
 
   <!-- ════ FAQ BOUTON FLOTTANT ════ -->
   <button class="faq-fab" onclick="toggleFAQ()" title="Aide & FAQ">

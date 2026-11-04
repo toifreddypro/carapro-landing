@@ -372,17 +372,18 @@ function renderHero() {
         '<p class="hero-soustitre">' + T('hero_soustitre') + '</p>' +
         '<p class="hero-note">' + T('hero_note_short') + '</p>' +
         '<div class="search-bar">' +
+          '<div class="search-question">🔍 ' + T('search_que') + '</div>' +
           '<div class="search-field"><label>' + T('search_secteur_label') + '</label>' +
-            '<select id="search-secteur" onkeydown="if(event.key===\'Enter\')lancerRecherche()">' +
+            '<select id="search-secteur" onchange="rechercheAuto(true)" onkeydown="if(event.key===\'Enter\')lancerRecherche()">' +
               '<option value="">' + T('search_secteur_tous') + '</option>' +
               _secteursCache.map(function(s) {
                 return '<option value="' + s.code + '"' + (_searchState.secteur === s.code ? ' selected' : '') + '>' + (s.icon||'') + ' ' + escHtml(s[secteurLabelChamp()] || s.label_fr) + '</option>';
               }).join('') +
             '</select></div>' +
           '<div class="search-field"><label>' + T('search_lieu_label') + '</label>' +
-            '<input id="search-commune" type="text" placeholder="' + T('search_lieu_ph') + '" value="' + escHtml(_searchState.commune) + '" onkeydown="if(event.key===\'Enter\')lancerRecherche()"/></div>' +
+            '<input id="search-commune" type="text" placeholder="' + (ecranTel() ? T('search_lieu_court') : T('search_lieu_ph')) + '" enterkeyhint="search" oninput="rechercheAuto(false)" value="' + escHtml(_searchState.commune) + '" onkeydown="if(event.key===\'Enter\')lancerRecherche()"/></div>' +
           '<div class="search-field"><label>' + T('search_nom_label') + '</label>' +
-            '<input id="search-nom" type="text" placeholder="' + T('search_nom_ph') + '" value="' + escHtml(_searchState.nom) + '" onkeydown="if(event.key===\'Enter\')lancerRecherche()"/></div>' +
+            '<input id="search-nom" type="text" placeholder="' + (ecranTel() ? T('search_nom_court') : T('search_nom_ph')) + '" enterkeyhint="search" oninput="rechercheAuto(false)" value="' + escHtml(_searchState.nom) + '" onkeydown="if(event.key===\'Enter\')lancerRecherche()"/></div>' +
           '<button class="search-btn" onclick="lancerRecherche()">' +
             '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>' +
             T('search_btn') +
@@ -498,7 +499,16 @@ function trierPar(critere) {
   chargerArtisans();
 }
 
-function lancerRecherche() {
+function ecranTel() { return window.matchMedia('(max-width:768px)').matches; }
+var _timerRechercheAuto = null;
+// Téléphone : pas de bouton « Chercher » — la recherche part toute seule quand on choisit un secteur
+// ou quand on a fini de taper (0,7 s sans toucher le clavier). La touche « Rechercher » du clavier marche aussi.
+function rechercheAuto(immediat) {
+  if (!ecranTel()) return;
+  clearTimeout(_timerRechercheAuto);
+  _timerRechercheAuto = setTimeout(function() { lancerRecherche(!immediat); }, immediat ? 0 : 700);
+}
+function lancerRecherche(sansDefiler) {
   // Téléphone : les vignettes n'apparaissent qu'après une recherche (le style ne s'applique que sur petit écran).
   window._rechercheFaite = true;
   document.body.classList.remove('avant-recherche');
@@ -506,7 +516,7 @@ function lancerRecherche() {
   _searchState.commune = document.getElementById('search-commune').value.trim();
   _searchState.nom = document.getElementById('search-nom').value.trim();
   chargerArtisans();
-  if (window.matchMedia('(max-width:768px)').matches) {
+  if (ecranTel() && sansDefiler !== true) {
     var zr = document.getElementById('main-results');
     if (zr && zr.scrollIntoView) setTimeout(function() { zr.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80);
   }
