@@ -671,7 +671,41 @@ function switchTab(i) {
   // plutôt que de compter sur chaque endroit qui pourrait la rendre périmée pour y penser.
   if (TAB_PANNEAUX[i] === 'p-compta' && typeof chargerCompta === 'function') chargerCompta();
   if (TAB_PANNEAUX[i] === 'p-livraisons' && typeof chargerLivraisons === 'function') chargerLivraisons();
+  majBarreBas(i);
 }
+
+// ── Menu du bas (téléphone). Il pilote les mêmes onglets que le menu du haut (caché sur téléphone) : numéros, pastilles et onglets masqués par « Mes activités » restent respectés. ──
+var BAS_DE_ONGLET = { 0: 'journee', 2: 'journee', 3: 'interventions', 4: 'ventes', 6: 'stock', 1: 'plus', 5: 'plus', 7: 'plus' };
+function majBarreBas(i) {
+  var cible = BAS_DE_ONGLET[i];
+  ['journee', 'interventions', 'ventes', 'stock', 'plus'].forEach(function(n) {
+    var b = document.getElementById('bn-' + n); if (b) b.classList.toggle('on', n === cible);
+  });
+  syncBarreBas();
+}
+function syncBarreBas() {
+  [['interventions', 'nt-interventions', 'cnt-nt-interventions'], ['ventes', 'nt-ventes', 'cnt-nt-ventes'], ['stock', 'nt-stock', null]].forEach(function(t) {
+    var b = document.getElementById('bn-' + t[0]), src = document.getElementById(t[1]);
+    if (b && src) b.style.display = src.style.display === 'none' ? 'none' : '';
+    if (t[2]) {
+      var p = document.getElementById('bnp-' + t[0]), c = document.getElementById(t[2]);
+      if (p && c) { var n = (c.textContent || '').trim(); var vu = c.style.display !== 'none' && n && n !== '0'; p.style.display = vu ? 'flex' : 'none'; p.textContent = n; }
+    }
+  });
+  var liv = document.getElementById('pf-livraisons'), nl = document.getElementById('nt-livraisons');
+  if (liv && nl) liv.style.display = nl.style.display === 'none' ? 'none' : '';
+  var tous = document.getElementById('pf-tous'), bt = document.getElementById('btn-tous-onglets');
+  if (tous && bt) tous.style.display = bt.style.display === 'none' ? 'none' : '';
+}
+function ouvrirPlusMobile() { document.body.classList.add('plus-ouvert'); syncBarreBas(); document.getElementById('plus-fond').classList.add('ouvert'); document.getElementById('plus-feuille').classList.add('ouvert'); }
+function fermerPlusMobile() { document.body.classList.remove('plus-ouvert'); document.getElementById('plus-fond').classList.remove('ouvert'); document.getElementById('plus-feuille').classList.remove('ouvert'); }
+function allerPlusMobile(i) { fermerPlusMobile(); switchTab(i); }
+document.addEventListener('DOMContentLoaded', function() {
+  ['cnt-nt-interventions', 'cnt-nt-ventes', 'nt-interventions', 'nt-ventes', 'nt-stock', 'nt-livraisons', 'btn-tous-onglets'].forEach(function(id) {
+    var el = document.getElementById(id); if (el && window.MutationObserver) new MutationObserver(syncBarreBas).observe(el, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+  });
+  syncBarreBas();
+});
 
 // ── Activités de l'artisan : intervention, boutique, livraison ──
 // artisans.activites (liste) : vide = l'artisan n'a pas encore répondu → TOUS les onglets restent normaux.

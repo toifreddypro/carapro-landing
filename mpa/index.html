@@ -479,6 +479,27 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .fm-corps .pc-plein img,.fm-corps .pc-plein [style*="aspect-ratio"]{aspect-ratio:auto !important;height:170px !important;border-radius:14px !important;}
   @keyframes fmMonte{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 }
+
+/* ── Menu du bas (téléphone) : 5 boutons toujours visibles, le reste dans « Plus » ── */
+#bnav,#plus-fond,#plus-feuille{display:none;}
+@media(max-width:640px){
+  #nav{display:none !important;}
+  #content{padding-bottom:108px !important;}
+  .mpa-ai-fab{bottom:104px !important;}
+  #bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:830;background:#fff;border-top:1px solid #e3e3e3;padding:6px 4px calc(8px + env(safe-area-inset-bottom));}
+  .bn{flex:1;min-width:0;background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px 4px;font-family:'Outfit',sans-serif;font-size:11.5px;font-weight:700;color:#94a3b8;cursor:pointer;position:relative;}
+  .bn i{font-style:normal;font-size:25px;line-height:1;filter:grayscale(1);opacity:.7;}
+  .bn.on{color:var(--ac);}
+  .bn.on i{filter:none;opacity:1;}
+  .bn.on::after{content:"";width:22px;height:3px;border-radius:3px;background:var(--ac);margin-top:1px;}
+  .bn-pastille{position:absolute;top:0;left:calc(50% + 8px);min-width:17px;height:17px;border-radius:9px;background:var(--danger);color:#fff;font-size:10.5px;display:flex;align-items:center;justify-content:center;padding:0 4px;}
+  #plus-fond.ouvert{display:block;position:fixed;inset:0;z-index:810;background:rgba(17,17,17,.35);}
+  #plus-feuille.ouvert{display:block;position:fixed;left:0;right:0;bottom:68px;z-index:820;background:#fff;border:1px solid #e3e3e3;border-bottom:0;border-radius:22px 22px 0 0;padding:10px 20px 6px;box-shadow:0 -10px 40px rgba(0,0,0,.14);animation:fmMonte .2s ease-out;}
+  .pf-it{display:flex;align-items:center;gap:16px;width:100%;background:none;border:0;border-bottom:1px solid #f1f1f1;padding:16px 4px;font-family:'Outfit',sans-serif;font-size:17px;font-weight:700;color:#111;text-align:left;cursor:pointer;}
+  .pf-it:last-child{border-bottom:0;}
+  body.plus-ouvert .mpa-ai-fab{display:none !important;}
+  .pf-it i{font-style:normal;font-size:24px;}
+}
 /* ── Tableau de bord ── */
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 @media(max-width:900px){.dash-grid{grid-template-columns:1fr;}}
@@ -745,6 +766,21 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   </button>
 <button class="nav-adapter" id="btn-tous-onglets" onclick="basculerTousLesOnglets()" style="display:none;margin-left:auto;">Afficher tous les onglets</button>
 <button class="nav-adapter" onclick="ouvrirQuestionActivites()" title="Choisir les onglets dont vous vous servez" style="margin-left:8px;">⚙ Mes activités</button>
+</div>
+<div id="bnav" role="navigation" aria-label="Menu principal">
+<button class="bn on" id="bn-journee" onclick="switchTab(0)"><i>🏠</i><span>Ma journée</span></button>
+<button class="bn" id="bn-interventions" onclick="switchTab(3)"><i>🔧</i><span>Interventions</span><b class="bn-pastille" id="bnp-interventions" style="display:none"></b></button>
+<button class="bn" id="bn-ventes" onclick="switchTab(4)"><i>🛍️</i><span>Ventes</span><b class="bn-pastille" id="bnp-ventes" style="display:none"></b></button>
+<button class="bn" id="bn-stock" onclick="switchTab(6)"><i>📦</i><span>Stock</span></button>
+<button class="bn" id="bn-plus" onclick="ouvrirPlusMobile()"><i>⋯</i><span>Plus</span></button>
+</div>
+<div id="plus-fond" onclick="fermerPlusMobile()"></div>
+<div id="plus-feuille">
+<button class="pf-it" id="pf-livraisons" onclick="allerPlusMobile(5)"><i>🚚</i>Mes livraisons</button>
+<button class="pf-it" onclick="allerPlusMobile(1)"><i>👤</i>Mon profil</button>
+<button class="pf-it" onclick="allerPlusMobile(7)"><i>💶</i>Ma comptabilité</button>
+<button class="pf-it" onclick="fermerPlusMobile();ouvrirQuestionActivites()"><i>⚙️</i>Mes activités</button>
+<button class="pf-it" id="pf-tous" style="display:none" onclick="fermerPlusMobile();basculerTousLesOnglets()"><i>👁️</i>Afficher tous les onglets</button>
 </div>
 <div id="content">
 <!-- PLANNING -->
@@ -2271,6 +2307,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261104145920"></script>
+<script src="/mpa/mpa-artisans.js?v=20261104150308"></script>
 </body>
 </html>
