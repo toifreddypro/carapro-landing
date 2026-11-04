@@ -13,6 +13,7 @@ var AT_TR = {
   fr: {
     nav_connexion: "Connexion",
     nav_mon_espace: "Mon espace",
+    nav_client_court: "Client", nav_artisan_court: "Artisan", nav_artisan_connexion: "Me connecter", nav_artisan_inscription: "Créer ma fiche gratuite",
     nav_devenir_artisan: "Devenir artisan",
 
     sec_jardinage: "Jardinage", sec_plomberie: "Plomberie", sec_electricite: "Électricité",
@@ -72,7 +73,7 @@ var AT_TR = {
     badge_complet: "Profil complet",
     avis_aucun_court: "Pas encore d'avis",
     carte_grisee_titre: "Réservation en ligne bientôt disponible",
-    carte_grisee_texte: "Cet artisan n'a pas encore activé son paiement en ligne : vous ne pouvez pas le réserver pour le moment. Sa fiche sera ouverte dès que ce sera fait.",
+    carte_grisee_texte: "Cet artisan n'a pas encore activé le paiement en ligne. Sa fiche s'ouvrira dès que ce sera fait.",
     des_prefix: "Dès",
 
     sur_devis: "Sur devis",
@@ -307,6 +308,7 @@ var AT_TR = {
   en: {
     nav_connexion: "Log in",
     nav_mon_espace: "My space",
+    nav_client_court: "Customer", nav_artisan_court: "Craftsman", nav_artisan_connexion: "Log in", nav_artisan_inscription: "Create my free profile",
     nav_devenir_artisan: "Become a craftsman",
 
     sec_jardinage: "Gardening", sec_plomberie: "Plumbing", sec_electricite: "Electrical",
@@ -366,7 +368,7 @@ var AT_TR = {
     badge_complet: "Complete profile",
     avis_aucun_court: "No reviews yet",
     carte_grisee_titre: "Online booking coming soon",
-    carte_grisee_texte: "This craftsperson has not yet activated online payment, so you cannot book them for now. Their profile will open as soon as it is done.",
+    carte_grisee_texte: "This craftsperson has not activated online payment yet. Their profile will open as soon as it is done.",
     des_prefix: "From",
 
     sur_devis: "Quote on request",
@@ -601,6 +603,7 @@ var AT_TR = {
   es: {
     nav_connexion: "Iniciar sesión",
     nav_mon_espace: "Mi espacio",
+    nav_client_court: "Cliente", nav_artisan_court: "Artesano", nav_artisan_connexion: "Iniciar sesión", nav_artisan_inscription: "Crear mi ficha gratis",
     nav_devenir_artisan: "Hazte artesano",
 
     sec_jardinage: "Jardinería", sec_plomberie: "Fontanería", sec_electricite: "Electricidad",
@@ -660,7 +663,7 @@ var AT_TR = {
     badge_complet: "Perfil completo",
     avis_aucun_court: "Aún sin reseñas",
     carte_grisee_titre: "Reserva en línea próximamente",
-    carte_grisee_texte: "Este artesano aún no ha activado el pago en línea, por lo que no puede reservarlo por ahora. Su ficha se abrirá en cuanto lo haga.",
+    carte_grisee_texte: "Este artesano aún no ha activado el pago en línea. Su ficha se abrirá en cuanto lo haga.",
     des_prefix: "Desde",
 
     sur_devis: "Presupuesto a medida",

@@ -1,4 +1,4 @@
-<!--
+﻿<!--
 ================================================================
   CARAPRO — index.html
   Plateforme de mise en relation clients / artisans
@@ -24,7 +24,7 @@
   <link rel="icon" href="/favicon.ico">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CaraLink Artisans — Trouvez un artisan disponible</title>
-  <meta name="description" content="Trouvez un artisan de confiance près de chez vous — SIRET vérifié, avis authentiques, devis gratuit.">
+  <meta name="description" content="Trouvez un artisan de confiance près de chez vous — SIRET vérifié, avis authentiques, demande de devis gratuite.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:wght@500;600;700;800&family=Inter:wght@600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -119,7 +119,16 @@
     .av-amber{background:rgba(245,158,11,.2);color:var(--gold);}
     .av-coral{background:rgba(239,68,68,.2);color:#f87171;}
     .av-green{background:rgba(16,185,129,.2);color:var(--ok);}
-    .badge-trust{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:3px 8px;border-radius:6px;background:rgba(0,212,170,.1);color:var(--ac2);border:1px solid rgba(0,212,170,.2);}
+    .badge-trust{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;padding:3px 10px;border-radius:20px;background:rgba(0,212,170,.1);color:var(--ac2);border:none;}
+    /* Étiquettes en pastilles — même habillage que les étiquettes des vignettes formateur (plateforme.html) */
+    .badge-trust.bt-blue{background:rgba(13,110,253,.15);color:#60a5fa;}
+    .badge-trust.bt-green{background:rgba(16,185,129,.12);color:#10b981;}
+    .badge-trust.bt-purple{background:rgba(139,92,246,.15);color:#a78bfa;}
+    .badge-trust.bt-amber{background:rgba(245,158,11,.15);color:#f59e0b;}
+    body.theme-light .badge-trust.bt-blue{background:rgba(18,102,227,.07);color:#1266e3;}
+    body.theme-light .badge-trust.bt-green{background:rgba(5,150,105,.1);color:#059669;}
+    body.theme-light .badge-trust.bt-purple{background:rgba(109,40,217,.12);color:#5b21b6;}
+    body.theme-light .badge-trust.bt-amber{background:rgba(180,83,9,.12);color:#92400e;}
     /* BADGE COMPATIBLE QUALIOPI — pastille tricolore française */
     .badge-qualiopi{background:#ffffff;border:1px solid #d1dbe8;font-family:'Outfit',sans-serif;font-size:10px;font-weight:800;letter-spacing:.2px;padding:3px 10px;white-space:nowrap;text-transform:uppercase;}
     .badge-qualiopi .bq-compatible{color:#ED2939;}
@@ -210,24 +219,62 @@
     .card-top-row{display:flex;gap:14px;align-items:flex-start;}
     .card-info{flex:1;min-width:0;}
     .card-name{font-family:'Bricolage Grotesque','Outfit',sans-serif;font-size:16px;font-weight:700;color:var(--tx);margin-bottom:2px;transition:color .15s;}
-    .card-title{font-size:12px;color:var(--mu2);margin-bottom:8px;}
+    .card-title{font-size:13px;color:var(--mu2);margin-bottom:8px;}
     .card-tags{display:flex;gap:6px;flex-wrap:wrap;}
     .card-rate{font-size:13px;color:var(--mu2);text-align:right;white-space:nowrap;}
     .card-rate strong{font-size:16px;color:var(--tx);font-weight:700;}
     .card-meta{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
-    .card-stars{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--mu2);}
+    .card-stars{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--mu2);}
     .star-on{color:var(--gold);}.star-off{color:var(--mu);opacity:.4;}
     .card-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-    .card-dispo{display:flex;align-items:center;gap:6px;font-size:12px;}
+    .card-dispo{display:flex;align-items:center;gap:6px;font-size:13px;}
     .card-dispo.now{color:var(--ac2);}.card-dispo.soon{color:var(--gold);}.card-dispo.none{color:var(--mu);}
     /* GRILLE 7J */
     .dispo-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;border-top:1px solid var(--brd);padding-top:12px;}
     .dispo-day{display:flex;flex-direction:column;gap:3px;align-items:center;}
-    .dispo-day-label{font-size:10px;color:var(--mu);text-align:center;font-family:'JetBrains Mono',monospace;}
+    .dispo-day-label{font-size:10.5px;color:var(--mu);text-align:center;font-family:'JetBrains Mono',monospace;}
     .dispo-slot{width:100%;padding:4px 2px;border-radius:6px;border:1px solid var(--brd);background:transparent;font-size:10px;font-family:'Outfit',sans-serif;text-align:center;cursor:default;color:var(--mu);transition:all .15s;}
     .dispo-slot.available{background:rgba(0,212,170,.1);border-color:rgba(0,212,170,.3);color:var(--ac2);cursor:pointer;}
     .dispo-slot.available:hover{background:rgba(0,212,170,.25);border-color:var(--ac2);}
     .dispo-slot.unavailable{background:rgba(255,255,255,.02);color:var(--mu);opacity:.5;}
+    /* ── Vignette artisan = même vignette que les formateurs (CaraLink Formation), en terracotta ── */
+    .formateur-card{container-type:inline-size;}
+    .card-avatar{width:56px;height:56px;border-radius:50%;flex-shrink:0;object-fit:cover;font-family:'Bricolage Grotesque','Outfit',sans-serif;font-size:17px;background:rgba(181,80,47,.12);color:#B5502F;}
+    .card-bio{font-size:13px;color:var(--mu2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+    .card-tags .badge-trust{max-width:100%;white-space:normal;}
+    .badge-trust.bt-accent{background:rgba(194,65,12,.15);color:#fb923c;}
+    .badge-trust.bt-more{background:rgba(148,163,184,.15);color:var(--mu2);}
+    body.theme-light .badge-trust.bt-accent{background:rgba(181,80,47,.1);color:#B5502F;}
+    body.theme-light .badge-trust.bt-more{background:rgba(107,124,150,.12);color:#4a5c78;}
+    .badge-realtime{display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11.5px;padding:3px 9px;border-radius:8px;background:rgba(16,185,129,.1);color:#10b981;border:1px solid rgba(16,185,129,.25);}
+    body.theme-light .badge-realtime{background:rgba(0,168,125,.1);color:#065f46;border-color:rgba(0,168,125,.25);}
+    .badge-realtime .dot{width:8px;height:8px;border-radius:50%;background:#10b981;flex-shrink:0;}
+
+    /* Produits phares — vignette ── 3 mini-photos, lien boutique, code promo */
+    .phares-bloc{margin-top:12px;padding-top:12px;border-top:1px solid var(--brd);}
+    .phares-grille img{width:100%;aspect-ratio:1;object-fit:cover;}
+    @media(max-width:480px){
+      .phares-grille{grid-template-columns:repeat(2,1fr) !important;}
+    }
+    .phares-titre{font-size:11.5px;font-weight:700;color:var(--mu2);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;}
+    .phares-photos{display:flex;gap:8px;}
+    .phare-mini{width:52px;height:52px;border-radius:9px;object-fit:cover;flex-shrink:0;border:1px solid var(--brd);}
+    .phare-mini-vide{display:flex;align-items:center;justify-content:center;background:var(--inp);font-size:18px;}
+    .phares-bas{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;flex-wrap:wrap;}
+    .phares-lien{font-size:12.5px;font-weight:700;color:var(--ac);text-decoration:none;}
+    .phares-lien:hover{text-decoration:underline;}
+    .phares-code-promo{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:3px 9px;border-radius:7px;background:rgba(181,80,47,.08);color:var(--ac);border:1px dashed var(--ac);}
+    /* Créneaux = plages horaires (début–fin) : empilées par défaut, en ligne dès que la vignette est assez large. */
+    .dispo-slot{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.25;font-size:11px;}
+    .dispo-slot .h-sep{display:none;}
+    @container (max-width:400px){
+      .dispo-day-label{font-size:9.5px;letter-spacing:-.02em;}
+    }
+    @container (min-width:520px){
+      .dispo-slot{flex-direction:row;gap:1px;white-space:nowrap;font-size:11.5px;}
+      .dispo-slot .h-sep{display:inline;}
+      .dispo-day-label{font-size:12px;}
+    }
     /* MAP */
     .map-panel{position:sticky;top:80px;background:var(--panel);border:1px solid var(--brd);border-radius:14px;padding:16px;margin-left:0;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 3px rgba(19,34,60,.05);}
     .partner-panel{position:sticky;top:80px;background:var(--panel);border:1px solid var(--brd);border-radius:14px;padding:16px;box-shadow:0 1px 3px rgba(19,34,60,.05);}
@@ -942,13 +989,78 @@ body.theme-light footer { background:#fbfcfe; }
     @media(max-width:640px){ .t-fade{width:36px;} }
 </style>
 <link rel="stylesheet" href="/artisans/effects.css">
+
+<style id="annuaire-mobile-epure">
+.nav-court{display:none;}
+#menu-artisan{display:none;}
+/* ===== ANNUAIRE MOBILE ÉPURÉ (téléphone uniquement ; l'ordinateur ne change pas) ===== */
+@media(max-width:768px){
+  /* En-tête de page : on va droit à la recherche */
+  body .hero-eyebrow,body .hero-note{display:none !important;}
+  body .hero-section{padding:20px 16px 8px !important;border-bottom:none !important;}
+  body .hero-title{font-size:26px !important;line-height:1.15 !important;margin-bottom:8px !important;}
+  body .hero-soustitre{font-size:16px !important;font-weight:600 !important;color:var(--mu2) !important;margin:0 0 18px !important;}
+  /* En-tête compact : logo + drapeau, puis 2 boutons côte à côte */
+  body .nav-wrap{padding:8px 14px 10px !important;gap:8px !important;justify-content:space-between !important;border-bottom:1px solid var(--brd) !important;}
+  body .nav-right{margin-left:auto !important;}
+  body .nav-logo{flex:1 1 0 !important;min-width:0 !important;gap:8px !important;}
+  body .nav-brand{font-size:15px !important;white-space:nowrap !important;}
+  body .nav-kk{font-size:14px !important;white-space:nowrap !important;}
+  body .nav-kk-suffix{font-size:12px !important;}
+  body .nav-right{flex:0 0 auto !important;margin-left:0 !important;}
+  body .search-field input{text-overflow:ellipsis !important;font-size:17px !important;}
+  body .lang-nom{display:none !important;}
+  body .lang-switcher-desktop > button{padding:7px 10px !important;border-radius:10px !important;}
+  body .nav-links{display:grid !important;grid-template-columns:1fr 1fr !important;gap:10px !important;width:100% !important;order:3 !important;border-top:none !important;padding-top:0 !important;position:relative !important;}
+  body .nav-links > a{text-align:center !important;padding:11px 8px !important;font-size:16px !important;border-radius:14px !important;}
+  body .nav-links > a.nav-devenir{display:none !important;}
+  body .nav-long{display:none !important;}
+  body .nav-court{display:inline !important;}
+  body #menu-artisan{position:absolute;right:0;top:calc(100% + 6px);z-index:80;background:#fff;border:2px solid #e3eaf4;border-radius:16px;box-shadow:0 14px 34px rgba(19,34,60,.18);overflow:hidden;min-width:230px;}
+  body #menu-artisan a{display:block;padding:15px 18px;font-size:17px;font-weight:700;color:var(--ink);text-decoration:none;border-bottom:1px solid #eef2f8;}
+  body #menu-artisan a:last-child{border-bottom:none;color:#B5502F;}
+  /* Recherche : 2 grands champs + 1 gros bouton */
+  body .search-bar{display:grid !important;grid-template-columns:1fr 1fr !important;align-items:stretch !important;gap:12px !important;padding:0 !important;border:none !important;box-shadow:none !important;background:transparent !important;}
+  body .search-field{border:2px solid #dbe4f0 !important;border-radius:18px !important;padding:12px 16px !important;background:#fff !important;text-align:left !important;align-items:stretch !important;}
+  body .search-field:last-of-type{border:2px solid #dbe4f0 !important;}
+  body .search-field label{font-family:'Outfit',sans-serif !important;font-size:13px !important;font-weight:700 !important;letter-spacing:0 !important;text-transform:none !important;color:var(--mu) !important;text-align:left !important;margin-bottom:2px !important;}
+  body .search-field input,body .search-field select{font-size:18px !important;font-weight:600 !important;text-align:left !important;width:100% !important;color:var(--ink) !important;background:transparent !important;border:none !important;padding:4px 0 !important;}
+  body .search-btn{margin:0 !important;justify-content:center !important;padding:16px !important;border-radius:18px !important;font-size:19px !important;font-weight:700 !important;width:100% !important;}
+  body .filters-wrap{display:none !important;}
+  body .search-bar .search-field:nth-child(1){grid-column:1 / -1 !important;}
+  body .search-bar .search-btn{grid-column:1 / -1 !important;}
+  body .search-field{min-width:0 !important;}
+  /* On laisse les explications au calme : seul le lien "Publier un projet" reste */
+  body .aides-info{display:none !important;}
+  body .hero-main > div:last-child:not(.filters-wrap):not(.search-bar){display:none !important;}
+  /* Liste : cachée tant qu'on n'a pas cherché */
+  body.avant-recherche .results-panel{display:none !important;}
+  /* Liste */
+  body .results-layout{padding:8px 16px 24px !important;}
+  body .results-count{font-size:15px !important;font-weight:600 !important;}
+  body .formateur-card{border-radius:22px !important;padding:18px !important;gap:10px !important;border:2px solid #e3eaf4 !important;box-shadow:0 8px 26px rgba(19,34,60,.07) !important;margin-bottom:16px !important;}
+  body .card-avatar{width:60px !important;height:60px !important;font-size:21px !important;}
+  body .card-top-row{align-items:center !important;gap:14px !important;}
+  body .card-name{font-size:20px !important;font-weight:800 !important;letter-spacing:-.3px !important;margin-bottom:3px !important;}
+  body .card-title{font-size:15px !important;font-weight:600 !important;margin-bottom:6px !important;color:var(--mu) !important;}
+  /* "Nouveau" : petit, bleu, italique ; les autres pastilles dorment jusqu'à l'ouverture de la fiche */
+  body .card-tags .badge-trust{background:transparent !important;padding:0 !important;font-size:13px !important;font-style:italic !important;font-weight:600 !important;color:#1266e3 !important;}
+  body .card-tags .badge-trust.bt-purple,body .card-tags .badge-trust.bt-accent,body .card-tags .badge-trust.bt-more{display:none !important;}
+  body .card-bio,body .dispo-grid,body [id^="avantages-carte-"],body [id^="phares-carte-"],body .formateur-card > div[style*="margin:2px 0 6px"]{display:none !important;}
+  body .card-meta{gap:8px !important;}
+  body .card-stars{font-size:15px !important;font-weight:700 !important;}
+  body .card-stars .star-on,body .card-stars .star-off{font-size:17px;}
+  body .card-badges .badge-trust{font-size:14px !important;font-weight:700 !important;padding:5px 12px !important;border-radius:30px !important;}
+  body .card-badges .badge-trust:nth-child(n+2){display:none !important;}
+  body .carte-grisee-note{font-size:13px !important;padding:8px 12px !important;margin-top:4px !important;}
+  /* Bloc "Vous êtes artisan ?" : on garde le texte, plus d'image */
+  body .pub-alt-mobile img{display:none !important;}
+  body .pub-alt-mobile{border-radius:22px !important;}
+}
+</style>
 </head>
 <body class="theme-light">
   <script>
-    // ⚠️ 24/09 — Certains téléphones (le nôtre et celui d'au moins une cliente) affichaient
-    // une version ancienne de cette page malgré un rafraîchissement forcé et un déploiement
-    // confirmé à jour — comportement typique d'un service worker qui met le site en cache de
-    // façon persistante. On le désinscrit ici pour tout le monde, une bonne fois pour toutes.
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(regs) {
         regs.forEach(function(reg) { reg.unregister(); });
@@ -962,6 +1074,7 @@ body.theme-light footer { background:#fbfcfe; }
   </script>
   <nav id="nav"></nav>
   <section id="hero"></section>
+
   <main id="main-results"></main>
   <div id="overlay-profil" style="display:none;"></div>
   <div id="overlay-resa"   style="display:none;"></div>
@@ -986,8 +1099,8 @@ body.theme-light footer { background:#fbfcfe; }
       <a href="mailto:contact@learnlogicstudio.com" style="color:var(--mu2);text-decoration:none;margin:0 8px;">Contact</a>
     </div>
   </footer>
-  <script src="/artisans/tr-artisans.js?v=202611011003"></script>
-  <script src="/artisans/caralink-artisans.js?v=202611011003"></script>
+  <script src="/artisans/tr-artisans.js?v=20261104115858"></script>
+  <script src="/artisans/caralink-artisans.js?v=20261104115858"></script>
 
   <!-- ════ FAQ BOUTON FLOTTANT ════ -->
   <button class="faq-fab" onclick="toggleFAQ()" title="Aide & FAQ">
@@ -1052,20 +1165,17 @@ body.theme-light footer { background:#fbfcfe; }
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
           <div class="faq-a" data-i18n="faq2_a">
-            <p>Votre SIRET est vérifié automatiquement auprès du registre officiel des entreprises. Votre attestation d'assurance (RC Pro ou décennale) est ensuite examinée manuellement, généralement sous 24 à 48h.</p>
+            <p>Votre SIRET est vérifié automatiquement auprès du registre officiel des entreprises : s'il est reconnu et actif, le badge « Vérifié » est attribué immédiatement. Vous pouvez aussi joindre votre attestation d'assurance (RC Pro ou décennale) pour rassurer vos clients.</p>
             <div class="faq-tip">💡 Vous pouvez ajouter ou compléter ces documents à tout moment depuis votre profil, même après votre inscription.</div>
           </div>
         </div>
 
         <div class="faq-item" data-q="recevoir demande devis notification client">
           <div class="faq-q" onclick="toggleFAQItem(this)">
-            <span data-i18n="faq3_q">Comment je reçois les demandes de devis ?</span>
+            <span data-i18n="faq3_q">Comment je reçois les demandes de clients ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq3_a">
-            <p>Quand un client demande un devis depuis votre profil, sa demande apparaît directement associée à votre compte — nom, téléphone, commune, et description du besoin.</p>
-            <div class="faq-tip">💡 Un client peut aussi poster une demande générale, visible par tous les artisans de son secteur et de sa zone.</div>
-          </div>
+          <div class="faq-a" data-i18n="faq3_a"><p>Une simple demande de renseignement arrive directement dans votre espace MPA Artisans et par email. Pour une visite ou une réservation, le client règle d'abord les frais en ligne : vous ne voyez sa demande qu'après le paiement.</p><p style="margin-top:8px;">Vous recevez son nom, son téléphone, sa commune, sa description et ses photos. Un client peut aussi poster une demande générale, visible par les artisans de son secteur : ses coordonnées apparaissent quand vous cliquez sur « Prendre en charge ».</p><div class="faq-tip">💡 Si vous refusez ou ne pouvez pas venir, le client est remboursé automatiquement.</div></div>
         </div>
 
         <div class="faq-item" data-q="ajouter services tarifs photos chantier vitrine">
@@ -1077,6 +1187,62 @@ body.theme-light footer { background:#fbfcfe; }
             <p>Oui, c'est ce qui compose votre vitrine, visible par tous les clients qui consultent votre profil — vos services avec un tarif indicatif, et des photos de vos réalisations.</p>
             <div class="faq-tip">💡 Un profil complet, avec de vraies photos, inspire davantage confiance qu'un profil minimal.</div>
           </div>
+        </div>
+
+        <div class="faq-item" data-q="paiement frais commission pro abonnement 7 200 coût prix artisan">
+          <div class="faq-q" onclick="toggleFAQItem(this)">
+            <span data-i18n="faq14_q">Combien ça coûte aux artisans ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-a" data-i18n="faq14_a"><p>L'inscription et l'offre <strong>Essentiel</strong> sont gratuites : fiche dans l'annuaire, planning, boutique (9 produits), paiements en ligne, comptabilité. L'offre <strong>Pro</strong> coûte 9,90 € par mois, avec 14 jours d'essai sans carte.</p><p style="margin-top:8px;">CaraLink prend <strong>7 %</strong> des paiements encaissés en ligne <strong>uniquement sur la part au-delà de 200 € par mois</strong> (pas sur les 200 premiers euros), sur les clients venus par CaraLink. Exemple : 300 € encaissés dans le mois, 7 % de 100 € = 7 €. En dessous de 200 €, rien. Les frais du service de paiement Stripe sont à votre charge.</p><div class="faq-tip">💡 Les clients que vous ajoutez vous-même à la main dans MPA Artisans ne sont jamais commissionnés.</div></div>
+        </div>
+
+        <div class="faq-item" data-q="paiement en ligne stripe activer obligatoire novembre réservation annuaire">
+          <div class="faq-q" onclick="toggleFAQItem(this)">
+            <span data-i18n="faq15_q">Pourquoi activer les paiements en ligne ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-a" data-i18n="faq15_a"><p>Pour recevoir des réservations. Le client paie à la réservation : vous savez qu'il viendra, et l'argent arrive directement sur votre compte Stripe.</p><p style="margin-top:8px;"><strong>À partir du 1er novembre 2026</strong>, il faut avoir activé les paiements en ligne pour recevoir des réservations et apparaître dans l'annuaire. Vous activez cela depuis MPA Artisans, et MPA-AI vous guide pas à pas.</p><div class="faq-tip">💡 Stripe vous demande quelques informations d'identité et un compte bancaire pour vous verser l'argent.</div></div>
+        </div>
+
+        <div class="faq-item" data-q="partager fiche lien qr code whatsapp facebook">
+          <div class="faq-q" onclick="toggleFAQItem(this)">
+            <span data-i18n="faq16_q">Comment partager ma fiche (lien, QR code) ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-a" data-i18n="faq16_a"><p>Dans MPA Artisans, ouvrez <strong>Mon profil</strong> puis <strong>Partager ma fiche</strong> : vous obtenez un lien, un message prêt à envoyer (WhatsApp, Facebook, email) et un QR code à imprimer. Sur la fiche publique, un bouton <strong>Partager</strong> fait la même chose.</p><div class="faq-tip">💡 Les clients qui arrivent par votre lien passent par CaraLink : ils comptent comme clients CaraLink pour la commission.</div></div>
+        </div>
+
+        <div class="faq-item" data-q="boutique vendre produits catalogue panier commande stock">
+          <div class="faq-q" onclick="toggleFAQItem(this)">
+            <span data-i18n="faq17_q">Puis-je vendre mes produits en ligne ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-a" data-i18n="faq17_a"><p>Oui. Dans MPA Artisans, créez vos produits dans <strong>Mon stock</strong>, puis mettez-les en vente. Vos clients ont une boutique avec un panier et paient par carte. Il faut avoir activé les paiements en ligne. Vous suivez les commandes, la livraison et les remboursements depuis MPA.</p><div class="faq-tip">💡 Sur la boutique, CaraLink retient sa commission (au-delà de 200 € par mois) plus 1,9 % + 0,25 € de frais de paiement par commande.</div></div>
+        </div>
+
+        <div class="faq-item" data-q="demander paiement après visite facture devis montant lien">
+          <div class="faq-q" onclick="toggleFAQItem(this)">
+            <span data-i18n="faq18_q">Comment me faire payer après une visite ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-a" data-i18n="faq18_a"><p>Dans MPA Artisans, ouvrez l'intervention et cliquez sur <strong>Demander un paiement</strong>. Saisissez le montant de votre devis ou de votre facture : le client reçoit un lien de paiement par email, valable 14 jours. Vous pouvez aussi copier le lien et l'envoyer par SMS ou WhatsApp.</p><div class="faq-tip">💡 Si le client a déjà payé des frais en ligne, il en est informé. Le paiement va directement sur votre compte Stripe.</div></div>
+        </div>
+
+<div class="faq-item" data-q="versement virement délai stripe argent premier paiement jours">
+          <div class="faq-q" onclick="toggleFAQItem(this)">
+            <span data-i18n="faq19_q">Combien de temps avant de recevoir l'argent d'un paiement ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-a" data-i18n="faq19_a"><p>Le <strong>tout premier versement</strong> d'un nouveau compte prend en général <strong>7 à 14 jours</strong> après le premier paiement, le temps de la vérification par Stripe. Ensuite, comptez environ <strong>2 jours ouvrés</strong> après chaque paiement.</p></div>
+        </div>
+
+<div class="faq-item" id="faq-commission" data-q="commission impayée main propre 7% 5% 200 franchise prélèvement suspension calcul">
+          <div class="faq-q" onclick="toggleFAQItem(this)">
+            <span data-i18n="faq20_q">Pourquoi une commission alors que mon client m'a payé en main propre ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-a" data-i18n="faq20_a"><p>Les clients que CaraLink vous apporte (demande de devis, projet publié, annuaire) sont commissionnés <strong>même si le paiement se fait hors de CaraLink</strong>. Les <strong>200 premiers euros de chaque mois sont gratuits</strong> ; au-dessus, la commission est de <strong>7 %</strong> (<strong>5 %</strong> avec l'offre Pro) sur la part qui dépasse. Les clients que vous ajoutez vous-même ne sont <strong>jamais</strong> commissionnés.</p><p><strong>Exemple :</strong> 450 € de prestations dans le mois : (450 − 200) × 7 % = <strong>17,50 €</strong>. Gagner plus reste toujours plus rentable. Ce qui a déjà été payé en ligne est commissionné au paiement et déduit : jamais deux fois.</p><p>La commission est prélevée <strong>une fois par mois</strong>, le mois suivant, sur votre carte enregistrée. Le détail du calcul est dans MPA Artisans (bandeau rouge ou « Ma comptabilité »).</p><div class="faq-tip">⚠️ Si le prélèvement échoue : rappel à 7 jours, dernier rappel à 14 jours, puis <strong>suspension de votre fiche de l'annuaire à 30 jours</strong>. Rien n'est supprimé : tout revient automatiquement dès que vous avez réglé (mettez à jour votre carte).</div></div>
         </div>
 
       </div>
@@ -1103,15 +1269,10 @@ body.theme-light footer { background:#fbfcfe; }
 
         <div class="faq-item" data-q="demander devis contacter artisan gratuit">
           <div class="faq-q" onclick="toggleFAQItem(this)">
-            <span data-i18n="faq6_q">Comment demander un devis ?</span>
+            <span data-i18n="faq6_q">Comment demander un devis ou réserver ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq6_a">
-            <div class="faq-step"><span class="faq-num">1</span>Sur le profil d'un artisan, cliquez sur <strong>Demander un devis</strong></div>
-            <div class="faq-step"><span class="faq-num">2</span>Indiquez votre nom, votre téléphone, votre commune et votre besoin</div>
-            <div class="faq-step"><span class="faq-num">3</span>Envoyez — aucun compte à créer, aucun mot de passe</div>
-            <div class="faq-tip">💡 L'artisan reçoit votre demande directement et vous recontacte par téléphone.</div>
-          </div>
+          <div class="faq-a" data-i18n="faq6_a"><div class="faq-step"><span class="faq-num">1</span>Sur le profil d'un artisan, cliquez sur <strong>Demander un devis</strong></div><div class="faq-step"><span class="faq-num">2</span>Choisissez : un simple renseignement, un rendez-vous sur place, ou une réservation directe si vous connaissez déjà l'artisan</div><div class="faq-step"><span class="faq-num">3</span>Indiquez votre nom, votre téléphone, votre email, votre commune et votre besoin (vous pouvez joindre des photos)</div><div class="faq-step"><span class="faq-num">4</span>Si l'artisan demande des frais de déplacement ou de réservation, vous les réglez en ligne par carte avant l'envoi</div><div class="faq-tip">💡 Aucun compte à créer. Un simple renseignement est gratuit.</div></div>
         </div>
 
         <div class="faq-item" data-q="badge vérifié confiance sécurité signification">
@@ -1120,9 +1281,17 @@ body.theme-light footer { background:#fbfcfe; }
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
           <div class="faq-a" data-i18n="faq7_a">
-            <p>Un artisan vérifié a un SIRET actif reconnu par le registre officiel des entreprises, et son attestation d'assurance (RC Pro ou décennale) a été contrôlée.</p>
+            <p>Un artisan vérifié a un SIRET actif reconnu par le registre officiel des entreprises. Le badge ne constitue pas une garantie sur son assurance : n'hésitez pas à la lui demander.</p>
             <div class="faq-tip">💡 Un artisan non encore vérifié n'est pas nécessairement suspect — il peut simplement être en cours de constitution de son dossier.</div>
           </div>
+        </div>
+
+        <div class="faq-item" data-q="frais déplacement réservation annuler annulation remboursement rembourser prix">
+          <div class="faq-q" onclick="toggleFAQItem(this)">
+            <span data-i18n="faq13_q">Combien coûte une visite ou une réservation, et puis-je annuler ?</span>
+            <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-a" data-i18n="faq13_a"><p>Chaque artisan fixe ses frais de déplacement (pour une visite) ou de réservation. Le montant est affiché sur sa fiche et avant le paiement. Vous payez en ligne par carte, directement à l'artisan.</p><p style="margin-top:8px;">L'artisan indique une durée d'<strong>annulation gratuite</strong> (souvent 24 h avant le rendez-vous) : si vous annulez dans ce délai, vous êtes remboursé en entier. Si l'artisan refuse, annule ou ne répond pas sous 48 h, vous êtes remboursé automatiquement, sans rien faire. Pour annuler, utilisez le lien reçu par email.</p><div class="faq-tip">💡 Le remboursement apparaît sur votre carte en quelques jours.</div></div>
         </div>
 
       </div>
@@ -1139,10 +1308,7 @@ body.theme-light footer { background:#fbfcfe; }
             <span data-i18n="faq8_q">C'est vraiment gratuit ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq8_a">
-            <p>Oui. L'annuaire, la recherche et la demande de devis sont entièrement gratuits, aussi bien pour les clients que pour les artisans.</p>
-            <div class="faq-tip">💡 Aucune carte bancaire n'est demandée à l'inscription.</div>
-          </div>
+          <div class="faq-a" data-i18n="faq8_a"><p><strong>Pour les clients :</strong> oui. Consulter l'annuaire, chercher un artisan et demander un renseignement ou un devis sont gratuits. Certains artisans demandent des frais de déplacement ou de réservation pour une visite ou un créneau : le montant est affiché avant de payer.</p><p style="margin-top:8px;"><strong>Pour les artisans :</strong> l'inscription est gratuite. L'offre Pro coûte 9,90 € par mois. CaraLink prend une commission de 7 % seulement au-delà de 200 € encaissés en ligne par mois.</p><div class="faq-tip">💡 Aucune carte bancaire n'est demandée à l'inscription.</div></div>
         </div>
 
         <div class="faq-item" data-q="réservation créneau calendrier disponibilité">
@@ -1150,9 +1316,7 @@ body.theme-light footer { background:#fbfcfe; }
             <span data-i18n="faq9_q">Peut-on réserver un créneau directement en ligne ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq9_a">
-            <p>Pas encore — aujourd'hui, tout passe par la demande de devis, et c'est l'artisan qui vous recontacte pour convenir d'un rendez-vous. La réservation de créneau en ligne est prévue pour une prochaine version.</p>
-          </div>
+          <div class="faq-a" data-i18n="faq9_a"><p>Oui, chez les artisans qui ont renseigné leurs disponibilités : vous choisissez un créneau calculé selon les trajets de l'artisan. L'artisan le confirme sous 48 h, sinon vos frais sont remboursés automatiquement.</p><p style="margin-top:8px;">Chez les autres, vous faites une demande de devis ou de rendez-vous sur place, et l'artisan vous répond.</p></div>
         </div>
 
       </div>
@@ -1169,11 +1333,7 @@ body.theme-light footer { background:#fbfcfe; }
             <span data-i18n="faq10_q">Mes données sont-elles confidentielles ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq10_a">
-            <p>Oui. Vos données sont hébergées sur une infrastructure sécurisée, avec des règles d'accès strictes — chaque utilisateur n'accède qu'à ses propres données.</p>
-            <p style="margin-top:8px;">Votre téléphone et votre email ne sont jamais affichés publiquement — ils ne sont partagés qu'au moment d'une demande de devis.</p>
-            <div class="faq-tip">💡 CaraLink Artisans ne vend jamais vos données à des tiers.</div>
-          </div>
+          <div class="faq-a" data-i18n="faq10_a"><p>Oui. Vos données sont hébergées sur une infrastructure sécurisée, avec des règles d'accès strictes.</p><p style="margin-top:8px;">Votre téléphone et votre email ne sont jamais affichés publiquement : ils sont transmis seulement à l'artisan concerné par votre demande.</p><p style="margin-top:8px;">Les photos que vous joignez sont stockées dans un espace privé : seul cet artisan peut les voir, et uniquement pour évaluer le travail.</p><div class="faq-tip">💡 CaraLink Artisans ne vend jamais vos données à des tiers.</div></div>
         </div>
 
         <div class="faq-item" data-q="mot de passe oublié réinitialiser connexion email">
@@ -1226,6 +1386,19 @@ body.theme-light footer { background:#fbfcfe; }
         if (s) { s.value = ''; filterFAQ(''); }
       }
     }
+    // Lien direct vers une question (ex. https://caralink.app/artisans/#faq-commission, depuis le bandeau « commission impayée » de MPA)
+    window.addEventListener('load', function() {
+      if (location.hash !== '#faq-commission') return;
+      setTimeout(function() {
+        var it = document.getElementById('faq-commission');
+        if (!it) return;
+        var panel = document.getElementById('faq-panel');
+        if (panel && !panel.classList.contains('open')) toggleFAQ();   // la FAQ est un panneau latéral : on l'ouvre
+        document.querySelectorAll('.faq-item.open').forEach(function(i){ i.classList.remove('open'); });
+        it.classList.add('open');
+        setTimeout(function() { it.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 450);   // après l'animation d'ouverture du panneau
+      }, 400);
+    });
     function toggleFAQItem(el) {
       var item    = el.closest('.faq-item');
       var wasOpen = item.classList.contains('open');

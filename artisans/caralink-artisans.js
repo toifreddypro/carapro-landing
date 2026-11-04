@@ -256,7 +256,7 @@ function renderLangSwitcher() {
   var noms = { fr: 'Français', en: 'English', es: 'Español' };
   return '<div class="lang-switcher-desktop" style="position:relative;display:inline-block;">' +
     '<button onclick="toggleLangMenuArtisans()" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;border:1px solid var(--brd);background:var(--panel);cursor:pointer;font-size:12.5px;color:var(--tx);">' +
-      '<span class="flag-swatch ' + drapeaux[AT_LANG] + '"></span>' + noms[AT_LANG] +
+      '<span class="flag-swatch ' + drapeaux[AT_LANG] + '"></span><span class="lang-nom">' + noms[AT_LANG] + '</span>' +
     '</button>' +
     '<div id="lang-menu-artisans" style="display:none;position:absolute;top:100%;right:0;margin-top:6px;background:var(--panel);border:1px solid var(--brd);border-radius:10px;box-shadow:0 6px 20px rgba(19,34,60,.12);overflow:hidden;min-width:140px;z-index:50;">' +
       Object.keys(drapeaux).map(function(code) {
@@ -266,6 +266,14 @@ function renderLangSwitcher() {
       }).join('') +
     '</div>' +
   '</div>';
+}
+// Téléphone : le bouton « Artisan » propose se connecter OU créer sa fiche. Ordinateur : lien direct, comme avant.
+function ouvrirMenuArtisan(ev) {
+  if (!window.matchMedia('(max-width:768px)').matches) return true;
+  if (ev) ev.preventDefault();
+  var m = document.getElementById('menu-artisan');
+  if (m) m.style.display = (m.style.display === 'block') ? 'none' : 'block';
+  return false;
 }
 function toggleLangMenuArtisans() {
   var menu = document.getElementById('lang-menu-artisans');
@@ -283,6 +291,8 @@ function choisirLangArtisans(code) {
 document.addEventListener('click', function(e) {
   var menu = document.getElementById('lang-menu-artisans');
   if (menu && !e.target.closest('#nav')) menu.style.display = 'none';
+  var ma = document.getElementById('menu-artisan');
+  if (ma && !e.target.closest('.nav-art') && !e.target.closest('#menu-artisan')) ma.style.display = 'none';
 });
 
 // ════════════════════════════════════════
@@ -305,9 +315,10 @@ function renderNav() {
       nav-wrap passe à la ligne naturellement (flex-wrap) s'il n'y a pas la
       place — aucun code personnalisé, comportement natif du navigateur. */
       '<div class="nav-links">' +
-        '<a href="/artisans/compte.html" style="padding:6px 14px;border-radius:8px;border:1px solid var(--brd);color:var(--tx);font-weight:600;text-decoration:none;white-space:nowrap;">👤 ' + T('nav_compte_client') + '</a>' +
-        '<a href="https://caralink.app/mpa/" style="padding:6px 14px;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;text-decoration:none;white-space:nowrap;">🛠 ' + T('nav_espace_artisan') + '</a>' +
-        '<a href="/artisans/inscription.html" style="padding:6px 14px;border-radius:8px;border:1px solid var(--brd);color:var(--tx);font-weight:600;text-decoration:none;white-space:nowrap;">' + T('nav_devenir_artisan') + '</a>' +
+        '<a href="/artisans/compte.html" style="padding:6px 14px;border-radius:8px;border:1px solid var(--brd);color:var(--tx);font-weight:600;text-decoration:none;white-space:nowrap;">👤 <span class="nav-long">' + T('nav_compte_client') + '</span><span class="nav-court">' + T('nav_client_court') + '</span></a>' +
+        '<a href="https://caralink.app/mpa/" class="nav-art" onclick="return ouvrirMenuArtisan(event)" style="padding:6px 14px;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;text-decoration:none;white-space:nowrap;">🛠 <span class="nav-long">' + T('nav_espace_artisan') + '</span><span class="nav-court">' + T('nav_artisan_court') + '</span></a>' +
+        '<a href="/artisans/inscription.html" class="nav-devenir" style="padding:6px 14px;border-radius:8px;border:1px solid var(--brd);color:var(--tx);font-weight:600;text-decoration:none;white-space:nowrap;">' + T('nav_devenir_artisan') + '</a>' +
+        '<div id="menu-artisan" style="display:none;"><a href="https://caralink.app/mpa/">🔑 ' + T('nav_artisan_connexion') + '</a><a href="/artisans/inscription.html">✨ ' + T('nav_artisan_inscription') + '</a></div>' +
       '</div>' +
       '<div class="nav-right">' +
         renderLangSwitcher() +
@@ -488,10 +499,17 @@ function trierPar(critere) {
 }
 
 function lancerRecherche() {
+  // Téléphone : les vignettes n'apparaissent qu'après une recherche (le style ne s'applique que sur petit écran).
+  window._rechercheFaite = true;
+  document.body.classList.remove('avant-recherche');
   _searchState.secteur = document.getElementById('search-secteur').value.trim();
   _searchState.commune = document.getElementById('search-commune').value.trim();
   _searchState.nom = document.getElementById('search-nom').value.trim();
   chargerArtisans();
+  if (window.matchMedia('(max-width:768px)').matches) {
+    var zr = document.getElementById('main-results');
+    if (zr && zr.scrollIntoView) setTimeout(function() { zr.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80);
+  }
 }
 
 // ════════════════════════════════════════
@@ -523,6 +541,7 @@ function renderResults() {
     '</div>';
   renderPartnerPanel();
   demarrerInfosAnnuaire();
+  if (!window._rechercheFaite) document.body.classList.add('avant-recherche');
   chargerArtisans();
   setTimeout(initCarte, 100);
 }
