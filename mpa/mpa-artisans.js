@@ -839,6 +839,23 @@ function basculerCarte(entete) {
   entete.setAttribute('aria-expanded', fermee ? 'false' : 'true');
 }
 
+// Version téléphone : glisser le doigt à gauche/droite change de sous-partie (sans gêner les listes ou tableaux qui défilent de côté).
+(function() {
+  var x0 = 0, y0 = 0, cible = null;
+  function defileCote(el) { for (; el && el !== document.body; el = el.parentElement) { if (el.scrollWidth > el.clientWidth + 4 && /(auto|scroll)/.test(getComputedStyle(el).overflowX)) return true; } return false; }
+  document.addEventListener('touchstart', function(e) {
+    var t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; cible = e.target;
+    if (window.innerWidth > 640 || !e.target.closest || !e.target.closest('#content') || e.target.closest('input,textarea,select,.leaflet-container,#itin-carte') || defileCote(e.target)) cible = null;
+  }, { passive: true });
+  document.addEventListener('touchend', function(e) {
+    if (!cible) return; var t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; var el = cible; cible = null;
+    if (Math.abs(dx) < 70 || Math.abs(dy) > 45 || document.getElementById('fiche-mobile')) return;
+    var pnl = document.querySelector('#content > .pnl.active .sous-nav') ; if (!pnl) return;
+    var btns = Array.prototype.slice.call(pnl.querySelectorAll('.btab')).filter(function(b) { return b.style.display !== 'none'; });
+    var i = btns.findIndex(function(b) { return b.classList.contains('active'); }), k = i + (dx < 0 ? 1 : -1);
+    if (i >= 0 && k >= 0 && k < btns.length) btns[k].click();
+  }, { passive: true });
+})();
 function switchSousOnglet(idNav, idConteneur, i) {
   document.querySelectorAll('#' + idNav + ' .btab').forEach(function(b, idx) { b.classList.toggle('active', idx === i); });
   document.querySelectorAll('#' + idConteneur + ' > .bpnl').forEach(function(p, idx) { p.classList.toggle('active', idx === i); });
@@ -7958,8 +7975,23 @@ function baseArtisanCoords() {
   return null;
 }
 
+// Version téléphone : flèches ‹ Aujourd'hui › à la place de la rangée de jours (même fenêtre : aujourd'hui + 6 jours).
+function jourItineraire(delta) {
+  var base = new Date(); base.setHours(12, 0, 0, 0);
+  var debut = base.toISOString().slice(0, 10), cur = _itinDateChoisie || debut, idx = 0;
+  for (var i = 0; i < 7; i++) { var d = new Date(base); d.setDate(d.getDate() + i); if (d.toISOString().slice(0, 10) === cur) idx = i; }
+  idx = Math.max(0, Math.min(6, idx + delta));
+  var cible = new Date(base); cible.setDate(cible.getDate() + idx);
+  choisirJourItineraire(cible.toISOString().slice(0, 10));
+}
 async function choisirJourItineraire(dateStr) {
   _itinDateChoisie = dateStr;
+  (function() {
+    var b = new Date(); b.setHours(12, 0, 0, 0); var idx = -1;
+    for (var i = 0; i < 7; i++) { var d = new Date(b); d.setDate(d.getDate() + i); if (d.toISOString().slice(0, 10) === dateStr) { idx = i; var lib = i === 0 ? 'Aujourd\'hui' : i === 1 ? 'Demain' : JOURS_NOMS[d.getDay() === 0 ? 6 : d.getDay() - 1] + ' ' + d.getDate(); var l = document.getElementById('itin-nav-lib'); if (l) l.textContent = lib; } }
+    var p = document.getElementById('itin-prec'), s = document.getElementById('itin-suiv');
+    if (p) p.disabled = idx <= 0; if (s) s.disabled = idx >= 6;
+  })();
   var jours = document.getElementById('itin-jours');
   if (jours) {
     Array.prototype.forEach.call(jours.children, function(btn, idx) {
