@@ -3253,6 +3253,7 @@ async function chargerAvis() {
   if (error) { console.error('chargerAvis:', error); return; }
   _avisCache = data || [];
   renderAvis();
+  if (typeof majHeroProfil === 'function') majHeroProfil();
 }
 
 function renderAvis() {
@@ -5407,6 +5408,7 @@ async function renderDispoCalendrier() {
 function renderFiche() {
   var a = _artisan;
   document.getElementById('fv-nom').textContent = a.nom_entreprise || '—';
+  if (typeof majHeroProfil === 'function') majHeroProfil();
   document.getElementById('fv-statut').textContent = a.statut || 'Artisan Indépendant';
   document.getElementById('fv-act').textContent = a.secteur || '—';
   document.getElementById('fv-siret').textContent = a.siret || '—';
@@ -5749,7 +5751,10 @@ async function chargerClients() {
 
 function renderClients(liste) {
   var tbody = document.getElementById('tbody-clients');
+  var zm = document.getElementById('zone-clients-m');
+  if (zm) zm.innerHTML = liste.length ? liste.map(carteClientMobile).join('') : '<div class="etat-vide-tbl">Aucun client habituel pour l\'instant.</div>';
   if (!liste.length) {
+    rafraichirFicheMobile();
     tbody.innerHTML = '<tr><td colspan="6" class="etat-vide-tbl">Aucun client habituel pour l\'instant.</td></tr>';
     return;
   }
@@ -5764,6 +5769,80 @@ function renderClients(liste) {
       '<td><button class="icbtn danger" onclick="supprimerClient(\'' + c.id + '\')" title="Supprimer">🗑</button></td>' +
     '</tr>';
   }).join('');
+  rafraichirFicheMobile();
+}
+
+
+// ── Version téléphone : Mon profil = une carte de présentation + des lignes ; un clic ouvre le détail (les blocs existants sont simplement déplacés). ──
+function majHeroProfil() {
+  var a = (typeof _artisan !== 'undefined') ? _artisan : null; if (!a) return;
+  var nom = a.nom_entreprise || '—';
+  var ini = nom.split(/\s+/).map(function(m) { return m.charAt(0); }).join('').slice(0, 2).toUpperCase() || '?';
+  var set = function(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
+  set('ph-av', ini); set('ph-nom', nom);
+  set('ph-sous', [a.secteur, a.commune].filter(Boolean).join(' · '));
+  var tags = document.getElementById('ph-tags');
+  if (tags) {
+    var t = '';
+    if (typeof _avisCache !== 'undefined' && _avisCache && _avisCache.length) {
+      var moy = _avisCache.reduce(function(s, x) { return s + x.note; }, 0) / _avisCache.length;
+      t += '<span>⭐ ' + moy.toFixed(1).replace('.', ',') + ' · ' + _avisCache.length + ' avis</span>';
+    }
+    t += '<span>' + (a.plan === 'pro' || a.plan === 'pro_offert' ? '🏆 Offre Pro' : 'Offre Essentiel') + '</span>';
+    tags.innerHTML = t;
+  }
+}
+function initProfilMobile() {
+  if (!window.matchMedia('(max-width:640px)').matches) return;
+  var zone = document.getElementById('profil-lignes'); if (!zone || zone.getAttribute('data-ok')) return;
+  zone.setAttribute('data-ok', '1');
+  var entreprise = document.querySelector('#bp0 .fcol .fcard'); // « Informations entreprise »
+  var cartes = document.querySelectorAll('#bp0 .fcard');
+  var fiscal = null, horaires = null, indispo = null;
+  cartes.forEach(function(c) {
+    if (c.querySelector('#cfg-cotis')) fiscal = c;
+    if (c.querySelector('#zone-horaires')) horaires = c;
+    if (c.querySelector('#zone-indispo')) indispo = c;
+  });
+  // « Déplacement et réservation » : les 4 dernières lignes de la fiche entreprise, regroupées dans leur propre bloc.
+  var depl = document.createElement('div'); depl.className = 'fcard';
+  depl.innerHTML = '<div class="fchdr"><div class="fctit">Déplacement et réservation</div></div><div class="fbdy"></div>';
+  ['fv-visite', 'fv-frais', 'fv-frais-resa', 'fv-annul'].forEach(function(id) {
+    var e = document.getElementById(id), r = e && e.closest('.fr'); if (r) depl.querySelector('.fbdy').appendChild(r);
+  });
+  var btnMod = entreprise && entreprise.querySelector('.sbtn:last-child');
+  if (btnMod) btnMod.setAttribute('onclick', 'fermerFicheMobile();openModifierFiche()');
+  var lignes = [
+    ['🏢', '#e8f0ff', 'Mon entreprise', 'Nom, adresse, contact', entreprise],
+    ['🕐', '#e6f7ef', 'Mes horaires', 'Les jours et heures où l\'on peut vous réserver', horaires],
+    ['🌴', '#f3e8ff', 'Mes congés', 'Les jours où vous n\'êtes pas disponible', indispo],
+    ['🚗', '#fff1e8', 'Déplacement et réservation', 'Visite avant devis, frais, annulation', depl],
+    ['🧾', '#e0f2fe', 'Mes cotisations', 'Réglages fiscaux', fiscal],
+    ['⭐', '#fef9c3', 'Mon offre', 'Essentiel ou Pro', document.getElementById('zone-mon-offre')]
+  ];
+  lignes.forEach(function(l, i) {
+    if (!l[4]) return;
+    var w = document.createElement('div'); w.className = 'pc-wrap'; w.setAttribute('data-fid', 'pf-' + i);
+    w.innerHTML = '<div class="pc-ligne" onclick="ouvrirFicheMobile(this)"><div class="sv-tuile" style="background:' + l[1] + '">' + l[0] + '</div><div class="pl-txt"><div class="pl-nom">' + l[2] + '</div><div class="pl-sous">' + l[3] + '</div></div><div class="pl-chev">›</div></div><div class="pc-plein"></div>';
+    w.querySelector('.pc-plein').appendChild(l[4]);
+    zone.appendChild(w);
+  });
+  majHeroProfil();
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initProfilMobile); else initProfilMobile();
+
+function carteClientMobile(c) {
+  var nom = c.nom || '—';
+  var ini = nom.split(/\s+/).map(function(m) { return m.charAt(0); }).join('').slice(0, 2).toUpperCase() || '?';
+  var pal = ['#8b5cf6', '#2563eb', '#2f9e6e', '#C2410C', '#0891b2', '#db2777'], som = 0;
+  for (var i = 0; i < nom.length; i++) som += nom.charCodeAt(i);
+  var coul = pal[som % pal.length];
+  var ligne = function(l, v) { return v ? '<div class="cl-lg"><span>' + l + '</span><span>' + escHtml(String(v)) + '</span></div>' : ''; };
+  var plein = '<div class="pc-plein"><div class="cl-det"><div class="sv-tete" style="display:flex;align-items:center;gap:14px;margin-bottom:6px;"><div class="cv-av" style="background:' + coul + '">' + escHtml(ini) + '</div><div class="sv-nom" style="font-size:20px;font-weight:800;">' + escHtml(nom) + '</div></div>' +
+    ligne('E-mail', c.email) + ligne('Adresse', c.adresse) + ligne('Code postal', c.code_postal) + ligne('Commune', c.commune) + ligne('Paiement sous', (c.delai_paiement || 30) + ' jours') +
+    '<div class="sv-btns" style="display:flex;margin-top:20px;"><button class="sv-ret" style="flex:1;padding:14px;border-radius:14px;border:2px solid var(--ac);background:#fff;color:var(--ac);font-family:\'Outfit\',sans-serif;font-size:15.5px;font-weight:800;" onclick="fermerFicheMobile();supprimerClient(\'' + c.id + '\')">Retirer ce client</button></div></div></div>';
+  return '<div class="pc-wrap" data-fid="cl-' + c.id + '"><div class="pc-ligne" onclick="ouvrirFicheMobile(this)"><div class="cv-av" style="background:' + coul + '">' + escHtml(ini) + '</div>' +
+    '<div class="pl-txt"><div class="pl-nom">' + escHtml(nom) + '</div><div class="pl-sous">' + escHtml(c.commune || 'Commune non renseignée') + '</div></div><div class="pl-chev">›</div></div>' + plein + '</div>';
 }
 
 function filtrerClients() {
