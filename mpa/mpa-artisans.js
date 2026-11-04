@@ -237,6 +237,14 @@ function mpaAiGrandAjouter(msgs) {
 }
 function mpaAiGrandTouche(e) { if (e.key === 'Escape') mpaAiGrandFermer(); }
 
+// Titre en gras + détail en gris dessous (même rendu que la maquette). Sur ordinateur l'aspect reste celui d'avant.
+function mpaAiGrandTexte(msg) {
+  var s = String(msg || ''), t = s, d = '';
+  var k = s.search(/<br\s*\/?>/i);
+  if (k > 0) { t = s.slice(0, k); d = s.slice(k).replace(/^<br\s*\/?>(\s*<br\s*\/?>)*/i, ''); }
+  else { var m = s.match(/^(.+?[.!?])\s+(\S[\s\S]*)$/); if (m && m[1].indexOf('<') === -1) { t = m[1]; d = m[2]; } }
+  return d ? '<span class="gm-t">' + t + '</span><br class="gm-br"><span class="gm-s">' + d + '</span>' : '<span class="gm-t">' + t + '</span>';
+}
 function mpaAiGrandRendre() {
   var g = _mpaAiGrand, fond = document.getElementById('mpa-ai-grand');
   if (!g || !fond) return;
@@ -252,7 +260,7 @@ function mpaAiGrandRendre() {
   fond.innerHTML =
     '<div class="mpa-ai-grand-box" style="border-top-color:' + couleur + ';">' +
       '<div class="mpa-ai-grand-loader">' + (loader ? loader.outerHTML : '✨') + '</div>' +
-      '<div class="mpa-ai-grand-msg">' + m.message + '</div>' +
+      '<div class="mpa-ai-grand-msg">' + mpaAiGrandTexte(m.message) + '</div>' +
       ctas +
       (points ? '<div class="mpa-ai-grand-points">' + points + '</div>' : '') +
       '<div class="mpa-ai-grand-pied">' +
@@ -5883,7 +5891,7 @@ function initProfilMobile() {
   });
   // « Déplacement et réservation » : les 4 dernières lignes de la fiche entreprise, regroupées dans leur propre bloc.
   var depl = document.createElement('div'); depl.className = 'fcard';
-  depl.innerHTML = '<div class="fchdr"><div class="fctit">Déplacement et réservation</div></div><div class="fbdy"></div>';
+  depl.innerHTML = '<div class="fchdr"><div class="fctit">Déplacement et réservation</div><button class="sbtn sm" onclick="fermerFicheMobile();openModifierFiche()">✎ Modifier</button></div><div class="fbdy"></div>';
   ['fv-visite', 'fv-frais', 'fv-frais-resa', 'fv-annul'].forEach(function(id) {
     var e = document.getElementById(id), r = e && e.closest('.fr'); if (r) depl.querySelector('.fbdy').appendChild(r);
   });
