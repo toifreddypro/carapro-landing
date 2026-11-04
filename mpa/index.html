@@ -580,6 +580,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   #tbl-factures td:nth-child(4){grid-column:2;grid-row:1/4;align-self:center;font-weight:800;font-size:17px;color:var(--ac);}
   #tbl-factures td:nth-child(5){grid-column:1/-1;grid-row:4;margin-top:8px;}
   #tbl-factures td[colspan]{grid-column:1/-1;}
+  #tbl-factures td{text-align:left !important;font-family:'Outfit',sans-serif !important;}
+  #tbl-factures td:nth-child(4){text-align:right !important;}
+  #tbl-factures td:nth-child(2){font-size:16px;}
 }
 /* ── Tableau de bord ── */
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
@@ -1460,6 +1463,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <p class="cpv2-matrix-subtitle">Historique de vos factures générées</p>
 </div>
 </div>
+<div id="cx-fmois" class="cx-only"></div>
 <div class="scroll-hint">👉 Faites glisser pour voir plus</div>
 <div class="dcbdy">
 <table class="dtbl" id="tbl-factures">
@@ -2391,6 +2395,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261104153842"></script>
+<script src="/mpa/mpa-artisans.js?v=20261104155603"></script>
 </body>
 </html>

@@ -4204,12 +4204,43 @@ async function chargerFactures() {
   if (error) { console.error(error); return; }
 
   (data || []).forEach(function(f) { _numerosFactures[f.id] = f.numero; if (f.envoyee_le) _envoisFactures[f.id] = { le: f.envoyee_le, a: f.envoyee_a }; });
+  _facturesData = data || [];
+  renderFacturesListe();
+}
+// Sur téléphone, les factures se parcourent mois par mois (flèches) ; sur ordinateur la liste complète reste affichée.
+var _facturesData = [], _moisFactures = null;
+function moisFactureSuivant(delta) {
+  var p = _moisFactures.split('-'), d = new Date(Number(p[0]), Number(p[1]) - 1 + delta, 1);
+  _moisFactures = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  renderFacturesListe();
+}
+function renderFacturesListe() {
   var tbody = document.getElementById('tbody-factures');
-  if (!data || !data.length) {
+  if (!tbody) return;
+  var tel = window.innerWidth <= 640;
+  var liste = _facturesData;
+  var nav = document.getElementById('cx-fmois');
+  if (tel && nav) {
+    var cle = function(f) { return String(f.date_facture).slice(0, 7); };
+    var auj = new Date(); var courant = auj.getFullYear() + '-' + String(auj.getMonth() + 1).padStart(2, '0');
+    var cles = _facturesData.map(cle).sort();
+    var mini = cles.length ? cles[0] : courant, maxi = cles.length && cles[cles.length - 1] > courant ? cles[cles.length - 1] : courant;
+    if (!_moisFactures) _moisFactures = courant;
+    liste = _facturesData.filter(function(f) { return cle(f) === _moisFactures; });
+    var nomM = MOIS_NOMS[Number(_moisFactures.slice(5, 7)) - 1]; nomM = nomM.charAt(0).toUpperCase() + nomM.slice(1);
+    var total = liste.reduce(function(s, f) { return s + Number(f.montant_total || 0); }, 0);
+    nav.innerHTML = '<div class="cx-per"><button onclick="moisFactureSuivant(-1)"' + (_moisFactures <= mini ? ' disabled' : '') + ' aria-label="Mois précédent">‹</button><span>' + nomM + ' ' + _moisFactures.slice(0, 4) + '</span><button onclick="moisFactureSuivant(1)"' + (_moisFactures >= maxi ? ' disabled' : '') + ' aria-label="Mois suivant">›</button></div>' +
+      (liste.length ? '<div class="cx-sous" style="text-align:center;margin:-4px 0 12px;">' + liste.length + ' facture' + (liste.length > 1 ? 's' : '') + ' · ' + _eurM(total) + '</div>' : '');
+  } else if (nav) { nav.innerHTML = ''; }
+  if (!_facturesData.length) {
     tbody.innerHTML = '<tr><td colspan="5" class="etat-vide-tbl">Aucune facture émise pour l\'instant.</td></tr>';
     return;
   }
-  tbody.innerHTML = data.map(function(f) {
+  if (!liste.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="etat-vide-tbl">Aucune facture ce mois-ci.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = liste.map(function(f) {
     var dateAff = new Date(f.date_facture).toLocaleDateString('fr-FR');
     var client = f.mpa_artisans_clients ? f.mpa_artisans_clients.nom : '—';
     return '<tr>' +
