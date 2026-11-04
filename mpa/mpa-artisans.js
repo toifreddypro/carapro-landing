@@ -1849,7 +1849,7 @@ function renderDemandes() {
         '</div>' : '') +
       '</div>';
     var blocContactSec = '<div class="dm-sec dm-contact"><div class="dm-titre">📞 Contacter ' + escHtml(d.client_nom) + '</div>' + blocContact + '</div>';
-    return '<div class="dm-carte" style="border-left-color:' + couleurBord + ';">' +
+    var carteDm = '<div class="dm-carte" style="border-left-color:' + couleurBord + ';">' +
       '<div class="dm-entete">' +
         '<span class="pj-num" style="background:' + couleurBord + ';">' + (idxD + 1) + '</span>' +
         '<div class="dm-id">' +
@@ -1862,8 +1862,23 @@ function renderDemandes() {
       (d.statut === 'creneau_confirme' ? '' :
         '<div class="dm-pied"><button onclick="creerClientDepuisDemande(' + jsAttrLocal(d.client_nom) + ',' + jsAttrLocal(d.commune) + ')" style="background:none;border:none;color:var(--ac);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;">+ Ajouter comme client habituel</button></div>') +
     '</div>';
+    // Version téléphone : une vignette épurée ; la carte complète s'ouvre au clic (sur ordinateur, seule la carte complète s'affiche).
+    var nomC = d.client_nom || '—';
+    var iniC = nomC.split(/\s+/).map(function(m) { return m.charAt(0); }).join('').slice(0, 2).toUpperCase() || '?';
+    var palD = ['#0ea5e9', '#8b5cf6', '#2f9e6e', '#C2410C', '#0891b2', '#db2777'], somD = 0;
+    for (var k = 0; k < nomC.length; k++) somD += nomC.charCodeAt(k);
+    var besoinC = String(d.description_besoin || '').replace(/\s+/g, ' ').trim();
+    if (besoinC.length > 70) besoinC = besoinC.slice(0, 68) + '…';
+    var vignetteDm = '<div class="cm-vignette" onclick="ouvrirFicheMobile(this)">' +
+      '<div class="cv-haut"><div class="cv-av" style="background:' + palD[somD % palD.length] + '">' + escHtml(iniC) + '</div>' +
+      '<div class="cv-id"><div class="cv-nom">' + escHtml(nomC) + '</div><div class="cv-lieu">📍 ' + escHtml(d.commune || '') + ' · reçue le ' + dateAff + '</div></div></div>' +
+      (typeLabel ? '<div class="cv-art"><span>' + typeLabel + '</span></div>' : '') +
+      (besoinC ? '<div style="font-size:14px;color:#6b7280;margin-top:8px;line-height:1.4;">« ' + escHtml(besoinC) + ' »</div>' : '') +
+      '<div class="cv-pills">' + badgeType + '</div></div>';
+    return '<div class="pc-wrap" data-fid="dem-' + d.id + '">' + vignetteDm + '<div class="pc-plein">' + carteDm + '</div></div>';
   }).join('');
   zone.innerHTML = barre + htmlCartes;
+  rafraichirFicheMobile();
 }
 
 var LABELS_TYPE_INTERVENTION = {
@@ -8532,10 +8547,14 @@ async function chargerServices() {
 
 function renderServices(liste) {
   var tbody = document.getElementById('tbody-services');
+  var zm = document.getElementById('zone-services-m');
   if (!liste.length) {
     tbody.innerHTML = '<tr><td colspan="5" class="etat-vide-tbl">Aucun service défini pour l\'instant.</td></tr>';
+    if (zm) zm.innerHTML = '<div class="etat-vide-tbl">Aucun service pour l\'instant. Ajoutez le premier ci-dessous.</div>';
+    rafraichirFicheMobile();
     return;
   }
+  if (zm) zm.innerHTML = liste.map(function(s, i) { return carteServiceMobile(s, i); }).join('');
   tbody.innerHTML = liste.map(function(s) {
     var prix = s.prix_indicatif ? (s.prix_indicatif + '€' + (s.unite ? '/' + s.unite : '')) : '<span style="font-style:italic;color:var(--mu);">Sur devis</span>';
     var duree = s.duree_estimee_min ? formatDuree(s.duree_estimee_min) : '—';
@@ -8550,6 +8569,24 @@ function renderServices(liste) {
       '</td>' +
     '</tr>';
   }).join('');
+  rafraichirFicheMobile();
+}
+
+// ── Version téléphone : chaque service = une carte épurée (icône, nom, durée, prix) ; description, rappel et boutons s'ouvrent au clic. ──
+var ICONES_SERVICES = [['🔧', '#fff1e8'], ['🌿', '#e6f7ef'], ['🛠️', '#e8f0ff'], ['🧰', '#f3e8ff'], ['🔌', '#fef9c3'], ['🚿', '#e0f2fe']];
+function carteServiceMobile(s, i) {
+  var ic = ICONES_SERVICES[i % ICONES_SERVICES.length];
+  var prix = s.prix_indicatif ? (s.prix_indicatif + ' €' + (s.unite && s.unite !== 'forfait' ? '/' + s.unite : '')) : 'Sur devis';
+  var duree = s.duree_estimee_min ? formatDuree(s.duree_estimee_min) + ' environ' : 'Durée libre';
+  var rappel = s.rappel_mois ? '🔔 Rappel client : ' + (s.rappel_mois % 12 === 0 ? (s.rappel_mois / 12) + ' an' + (s.rappel_mois > 12 ? 's' : '') : s.rappel_mois + ' mois') : '';
+  var plein = '<div class="pc-plein"><div class="sv-det"><div class="sv-tete"><div class="sv-tuile" style="background:' + ic[1] + '">' + ic[0] + '</div><div><div class="sv-nom">' + escHtml(s.nom_service) + '</div><div class="sv-meta">' + prix + ' · ' + duree + '</div></div></div>' +
+    (s.description ? '<div class="sv-desc">' + escHtml(s.description) + '</div>' : '') +
+    (rappel ? '<div class="sv-rappel">' + rappel + '</div>' : '') +
+    '<div class="sv-btns"><button class="sv-mod" onclick="fermerFicheMobile();ouvrirService(\'' + s.id + '\')">✎ Modifier</button><button class="sv-ret" onclick="fermerFicheMobile();supprimerService(\'' + s.id + '\')">Retirer</button></div></div></div>';
+  return '<div class="pc-wrap" data-fid="svc-' + s.id + '"><div class="pc-ligne" onclick="ouvrirFicheMobile(this)">' +
+    '<div class="sv-tuile" style="background:' + ic[1] + '">' + ic[0] + '</div>' +
+    '<div class="pl-txt"><div class="pl-nom">' + escHtml(s.nom_service) + '</div><div class="pl-sous">' + duree + '</div></div>' +
+    '<div class="pl-prix">' + prix + '</div></div>' + plein + '</div>';
 }
 
 function formatDuree(min) {
