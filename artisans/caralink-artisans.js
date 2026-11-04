@@ -371,6 +371,8 @@ function renderHero() {
         '<h1 class="hero-title">' + T('hero_title') + '</h1>' +
         '<p class="hero-soustitre">' + T('hero_soustitre') + '</p>' +
         '<p class="hero-note">' + T('hero_note_short') + '</p>' +
+        '<div class="cadre-haut">' +
+        '<div class="app-bar-cadre"><span>🔧 CaraLink Artisans</span><span class="app-bar-sub">' + T('cadre_sous') + '</span></div>' +
         '<div class="search-bar">' +
           '<div class="search-question">🔍 ' + T('search_que') + '</div>' +
           '<div class="search-field"><label>' + T('search_secteur_label') + '</label>' +
@@ -389,12 +391,14 @@ function renderHero() {
             T('search_btn') +
           '</button>' +
         '</div>' +
+        '<div class="devis-mobile">📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">' + T('hero_devisgen_lien') + '</a>' + T('hero_devisgen_suite') + '</div>' +
+        '</div>' +
         '<div class="filters-wrap">' +
           '<button class="filter-pill' + (_searchState.tri==='note'?' active':'') + '" onclick="trierPar(\'note\')">' + T('filter_note') + '</button>' +
           '<button class="filter-pill' + (_searchState.rge?' active':'') + '" onclick="filtrerRge()">' + T('filter_rge') + '</button>' +
         '</div>' +
         htmlAidesInfo() +
-        '<div style="margin-top:14px;font-size:12.5px;color:var(--mu);">' +
+        '<div class="devis-desktop" style="margin-top:14px;font-size:12.5px;color:var(--mu);">' +
           '📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">' + T('hero_devisgen_lien') + '</a>' +
           T('hero_devisgen_suite') +
         '</div>' +

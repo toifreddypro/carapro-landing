@@ -13,7 +13,7 @@ var AT_TR = {
   fr: {
     nav_connexion: "Connexion",
     nav_mon_espace: "Mon espace",
-    search_que: "Que cherchez-vous ?", search_lieu_court: "Lieu", search_nom_court: "Nom",
+    cadre_sous: "Annuaire", search_que: "Que cherchez-vous ?", search_lieu_court: "Lieu", search_nom_court: "Nom",
     nav_client_court: "Client", nav_artisan_court: "Artisan", nav_artisan_connexion: "Me connecter", nav_artisan_inscription: "Créer ma fiche gratuite",
     nav_devenir_artisan: "Devenir artisan",
 
@@ -309,7 +309,7 @@ var AT_TR = {
   en: {
     nav_connexion: "Log in",
     nav_mon_espace: "My space",
-    search_que: "What are you looking for?", search_lieu_court: "Place", search_nom_court: "Name",
+    cadre_sous: "Directory", search_que: "What are you looking for?", search_lieu_court: "Place", search_nom_court: "Name",
     nav_client_court: "Customer", nav_artisan_court: "Craftsman", nav_artisan_connexion: "Log in", nav_artisan_inscription: "Create my free profile",
     nav_devenir_artisan: "Become a craftsman",
 
@@ -605,7 +605,7 @@ var AT_TR = {
   es: {
     nav_connexion: "Iniciar sesión",
     nav_mon_espace: "Mi espacio",
-    search_que: "¿Qué busca?", search_lieu_court: "Lugar", search_nom_court: "Nombre",
+    cadre_sous: "Directorio", search_que: "¿Qué busca?", search_lieu_court: "Lugar", search_nom_court: "Nombre",
     nav_client_court: "Cliente", nav_artisan_court: "Artesano", nav_artisan_connexion: "Iniciar sesión", nav_artisan_inscription: "Crear mi ficha gratis",
     nav_devenir_artisan: "Hazte artesano",
 
