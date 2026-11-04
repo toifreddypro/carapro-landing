@@ -691,6 +691,30 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .fm-corps .fchdr{padding:4px 0 12px;border-bottom:1px solid #eee;}
   .fm-corps .fchdr .sbtn:not(:last-child){display:none;}
   .fm-corps .fctit{font-size:18px;font-weight:800;}
+  /* fiches ouvertes : valeurs sous leur titre, jamais coupées */
+  .fm-corps .fr{flex-direction:column;align-items:flex-start;gap:3px;padding:13px 0;}
+  .fm-corps .fl{font-size:13.5px;}
+  .fm-corps .fv{text-align:left;font-size:16px;word-break:break-word;max-width:100%;}
+  .fm-corps .fbdy,.fm-corps .fcbdy{padding-left:0 !important;padding-right:0 !important;}
+  /* horaires : nom du jour + bouton sur une ligne, plages en pastilles dessous */
+  .fm-corps .hz-j{padding:15px 0 !important;gap:10px !important;}
+  .fm-corps .hz-nom{width:auto !important;flex:1;font-size:17px !important;font-weight:800 !important;}
+  .fm-corps .hz-add{order:2;padding:8px 16px !important;font-size:14px !important;border-radius:99px !important;border:1.5px dashed #c9c9c9 !important;}
+  .fm-corps .hz-plages{order:3;width:100%;flex:none !important;gap:8px !important;}
+  .fm-corps .hz-chip{font-size:15px !important;padding:8px 14px !important;border-radius:99px !important;background:#fff1e8 !important;color:#C2410C;}
+  .fm-corps .hz-plages>span:not(.hz-chip){font-size:14px !important;color:#9ca3af !important;}
+  .fm-corps .hz-form{padding:4px 0 14px !important;flex-wrap:wrap;gap:8px !important;}
+  .fm-corps .hz-form input{padding:10px 12px !important;font-size:16px !important;border-radius:10px !important;}
+  .fm-corps .hz-form button{padding:10px 18px !important;font-size:15px !important;border-radius:10px !important;}
+  /* congés : formulaire en colonne, grands champs */
+  .fm-corps .iz-form{flex-direction:column;align-items:stretch !important;gap:10px !important;}
+  .fm-corps .iz-form input,.fm-corps .iz-form select{width:100%;padding:12px !important;font-size:16px !important;border-radius:12px !important;min-width:0 !important;}
+  .fm-corps .iz-form span{font-size:13px !important;}
+  .fm-corps .iz-form button{padding:14px !important;font-size:16px !important;border-radius:14px !important;}
+  /* cotisations : un réglage par bloc */
+  .fm-corps .ccrow{flex-direction:column;align-items:flex-start !important;gap:8px;padding:14px 0;}
+  .fm-corps .ccrow>div:last-child{width:100%;}
+  .fm-corps .ccrow select.ccinp,.fm-corps .ccrow input[type=text].ccinp{width:100% !important;}
   .fm-corps #zone-mon-offre{margin:0 !important;}
   .fm-corps #zone-mon-offre .dcard{border:0 !important;}
   #p-profil .dcard{border:1px solid #e3e3e3;border-radius:18px;box-shadow:none;background:#fff;}
@@ -2528,6 +2552,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261104164445"></script>
+<script src="/mpa/mpa-artisans.js?v=20261104165417"></script>
 </body>
 </html>

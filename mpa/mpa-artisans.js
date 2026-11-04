@@ -5514,18 +5514,18 @@ function renderHoraires() {
   zone.innerHTML = ORDRE_JOURS_AFFICHAGE.map(function(jour) {
     var blocs = _horairesCache.filter(function(h) { return h.jour_semaine === jour; });
     return '<div>' +
-      '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--brd);flex-wrap:wrap;">' +
-        '<div style="width:90px;font-weight:600;font-size:13px;">' + JOURS_SEMAINE_LABEL[jour] + '</div>' +
-        '<div style="flex:1;display:flex;gap:6px;flex-wrap:wrap;">' +
+      '<div class="hz-j" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--brd);flex-wrap:wrap;">' +
+        '<div class="hz-nom" style="width:90px;font-weight:600;font-size:13px;">' + JOURS_SEMAINE_LABEL[jour] + '</div>' +
+        '<div class="hz-plages" style="flex:1;display:flex;gap:6px;flex-wrap:wrap;">' +
           (blocs.length ? blocs.map(function(b) {
-            return '<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:7px;background:var(--p2);font-family:\'JetBrains Mono\',monospace;font-size:11.5px;">' +
+            return '<span class="hz-chip" style="display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:7px;background:var(--p2);font-family:\'JetBrains Mono\',monospace;font-size:11.5px;">' +
               b.heure_debut.slice(0, 5) + '–' + b.heure_fin.slice(0, 5) +
               '<button onclick="supprimerPlageHoraire(\'' + b.id + '\')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:12px;padding:0;">✕</button></span>';
           }).join('') : '<span style="font-size:12px;color:var(--mu);">Ne travaille pas</span>') +
         '</div>' +
-        '<button onclick="ouvrirAjoutPlage(' + jour + ')" style="background:none;border:1px dashed var(--b2);border-radius:6px;padding:4px 10px;font-size:11.5px;color:var(--mu2);cursor:pointer;">+ Plage</button>' +
+        '<button class="hz-add" onclick="ouvrirAjoutPlage(' + jour + ')" style="background:none;border:1px dashed var(--b2);border-radius:6px;padding:4px 10px;font-size:11.5px;color:var(--mu2);cursor:pointer;">+ Plage</button>' +
       '</div>' +
-      '<div id="plage-form-' + jour + '" style="display:none;padding:8px 0 8px 100px;gap:6px;align-items:center;">' +
+      '<div class="hz-form" id="plage-form-' + jour + '" style="display:none;padding:8px 0 8px 100px;gap:6px;align-items:center;">' +
         '<input type="time" id="plage-debut-' + jour + '" style="padding:5px 8px;border-radius:6px;border:1px solid var(--b2);">' +
         '<span style="font-size:12px;color:var(--mu);">à</span>' +
         '<input type="time" id="plage-fin-' + jour + '" style="padding:5px 8px;border-radius:6px;border:1px solid var(--b2);">' +
@@ -5598,7 +5598,7 @@ function renderIndispos() {
 
   zone.innerHTML =
     (liste || '<div style="font-size:12.5px;color:var(--mu);margin-bottom:10px;">Aucune journée bloquée à venir.</div>') +
-    '<div style="display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;">' +
+    '<div class="iz-form" style="display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;">' +
       '<input type="date" id="indispo-debut" style="padding:6px 8px;border-radius:6px;border:1px solid var(--b2);font-size:12.5px;">' +
       '<span style="font-size:12px;color:var(--mu);">au</span>' +
       '<input type="date" id="indispo-fin" style="padding:6px 8px;border-radius:6px;border:1px solid var(--b2);font-size:12.5px;">' +
