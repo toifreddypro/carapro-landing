@@ -3961,6 +3961,20 @@ function renderStatistiques(vue, annee, pro) {
     _tuileStat('Clients', String(clients.length), 'clients identifiés') +
     _tuileStat('Panier moyen', lignes.length ? _fmtCA(panier) + ' €' : '—', 'par intervention ou vente');
 
+  // Version téléphone : 4 tuiles claires (gratuit), puis — en Pro — meilleurs clients, clients qui reviennent, d'où vient l'argent
+  var zcx = document.getElementById('cx-stats');
+  var tuileM = function(l, v, d) { return '<div class="cx-tuile"><div class="l">' + l + '</div><div class="v">' + v + '</div>' + (d ? '<div class="d">' + d + '</div>' : '') + '</div>'; };
+  var cxMois;
+  if (anneeCourante && moisCourant > 0) {
+    var cM = parMois[moisCourant], pM = parMois[moisCourant - 1], dM = pM > 0 ? Math.round((cM - pM) / pM * 100) : null;
+    cxMois = tuileM('📅 Ce mois-ci', _eurM(cM), dM === null ? '' : (dM >= 0 ? '▲ +' : '▼ ') + dM + ' % vs mois dernier');
+  } else {
+    var nbM = anneeCourante ? moisCourant + 1 : 12;
+    cxMois = tuileM('📅 Par mois', _eurM(total / nbM), 'en moyenne');
+  }
+  var cxHtml = '<div class="cx-grille">' + tuileM('💶 Gagné cette année', _eurM(total), '') + cxMois + tuileM('👥 Clients', String(clients.length), '') + tuileM('🧺 Panier moyen', lignes.length ? _eurM(panier) : '—', '') + '</div>';
+  if (zcx) zcx.innerHTML = cxHtml;
+
   if (!pro) return;
   var zoneTop = document.getElementById('stats-top'), zoneFid = document.getElementById('stats-fidelite');
   if (!zoneTop || !zoneFid) return;
@@ -3995,12 +4009,33 @@ function renderStatistiques(vue, annee, pro) {
     '<div id="stats-en-ligne" style="margin-top:10px;color:var(--mu);">Part payée en ligne : calcul…</div>';
   zoneFid.innerHTML = html;
 
+  if (zcx) {
+    var palette = ['#2f9e6e', '#2563eb', '#8b5cf6', '#C2410C', '#0891b2'];
+    var cx = cxHtml + '<div class="cx-titre">🏆 Vos meilleurs clients</div>' + (top.length ? top.map(function(c, i) {
+      return '<div class="cx-cl"><span class="rg">' + medailles[i] + '</span><span class="av2" style="background:' + palette[i % 5] + '">' + escHtml(c.nom.charAt(0).toUpperCase()) + '</span><span class="tx"><b>' + escHtml(c.nom) + '</b><small>' + c.nb + ' fois · ' + Math.round(c.ca / total * 100) + ' % de vos gains</small></span><span class="mt2">' + _eurM(c.ca) + '</span></div>';
+    }).join('') : '<p style="color:#8a8580;font-size:13.5px;">Aucun client identifié cette année.</p>');
+    if (clients.length) {
+      var pctF = Math.round(fideles.length / clients.length * 100), circ = 326.7;
+      cx += '<div class="cx-titre">🔁 Clients qui reviennent</div><div class="cx-rond"><svg viewBox="0 0 140 140" width="140" height="140"><circle cx="70" cy="70" r="52" fill="none" stroke="#eef2f8" stroke-width="16"/><circle cx="70" cy="70" r="52" fill="none" stroke="#C2410C" stroke-width="16" stroke-linecap="round" stroke-dasharray="' + (pctF / 100 * circ).toFixed(1) + ' ' + circ + '" transform="rotate(-90 70 70)"/><text x="70" y="79" text-anchor="middle" font-size="26" font-weight="800" fill="#111">' + pctF + ' %</text></svg>' +
+        '<div class="ph">' + fideles.length + ' client' + (fideles.length > 1 ? 's' : '') + ' sur ' + clients.length + ' ' + (fideles.length > 1 ? 'sont revenus' : 'est revenu') + '</div>' +
+        '<div class="ex">Un client qui revient a fait appel à vous au moins 2 fois' + (caClients > 0 ? ' · ils ont rapporté ' + Math.round(caFideles / caClients * 100) + ' % de vos gains' : '') + '.</div></div>';
+    }
+    cx += '<div class="cx-titre">💶 D\'où vient votre argent</div>' + FAMILLES_CA.map(function(f) {
+      var p = Math.round(parFam[f] / total * 100);
+      return '<div class="cx-bq"><div class="t"><i>' + _FAM_LIBELLE[f].split(' ')[0] + '</i><span>' + _FAM_LIBELLE[f].replace(/^\S+\s/, '').replace('Ventes boutique', 'Boutique') + '</span><b>' + p + ' %</b></div><div class="piste"><div style="width:' + p + '%"></div></div></div>';
+    }).join('') + '<div class="cx-bq" style="border-color:#bfe6d6;text-align:center;margin-top:14px"><div style="font-size:14px;font-weight:700;color:#8a8580;">💳 Payé en ligne par vos clients</div><div class="cx-en" style="border:0;padding:0" id="cx-enligne"><b>…</b></div></div>' +
+      '<div class="cx-meil">⭐ ' + MOIS_NOMS[meilleur].charAt(0).toUpperCase() + MOIS_NOMS[meilleur].slice(1) + ' est votre meilleur mois</div>';
+    zcx.innerHTML = cx;
+  }
+
   var seq = ++_statsSeq;
   chargerInterventionsEnLigne().then(function(enLigne) {
     if (seq !== _statsSeq) return; // la vue ou l'année a changé entre-temps
     var el = document.getElementById('stats-en-ligne');
     if (!el) return;
     var ligne = lignes.reduce(function(s, x) { return s + ((x.l.fam === 'ventes' || (x.l.id && enLigne[x.l.id])) ? x.l.montant : 0); }, 0);
+    var enM = document.getElementById('cx-enligne');
+    if (enM) enM.innerHTML = '<b>' + Math.round(total > 0 ? ligne / total * 100 : 0) + ' %</b>';
     el.innerHTML = '<span style="color:var(--tx);">' + _barreStat('💳 Payé en ligne par vos clients (CaraLink)', total > 0 ? ligne / total * 100 : 0, Math.round(total > 0 ? ligne / total * 100 : 0) + ' %').replace('margin:7px 0;', 'margin:0;') + '</span>';
   });
 }

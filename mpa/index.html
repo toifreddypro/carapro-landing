@@ -530,6 +530,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   #p-compta .cpv2-card,#p-compta .dcard,#p-compta .dash-jauge-card{border:1px solid #e3e3e3 !important;border-radius:18px !important;box-shadow:none !important;background:#fff;padding:16px;}
   #p-compta .dcard{padding:0;}
   #p-compta .cpv2-page-wrap{gap:14px;}
+  #p-compta .cpv2-card{max-height:none !important;overflow:visible !important;}
   #conteneur-compta>.bpnl:first-child .cpv2-card:first-child .cpv2-matrix-headtext,
   #conteneur-compta>.bpnl:first-child .cpv2-kpis,#compta-recap-hint,#compta-recap-wrap,#compta-mobile,
   #p-compta .cpv2-matrix-note,#p-compta .scroll-hint{display:none !important;}
@@ -583,6 +584,37 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   #tbl-factures td{text-align:left !important;font-family:'Outfit',sans-serif !important;}
   #tbl-factures td:nth-child(4){text-align:right !important;}
   #tbl-factures td:nth-child(2){font-size:16px;}
+}
+
+@media(max-width:640px){
+  #stats-libre,#stats-pro{display:none !important;}
+  #compta-stats-bloc{padding:16px;}
+  .cx-grille{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px;}
+  .cx-tuile{border:1px solid #e3e3e3;border-radius:18px;padding:14px;background:#fff;}
+  .cx-tuile .l{font-size:13px;font-weight:700;color:#8a8580;}
+  .cx-tuile .v{font-family:'Bricolage Grotesque',sans-serif;font-size:26px;font-weight:800;color:#111;margin-top:4px;line-height:1.1;}
+  .cx-tuile .d{font-size:12.5px;font-weight:700;color:#0f9d78;margin-top:4px;}
+  .cx-titre{font-size:16px;font-weight:800;color:#111;margin:22px 2px 10px;}
+  .cx-cl{display:flex;align-items:center;gap:10px;border:1px solid #e3e3e3;border-radius:16px;padding:12px 14px;margin-bottom:10px;background:#fff;}
+  .cx-cl .rg{font-size:26px;width:34px;text-align:center;flex-shrink:0;font-weight:800;color:#8a8580;}
+  .cx-cl .av2{width:40px;height:40px;border-radius:50%;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .cx-cl .tx{flex:1;min-width:0;}
+  .cx-cl .tx b{display:block;font-size:15.5px;color:#111;}
+  .cx-cl .tx small{font-size:12.5px;color:#8a8580;font-weight:600;}
+  .cx-cl .mt2{font-size:16px;font-weight:800;color:var(--ac);white-space:nowrap;}
+  .cx-rond{text-align:center;border:1px solid #e3e3e3;border-radius:18px;padding:18px 14px;}
+  .cx-rond svg{display:block;margin:0 auto 6px;}
+  .cx-rond .ph{font-size:16px;font-weight:700;color:#111;}
+  .cx-rond .ex{font-size:12.5px;color:#8a8580;margin-top:4px;line-height:1.4;}
+  .cx-bq{border:1px solid #e3e3e3;border-radius:16px;padding:14px;margin-bottom:10px;background:#fff;}
+  .cx-bq .t{display:flex;align-items:center;gap:10px;font-size:15.5px;font-weight:700;color:#111;}
+  .cx-bq .t i{font-style:normal;font-size:22px;}
+  .cx-bq .t span{flex:1;}
+  .cx-bq .piste{height:10px;border-radius:8px;background:#eef2f8;margin-top:10px;overflow:hidden;}
+  .cx-bq .piste div{height:100%;border-radius:8px;background:var(--ac);}
+  .cx-en{border:1px solid #bfe6d6;border-radius:18px;padding:16px;text-align:center;background:#fff;}
+  .cx-en b{display:block;font-size:34px;font-weight:800;color:#0f9d78;font-family:'Bricolage Grotesque',sans-serif;margin-top:4px;}
+  .cx-meil{text-align:center;font-size:14.5px;font-weight:700;color:#0f9d78;margin-top:16px;}
 }
 /* ── Tableau de bord ── */
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
@@ -1378,6 +1410,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <p class="cpv2-matrix-subtitle">Votre activité de l'année affichée ci-dessus (même vue : Production ou Réel)</p>
 </div>
 </div>
+<div id="cx-stats" class="cx-only"></div>
 <div id="stats-libre" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;"></div>
 <div id="stats-pro" style="display:none;margin-top:16px;border-top:1px solid var(--brd);padding-top:14px;">
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;">
@@ -2395,6 +2428,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261104155603"></script>
+<script src="/mpa/mpa-artisans.js?v=20261104160053"></script>
 </body>
 </html>
