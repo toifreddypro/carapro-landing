@@ -655,6 +655,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .rm-t small{display:block;font-size:13px;color:#8a8580;margin-top:2px;}
   .rm-o{font-size:12px;font-weight:800;color:var(--ac);background:#fff1e8;border-radius:99px;padding:4px 11px;flex-shrink:0;}
   .rm-o.rm-tous{color:#0f9d78;background:#e6f7ef;}
+  .rm-item{border:1px solid #e3e3e3;border-radius:16px;background:#fff;overflow:hidden;}
+  .rm-item .rm-l{border:0;border-radius:0;cursor:pointer;}
+  .rm-chev{font-size:16px;color:#94a3b8;transition:transform .2s;flex-shrink:0;}
+  .rm-item.rm-open .rm-chev{transform:rotate(180deg);}
+  .rm-item .rm-card{display:none;border-top:1px solid #eee;}
+  .rm-item.rm-open .rm-card{display:block;}
+  #p-interventions .rm-item .rm-card.dcard{border:0;border-radius:0;margin:0 !important;background:#fff;}
+  .rm-item .rm-card>.dchdr{display:none;}
+  .rm-geste-txt{padding:14px 16px;font-size:14px;line-height:1.5;color:#4b5563;}
+  .rm-l{border:1px solid #e3e3e3;}
   #bp-remises .rm-table,#bp-remises .dcard:first-child p:nth-of-type(n+2){display:none;}
 }
 
@@ -1194,12 +1204,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div><div class="bpnl" id="bp-remises">
 <div class="dcard"><div class="dchdr"><div class="dctit">🎁 Remises et fidélité</div></div>
 <div style="padding:14px 16px;font-size:13px;line-height:1.6;">
-<p style="margin:0 0 10px;">Trois outils pour faire revenir vos clients. Ils s'appliquent <strong>tout seuls</strong> sur la page de paiement : vous n'avez rien à faire une fois réglés.</p>
+<p style="margin:0 0 10px;">Quatre outils pour faire revenir vos clients. Ils s'appliquent <strong>tout seuls</strong> sur la page de paiement : vous n'avez rien à faire une fois réglés.</p>
 <div class="rm-simple">
-<div class="rm-l"><span class="rm-i">💚</span><div class="rm-t"><b>Cashback</b><small>Un crédit offert à vos clients</small></div><span class="rm-o">Pro</span></div>
-<div class="rm-l"><span class="rm-i">🎁</span><div class="rm-t"><b>Code promo</b><small>Un code que le client saisit</small></div><span class="rm-o">Pro</span></div>
-<div class="rm-l"><span class="rm-i">🤝</span><div class="rm-t"><b>Client fidèle</b><small>Remise automatique pour vos habitués</small></div><span class="rm-o">Pro</span></div>
-<div class="rm-l"><span class="rm-i">🎯</span><div class="rm-t"><b>Geste commercial</b><small>Un coup de pouce pour un client précis</small></div><span class="rm-o rm-tous">Pour tous</span></div>
+<div class="rm-item" data-r="cashback"><div class="rm-l" onclick="basculerRemiseMobile(this)"><span class="rm-i">💚</span><div class="rm-t"><b>Cashback</b><small>Un crédit offert à vos clients</small></div><span class="rm-o">Pro</span><span class="rm-chev">▾</span></div></div>
+<div class="rm-item" data-r="promo"><div class="rm-l" onclick="basculerRemiseMobile(this)"><span class="rm-i">🎁</span><div class="rm-t"><b>Code promo</b><small>Un code que le client saisit</small></div><span class="rm-o">Pro</span><span class="rm-chev">▾</span></div></div>
+<div class="rm-item" data-r="fidele"><div class="rm-l" onclick="basculerRemiseMobile(this)"><span class="rm-i">🤝</span><div class="rm-t"><b>Client fidèle</b><small>Remise automatique pour vos habitués</small></div><span class="rm-o">Pro</span><span class="rm-chev">▾</span></div></div>
+<div class="rm-item" data-r="geste"><div class="rm-l" onclick="basculerRemiseMobile(this)"><span class="rm-i">🎯</span><div class="rm-t"><b>Geste commercial</b><small>Un coup de pouce pour un client précis</small></div><span class="rm-o rm-tous">Pour tous</span><span class="rm-chev">▾</span></div>
+<div class="rm-card rm-geste-txt">Pour un client précis : dans « Demander un paiement » d'une intervention, choisissez <strong>Geste commercial</strong>. Il remplace les remises automatiques pour ce client.</div></div>
 </div>
 <table class="dtbl rm-table" style="font-size:12.5px;"><thead><tr><th>Outil</th><th>Boutique</th><th>Interventions</th><th>Offre</th></tr></thead><tbody>
 <tr><td>💚 Cashback</td><td>Au choix</td><td>Au choix</td><td>Pro</td></tr>
@@ -2479,6 +2490,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261104162629"></script>
+<script src="/mpa/mpa-artisans.js?v=20261104163249"></script>
 </body>
 </html>

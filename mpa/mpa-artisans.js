@@ -8589,6 +8589,27 @@ function carteServiceMobile(s, i) {
     '<div class="pl-prix">' + prix + '</div></div>' + plein + '</div>';
 }
 
+
+// ── Version téléphone : Remises = 4 bulles ; un clic déplie les réglages juste en dessous (plus de titres en double). ──
+function initRemisesMobile() {
+  if (!window.matchMedia('(max-width:640px)').matches) return;
+  var cles = { promo: 'code promo', cashback: 'cashback', fidele: 'client fidèle' };
+  var cartes = document.querySelectorAll('#bp-remises .carte-repliable');
+  Object.keys(cles).forEach(function(k) {
+    var item = document.querySelector('#bp-remises .rm-item[data-r="' + k + '"]');
+    if (!item) return;
+    for (var i = 0; i < cartes.length; i++) {
+      var t = (cartes[i].querySelector('.dctit') || {}).textContent || '';
+      if (t.toLowerCase().indexOf(cles[k]) !== -1) {
+        cartes[i].classList.remove('carte-repliee'); cartes[i].classList.add('rm-card');
+        item.appendChild(cartes[i]); break;
+      }
+    }
+  });
+}
+function basculerRemiseMobile(el) { var it = el.closest('.rm-item'); if (it) it.classList.toggle('rm-open'); }
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initRemisesMobile); else initRemisesMobile();
+
 function formatDuree(min) {
   var h = Math.floor(min / 60), m = min % 60;
   if (h && m) return h + 'h' + (m < 10 ? '0' : '') + m;
