@@ -1202,7 +1202,7 @@ function sectionFiche(cleTitre, icone, contenu) {
       '.fiche-sec-titre span{font-size:14px;letter-spacing:0;}';
     document.head.appendChild(st);
   }
-  return '<section class="fiche-sec"><div class="fiche-sec-titre"><span>' + icone + '</span>' + escHtml(T(cleTitre)) + '</div>' + contenu + '</section>';
+  return '<section class="fiche-sec" data-sec="' + cleTitre + '"><div class="fiche-sec-titre"><span>' + icone + '</span>' + escHtml(T(cleTitre)) + '</div>' + contenu + '</section>';
 }
 
 function buildProfilHTML(data) {
@@ -1215,9 +1215,9 @@ function buildProfilHTML(data) {
   var servicesHtml = data.services.length
     ? data.services.map(function(s) {
         var prix = s.prix_indicatif ? (escHtml(s.prix_indicatif) + '€' + (s.unite ? '/' + escHtml(s.unite) : '')) : T('sur_devis');
-        return '<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line,#eee);">' +
+        return '<div class="svc-ligne" style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line,#eee);">' +
           '<div><strong>' + escHtml(s.nom_service) + '</strong>' + (s.description ? '<div style="font-size:12.5px;color:var(--mu2,#777);">' + escHtml(s.description) + '</div>' : '') + '</div>' +
-          '<div style="font-weight:700;white-space:nowrap;margin-left:12px;">' + prix + '</div>' +
+          '<div class="svc-prix" style="font-weight:700;white-space:nowrap;margin-left:12px;">' + prix + '</div>' +
         '</div>';
       }).join('')
     : '<div style="color:var(--mu,#999);font-size:13px;">' + T('aucun_service') + '</div>';
@@ -1261,20 +1261,27 @@ function buildProfilHTML(data) {
       }).join('')
     : '<div style="color:var(--mu,#999);font-size:13px;">' + T('aucun_avis') + '</div>';
 
-  return '<div onclick="fermerProfil(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:12px;overflow-y:auto;">' +
-    '<div style="background:var(--panel,#fff);border-radius:16px;padding:28px;max-width:560px;width:100%;max-height:85vh;overflow-y:auto;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">' +
+  var starsFiche = data.nb_avis > 0
+    ? etoilesCarte(Number(data.note_moyenne) || 0) + '<span>' + (Number(data.note_moyenne) || 0).toFixed(1) + ' (' + data.nb_avis + ' ' + (data.nb_avis === 1 ? T('avis_un') : T('avis_plusieurs')) + ')</span>'
+    : '<span style="color:var(--mu2,#777);">' + escHtml(T('avis_aucun_court')) + '</span>';
+  return '<div class="fiche-ov" onclick="fermerProfil(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:12px;overflow-y:auto;">' +
+    '<div class="fiche-card" style="background:var(--panel,#fff);border-radius:16px;padding:28px;max-width:560px;width:100%;max-height:85vh;overflow-y:auto;">' +
+      '<div class="fiche-appbar"><span>🔧 CaraLink Artisans</span><span class="fiche-appbar-btns">' +
+        '<button type="button" onclick="partagerFiche(' + jsAttr(a.id) + ')" aria-label="' + escHtml(T('partage_titre')) + '">🔗</button>' +
+        '<button type="button" onclick="fermerProfil({target:this,currentTarget:this})" aria-label="' + escHtml(T('partage_fermer')) + '">✕</button></span></div>' +
+      '<div class="fiche-head" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">' +
         '<div style="display:flex;gap:14px;align-items:center;">' + photo +
           '<div><div style="font-family:Fraunces,serif;font-size:19px;font-weight:700;">' + escHtml(a.nom_entreprise) + '</div>' +
-          '<div style="font-size:13px;color:var(--mu2,#777);">' + secteurLabel(a.secteur) + ' · 📍 ' + escHtml(a.commune) + '</div>' +
+          '<div class="fiche-sub" style="font-size:13px;color:var(--mu2,#777);">' + secteurLabel(a.secteur) + ' · 📍 ' + escHtml(a.commune) + '</div>' +
+          '<div class="fiche-stars">' + starsFiche + '</div>' +
           (a.nouveau ? '<span class="badge-trust bt-blue" style="margin-top:4px;margin-right:6px;display:inline-block;">' + escHtml(T('badge_nouveau')) + '</span>' : '') +
           (a.verifie ? '<span class="badge-trust bt-green" style="margin-top:4px;display:inline-block;">✅ ' + T('badge_verifie') + '</span>' : '') +
           (a.rge ? '<span style="margin-top:4px;margin-left:6px;display:inline-block;">' + badgeRgeTexte(a) + '</span>' : '') +
-          (a.profil_complet ? '<span class="badge-trust bt-more" style="margin-top:4px;margin-left:6px;display:inline-block;">📝 ' + escHtml(T('badge_complet')) + '</span>' : '') +
-          (a.alternance_niveau >= 2 ? '<span title="Cette entreprise s\'engage activement pour la formation locale" style="margin-top:4px;margin-left:6px;display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,158,11,.12);color:#b45309;">🟠 Tremplin des jeunes</span>' : '') +
+          (a.profil_complet ? '<span class="badge-trust bt-more fiche-mini" style="margin-top:4px;margin-left:6px;display:inline-block;">📝 ' + escHtml(T('badge_complet')) + '</span>' : '') +
+          (a.alternance_niveau >= 2 ? '<span class="fiche-mini" title="Cette entreprise s\'engage activement pour la formation locale" style="margin-top:4px;margin-left:6px;display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,158,11,.12);color:#b45309;">🟠 Tremplin des jeunes</span>' : '') +
           '</div>' +
         '</div>' +
-        '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;margin-left:8px;">' +
+        '<div class="fiche-actions" style="display:flex;gap:8px;align-items:center;flex-shrink:0;margin-left:8px;">' +
           '<button type="button" onclick="partagerFiche(' + jsAttr(a.id) + ')" aria-label="' + escHtml(T('partage_titre')) + '" style="background:none;border:1px solid var(--line,#ddd);border-radius:20px;padding:5px 12px;font-size:13px;cursor:pointer;color:var(--mu2,#555);font-family:inherit;white-space:nowrap;">🔗 ' + T('partage_bouton') + '</button>' +
           '<button onclick="fermerProfil({target:this,currentTarget:this})" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--mu,#999);">✕</button>' +
         '</div>' +
@@ -1290,7 +1297,7 @@ function buildProfilHTML(data) {
       pharesHtml +
       sectionFiche('fiche_dispos', '📅', '<div id="dispo-zone-' + escHtml(a.id) + '"><div style="font-size:12.5px;color:var(--mu,#999);">⏳ Vérification des disponibilités…</div></div>') +
       sectionFiche('avis_titre', '⭐', (data.note_moyenne ? '<div style="font-size:13px;font-weight:700;margin-bottom:4px;">' + data.note_moyenne + '/5 (' + data.nb_avis + ')</div>' : '') + avisHtml) +
-      '<button onclick="ouvrirModalDevis(' + jsAttr(a.id) + ',' + jsAttr(a.nom_entreprise) + ',' + jsAttr(a.secteur) + ')" style="width:100%;margin-top:18px;padding:13px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">' + T('demander_devis') + '</button>' +
+      '<button class="fiche-devis" onclick="ouvrirModalDevis(' + jsAttr(a.id) + ',' + jsAttr(a.nom_entreprise) + ',' + jsAttr(a.secteur) + ')" style="width:100%;margin-top:18px;padding:13px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">' + T('demander_devis') + '</button>' +
     '</div>' +
   '</div>';
 }
@@ -1318,11 +1325,14 @@ async function chargerApercuDispo(artisanId) {
       body: JSON.stringify({ mode: 'apercu', artisan_id: artisanId, aujourdhui: dateLocaleISO() }),
     });
     var data = await res.json();
-    if (data.error || !data.prochaine_date) {
+    var grilleFiche = (data.semaine && data.semaine.length) ? '<div class="dispo-grid fiche-grille">' + data.semaine.map(colonneJourCarte).join('') + '</div>' : '';
+    if (data.error || (!data.prochaine_date && !grilleFiche)) {
       zone.innerHTML = '';
+      var secVide = zone.closest('.fiche-sec'); if (secVide) secVide.classList.add('fiche-vide');
       return;
     }
-    zone.innerHTML =
+    if (!data.prochaine_date) { zone.innerHTML = grilleFiche; return; }
+    zone.innerHTML = grilleFiche +
       '<button type="button" onclick="ouvrirVerifDispo(' + jsAttr(artisanId) + ')" style="width:100%;text-align:left;padding:12px 14px;border-radius:10px;border:1px solid var(--ac-brd,#e8c4b8);background:rgba(181,80,47,.06);color:var(--ac,#B5502F);font-size:13.5px;font-weight:700;cursor:pointer;">' + T('dispo_apercu_prefix') + ' ' + data.label + ' →</button>' +
       '<div style="font-size:11.5px;color:var(--mu,#999);margin-top:5px;text-align:center;"><a href="#" onclick="ouvrirVerifDispo(' + jsAttr(artisanId) + ');return false;" style="color:var(--mu2,#777);">' + T('dispo_autres_creneaux') + '</a></div>';
   } catch (e) {

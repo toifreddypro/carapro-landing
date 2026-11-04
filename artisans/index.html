@@ -996,6 +996,8 @@ body.theme-light footer { background:#fbfcfe; }
 .app-bar-cadre{display:none;}
 .devis-mobile{display:none;}
 .cadre-haut{display:contents;}
+.fiche-appbar,.fiche-stars{display:none;}
+.fiche-grille{display:none;}
 #menu-artisan{display:none;}
 /* ===== ANNUAIRE MOBILE ÉPURÉ (téléphone uniquement ; l'ordinateur ne change pas) ===== */
 @media(max-width:768px){
@@ -1052,6 +1054,56 @@ body.theme-light footer { background:#fbfcfe; }
   body #main-results{display:block !important;min-height:0 !important;margin:0 12px 22px !important;padding:0 !important;background:#fff;border:2px solid #e3eaf4;border-top:none;border-radius:0 0 26px 26px;box-shadow:0 18px 30px -14px rgba(19,34,60,.22);}
   body.avant-recherche #main-results{display:none !important;}
   body #main-results .results-layout{padding:4px 14px 6px !important;}
+
+  /* ===== FICHE ARTISAN (téléphone) : même cadre arrondi que l'annuaire ===== */
+  body .fiche-ov{align-items:flex-start !important;padding:12px !important;background:rgba(19,34,60,.45) !important;}
+  body .fiche-card{display:flex !important;flex-direction:column !important;max-height:none !important;overflow:hidden !important;padding:0 0 18px !important;border-radius:26px !important;border:2px solid #e3eaf4;box-shadow:0 18px 40px rgba(19,34,60,.25);margin:0 auto 24px;}
+  body .fiche-card > *{margin-left:16px !important;margin-right:16px !important;}
+  body .fiche-card > .fiche-appbar{margin:0 !important;order:0;display:flex !important;align-items:center;justify-content:space-between;padding:14px 14px 14px 18px;border-bottom:2px solid #eef2f8;font-size:21px;font-weight:800;color:#C2410C;letter-spacing:-.3px;}
+  body .fiche-appbar-btns{display:flex;gap:8px;}
+  body .fiche-head > div:first-child > div:first-child:not(:only-child){background:rgba(181,80,47,.12) !important;color:#B5502F !important;font-family:'Outfit',sans-serif !important;font-size:22px !important;font-weight:800 !important;}
+  body .fiche-card .dispo-day-label{font-size:9px !important;white-space:nowrap;}
+  body .fiche-card .dispo-slot{font-size:9.5px !important;}
+  body .fiche-appbar-btns button{width:40px;height:40px;border-radius:50%;border:2px solid #e3eaf4;background:#fff;font-size:17px;color:#475569;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;}
+  body .fiche-head{order:1;margin-top:18px !important;margin-bottom:14px !important;}
+  body .fiche-head .fiche-actions{display:none !important;}
+  body .fiche-head > div:first-child{align-items:flex-start !important;}
+  body .fiche-head > div:first-child > div:first-child,body .fiche-head img{width:64px !important;height:64px !important;flex-shrink:0;}
+  body .fiche-head [style*="Fraunces"]{font-family:'Outfit',sans-serif !important;font-size:23px !important;font-weight:800 !important;letter-spacing:-.4px;color:var(--ink);}
+  body .fiche-head .fiche-sub{font-size:15px !important;font-weight:600 !important;color:var(--mu) !important;margin-top:2px;}
+  body .fiche-stars{display:flex !important;align-items:center;gap:4px;font-size:15px;font-weight:700;color:var(--mu2);margin:8px 0 2px;}
+  body .fiche-stars .star-on,body .fiche-stars .star-off{font-size:18px;}
+  body .fiche-mini{display:none !important;}
+  body .fiche-head .badge-trust{font-size:14px !important;font-weight:700 !important;padding:5px 12px !important;border-radius:30px !important;}
+  body .fiche-card .fiche-sec{border:none !important;background:transparent !important;padding:0 !important;margin-bottom:16px !important;border-radius:0 !important;}
+  body .fiche-card .fiche-sec-titre{border-bottom:none !important;padding-bottom:0 !important;margin:0 0 8px !important;font-size:14px !important;font-weight:700 !important;letter-spacing:0 !important;text-transform:none !important;color:var(--mu) !important;}
+  body .fiche-sec[data-sec="services_titre"] .fiche-sec-titre,body .fiche-sec[data-sec="fiche_realisations"] .fiche-sec-titre{display:none !important;}
+  body .fiche-sec.fiche-vide{display:none !important;}
+  /* Ordre : services, créneaux, devis, photos, boutique, présentation, avantages, avis */
+  body .fiche-sec[data-sec="services_titre"]{order:2;}
+  body .fiche-sec[data-sec="fiche_dispos"]{order:3;margin-bottom:12px !important;}
+  body .fiche-card > .fiche-devis{order:4;}
+  body .fiche-sec[data-sec="fiche_realisations"]{order:5;}
+  body .fiche-sec[data-sec="fiche_boutique"]{order:6;}
+  body .fiche-sec[data-sec="fiche_presentation"]{order:7;}
+  body .fiche-sec[data-sec="fiche_avantages"]{order:8;}
+  body .fiche-sec[data-sec="avis_titre"]{order:9;}
+  /* Services en bulles, prix en couleur CaraLink */
+  body .svc-ligne{border:2px solid #e3eaf4 !important;border-radius:20px !important;padding:15px 18px !important;margin-bottom:12px !important;align-items:center !important;}
+  body .svc-ligne strong{font-size:18px;font-weight:700;color:var(--ink);}
+  body .svc-prix{color:#C2410C !important;font-size:20px !important;font-weight:800 !important;}
+  /* Créneaux : une colonne par jour, comme avant */
+  body .fiche-grille{display:grid !important;grid-template-columns:repeat(7,1fr);gap:4px;border-top:none !important;padding-top:0 !important;margin-bottom:10px;}
+  /* Devis juste sous les créneaux */
+  body .fiche-devis{width:calc(100% - 32px) !important;margin-top:2px !important;margin-bottom:18px !important;padding:16px !important;border-radius:20px !important;font-size:18px !important;font-weight:800 !important;background:#C2410C !important;box-shadow:0 12px 28px rgba(194,65,12,.3);}
+  /* Photos sans titre, puis boutique dans sa propre forme */
+  body .fiche-sec[data-sec="fiche_realisations"] img{height:96px !important;border-radius:16px !important;}
+  body .fiche-card .fiche-sec[data-sec="fiche_boutique"]{background:#f8fafd !important;border:2px solid #e3eaf4 !important;border-radius:22px !important;padding:16px !important;}
+  body .fiche-sec[data-sec="fiche_boutique"] .fiche-sec-titre{color:#C2410C !important;font-weight:800 !important;font-size:15px !important;}
+  /* « Voir la boutique » : sans fond noir, sans contour */
+  body .fiche-card .btn-boutique-or{background:none !important;border:none !important;box-shadow:none !important;padding:10px 0 0 !important;justify-content:center;width:100%;}
+  body .fiche-card .btn-or-txt{background:none !important;-webkit-text-fill-color:#C2410C !important;color:#C2410C !important;filter:none !important;animation:none !important;font-size:17px;font-weight:800;letter-spacing:0;}
+  body .fiche-card .btn-boutique-or::before,body .fiche-card .btn-boutique-or::after{display:none !important;}
   /* Liste : cachée tant qu'on n'a pas cherché */
   body.avant-recherche .results-panel{display:none !important;}
   /* Liste */
@@ -1065,7 +1117,7 @@ body.theme-light footer { background:#fbfcfe; }
   /* "Nouveau" : petit, bleu, italique ; les autres pastilles dorment jusqu'à l'ouverture de la fiche */
   body .card-tags .badge-trust{background:transparent !important;padding:0 !important;font-size:13px !important;font-style:italic !important;font-weight:600 !important;color:#1266e3 !important;}
   body .card-tags .badge-trust.bt-purple,body .card-tags .badge-trust.bt-accent,body .card-tags .badge-trust.bt-more{display:none !important;}
-  body .card-bio,body .dispo-grid,body [id^="avantages-carte-"],body [id^="phares-carte-"],body .formateur-card > div[style*="margin:2px 0 6px"]{display:none !important;}
+  body .card-bio,body .formateur-card .dispo-grid,body [id^="avantages-carte-"],body [id^="phares-carte-"],body .formateur-card > div[style*="margin:2px 0 6px"]{display:none !important;}
   body .card-meta{display:flex !important;flex-direction:column !important;align-items:flex-start !important;gap:8px !important;}
   body .card-meta .card-badges{order:-1 !important;}
   body .card-dispo.now{background:#fff1e8 !important;color:#C2410C !important;padding:5px 12px !important;border-radius:30px !important;font-size:14px !important;font-weight:700 !important;}
@@ -1124,8 +1176,8 @@ body.theme-light footer { background:#fbfcfe; }
       <a href="mailto:contact@learnlogicstudio.com" style="color:var(--mu2);text-decoration:none;margin:0 8px;">Contact</a>
     </div>
   </footer>
-  <script src="/artisans/tr-artisans.js?v=20261104124036"></script>
-  <script src="/artisans/caralink-artisans.js?v=20261104124036"></script>
+  <script src="/artisans/tr-artisans.js?v=20261104130401"></script>
+  <script src="/artisans/caralink-artisans.js?v=20261104130401"></script>
 
   <!-- ════ FAQ BOUTON FLOTTANT ════ -->
   <button class="faq-fab" onclick="toggleFAQ()" title="Aide & FAQ">
