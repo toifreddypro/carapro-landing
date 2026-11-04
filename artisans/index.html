@@ -1,4 +1,4 @@
-<!--
+﻿<!--
 ================================================================
   CARAPRO — index.html
   Plateforme de mise en relation clients / artisans
@@ -989,6 +989,75 @@ body.theme-light footer { background:#fbfcfe; }
     @media(max-width:640px){ .t-fade{width:36px;} }
 </style>
 <link rel="stylesheet" href="/artisans/effects.css">
+
+<style id="annuaire-mobile-epure">
+.nav-court{display:none;}
+#menu-artisan{display:none;}
+/* ===== ANNUAIRE MOBILE ÉPURÉ (téléphone uniquement ; l'ordinateur ne change pas) ===== */
+@media(max-width:768px){
+  /* En-tête de page : on va droit à la recherche */
+  body .hero-eyebrow,body .hero-note{display:none !important;}
+  body .hero-section{padding:20px 16px 8px !important;border-bottom:none !important;}
+  body .hero-title{font-size:26px !important;line-height:1.15 !important;margin-bottom:8px !important;}
+  body .hero-soustitre{font-size:16px !important;font-weight:600 !important;color:var(--mu2) !important;margin:0 0 18px !important;}
+  /* En-tête compact : logo + drapeau, puis 2 boutons côte à côte */
+  body .nav-wrap{padding:8px 14px 10px !important;gap:8px !important;justify-content:space-between !important;border-bottom:1px solid var(--brd) !important;}
+  body .nav-right{margin-left:auto !important;}
+  body .nav-logo{flex:1 1 0 !important;min-width:0 !important;gap:8px !important;}
+  body .nav-brand{font-size:15px !important;white-space:nowrap !important;}
+  body .nav-kk{font-size:14px !important;white-space:nowrap !important;}
+  body .nav-kk-suffix{font-size:12px !important;}
+  body .nav-right{flex:0 0 auto !important;margin-left:0 !important;}
+  body .search-field input{text-overflow:ellipsis !important;font-size:17px !important;}
+  body .lang-nom{display:none !important;}
+  body .lang-switcher-desktop > button{padding:7px 10px !important;border-radius:10px !important;}
+  body .nav-links{display:grid !important;grid-template-columns:1fr 1fr !important;gap:10px !important;width:100% !important;order:3 !important;border-top:none !important;padding-top:0 !important;position:relative !important;}
+  body .nav-links > a{text-align:center !important;padding:11px 8px !important;font-size:16px !important;border-radius:14px !important;}
+  body .nav-links > a.nav-devenir{display:none !important;}
+  body .nav-long{display:none !important;}
+  body .nav-court{display:inline !important;}
+  body #menu-artisan{position:absolute;right:0;top:calc(100% + 6px);z-index:80;background:#fff;border:2px solid #e3eaf4;border-radius:16px;box-shadow:0 14px 34px rgba(19,34,60,.18);overflow:hidden;min-width:230px;}
+  body #menu-artisan a{display:block;padding:15px 18px;font-size:17px;font-weight:700;color:var(--ink);text-decoration:none;border-bottom:1px solid #eef2f8;}
+  body #menu-artisan a:last-child{border-bottom:none;color:#B5502F;}
+  /* Recherche : 2 grands champs + 1 gros bouton */
+  body .search-bar{display:grid !important;grid-template-columns:1fr 1fr !important;align-items:stretch !important;gap:12px !important;padding:0 !important;border:none !important;box-shadow:none !important;background:transparent !important;}
+  body .search-field{border:2px solid #dbe4f0 !important;border-radius:18px !important;padding:12px 16px !important;background:#fff !important;text-align:left !important;align-items:stretch !important;}
+  body .search-field:last-of-type{border:2px solid #dbe4f0 !important;}
+  body .search-field label{font-family:'Outfit',sans-serif !important;font-size:13px !important;font-weight:700 !important;letter-spacing:0 !important;text-transform:none !important;color:var(--mu) !important;text-align:left !important;margin-bottom:2px !important;}
+  body .search-field input,body .search-field select{font-size:18px !important;font-weight:600 !important;text-align:left !important;width:100% !important;color:var(--ink) !important;background:transparent !important;border:none !important;padding:4px 0 !important;}
+  body .search-btn{margin:0 !important;justify-content:center !important;padding:16px !important;border-radius:18px !important;font-size:19px !important;font-weight:700 !important;width:100% !important;}
+  body .filters-wrap{display:none !important;}
+  body .search-bar .search-field:nth-child(1){grid-column:1 / -1 !important;}
+  body .search-bar .search-btn{grid-column:1 / -1 !important;}
+  body .search-field{min-width:0 !important;}
+  /* On laisse les explications au calme : seul le lien "Publier un projet" reste */
+  body .aides-info{display:none !important;}
+  body .hero-main > div:last-child:not(.filters-wrap):not(.search-bar){display:none !important;}
+  /* Liste : cachée tant qu'on n'a pas cherché */
+  body.avant-recherche .results-panel{display:none !important;}
+  /* Liste */
+  body .results-layout{padding:8px 16px 24px !important;}
+  body .results-count{font-size:15px !important;font-weight:600 !important;}
+  body .formateur-card{border-radius:22px !important;padding:18px !important;gap:10px !important;border:2px solid #e3eaf4 !important;box-shadow:0 8px 26px rgba(19,34,60,.07) !important;margin-bottom:16px !important;}
+  body .card-avatar{width:60px !important;height:60px !important;font-size:21px !important;}
+  body .card-top-row{align-items:center !important;gap:14px !important;}
+  body .card-name{font-size:20px !important;font-weight:800 !important;letter-spacing:-.3px !important;margin-bottom:3px !important;}
+  body .card-title{font-size:15px !important;font-weight:600 !important;margin-bottom:6px !important;color:var(--mu) !important;}
+  /* "Nouveau" : petit, bleu, italique ; les autres pastilles dorment jusqu'à l'ouverture de la fiche */
+  body .card-tags .badge-trust{background:transparent !important;padding:0 !important;font-size:13px !important;font-style:italic !important;font-weight:600 !important;color:#1266e3 !important;}
+  body .card-tags .badge-trust.bt-purple,body .card-tags .badge-trust.bt-accent,body .card-tags .badge-trust.bt-more{display:none !important;}
+  body .card-bio,body .dispo-grid,body [id^="avantages-carte-"],body [id^="phares-carte-"],body .formateur-card > div[style*="margin:2px 0 6px"]{display:none !important;}
+  body .card-meta{gap:8px !important;}
+  body .card-stars{font-size:15px !important;font-weight:700 !important;}
+  body .card-stars .star-on,body .card-stars .star-off{font-size:17px;}
+  body .card-badges .badge-trust{font-size:14px !important;font-weight:700 !important;padding:5px 12px !important;border-radius:30px !important;}
+  body .card-badges .badge-trust:nth-child(n+2){display:none !important;}
+  body .carte-grisee-note{font-size:13px !important;padding:8px 12px !important;margin-top:4px !important;}
+  /* Bloc "Vous êtes artisan ?" : on garde le texte, plus d'image */
+  body .pub-alt-mobile img{display:none !important;}
+  body .pub-alt-mobile{border-radius:22px !important;}
+}
+</style>
 </head>
 <body class="theme-light">
   <script>
@@ -1030,8 +1099,8 @@ body.theme-light footer { background:#fbfcfe; }
       <a href="mailto:contact@learnlogicstudio.com" style="color:var(--mu2);text-decoration:none;margin:0 8px;">Contact</a>
     </div>
   </footer>
-  <script src="/artisans/tr-artisans.js?v=202611011003"></script>
-  <script src="/artisans/caralink-artisans.js?v=202611011003"></script>
+  <script src="/artisans/tr-artisans.js?v=20261104120018"></script>
+  <script src="/artisans/caralink-artisans.js?v=20261104120018"></script>
 
   <!-- ════ FAQ BOUTON FLOTTANT ════ -->
   <button class="faq-fab" onclick="toggleFAQ()" title="Aide & FAQ">
