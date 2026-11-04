@@ -1,4 +1,4 @@
-<!--
+﻿<!--
 ================================================================
   MPA ARTISANS — mpa-artisans.html
   Phase 1 : coquille + Fiche Artisan + Clients habituels
@@ -387,6 +387,58 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .fp-total-row{display:flex;justify-content:flex-end;gap:40px;font-size:16px;font-weight:800;padding:12px 8px;}
 .fp-footer{margin-top:50px;font-size:11px;color:#6b7c96;text-align:center;}
 
+
+/* ── Ma journée : version téléphone (maquette CaraLink) — ordinateur inchangé ── */
+.mj-phrase,.mj-barre,.mj-titre-carte{display:none;}
+.lib-court{display:none;}
+@media(max-width:640px){
+  #content{display:flex;flex-direction:column;padding:14px 14px 24px;background:#fff;}
+  #content>footer{order:99;margin:22px auto 0 !important;padding:14px 4px !important;}
+  body{background:#fff;}
+  .mj-phrase{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:21px;font-weight:800;line-height:1.25;color:#111;margin:2px 2px 12px;}
+  .mj-phrase span{color:var(--ac);}
+  .mj-barre{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 12px;border-bottom:1px solid #e3e3e3;}
+  .mj-marque{font-weight:800;font-size:15px;color:#111;}
+  .mj-page{font-size:13px;font-weight:700;color:var(--ac);}
+  #itineraire-widget{border-radius:18px;border:1px solid #e3e3e3;box-shadow:none;background:#fff;}
+  #itineraire-widget>.dchdr{display:none;}
+  #itineraire-widget>div[style]{padding:14px 14px 4px !important;}
+  #itin-jours{margin-bottom:10px !important;}
+  #itin-jours button{padding:8px 14px !important;font-size:13px !important;border-radius:999px !important;}
+  #itin-liste{margin-bottom:6px !important;}
+  #itin-liste>.itin-bulle{padding:11px 14px !important;}
+  .itin-bulle{background:#fff;border:1px solid #e3e3e3;border-radius:14px;padding:11px 14px;}
+  .itin-bulle-haut{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:#111;line-height:1.3;}
+  .itin-bulle-bas{font-size:13px;color:#8a8580;margin-top:3px;}
+  .itin-bulle .itin-retard{margin:8px 0 0 !important;padding:6px 12px !important;font-size:12px !important;}
+  .itin-trajet{text-align:center;font-size:11.5px;color:#a39d97;padding:5px 0;}
+  .mj-titre-carte{display:block;font-size:13px;font-weight:600;color:#8a8580;margin:16px 4px 8px;}
+  #itin-carte{border-radius:16px !important;border:1px solid #e3e3e3;height:190px !important;}
+  #itin-carte:empty{display:none;}
+  .mj-titre-carte:has(+ #itin-carte:empty){display:none;}
+  #p-journee{margin-bottom:0 !important;}
+  #encart-rappel-cloture-journee{margin-top:12px !important;}
+  #encart-rappel-cloture-journee>div{flex-wrap:wrap;padding:12px 14px !important;margin-bottom:0 !important;border-radius:16px !important;}
+  #encart-rappel-cloture-journee>div>span:first-child{display:none;}
+  #encart-rappel-cloture-journee>div{display:block !important;}
+  #encart-rappel-cloture-journee>div>div{font-size:14px !important;color:#111 !important;line-height:1.4;}
+  #encart-rappel-cloture-journee strong{color:#111 !important;}
+  #encart-rappel-cloture-journee .rc-sep{display:none;}
+  #encart-rappel-cloture-journee .rc-2{display:block;color:#8a8580;font-size:13px;margin-top:4px;}
+  #encart-rappel-cloture-journee button{border:0 !important;background:none !important;padding:8px 0 0 !important;text-align:left;color:var(--ac) !important;font-size:13.5px !important;}
+  #itineraire-widget>div[style] > #encart-rappel-cloture-journee{margin-bottom:10px;}
+  #p0.active{background:#fff;border:1px solid #e3e3e3;border-radius:18px;box-shadow:none;padding:14px;margin-top:16px;}
+  #p0>div[style*="border-left:5px"]{background:none !important;border:0 !important;padding:0 0 10px !important;font-size:12.5px !important;font-weight:400 !important;color:#8a8580 !important;}
+  #p0 .cal-legend{font-size:11px;}
+  #p0 .dash-jauge-card{display:none !important;}
+  .brand,.tsep{display:none !important;}
+  #topbar{justify-content:flex-end;}
+  .tbbtn{padding:8px 14px !important;gap:6px !important;font-size:13px !important;}
+  .tbbtn span.tbbtn-label{display:inline !important;}
+  .tbbtn .lib-long{display:none;}
+  .tbbtn .lib-court{display:inline;}
+  .rappel-cloture{background:#fff !important;border:1px solid #e3e3e3 !important;}
+}
 /* ── Tableau de bord ── */
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 @media(max-width:900px){.dash-grid{grid-template-columns:1fr;}}
@@ -607,7 +659,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="spacer"></div>
 <a class="tbbtn" href="https://caralink.app/artisans/" style="border-color:rgba(181,80,47,.4);color:var(--ac);background:rgba(181,80,47,.08);text-decoration:none;" title="Retour à CaraLink Artisans">
 <svg fill="none" height="13" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="13"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
-<span class="tbbtn-label">Retour à CaraLink Artisans</span>
+<span class="tbbtn-label"><span class="lib-long">Retour à CaraLink Artisans</span><span class="lib-court">CaraLink</span></span>
 </a>
 <a class="tbbtn" href="https://caralink.app/artisans/admin.html" id="btn-admin-topbar" style="display:none;border-color:rgba(75,85,99,.4);color:var(--mu2);background:rgba(75,85,99,.08);text-decoration:none;" title="Admin">
 <svg fill="none" height="13" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="13"><rect height="11" rx="2" ry="2" width="18" x="3" y="11"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
@@ -671,13 +723,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </footer>
 <div class="pnl active" id="p-journee">
 <div id="zone-premiers-pas"></div>
+<div class="mj-phrase">Votre <span>journée</span> en un coup d'œil</div>
 <div class="dcard" id="itineraire-widget">
+<div class="mj-barre"><span class="mj-marque">🔧 MPA Artisans</span><span class="mj-page">Ma journée</span></div>
 <div class="dchdr">
 <div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>Ma journée</div>
 </div>
 <div style="padding:14px 16px;">
 <div id="itin-jours" style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;"></div>
 <div id="itin-liste" style="margin-bottom:12px;"></div>
+<div class="mj-titre-carte">Itinéraire du jour</div>
 <div id="itin-carte" style="height:220px;border-radius:10px;overflow:hidden;background:var(--p2);"></div>
 <div id="encart-rappel-cloture-journee" style="margin-top:14px;"></div>
 </div>
@@ -2176,6 +2231,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=1"></script>
+<script src="/mpa/mpa-artisans.js?v=20261104141415"></script>
 </body>
 </html>

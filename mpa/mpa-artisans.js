@@ -5007,10 +5007,10 @@ async function renderRappelCloture(idZone) {
   if (error) { console.error('renderRappelCloture:', error); return; }
   if (!count) { zone.innerHTML = ''; return; }
   zone.innerHTML =
-    '<div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.3);border-radius:14px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">' +
+    '<div class="rappel-cloture" style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.3);border-radius:14px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">' +
       '<span style="font-size:20px;">⏰</span>' +
       '<div style="flex:1;font-size:12.5px;color:var(--mu2);">' +
-        '<strong style="color:#b45309;">' + count + ' intervention' + (count > 1 ? 's' : '') + ' passée' + (count > 1 ? 's' : '') + '</strong> encore marquée' + (count > 1 ? 's' : '') + ' "Planifiée" — pensez à les clôturer (Terminée/Payée) pour pouvoir les facturer et demander un avis au client.' +
+        '<strong style="color:#b45309;">' + count + ' intervention' + (count > 1 ? 's' : '') + ' passée' + (count > 1 ? 's' : '') + '</strong> encore marquée' + (count > 1 ? 's' : '') + ' "Planifiée"<span class="rc-sep"> — </span><span class="rc-2">pensez à les clôturer (Terminée/Payée) pour pouvoir les facturer et demander un avis au client.</span>' +
       '</div>' +
       '<button onclick="switchTab(2)" style="flex-shrink:0;padding:7px 14px;border-radius:7px;border:1.5px solid #b45309;background:transparent;color:#b45309;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">Voir le planning →</button>' +
     '</div>';
@@ -7827,7 +7827,7 @@ async function renderItineraireWidget() {
   var finStr = fin.toISOString().slice(0, 10);
 
   var { data, error } = await sb.from('mpa_artisans_interventions')
-    .select('id, date_intervention, heure_debut, commune, latitude, longitude, mpa_artisans_clients(nom, email)')
+    .select('id, date_intervention, heure_debut, commune, latitude, longitude, mpa_artisans_clients(nom, email), artisans_services(nom_service)')
     .eq('artisan_id', _artisan.id)
     .neq('statut', 'annulee')
     .gte('date_intervention', debutStr)
@@ -7884,6 +7884,34 @@ async function choisirJourItineraire(dateStr) {
 
   liste.innerHTML = '<p style="font-size:12px;color:var(--mu);">Calcul des trajets…</p>';
   var morceaux = [];
+  var tel = window.matchMedia && window.matchMedia('(max-width:640px)').matches;
+  if (tel) {
+    var baseT = baseArtisanCoords();
+    if (baseT) {
+      var mDep = await tempsTrajetMinutes(baseT.latitude, baseT.longitude, duJour[0].latitude, duJour[0].longitude);
+      if (mDep != null) morceaux.push('<div class="itin-trajet">🏠 Départ de chez vous · 🚗 ' + mDep + ' min</div>');
+    }
+    var auj = dateStr === new Date().toISOString().slice(0, 10);
+    for (var q = 0; q < duJour.length; q++) {
+      var it = duJour[q];
+      var cl = it.mpa_artisans_clients ? it.mpa_artisans_clients.nom : '';
+      var sv = it.artisans_services && it.artisans_services.nom_service ? it.artisans_services.nom_service : 'Intervention';
+      var h5 = it.heure_debut ? String(it.heure_debut).slice(0, 5) : '—';
+      var bas = [cl, it.commune].filter(function(x) { return x; }).map(escHtml).join(' · ');
+      morceaux.push('<div class="itin-bulle"><div class="itin-bulle-haut"><span aria-hidden="true">🛠️</span><span>' + h5 + ' · ' + escHtml(sv) + '</span></div>' +
+        '<div class="itin-bulle-bas" style="padding-left:26px;">' + (bas || '—') + '</div>' +
+        ((auj && estPro()) ? '<button class="itin-retard" onclick="signalerRetard(\'' + it.id + '\')" title="Prévenir le client d\'un retard" style="background:#fff7ed;border:1.5px solid #f59e0b;color:#b45309;font-weight:700;cursor:pointer;border-radius:8px;">⏰ Je suis en retard</button>' : '') +
+      '</div>');
+      if (q < duJour.length - 1) {
+        var mm = await tempsTrajetMinutes(it.latitude, it.longitude, duJour[q + 1].latitude, duJour[q + 1].longitude);
+        if (mm != null) morceaux.push('<div class="itin-trajet">🚗 ' + mm + ' min de trajet</div>');
+        else morceaux.push('<div style="height:8px;"></div>');
+      }
+    }
+    liste.innerHTML = morceaux.join('');
+    await dessinerCarteItineraire(duJour);
+    return;
+  }
   var base = baseArtisanCoords();
   if (base) {
     var premier = duJour[0];
