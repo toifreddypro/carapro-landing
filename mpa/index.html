@@ -1,4 +1,4 @@
-﻿<!--
+<!--
 ================================================================
   MPA ARTISANS — mpa-artisans.html
   Phase 1 : coquille + Fiche Artisan + Clients habituels
@@ -818,6 +818,58 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   #p0 .dash-jauge-card{border:1px solid #e3e3e3 !important;border-radius:18px !important;box-shadow:none !important;}
 }
 
+
+/* ── Mes livraisons : version téléphone (ordinateur inchangé) ── */
+#nav-livraisons{display:none;}
+#conteneur-livraisons>.bpnl{display:block;}
+.lv-m-only,.lv-ligne-m,#livraison-exemple-m{display:none;}
+@media(max-width:640px){
+  #nav-livraisons{display:flex;}
+  #nav-livraisons .btab{flex:1 1 40%;}
+  #conteneur-livraisons>.bpnl{display:none;}
+  #conteneur-livraisons>.bpnl.active{display:block;}
+  #p-livraisons .dcard{border:1px solid #e3e3e3;border-radius:18px;box-shadow:none;background:#fff;margin-top:0 !important;}
+  #p-livraisons .dchdr{display:none;}
+  #zone-livraisons{padding:14px !important;}
+  #zone-livraisons .lv-titre{background:none;border-radius:0;padding:0;margin:16px 0 10px;font-size:17px;}
+  #zone-livraisons .lv-titre:first-child{margin-top:2px;}
+  #zone-livraisons .lv-titre span{background:#f1f5f9;color:#475569;padding:2px 11px;font-size:13px;}
+  #zone-livraisons .lv-t-jour{color:#C2410C;}
+  #zone-livraisons .lv-t-sem{color:#2563eb;}
+  #zone-livraisons .lv-t-plan{color:#b45309;}
+  #zone-livraisons .pc-wrap{margin-bottom:10px;}
+  .lv-ligne-m{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e3e3e3;border-radius:16px;padding:13px 14px;cursor:pointer;}
+  .lv-quand-m{width:62px;flex-shrink:0;text-align:center;font-size:15px;font-weight:800;color:#111;line-height:1.2;}
+  .lv-txt-m{flex:1;min-width:0;}
+  .lv-nom-m{font-size:17px;font-weight:800;color:#111;line-height:1.25;}
+  .lv-sous-m{font-size:13px;color:#8a8580;margin-top:3px;}
+  .lv-pill-m{display:inline-block;margin-top:7px;font-size:12.5px;font-weight:700;border-radius:99px;padding:4px 11px;}
+  .fm-corps .lv-carte{border:0 !important;padding:4px 0 0;margin:0;}
+  .fm-corps .lv-haut{margin-bottom:14px;}
+  .fm-corps .lv-quand{font-size:19px;}
+  .fm-corps .lv-article{font-size:14px;}
+  .fm-corps .lv-corps{gap:10px;margin-bottom:14px;}
+  .fm-corps .lv-ligne{font-size:17px;line-height:1.5;}
+  .fm-corps .lv-puce{font-size:14px;padding:5px 12px;}
+  .fm-corps .lv-m-only{display:block;}
+  .lv-bouton-m{display:block;width:100%;text-align:center;margin-top:12px;padding:15px;border-radius:14px;border:0;background:#C2410C;color:#fff !important;font-size:17px;font-weight:800;text-decoration:none;cursor:pointer;}
+  .lv-bouton-m.lv-gris{background:#fff;color:#C2410C !important;border:1.5px solid #e3e3e3;}
+  #bp-liv-tarifs .dcard>div[style*="padding:16px"]{padding:18px !important;}
+  #bp-liv-tarifs div[style*="grid-template-columns"]{grid-template-columns:1fr !important;gap:14px !important;}
+  #bp-liv-tarifs div[style*="max-width:340px"]{max-width:none !important;margin-top:14px !important;}
+  #bp-liv-tarifs label{font-size:14px !important;color:#4b5563 !important;margin-bottom:6px !important;}
+  #bp-liv-tarifs input{padding:14px !important;font-size:17px !important;border-radius:12px !important;border:1px solid #d1d5db !important;}
+  #bp-liv-tarifs .lv-expl-long,#livraison-exemple{display:none !important;}
+  #btn-livraison-sauver{width:100%;padding:15px !important;font-size:17px !important;border-radius:14px !important;margin-top:18px !important;}
+  #livraison-exemple-m{display:block;margin-top:20px;}
+  .lv-ex-m{display:flex;justify-content:space-between;align-items:flex-end;border:1px solid #e3e3e3;border-radius:16px;padding:16px 18px;margin-bottom:12px;}
+  .lv-ex-m small{display:block;font-size:13px;color:#6b7280;font-weight:600;}
+  .lv-ex-m b{display:block;font-size:30px;font-weight:800;color:#111;line-height:1.15;}
+  .lv-ex-m .lv-ex-prix{text-align:right;}
+  .lv-ex-m .lv-ex-prix b{color:#C2410C;}
+  .lv-ex-note{text-align:center;font-size:14px;color:#6b7280;font-weight:600;margin-top:4px;}
+}
+
 /* ── Tableau de bord ── */
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 @media(max-width:900px){.dash-grid{grid-template-columns:1fr;}}
@@ -1510,18 +1562,17 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="dcbdy" id="zone-commandes" style="padding:16px;">Chargement…</div>
 <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Pour une commande à livrer, "Planifier la livraison" l'ajoute directement à votre planning — elle passe alors par le calcul de trajet, comme n'importe quel rendez-vous.</div>
 </div>
-</div></div></div><div class="pnl" id="p-livraisons">
-<div class="dcard">
+</div></div></div><div class="pnl" id="p-livraisons"><div class="sous-nav" id="nav-livraisons"><button class="btab active" onclick="switchSousOnglet('nav-livraisons','conteneur-livraisons',0)"><span class="bt-l">Livraisons</span><span class="bt-c">🚚 Livraisons</span></button><button class="btab" onclick="switchSousOnglet('nav-livraisons','conteneur-livraisons',1)"><span class="bt-l">Tarifs</span><span class="bt-c">💶 Mes tarifs</span></button></div><div id="conteneur-livraisons"><div class="bpnl active" id="bp-liv-liste"><div class="dcard">
 <div class="dchdr"><div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M3 3h13v13H3z"></path><path d="M16 8h4l3 3v5h-7V8z"></path><circle cx="7.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>Mes livraisons</div>
 </div>
 <div class="dcbdy" id="zone-livraisons" style="padding:16px;">Chargement…</div>
-</div>
+</div></div><div class="bpnl" id="bp-liv-tarifs">
 <div class="dcard" style="margin-top:16px;">
 <div class="dchdr">
 <div class="dctit">🚚 Frais de livraison</div>
 </div>
 <div style="padding:16px;">
-<p style="font-size:12.5px;color:var(--mu);margin-bottom:14px;">Vos kilomètres sont facturés automatiquement au client selon la distance, au moment de la commande. Mettez 0 € pour une livraison gratuite.<br><strong>Exemple :</strong> 0,50 € de forfait, 5 km inclus, 0,50 € par km au-delà. Pour 10 km, le client paie 3,00 € ; pour 30 km, 13,00 €. Gardez en tête que la distance compte à l'aller seulement, par la route.</p>
+<p class="lv-expl-long" style="font-size:12.5px;color:var(--mu);margin-bottom:14px;">Vos kilomètres sont facturés automatiquement au client selon la distance, au moment de la commande. Mettez 0 € pour une livraison gratuite.<br><strong>Exemple :</strong> 0,50 € de forfait, 5 km inclus, 0,50 € par km au-delà. Pour 10 km, le client paie 3,00 € ; pour 30 km, 13,00 €. Gardez en tête que la distance compte à l'aller seulement, par la route.</p>
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
 <div>
 <label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;" for="livraison-base">Forfait de base (€)</label>
@@ -1539,12 +1590,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div style="margin-top:14px;max-width:340px;">
 <label style="display:block;font-size:11.5px;color:var(--mu2);margin-bottom:4px;font-weight:600;" for="livraison-delai-jours">Délai de préparation (jours)</label>
 <input id="livraison-delai-jours" placeholder="7" min="0" max="30" step="1" style="width:100%;padding:8px 10px;border-radius:7px;border:1px solid var(--b2);font-size:13px;" type="number"/>
-<div style="font-size:12px;color:var(--mu);margin-top:4px;">Le client est prévenu d'une livraison « entre J+délai et J+délai+6 jours » à partir de sa commande. Exemple : commande le 1er, délai de 7 jours → livraison estimée entre le 8 et le 14. Vous avez jusqu'au début de cette fenêtre pour passer la commande en « Prête ».</div>
+<div class="lv-expl-long" style="font-size:12px;color:var(--mu);margin-top:4px;">Le client est prévenu d'une livraison « entre J+délai et J+délai+6 jours » à partir de sa commande. Exemple : commande le 1er, délai de 7 jours → livraison estimée entre le 8 et le 14. Vous avez jusqu'au début de cette fenêtre pour passer la commande en « Prête ».</div>
 </div>
 <button id="btn-livraison-sauver" onclick="sauverTarifLivraison()" style="margin-top:12px;padding:8px 16px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">Enregistrer</button>
 <div id="livraison-exemple" style="margin-top:10px;font-size:12px;color:var(--mu);"></div>
+<div id="livraison-exemple-m"></div>
 </div>
-</div></div><div class="pnl" id="p-stock"><div class="sous-nav" id="nav-stock"><button class="btab active" id="bt-stock-0" onclick="switchSousOnglet('nav-stock','conteneur-stock',0)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2.59 12.58a2 2 0 0 1 0-2.83l7.17-7.17a2 2 0 0 1 2.83 0l8 8a2 2 0 0 1 0 2.83z"></path><line x1="7" x2="7.01" y1="7" y2="7"></line></svg><span class="bt-l">Mes fournitures</span><span class="bt-c">Fournitures</span></button><button class="btab" id="bt-stock-1" onclick="switchSousOnglet('nav-stock','conteneur-stock',1)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M20 7h-9m0 10h9M3 17V7a2 2 0 0 1 2-2h4v14H5a2 2 0 0 1-2-2z"></path></svg><span class="bt-l">Mes produits</span><span class="bt-c">Produits</span></button></div><div id="conteneur-stock"><div class="bpnl active" id="bp-fournitures">
+</div></div></div></div><div class="pnl" id="p-stock"><div class="sous-nav" id="nav-stock"><button class="btab active" id="bt-stock-0" onclick="switchSousOnglet('nav-stock','conteneur-stock',0)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2.59 12.58a2 2 0 0 1 0-2.83l7.17-7.17a2 2 0 0 1 2.83 0l8 8a2 2 0 0 1 0 2.83z"></path><line x1="7" x2="7.01" y1="7" y2="7"></line></svg><span class="bt-l">Mes fournitures</span><span class="bt-c">Fournitures</span></button><button class="btab" id="bt-stock-1" onclick="switchSousOnglet('nav-stock','conteneur-stock',1)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M20 7h-9m0 10h9M3 17V7a2 2 0 0 1 2-2h4v14H5a2 2 0 0 1-2-2z"></path></svg><span class="bt-l">Mes produits</span><span class="bt-c">Produits</span></button></div><div id="conteneur-stock"><div class="bpnl active" id="bp-fournitures">
 <div class="dcard" id="carte-fournitures">
 <div class="dchdr">
 <div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2.59 12.58a2 2 0 0 1 0-2.83l7.17-7.17a2 2 0 0 1 2.83 0l8 8a2 2 0 0 1 0 2.83z"></path><line x1="7" x2="7.01" y1="7" y2="7"></line></svg>Mes fournitures</div>
@@ -2646,6 +2698,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261104172629"></script>
+<script src="/mpa/mpa-artisans.js?v=20261104a"></script>
 </body>
 </html>

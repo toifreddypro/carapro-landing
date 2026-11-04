@@ -6066,7 +6066,8 @@ function afficherExempleLivraison() {
   var kmInclus = document.getElementById('livraison-km-inclus').value;
   var prixKm = document.getElementById('livraison-prix-km').value;
   var zone = document.getElementById('livraison-exemple');
-  if (base === '' || kmInclus === '') { zone.textContent = ''; return; }
+  var zm = document.getElementById('livraison-exemple-m');
+  if (base === '' || kmInclus === '') { zone.textContent = ''; if (zm) zm.innerHTML = ''; return; }
   var b = Number(base), ki = Number(kmInclus), pk = Number(prixKm) || 0;
   function frais(km) { return km <= ki ? b : Math.round((b + (km - ki) * pk) * 100) / 100; }
   function eur(n) { return n.toFixed(2).replace('.', ',') + ' €'; }
@@ -6074,6 +6075,9 @@ function afficherExempleLivraison() {
   texte += pk > 0 ? ', puis ' + eur(pk) + ' par km supplémentaire.' : ', rien au-delà (pas de tarif au km supplémentaire réglé).';
   texte += ' Ce que paierait le client : ' + [5, 10, 20, 30].map(function(km) { return km + ' km → ' + eur(frais(km)); }).join(' · ') + '.';
   zone.textContent = texte;
+  if (zm) zm.innerHTML = [10, 30].map(function(km) {
+    return '<div class="lv-ex-m"><div><small>Livraison à</small><b>' + km + ' km</b></div><div class="lv-ex-prix"><small>Le client paie</small><b>' + eur(frais(km)) + '</b></div></div>';
+  }).join('') + '<div class="lv-ex-note">Calculé tout seul à la commande</div>';
 }
 
 async function sauverTarifLivraison() {
@@ -7406,7 +7410,7 @@ async function chargerLivraisons() {
 
   var heureDe = function(i) { return i.heure_debut || (i.creneau === 'matin' ? 'Matin' : (i.creneau === 'apres_midi' || i.creneau === 'apres-midi') ? 'Après-midi' : '—'); };
   var titre = function(txt, n, cls) { return '<div class="lv-titre ' + (cls || '') + '">' + txt + ' <span>' + n + '</span></div>'; };
-  var carte = function(l, enteteHtml) {
+  var carte = function(l, enteteHtml, quandM, pillM) {
     var i = l.mpa_artisans_interventions;
     var note = '';
     if (i) {
@@ -7418,7 +7422,11 @@ async function chargerLivraisons() {
     var etatClient = i ? (l.livraison_confirmee_le
       ? '<span class="lv-puce lv-ok">✉️ Client prévenu</span>'
       : '<span class="lv-puce lv-att">🕓 Provisoire — client prévenu le ' + dateCourteFR(ajouterJoursISO(i.date_intervention, -2)) + '</span>') : '';
-    return '<div class="lv-carte">' +
+    var tel = l.client_telephone ? String(l.client_telephone).replace(/\s+/g, '') : '';
+    var boutonsM = '<div class="lv-m-only">' +
+      (!i ? '<button class="lv-bouton-m" onclick="fermerFicheMobile();planifierLivraisonCommande(\'' + l.id + '\')">🚚 Choisir le jour</button>' : '') +
+      (tel ? '<a class="lv-bouton-m' + (!i ? ' lv-gris' : '') + '" href="tel:' + escHtml(tel) + '">📞 Appeler ' + escHtml(l.client_nom) + '</a>' : '') + '</div>';
+    var carteHtml = '<div class="lv-carte">' +
       '<div class="lv-haut"><div class="lv-quand">' + enteteHtml + '</div>' +
         '<span class="lv-article">📦 ' + escHtml(l.nom_article) + ' × ' + l.quantite + '</span></div>' +
       '<div class="lv-corps">' +
@@ -7427,21 +7435,39 @@ async function chargerLivraisons() {
         '<div class="lv-ligne">📞 ' + (l.client_telephone ? '<a href="tel:' + escHtml(l.client_telephone) + '" style="color:inherit;">' + escHtml(l.client_telephone) + '</a>' : '—') + '</div>' +
       '</div>' +
       '<div class="lv-pied">' + etatClient + '<span class="lv-note-slot"></span>' + note + '</div>' +
+      boutonsM +
       '</div>';
+    // Version téléphone : ligne épurée + fiche au clic (la carte complète devient la fiche).
+    var lieuM = l.commune_livraison || (i && i.commune) || '';
+    var ligneM = '<div class="lv-ligne-m" onclick="ouvrirFicheMobile(this)">' +
+      '<div class="lv-quand-m">' + quandM + '</div>' +
+      '<div class="lv-txt-m"><div class="lv-nom-m">' + escHtml(l.client_nom) + '</div>' +
+      '<div class="lv-sous-m">📦 ' + escHtml(l.nom_article) + ' × ' + l.quantite + (lieuM ? ' · ' + escHtml(lieuM) : '') + '</div>' +
+      (pillM ? '<span class="lv-pill-m ' + pillM.cls + '">' + pillM.txt + '</span>' : '') + '</div></div>';
+    return '<div class="pc-wrap" data-fid="lv' + l.id + '">' + ligneM + carteHtml.replace('<div class="lv-carte">', '<div class="lv-carte pc-plein">') + '</div>';
+  };
+  var jourM = function(iso) { return new Date(iso + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', timeZone: 'UTC' }).replace('.', ''); };
+  var pillDe = function(l) {
+    var i = l.mpa_artisans_interventions;
+    if (!i) return l.statut === 'prete' ? { cls: 'lv-ok', txt: '📦 Prête' } : { cls: 'lv-neutre', txt: 'À préparer' };
+    var autres = (interventionsProches || []).filter(function(x) { return x.id !== i.id && x.date_intervention === i.date_intervention && (x.commune || '').toLowerCase().trim() === (i.commune || '').toLowerCase().trim(); }).length;
+    if (autres > 0) return { cls: 'lv-ok', txt: '🧩 Regroupée' };
+    return l.livraison_confirmee_le ? { cls: 'lv-ok', txt: '✉️ Client prévenu' } : { cls: 'lv-att', txt: '🕓 Provisoire' };
   };
   var parHeure = function(a, b) { return (a.mpa_artisans_interventions.heure_debut || '99:99').localeCompare(b.mpa_artisans_interventions.heure_debut || '99:99'); };
   duJour.sort(parHeure);
   semaine.sort(function(a, b) { return a.mpa_artisans_interventions.date_intervention.localeCompare(b.mpa_artisans_interventions.date_intervention) || parHeure(a, b); });
 
   zone.innerHTML =
-    titre('📅 Aujourd\'hui', duJour.length, 'lv-t-jour') + (duJour.length ? duJour.map(function(l) { return carte(l, '<strong>' + escHtml(heureDe(l.mpa_artisans_interventions)) + '</strong>'); }).join('') : '<div style="font-size:12.5px;color:var(--mu);">Aucune livraison prévue aujourd\'hui.</div>') +
-    (semaine.length ? titre('🗓️ Cette semaine', semaine.length, 'lv-t-sem') + semaine.map(function(l) { return carte(l, '<strong>' + escHtml(dateCourteFR(l.mpa_artisans_interventions.date_intervention)) + ' · ' + escHtml(heureDe(l.mpa_artisans_interventions)) + '</strong>'); }).join('') : '') +
+    titre('📅 Aujourd\'hui', duJour.length, 'lv-t-jour') + (duJour.length ? duJour.map(function(l) { return carte(l, '<strong>' + escHtml(heureDe(l.mpa_artisans_interventions)) + '</strong>', escHtml(heureDe(l.mpa_artisans_interventions)), pillDe(l)); }).join('') : '<div style="font-size:12.5px;color:var(--mu);">Aucune livraison prévue aujourd\'hui.</div>') +
+    (semaine.length ? titre('🗓️ Cette semaine', semaine.length, 'lv-t-sem') + semaine.map(function(l) { return carte(l, '<strong>' + escHtml(dateCourteFR(l.mpa_artisans_interventions.date_intervention)) + ' · ' + escHtml(heureDe(l.mpa_artisans_interventions)) + '</strong>', escHtml(jourM(l.mpa_artisans_interventions.date_intervention)), pillDe(l)); }).join('') : '') +
     (aPlanifier.length ? titre('🕓 À planifier', aPlanifier.length, 'lv-t-plan') + aPlanifier.map(function(l) {
       var enRetard = l.statut !== 'prete' && l.livraison_debut && aujourdhui >= l.livraison_debut;
       var etat = l.statut === 'prete' ? '<span class="lv-puce lv-ok">📦 Prête — à planifier</span>' : (enRetard ? '<span class="lv-puce lv-rouge">⏰ À préparer (en retard)</span>' : '<span class="lv-puce lv-neutre">À préparer</span>');
       var fen = l.livraison_debut && l.livraison_fin ? 'Entre le ' + dateCourteFR(l.livraison_debut) + ' et le ' + dateCourteFR(l.livraison_fin) : 'Date à convenir';
-      return carte(l, '<strong>' + escHtml(fen) + '</strong>').replace('<span class="lv-note-slot"></span>', etat);
+      return carte(l, '<strong>' + escHtml(fen) + '</strong>', '🕓', pillDe(l)).replace('<span class="lv-note-slot"></span>', etat);
     }).join('') : '');
+  if (typeof rafraichirFicheMobile === 'function') rafraichirFicheMobile();
 }
 
 // Règle du 07/10 : une commande de la boutique n'existe pour l'artisan qu'une fois PAYÉE. Une commande créée avec « paiement_requis »
