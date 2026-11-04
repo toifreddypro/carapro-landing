@@ -1129,7 +1129,8 @@ function regrouperFicheTel() {
   var barre = card.querySelector('.fiche-appbar'); if (!barre) return;
   var A = document.createElement('div'); A.className = 'fiche-bloc fiche-bloc-a';
   var C = document.createElement('div'); C.className = 'fiche-bloc fiche-bloc-c';
-  card.insertBefore(A, barre.nextSibling);
+  var titre = card.querySelector('.fiche-titre');
+  card.insertBefore(A, (titre || barre).nextSibling);
   [card.querySelector('.fiche-head'), card.querySelector('.fiche-sous-tete'), sec('services_titre'), sec('fiche_dispos'), card.querySelector('.fiche-devis'), sec('fiche_realisations')]
     .forEach(function(e) { if (e) A.appendChild(e); });
   [sec('fiche_presentation'), sec('fiche_avantages'), sec('avis_titre')].forEach(function(e) { if (e) C.appendChild(e); });
@@ -1286,9 +1287,9 @@ function buildProfilHTML(data) {
       }).join('')
     : '<div style="color:var(--mu,#999);font-size:13px;">' + T('aucun_avis') + '</div>';
 
-  var badgesFicheM = (a.nouveau ? '<span class="badge-trust bt-blue">' + escHtml(T('badge_nouveau')) + '</span>' : '') +
-    (a.verifie ? '<span class="badge-trust bt-green">✅ ' + T('badge_verifie') + '</span>' : '') +
-    (a.rge ? badgeRgeTexte(a) : '');
+  var badgesFicheM = (a.verifie ? '<span class="badge-trust bt-green">✅ ' + T('badge_verifie') + '</span>' : '') +
+    (a.rge ? badgeRgeTexte(a) : '') +
+    (a.nouveau ? '<span class="badge-trust bt-blue">' + escHtml(T('badge_nouveau')) + '</span>' : '');
   var starsFiche = data.nb_avis > 0
     ? etoilesCarte(Number(data.note_moyenne) || 0) + '<span>' + (Number(data.note_moyenne) || 0).toFixed(1) + ' (' + data.nb_avis + ' ' + (data.nb_avis === 1 ? T('avis_un') : T('avis_plusieurs')) + ')</span>'
     : '<span style="color:var(--mu2,#777);">' + escHtml(T('avis_aucun_court')) + '</span>';
@@ -1297,6 +1298,7 @@ function buildProfilHTML(data) {
       '<div class="fiche-appbar"><span>🔧 CaraLink Artisans</span><span class="fiche-appbar-btns">' +
         '<button type="button" onclick="partagerFiche(' + jsAttr(a.id) + ')" aria-label="' + escHtml(T('partage_titre')) + '">🔗</button>' +
         '<button type="button" onclick="fermerProfil({target:this,currentTarget:this})" aria-label="' + escHtml(T('partage_fermer')) + '">✕</button></span></div>' +
+      '<div class="fiche-titre">' + T('fiche_titre_noir') + ' <span>' + T('fiche_titre_marron') + '</span></div>' +
       '<div class="fiche-head" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">' +
         '<div style="display:flex;gap:14px;align-items:center;">' + photo +
           '<div><div style="font-family:Fraunces,serif;font-size:19px;font-weight:700;">' + escHtml(a.nom_entreprise) + '</div>' +

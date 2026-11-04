@@ -996,7 +996,7 @@ body.theme-light footer { background:#fbfcfe; }
 .app-bar-cadre{display:none;}
 .devis-mobile{display:none;}
 .cadre-haut{display:contents;}
-.fiche-appbar,.fiche-stars,.fiche-sous-tete{display:none;}
+.fiche-appbar,.fiche-stars,.fiche-sous-tete,.fiche-titre{display:none;}
 .fiche-grille{display:none;}
 #menu-artisan{display:none;}
 /* ===== ANNUAIRE MOBILE ÉPURÉ (téléphone uniquement ; l'ordinateur ne change pas) ===== */
@@ -1061,9 +1061,11 @@ body.theme-light footer { background:#fbfcfe; }
   body .fiche-card > *{margin-left:16px !important;margin-right:16px !important;}
   body .fiche-card > .fiche-appbar{margin:0 !important;order:0;display:flex !important;align-items:center;justify-content:space-between;padding:14px 14px 14px 18px;border-bottom:2px solid #eef2f8;font-size:21px;font-weight:800;color:#C2410C;letter-spacing:-.3px;}
   body .fiche-appbar-btns{display:flex;gap:8px;}
+  body .fiche-card > .fiche-titre{display:block !important;order:0;text-align:center;font-size:26px;font-weight:800;line-height:1.15;letter-spacing:-.6px;color:var(--ink);margin:20px 16px 16px !important;}
+  body .fiche-titre span{color:#C2410C;}
   body .fiche-head > div:first-child > div:first-child:not(:only-child){background:rgba(181,80,47,.12) !important;color:#B5502F !important;font-family:'Outfit',sans-serif !important;font-size:22px !important;font-weight:800 !important;}
   body .fiche-card .dispo-day-label{font-size:9px !important;white-space:nowrap;}
-  body .fiche-card .dispo-slot{font-size:9.5px !important;}
+  body .fiche-card .dispo-slot{font-size:9.5px !important;font-weight:700 !important;}
   body .fiche-appbar-btns button{width:40px;height:40px;border-radius:50%;border:2px solid #e3eaf4;background:#fff;font-size:17px;color:#475569;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;}
   body .fiche-head{order:1;margin-top:18px !important;margin-bottom:14px !important;}
   body .fiche-head .fiche-actions{display:none !important;}
@@ -1103,9 +1105,11 @@ body.theme-light footer { background:#fbfcfe; }
   body .fiche-sec[data-sec="fiche_avantages"]{order:8;}
   body .fiche-sec[data-sec="avis_titre"]{order:9;}
   /* Services en bulles, prix en couleur CaraLink */
-  body .svc-ligne{border:2px solid #e3eaf4 !important;border-radius:20px !important;padding:15px 18px !important;margin-bottom:12px !important;align-items:center !important;}
-  body .svc-ligne strong{font-size:18px;font-weight:700;color:var(--ink);}
-  body .svc-prix{color:#C2410C !important;font-size:20px !important;font-weight:800 !important;}
+  body .svc-ligne{border:2px solid #e3eaf4 !important;border-radius:18px !important;padding:11px 14px !important;margin-bottom:10px !important;align-items:center !important;gap:8px;}
+  body .svc-ligne > div:first-child{min-width:0;flex:1;}
+  body .svc-ligne strong{font-size:15px;font-weight:700;color:var(--ink);}
+  body .svc-ligne > div:first-child > div{font-size:12px !important;line-height:1.3;}
+  body .svc-prix{color:#C2410C !important;font-size:15px !important;font-weight:800 !important;margin-left:6px !important;}
   /* Créneaux : une colonne par jour, comme avant */
   body .fiche-grille{display:grid !important;grid-template-columns:repeat(7,1fr);gap:4px;border-top:none !important;padding-top:0 !important;margin-bottom:10px;}
   /* Devis juste sous les créneaux */
@@ -1191,8 +1195,8 @@ body.theme-light footer { background:#fbfcfe; }
       <a href="mailto:contact@learnlogicstudio.com" style="color:var(--mu2);text-decoration:none;margin:0 8px;">Contact</a>
     </div>
   </footer>
-  <script src="/artisans/tr-artisans.js?v=20261104131553"></script>
-  <script src="/artisans/caralink-artisans.js?v=20261104131553"></script>
+  <script src="/artisans/tr-artisans.js?v=20261104132757"></script>
+  <script src="/artisans/caralink-artisans.js?v=20261104132757"></script>
 
   <!-- ════ FAQ BOUTON FLOTTANT ════ -->
   <button class="faq-fab" onclick="toggleFAQ()" title="Aide & FAQ">
