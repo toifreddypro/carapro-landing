@@ -1111,11 +1111,36 @@ async function ouvrirProfil(id) {
     if (data.error) throw new Error(data.error);
 
     div.innerHTML = buildProfilHTML(data);
+    regrouperFicheTel();
     _profilDataCourant = data;
     chargerApercuDispo(data.artisan.id);
 
   } catch(e) {
     afficherFicheIndisponible(id, statutHttp);
+  }
+}
+// Téléphone : on range la fiche en 3 formes arrondies (A : de l'artisan aux photos · B : boutique · C : présentation + avis).
+// L'ordinateur ne change pas : on ne touche à rien. Un seul avis visible, les autres derrière « Voir plus ».
+function regrouperFicheTel() {
+  if (!ecranTel()) return;
+  var card = document.querySelector('#modal-profil .fiche-card');
+  if (!card || card.querySelector('.fiche-bloc')) return;
+  function sec(n) { return card.querySelector('.fiche-sec[data-sec="' + n + '"]'); }
+  var barre = card.querySelector('.fiche-appbar'); if (!barre) return;
+  var A = document.createElement('div'); A.className = 'fiche-bloc fiche-bloc-a';
+  var C = document.createElement('div'); C.className = 'fiche-bloc fiche-bloc-c';
+  card.insertBefore(A, barre.nextSibling);
+  [card.querySelector('.fiche-head'), card.querySelector('.fiche-sous-tete'), sec('services_titre'), sec('fiche_dispos'), card.querySelector('.fiche-devis'), sec('fiche_realisations')]
+    .forEach(function(e) { if (e) A.appendChild(e); });
+  [sec('fiche_presentation'), sec('fiche_avantages'), sec('avis_titre')].forEach(function(e) { if (e) C.appendChild(e); });
+  if (C.children.length) card.appendChild(C); 
+  var items = card.querySelectorAll('.avis-item');
+  if (items.length > 1) {
+    for (var i = 1; i < items.length; i++) items[i].classList.add('avis-cache');
+    var plus = document.createElement('button'); plus.type = 'button'; plus.className = 'avis-plus';
+    plus.textContent = T('avis_voir_plus') + ' (' + (items.length - 1) + ')';
+    plus.onclick = function() { card.querySelectorAll('.avis-cache').forEach(function(x) { x.classList.remove('avis-cache'); }); plus.remove(); };
+    items[items.length - 1].parentNode.appendChild(plus);
   }
 }
 // Fiche impossible à afficher : un message DOUX (jamais « Erreur : … » brut) et toujours une sortie (avant, l'écran d'erreur ne se fermait pas).
@@ -1253,7 +1278,7 @@ function buildProfilHTML(data) {
 
   var avisHtml = data.avis.length
     ? data.avis.map(function(av) {
-        return '<div style="padding:10px 0;border-bottom:1px solid var(--line,#eee);font-size:13px;">' +
+        return '<div class="avis-item" style="padding:10px 0;border-bottom:1px solid var(--line,#eee);font-size:13px;">' +
           '<strong>' + '★'.repeat(av.note) + '☆'.repeat(5-av.note) + '</strong> — ' + escHtml(av.client_nom) +
           (av.commentaire ? '<div style="color:var(--mu2,#777);margin-top:3px;">' + escHtml(av.commentaire) + '</div>' : '') +
           (av.reponse_artisan ? '<div style="margin-top:6px;padding:8px 10px;background:var(--p2,#f6f9fe);border-radius:8px;font-size:12.5px;color:var(--mu2,#777);"><strong style="color:var(--ac,#B5502F);">' + T('reponse_artisan_prefix') + '</strong> ' + escHtml(av.reponse_artisan) + '</div>' : '') +
@@ -1261,6 +1286,9 @@ function buildProfilHTML(data) {
       }).join('')
     : '<div style="color:var(--mu,#999);font-size:13px;">' + T('aucun_avis') + '</div>';
 
+  var badgesFicheM = (a.nouveau ? '<span class="badge-trust bt-blue">' + escHtml(T('badge_nouveau')) + '</span>' : '') +
+    (a.verifie ? '<span class="badge-trust bt-green">✅ ' + T('badge_verifie') + '</span>' : '') +
+    (a.rge ? badgeRgeTexte(a) : '');
   var starsFiche = data.nb_avis > 0
     ? etoilesCarte(Number(data.note_moyenne) || 0) + '<span>' + (Number(data.note_moyenne) || 0).toFixed(1) + ' (' + data.nb_avis + ' ' + (data.nb_avis === 1 ? T('avis_un') : T('avis_plusieurs')) + ')</span>'
     : '<span style="color:var(--mu2,#777);">' + escHtml(T('avis_aucun_court')) + '</span>';
@@ -1273,12 +1301,13 @@ function buildProfilHTML(data) {
         '<div style="display:flex;gap:14px;align-items:center;">' + photo +
           '<div><div style="font-family:Fraunces,serif;font-size:19px;font-weight:700;">' + escHtml(a.nom_entreprise) + '</div>' +
           '<div class="fiche-sub" style="font-size:13px;color:var(--mu2,#777);">' + secteurLabel(a.secteur) + ' · 📍 ' + escHtml(a.commune) + '</div>' +
-          '<div class="fiche-stars">' + starsFiche + '</div>' +
+          '<div class="fiche-badges-d">' +
           (a.nouveau ? '<span class="badge-trust bt-blue" style="margin-top:4px;margin-right:6px;display:inline-block;">' + escHtml(T('badge_nouveau')) + '</span>' : '') +
           (a.verifie ? '<span class="badge-trust bt-green" style="margin-top:4px;display:inline-block;">✅ ' + T('badge_verifie') + '</span>' : '') +
           (a.rge ? '<span style="margin-top:4px;margin-left:6px;display:inline-block;">' + badgeRgeTexte(a) + '</span>' : '') +
           (a.profil_complet ? '<span class="badge-trust bt-more fiche-mini" style="margin-top:4px;margin-left:6px;display:inline-block;">📝 ' + escHtml(T('badge_complet')) + '</span>' : '') +
           (a.alternance_niveau >= 2 ? '<span class="fiche-mini" title="Cette entreprise s\'engage activement pour la formation locale" style="margin-top:4px;margin-left:6px;display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,158,11,.12);color:#b45309;">🟠 Tremplin des jeunes</span>' : '') +
+          '</div>' +
           '</div>' +
         '</div>' +
         '<div class="fiche-actions" style="display:flex;gap:8px;align-items:center;flex-shrink:0;margin-left:8px;">' +
@@ -1286,6 +1315,7 @@ function buildProfilHTML(data) {
           '<button onclick="fermerProfil({target:this,currentTarget:this})" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--mu,#999);">✕</button>' +
         '</div>' +
       '</div>' +
+      '<div class="fiche-sous-tete"><div class="fiche-stars">' + starsFiche + '</div><div class="fiche-badges-m">' + badgesFicheM + '</div></div>' +
       sectionFiche('fiche_presentation', '👤', ((a.bio ? '<p style="font-size:14px;line-height:1.6;margin:0;">' + escHtml(a.bio) + '</p>' : '') + (a.nouveau ? '<p style="font-size:12.5px;color:var(--mu2,#777);margin:' + (a.bio ? '10px' : '0') + ' 0 0;">' + escHtml(T('badge_nouveau_info')) + '</p>' : ''))) +
       sectionFiche('fiche_avantages', '🎁', ((a.cashback_pct || a.remise_fidele_pct || a.code_promo) ? (
         (a.cashback_pct ? '<div style="font-weight:600;font-size:13px;line-height:1.5;">' + escHtml(T('perk_cashback').replace('{p}', Math.round(a.cashback_pct)) + ' ' + libelleScopeAvantage(a.cashback_ventes !== false, a.cashback_interventions !== false)) + '</div>' : '') +

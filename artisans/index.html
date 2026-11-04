@@ -996,7 +996,7 @@ body.theme-light footer { background:#fbfcfe; }
 .app-bar-cadre{display:none;}
 .devis-mobile{display:none;}
 .cadre-haut{display:contents;}
-.fiche-appbar,.fiche-stars{display:none;}
+.fiche-appbar,.fiche-stars,.fiche-sous-tete{display:none;}
 .fiche-grille{display:none;}
 #menu-artisan{display:none;}
 /* ===== ANNUAIRE MOBILE ÉPURÉ (téléphone uniquement ; l'ordinateur ne change pas) ===== */
@@ -1071,7 +1071,11 @@ body.theme-light footer { background:#fbfcfe; }
   body .fiche-head > div:first-child > div:first-child,body .fiche-head img{width:64px !important;height:64px !important;flex-shrink:0;}
   body .fiche-head [style*="Fraunces"]{font-family:'Outfit',sans-serif !important;font-size:23px !important;font-weight:800 !important;letter-spacing:-.4px;color:var(--ink);}
   body .fiche-head .fiche-sub{font-size:15px !important;font-weight:600 !important;color:var(--mu) !important;margin-top:2px;}
+  body .fiche-sous-tete{display:block !important;margin:-4px 0 14px !important;}
+  body .fiche-badges-d{display:none !important;}
+  body .fiche-badges-m{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
   body .fiche-stars{display:flex !important;align-items:center;gap:4px;font-size:15px;font-weight:700;color:var(--mu2);margin:8px 0 2px;}
+  body .fiche-stars{margin:2px 0 0 !important;}
   body .fiche-stars .star-on,body .fiche-stars .star-off{font-size:18px;}
   body .fiche-mini{display:none !important;}
   body .fiche-head .badge-trust{font-size:14px !important;font-weight:700 !important;padding:5px 12px !important;border-radius:30px !important;}
@@ -1083,6 +1087,16 @@ body.theme-light footer { background:#fbfcfe; }
   body .fiche-sec[data-sec="services_titre"]{order:2;}
   body .fiche-sec[data-sec="fiche_dispos"]{order:3;margin-bottom:12px !important;}
   body .fiche-card > .fiche-devis{order:4;}
+  body .fiche-card .fiche-bloc{border:2px solid #e3eaf4;border-radius:22px;padding:16px;margin-bottom:16px;background:#fff;}
+  body .fiche-bloc-a{order:1;}
+  body .fiche-bloc-c{order:7;}
+  body .fiche-bloc > .fiche-head{margin-left:0 !important;margin-right:0 !important;margin-top:0 !important;}
+  body .fiche-bloc > *{margin-left:0 !important;margin-right:0 !important;}
+  body .fiche-bloc .fiche-sec:last-child{margin-bottom:0 !important;}
+  body .fiche-bloc-c .fiche-sec + .fiche-sec{border-top:2px solid #eef2f8 !important;padding-top:14px !important;}
+  body .avis-cache{display:none !important;}
+  body .avis-plus{display:block;width:100%;margin-top:10px;padding:12px;border-radius:16px;border:2px solid #e3eaf4;background:#fff;color:#C2410C;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;}
+  body .fiche-card .dispo-slot.available{background:#fff !important;color:#13223C !important;border-color:#cfd9e8 !important;}
   body .fiche-sec[data-sec="fiche_realisations"]{order:5;}
   body .fiche-sec[data-sec="fiche_boutique"]{order:6;}
   body .fiche-sec[data-sec="fiche_presentation"]{order:7;}
@@ -1095,9 +1109,10 @@ body.theme-light footer { background:#fbfcfe; }
   /* Créneaux : une colonne par jour, comme avant */
   body .fiche-grille{display:grid !important;grid-template-columns:repeat(7,1fr);gap:4px;border-top:none !important;padding-top:0 !important;margin-bottom:10px;}
   /* Devis juste sous les créneaux */
-  body .fiche-devis{width:calc(100% - 32px) !important;margin-top:2px !important;margin-bottom:18px !important;padding:16px !important;border-radius:20px !important;font-size:18px !important;font-weight:800 !important;background:#C2410C !important;box-shadow:0 12px 28px rgba(194,65,12,.3);}
+  body .fiche-devis{width:100% !important;margin-top:2px !important;margin-bottom:18px !important;padding:16px !important;border-radius:20px !important;font-size:18px !important;font-weight:800 !important;background:#C2410C !important;box-shadow:0 12px 28px rgba(194,65,12,.3);}
   /* Photos sans titre, puis boutique dans sa propre forme */
   body .fiche-sec[data-sec="fiche_realisations"] img{height:96px !important;border-radius:16px !important;}
+  body .fiche-card > .fiche-sec[data-sec="fiche_boutique"]{margin-bottom:16px !important;}
   body .fiche-card .fiche-sec[data-sec="fiche_boutique"]{background:#f8fafd !important;border:2px solid #e3eaf4 !important;border-radius:22px !important;padding:16px !important;}
   body .fiche-sec[data-sec="fiche_boutique"] .fiche-sec-titre{color:#C2410C !important;font-weight:800 !important;font-size:15px !important;}
   /* « Voir la boutique » : sans fond noir, sans contour */
@@ -1176,8 +1191,8 @@ body.theme-light footer { background:#fbfcfe; }
       <a href="mailto:contact@learnlogicstudio.com" style="color:var(--mu2);text-decoration:none;margin:0 8px;">Contact</a>
     </div>
   </footer>
-  <script src="/artisans/tr-artisans.js?v=20261104130401"></script>
-  <script src="/artisans/caralink-artisans.js?v=20261104130401"></script>
+  <script src="/artisans/tr-artisans.js?v=20261104131553"></script>
+  <script src="/artisans/caralink-artisans.js?v=20261104131553"></script>
 
   <!-- ════ FAQ BOUTON FLOTTANT ════ -->
   <button class="faq-fab" onclick="toggleFAQ()" title="Aide & FAQ">
