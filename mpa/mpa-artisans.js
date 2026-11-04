@@ -1037,6 +1037,7 @@ async function chargerInterventions() {
   _indisposMois = ind.error ? [] : (ind.data || []);
 
   renderCalendrier();
+  renderPlanningMobile();
   renderRecapInterventions();
 }
 
@@ -1093,6 +1094,82 @@ function renderCalendrier() {
       ) +
     '</div>';
   }).join('');
+}
+
+
+// ── Version téléphone : Planning = la semaine en haut, la liste du jour dessous ; un clic sur une intervention ouvre sa fiche (statut, paiement). ──
+var _jourPlanM = null;
+function isoLocalM(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function choisirJourPlanM(iso) {
+  _jourPlanM = iso;
+  var d = new Date(iso + 'T12:00:00');
+  if (d.getMonth() !== _calMois || d.getFullYear() !== _calAnnee) { _calMois = d.getMonth(); _calAnnee = d.getFullYear(); chargerInterventions(); }
+  else renderPlanningMobile();
+}
+function semainePlanM(delta) {
+  var d = new Date((_jourPlanM || isoLocalM(new Date())) + 'T12:00:00'); d.setDate(d.getDate() + 7 * delta);
+  choisirJourPlanM(isoLocalM(d));
+}
+function aujourdhuiPlanM() { choisirJourPlanM(isoLocalM(new Date())); }
+var STATUTS_PLAN = [['planifiee', 'Planifiée', '#d97706'], ['en_cours', 'En cours', '#6d28d9'], ['terminee', 'Terminée', '#1d4ed8'], ['payee', 'Payée', '#15803d']];
+function renderPlanningMobile() {
+  var zone = document.getElementById('plan-m'); if (!zone || typeof _calMois === 'undefined') return;
+  var auj = isoLocalM(new Date());
+  var memeMois = function(iso) { var d = new Date(iso + 'T12:00:00'); return d.getMonth() === _calMois && d.getFullYear() === _calAnnee; };
+  if (!_jourPlanM || !memeMois(_jourPlanM)) _jourPlanM = memeMois(auj) ? auj : _calAnnee + '-' + String(_calMois + 1).padStart(2, '0') + '-01';
+  var nomMois = String(MOIS_NOMS[_calMois]); document.getElementById('pm-titre').textContent = nomMois.charAt(0).toUpperCase() + nomMois.slice(1) + ' ' + _calAnnee;
+  var sel = new Date(_jourPlanM + 'T12:00:00'), lundi = new Date(sel); lundi.setDate(sel.getDate() - ((sel.getDay() + 6) % 7));
+  var noms = ['L', 'M', 'M', 'J', 'V', 'S', 'D'], strip = '';
+  for (var k = 0; k < 7; k++) {
+    var d = new Date(lundi); d.setDate(lundi.getDate() + k); var iso = isoLocalM(d);
+    var a = (_interventionsCache || []).some(function(x) { return x.date_intervention === iso; });
+    strip += '<button class="pm-j' + (iso === _jourPlanM ? ' sel' : '') + (iso === auj ? ' auj' : '') + (a ? ' a' : '') + (memeMois(iso) ? '' : ' autre') + '" onclick="choisirJourPlanM(\'' + iso + '\')"><small>' + noms[k] + '</small><b>' + d.getDate() + '</b><i></i></button>';
+  }
+  document.getElementById('pm-semaine').innerHTML = strip;
+  var liste = (_interventionsCache || []).filter(function(x) { return x.date_intervention === _jourPlanM; }).sort(function(a, b) { return (a.heure_debut || '').localeCompare(b.heure_debut || ''); });
+  var dateAff = sel.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  var bloc = (_indisposMois || []).find(function(b) { return b.date_debut <= _jourPlanM && b.date_fin >= _jourPlanM; });
+  document.getElementById('pm-jour').innerHTML =
+    '<div class="pm-titre-jour">' + (_jourPlanM === auj ? 'Aujourd\'hui · ' : '') + escHtml(dateAff.charAt(0).toUpperCase() + dateAff.slice(1)) + ' · ' + liste.length + ' intervention' + (liste.length > 1 ? 's' : '') + '</div>' +
+    (bloc ? '<div class="pm-bloque">⛔ Journée bloquée : ' + escHtml(libelleTypeFermeture(bloc.type_fermeture)) + '</div>' : '') +
+    (liste.length ? liste.map(ligneInterventionM).join('') : '<div class="pm-vide">Rien de prévu ce jour-là 🌴</div>');
+  rafraichirFicheMobile();
+}
+var COUL_ST_M = { planifiee: ['#b45309', 'rgba(245,158,11,.14)'], en_cours: ['#6d28d9', 'rgba(109,40,217,.12)'], terminee: ['#1d4ed8', 'rgba(59,130,246,.12)'], payee: ['#15803d', 'rgba(34,197,94,.14)'], annulee: ['#6b7280', 'rgba(107,114,128,.14)'] };
+var LIB_ST_M = { planifiee: 'Planifiée', en_cours: 'En cours', terminee: 'Terminée', payee: 'Payée', annulee: 'Annulée' };
+function ligneInterventionM(i) {
+  var st = classeStatut(i.statut), c = COUL_ST_M[st] || COUL_ST_M.planifiee;
+  var client = i.mpa_artisans_clients && i.mpa_artisans_clients.nom ? i.mpa_artisans_clients.nom : '—';
+  var service = libelleServiceIntervention(i), heure = i.heure_debut ? i.heure_debut.slice(0, 5) : (i.creneau === 'apres_midi' ? '🌇' : '☀️');
+  var prix = i.prix != null ? eurosFR(Number(i.prix)) : '';
+  return '<div class="pc-wrap" data-fid="int-' + i.id + '"><div class="pm-ligne" onclick="ouvrirFicheMobile(this)"><div class="pm-h">' + escHtml(heure) + '</div><div class="pm-txt"><div class="pm-nom">' + escHtml(client) + '</div><div class="pm-sv">' + (estLivraisonIntervention(i) ? '🚚 ' : '') + escHtml(service) + '</div></div>' +
+    '<div class="pm-droite">' + (prix ? '<div class="pm-prix">' + prix + '</div>' : '') + '<span class="pm-st" style="background:' + c[1] + ';color:' + c[0] + '">' + (LIB_ST_M[st] || st) + '</span></div></div>' + ficheInterventionM(i) + '</div>';
+}
+function ficheInterventionM(i) {
+  var st = classeStatut(i.statut), q = "'" + i.id + "'";
+  var nom = i.mpa_artisans_clients && i.mpa_artisans_clients.nom ? i.mpa_artisans_clients.nom : '—';
+  var ini = nom.split(/\s+/).map(function(m) { return m.charAt(0); }).join('').slice(0, 2).toUpperCase() || '?';
+  var pal = ['#8b5cf6', '#2563eb', '#2f9e6e', '#C2410C', '#0891b2', '#db2777'], som = 0;
+  for (var k = 0; k < nom.length; k++) som += nom.charCodeAt(k);
+  var h1 = i.heure_debut ? i.heure_debut.slice(0, 5) : '', h2 = i.heure_fin ? i.heure_fin.slice(0, 5) : '';
+  var quand = (h1 ? '🕘 ' + h1 + (h2 ? ' → ' + h2 : '') + ' · ' : '🕘 ') + (i.creneau === 'apres_midi' ? '🌇 Après-midi' : '☀️ Matin');
+  var lieu = [i.adresse, i.commune].filter(Boolean).join(', ');
+  var etapes = st === 'annulee' ? '<span class="on" style="background:#6b7280">Annulée</span>' : STATUTS_PLAN.map(function(s) { return '<span' + (s[0] === st ? ' class="on" style="background:' + s[2] + '"' : '') + '>' + s[1] + '</span>'; }).join('');
+  var act = '';
+  if (st === 'planifiee') act = '<button onclick="avancerStatut(' + q + ')">▶ Démarrer</button>';
+  else if (st === 'en_cours') act = '<button class="vert" onclick="avancerStatut(' + q + ')">✔ Terminer</button>';
+  else if (st === 'terminee') act = '<button onclick="demanderPaiementPlanM(' + q + ')">💶 Demander un paiement</button><button class="sec" onclick="avancerStatut(' + q + ')">💵 Payé en main propre</button>';
+  else if (st === 'payee') act = '<div class="pm-ok">✔ Payée' + (i.prix != null ? ' · ' + eurosFR(Number(i.prix)) : '') + '</div>' + (i.facture_id ? '<div class="pm-ok" style="font-size:15px;color:#6b7280">🧾 Facture créée</div>' : (estPro() ? '<button class="sec" onclick="facturerIntervention(' + q + ')">🧾 Facturer en 1 clic</button>' : ''));
+  return '<div class="pc-plein"><div class="pm-det"><div class="pm-tete2"><div class="pm-av" style="background:' + pal[som % pal.length] + '">' + escHtml(ini) + '</div><div><div class="pm-nomg">' + escHtml(nom) + '</div><div class="pm-svg">' + escHtml(libelleServiceIntervention(i)) + '</div></div><div class="pm-prixg">' + (i.prix != null ? eurosFR(Number(i.prix)) : '') + '</div></div>' +
+    '<div class="pm-lg">' + quand + (lieu ? '<br>📍 ' + escHtml(lieu) : '') + '</div>' +
+    '<div class="pm-q">Où en est l\'intervention ?</div><div class="pm-etapes">' + etapes + '</div>' +
+    (act ? '<div class="pm-act">' + act + '</div>' : '') +
+    '<div class="pm-plus"><button onclick="fermerFicheMobile();ouvrirIntervention(' + q + ')">✎ Voir tous les détails / modifier</button></div></div></div>';
+}
+async function demanderPaiementPlanM(id) {
+  fermerFicheMobile();
+  await ouvrirIntervention(id);
+  ouvrirDemandePaiement();
 }
 
 // Un statut ne sert que dans des noms de classes CSS : on n'accepte que de simples mots (jamais de guillemet, d'espace ni de chevron).
