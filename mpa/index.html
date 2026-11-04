@@ -439,6 +439,46 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .tbbtn .lib-court{display:inline;}
   .rappel-cloture{background:#fff !important;border:1px solid #e3e3e3 !important;}
 }
+
+/* ── Version téléphone : commandes et produits en cartes épurées, détail au clic (ordinateur inchangé) ── */
+.cm-vignette,.pc-ligne{display:none;}
+.pc-wrap{display:contents;}
+.fm-fond{display:none;}
+@media(max-width:640px){
+  #p-ventes .dcard,#p-stock .dcard{border:1px solid #e3e3e3;border-radius:18px;box-shadow:none;background:#fff;}
+  #p-ventes .dcard>div[style*="border-top"],#p-stock .dcard>div[style*="border-top"]{display:none;}
+  #zone-catalogue,#zone-produits-stock{display:flex !important;flex-direction:column;gap:10px !important;padding:14px !important;}
+  #zone-commandes{padding:14px !important;}
+  .pc-wrap{display:block;}
+  .pc-wrap>.pc-plein,.cm-wrap>.cm-carte{display:none;}
+  .pc-ligne{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e3e3e3;border-radius:16px;padding:12px 14px;cursor:pointer;}
+  .pl-photo{width:64px;height:64px;border-radius:14px;object-fit:cover;flex-shrink:0;}
+  .pl-vide{background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:28px;}
+  .pl-txt{flex:1;min-width:0;}
+  .pl-nom{font-size:16px;font-weight:700;color:#111;line-height:1.25;}
+  .pl-sous{font-size:13px;color:#8a8580;margin-top:3px;}
+  .pl-prix{font-size:17px;font-weight:800;color:var(--ac);flex-shrink:0;}
+  .cm-vignette{display:block;background:#fff;border:1px solid #e3e3e3;border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer;}
+  .cv-haut{display:flex;align-items:center;gap:12px;}
+  .cv-av{width:46px;height:46px;border-radius:50%;color:#fff;font-weight:800;font-size:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .cv-nom{font-size:17px;font-weight:800;color:#111;}
+  .cv-lieu{font-size:13px;color:#8a8580;margin-top:1px;}
+  .cv-art{display:flex;justify-content:space-between;gap:10px;margin-top:12px;font-size:15px;font-weight:700;color:#111;}
+  .cv-prix{color:var(--ac);font-weight:800;white-space:nowrap;}
+  .cv-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+  .cv-pill{font-size:12.5px;font-weight:700;border-radius:99px;padding:5px 12px;background:#f3f4f6;color:#4b5563;}
+  .cm-wrap{display:block;}
+  #zone-commandes details>summary{font-size:15px;}
+  .fm-fond{display:flex;position:fixed;inset:0;z-index:900;background:rgba(17,17,17,.45);align-items:flex-end;justify-content:center;padding:0 12px 14px;}
+  .fm-fantome{position:absolute;left:26px;right:26px;bottom:calc(14px + 84vh - 6px);height:20px;background:#fff;border:1px solid #e3e3e3;border-radius:18px 18px 0 0;opacity:.55;display:none;}
+  .fm-carte{position:relative;width:100%;max-height:84vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border:1px solid #e3e3e3;border-radius:22px;padding:18px 14px 14px;box-shadow:0 -8px 40px rgba(0,0,0,.18);animation:fmMonte .22s ease-out;}
+  .fm-fond::before{content:"";position:absolute;left:26px;right:26px;bottom:calc(14px + min(84vh,100%) );height:0;}
+  .fm-x{position:sticky;top:0;float:right;z-index:3;width:34px;height:34px;border-radius:50%;border:1px solid #e3e3e3;background:#fff;color:#111;font-size:15px;cursor:pointer;margin:-6px -2px 6px 8px;}
+  .fm-corps .cm-carte{display:block;margin:0;border:0;border-left:0 !important;padding:4px 0 0;}
+  .fm-corps .pc-plein{display:block;border:0 !important;}
+  .fm-corps .pc-plein img,.fm-corps .pc-plein [style*="aspect-ratio"]{aspect-ratio:auto !important;height:170px !important;border-radius:14px !important;}
+  @keyframes fmMonte{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+}
 /* ── Tableau de bord ── */
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 @media(max-width:900px){.dash-grid{grid-template-columns:1fr;}}
@@ -2231,6 +2271,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261104141415"></script>
+<script src="/mpa/mpa-artisans.js?v=20261104145920"></script>
 </body>
 </html>

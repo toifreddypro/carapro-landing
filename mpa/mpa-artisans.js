@@ -6614,7 +6614,7 @@ function renderCatalogueGrille() {
       ? '<img src="' + escHtml(c.url_photo) + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px 8px 0 0;">'
       : '<div style="width:100%;aspect-ratio:1;background:var(--p2);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:24px;">📦</div>';
     var ventes = _ventesCatalogueCache[c.id] || 0;
-    return '<div style="border:1px solid var(--brd);border-radius:10px;overflow:hidden;position:relative;">' +
+    var plein = '<div class="pc-plein" style="border:1px solid var(--brd);border-radius:10px;overflow:hidden;position:relative;">' +
       '<button onclick="supprimerCatalogue(\'' + c.id + '\')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:7px;width:24px;height:24px;cursor:pointer;font-size:12px;z-index:1;">✕</button>' +
       '<button onclick="togglePhareCatalogue(\'' + c.id + '\')" title="' + (c.est_phare ? 'Retirer des produits phares' : 'Marquer comme produit phare') + '" style="position:absolute;top:6px;left:6px;background:' + (c.est_phare ? 'var(--gold,#b45309)' : 'rgba(0,0,0,.45)') + ';color:#fff;border:none;border-radius:7px;width:24px;height:24px;cursor:pointer;font-size:13px;z-index:1;">⭐</button>' +
       photo +
@@ -6633,7 +6633,49 @@ function renderCatalogueGrille() {
         '</div>' +
       '</div>' +
     '</div>';
+    var sousCat = c.type === 'sur_commande' ? 'Sur commande' + (c.delai_preparation ? ' · ' + escHtml(c.delai_preparation) : '') : 'Disponible';
+    return pcWrap('cat-', c, plein, sousCat, '');
   }).join('');
+  rafraichirFicheMobile();
+}
+
+// ── Version téléphone : chaque produit = une ligne épurée (photo, nom, état, prix) ; tout le détail s'ouvre au clic, posé par-dessus la liste. ──
+function pcWrap(prefixe, c, plein, sous, couleurSous) {
+  var photo = c.url_photo
+    ? '<img class="pl-photo" src="' + escHtml(c.url_photo) + '" alt="">'
+    : '<div class="pl-photo pl-vide">📦</div>';
+  return '<div class="pc-wrap" data-fid="' + prefixe + c.id + '">' +
+    '<div class="pc-ligne" onclick="ouvrirFicheMobile(this)">' + photo +
+      '<div class="pl-txt"><div class="pl-nom">' + escHtml(c.nom) + '</div><div class="pl-sous"' + (couleurSous ? ' style="color:' + couleurSous + '"' : '') + '>' + sous + '</div></div>' +
+      (c.prix != null ? '<div class="pl-prix">' + c.prix + ' €</div>' : '') +
+    '</div>' + plein + '</div>';
+}
+var _ficheMobile = null;
+function ouvrirFicheMobile(el) {
+  var wrap = el.closest('.cm-wrap, .pc-wrap'); if (!wrap) return;
+  var plein = wrap.querySelector('.cm-carte, .pc-plein'); if (!plein) return;
+  fermerFicheMobile();
+  var fond = document.createElement('div');
+  fond.id = 'fiche-mobile'; fond.className = 'fm-fond';
+  fond.innerHTML = '<div class="fm-fantome"></div><div class="fm-carte"><button class="fm-x" onclick="fermerFicheMobile()" aria-label="Fermer">✕</button><div class="fm-corps"></div></div>';
+  fond.addEventListener('click', function(e) { if (e.target === fond) fermerFicheMobile(); });
+  fond.querySelector('.fm-corps').appendChild(plein);
+  document.body.appendChild(fond);
+  _ficheMobile = { fid: wrap.getAttribute('data-fid'), plein: plein };
+}
+function fermerFicheMobile() {
+  var f = document.getElementById('fiche-mobile'); if (!f) return;
+  if (_ficheMobile) { var w = document.querySelector('[data-fid="' + _ficheMobile.fid + '"]'); if (w) w.appendChild(_ficheMobile.plein); }
+  f.remove(); _ficheMobile = null;
+}
+// Après chaque rechargement de la liste : la fiche ouverte reprend la version à jour (ou se ferme si l'élément a disparu).
+function rafraichirFicheMobile() {
+  if (!_ficheMobile) return;
+  var w = document.querySelector('[data-fid="' + _ficheMobile.fid + '"]');
+  var nouveau = w && w.querySelector('.cm-carte, .pc-plein');
+  var corps = document.querySelector('#fiche-mobile .fm-corps');
+  if (!nouveau || !corps) { fermerFicheMobile(); return; }
+  corps.innerHTML = ''; corps.appendChild(nouveau); _ficheMobile.plein = nouveau;
 }
 
 // ── Mes produits (Mon stock) — TOUS les produits, en vente ou non. C'est ici qu'on les crée ;
@@ -6653,7 +6695,7 @@ function renderProduitsStock() {
     var photo = c.url_photo
       ? '<img src="' + escHtml(c.url_photo) + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px 8px 0 0;">'
       : '<div style="width:100%;aspect-ratio:1;background:var(--p2);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:24px;">📦</div>';
-    return '<div style="border:1px solid var(--brd);border-radius:10px;overflow:hidden;position:relative;">' +
+    var plein = '<div class="pc-plein" style="border:1px solid var(--brd);border-radius:10px;overflow:hidden;position:relative;">' +
       '<button onclick="supprimerCatalogue(\'' + c.id + '\')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:7px;width:24px;height:24px;cursor:pointer;font-size:12px;z-index:1;">✕</button>' +
       photo +
       '<div style="padding:10px;">' +
@@ -6667,7 +6709,10 @@ function renderProduitsStock() {
         '<button onclick="toggleEnVenteCatalogue(\'' + c.id + '\')" style="display:block;width:100%;margin-top:8px;padding:6px;border-radius:7px;border:1px solid ' + (enVente ? 'var(--brd)' : 'var(--ac)') + ';background:transparent;color:' + (enVente ? 'var(--mu2)' : 'var(--ac)') + ';font-size:11.5px;font-weight:700;cursor:pointer;">' + (enVente ? 'Retirer de la vente' : 'Mettre en vente') + '</button>' +
       '</div>' +
     '</div>';
+    var sousStk = (stockBas ? '⚠️ ' : stockAlerte ? '🔔 ' : '') + stockTexte + (enVente ? '' : ' · Pas en vente');
+    return pcWrap('stk-', c, plein, sousStk, stockBas ? 'var(--danger)' : stockAlerte ? '#b45309' : '');
   }).join('');
+  rafraichirFicheMobile();
 }
 
 // ── Règle du 06/10 : on ne met un produit en vente que si les paiements en ligne sont ACTIFS (sinon la boutique ne servirait à rien). ──
@@ -7180,7 +7225,7 @@ function renderCommandes() {
 
     var couleurCmd = c.statut === 'nouvelle' ? '#f59e0b' : c.statut === 'prete' ? '#3b82f6' : c.statut === 'terminee' ? '#16a34a' : c.statut === 'annulee' ? '#94a3b8' : 'var(--ac)';
     var pillStatut = '<span class="cm-statut" style="color:' + couleurCmd + ';border-color:' + couleurCmd + ';">' + (LABELS_STATUT_COMMANDE[c.statut] || escHtml(c.statut)) + '</span>';
-    return { c: c, html: '<div class="cm-carte" style="border-left-color:' + couleurCmd + ';">' +
+    return { c: c, html: '<div class="cm-wrap" data-fid="cmd-' + c.id + '">' + ligneCommande(c, couleurCmd) + '<div class="cm-carte" style="border-left-color:' + couleurCmd + ';">' +
       '<div class="cm-entete">' + enTeteCommande + pillStatut + '</div>' +
       '<div class="cm-date">🕒 Commandée le ' + dateCommandeTxt + (datePaiementTxt && datePaiementTxt !== dateCommandeTxt ? ' · payée le ' + datePaiementTxt : '') + '</div>' +
       '<div class="cm-sec cm-livr"><div class="cm-titre">' + (c.mode === 'livraison' ? '🚚 Livraison' : '🏠 Retrait') + ' et client</div>' +
@@ -7193,7 +7238,7 @@ function renderCommandes() {
       (ligneReglement ? '<div class="cm-sec cm-paie"><div class="cm-titre">💳 Paiement</div>' + ligneReglement + '</div>' : '') +
       (fluxHtml ? '<div class="cm-sec cm-suite"><div class="cm-titre">➡️ Où en est la commande</div>' + fluxHtml + '</div>' : '') +
       '<div class="cm-pied">' + boutonFactureCommande(c) + boutonRembourser + '</div>' +
-    '</div>' };
+    '</div></div>' };
   });
 
   // Rangement par mois (la liste devient longue) : le mois en cours et le dernier mois avec commandes sont ouverts, les autres repliés.
@@ -7220,6 +7265,26 @@ function renderCommandes() {
         ' <span style="font-weight:500;font-size:12.5px;color:var(--mu);">· ' + g.cartes.length + ' commande' + (g.cartes.length > 1 ? 's' : '') + ' · ' + eurosFR(vendu) + (aTraiter ? ' · <span style="color:var(--ac);font-weight:700;">' + aTraiter + ' à traiter</span>' : '') + '</span></summary>' +
         g.cartes.map(function(k) { return k.html; }).join('') + '</details>';
     }).join('');
+  rafraichirFicheMobile();
+}
+// Version téléphone : une carte épurée par commande (client, lieu, article, prix, deux étiquettes) ; le détail complet s'ouvre au clic.
+function ligneCommande(c, couleur) {
+  var nom = c.client_nom || '—';
+  var ini = nom.split(/\s+/).map(function(m) { return m.charAt(0); }).join('').slice(0, 2).toUpperCase() || '?';
+  var palette = ['#8b5cf6', '#2563eb', '#2f9e6e', '#C2410C', '#0891b2', '#db2777'], somme = 0;
+  for (var i = 0; i < nom.length; i++) somme += nom.charCodeAt(i);
+  var lignesP = _lignesCommandesCache[c.id];
+  var article = (c.catalogue_id == null && lignesP && lignesP.length)
+    ? '🛍️ ' + lignesP.length + ' article' + (lignesP.length > 1 ? 's' : '')
+    : '🛍️ ' + c.quantite + ' × ' + escHtml(c.nom_article);
+  var lieu = c.mode === 'livraison' ? (c.commune_livraison || 'Livraison') : 'Retrait sur place';
+  return '<div class="cm-vignette" onclick="ouvrirFicheMobile(this)">' +
+    '<div class="cv-haut"><div class="cv-av" style="background:' + palette[somme % palette.length] + '">' + escHtml(ini) + '</div>' +
+      '<div class="cv-id"><div class="cv-nom">' + escHtml(nom) + '</div><div class="cv-lieu">' + escHtml(lieu) + '</div></div></div>' +
+    '<div class="cv-art"><span>' + article + '</span><span class="cv-prix">' + eurosFR(Number(c.montant_total) || 0) + '</span></div>' +
+    '<div class="cv-pills"><span class="cv-pill">' + (c.mode === 'livraison' ? '🚚 Livraison' : '🏠 Retrait') + '</span>' +
+      '<span class="cv-pill" style="color:' + couleur + ';background:#fff;border:1.5px solid ' + couleur + ';">' + (LABELS_STATUT_COMMANDE[c.statut] || escHtml(c.statut)) + '</span></div>' +
+  '</div>';
 }
 var _moisCommandesOuverts = null;
 function basculerMoisCommandes(mois, ouvert) { if (!_moisCommandesOuverts) _moisCommandesOuverts = {}; _moisCommandesOuverts[mois] = !!ouvert; }
