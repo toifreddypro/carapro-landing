@@ -1,4 +1,4 @@
-﻿<!--
+<!--
 ================================================================
   CARAPRO — index.html
   Plateforme de mise en relation clients / artisans
@@ -1153,6 +1153,15 @@ body.theme-light footer { background:#fbfcfe; }
   body .pub-alt-mobile img{display:none !important;}
   body .pub-alt-mobile{border-radius:22px !important;}
 }
+
+/* ── Recherche d'un métier (téléphone) : champ qui se filtre pendant la frappe ── */
+.sect-combo{position:relative;}.sect-combo input{outline:none !important;box-shadow:none !important;}
+.sect-liste{position:absolute;top:calc(100% + 10px);z-index:60;max-height:min(46vh,340px);overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border:1px solid #e3e3e3;border-radius:18px;box-shadow:0 14px 40px rgba(15,23,42,.18);padding:6px;}
+.sect-item{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:12px;font-size:17px;font-weight:600;color:#13223c;cursor:pointer;}
+.sect-item:active{background:#fff1e8;}
+.sect-tous{color:#6b7c96;font-weight:700;}
+.sect-ic{width:26px;text-align:center;font-size:19px;}
+.sect-vide{padding:16px;font-size:15px;color:#6b7c96;text-align:center;}
 </style>
 </head>
 <body class="theme-light">
@@ -1195,8 +1204,8 @@ body.theme-light footer { background:#fbfcfe; }
       <a href="mailto:contact@learnlogicstudio.com" style="color:var(--mu2);text-decoration:none;margin:0 8px;">Contact</a>
     </div>
   </footer>
-  <script src="/artisans/tr-artisans.js?v=20261104132757"></script>
-  <script src="/artisans/caralink-artisans.js?v=20261104132757"></script>
+  <script src="/artisans/tr-artisans.js?v=2"></script>
+  <script src="/artisans/caralink-artisans.js?v=2"></script>
 
   <!-- ════ FAQ BOUTON FLOTTANT ════ -->
   <button class="faq-fab" onclick="toggleFAQ()" title="Aide & FAQ">

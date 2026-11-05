@@ -176,6 +176,67 @@ async function chargerSecteurs() {
   } catch (e) { console.warn('Chargement des secteurs échoué, liste de repli utilisée.', e); }
 }
 
+// Secteurs dans l'ordre alphabétique (« Autre » toujours en dernier) — l'ordre de la base ne sert plus à l'affichage de la recherche.
+function secteursTries() {
+  var champ = secteurLabelChamp();
+  var nom = function(s) { return String(s[champ] || s.label_fr || s.code || ''); };
+  return _secteursCache.slice().sort(function(a, b) {
+    var aa = a.code === 'autre' ? 1 : 0, bb = b.code === 'autre' ? 1 : 0;
+    if (aa !== bb) return aa - bb;
+    return nom(a).localeCompare(nom(b), AT_LANG || 'fr', { sensitivity: 'base' });
+  });
+}
+function sansAccents(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+// Téléphone : champ qui se filtre pendant qu'on tape (« plomb » → Plomberie). Le champ caché #search-secteur garde le code,
+// donc tout le reste de la recherche fonctionne sans changement.
+function htmlChampSecteurTel() {
+  var actuel = _secteursCache.find(function(s) { return s.code === _searchState.secteur; });
+  var texte = actuel ? ((actuel.icon || '') + ' ' + (actuel[secteurLabelChamp()] || actuel.label_fr)).trim() : '';
+  return '<div class="sect-combo">' +
+    '<input id="search-secteur-txt" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="' + escHtml(T('search_secteur_tous')) + '" value="' + escHtml(texte) + '" onfocus="secteurOuvrir()" oninput="secteurFiltrer()" onkeydown="if(event.key===\'Enter\'){secteurPremier();return false;}"/>' +
+    '<input id="search-secteur" type="hidden" value="' + escHtml(_searchState.secteur || '') + '"/>' +
+    '<div id="sect-liste" class="sect-liste" style="display:none;"></div></div>';
+}
+function secteurOuvrir() {
+  var champ = document.getElementById('search-secteur-txt'); if (champ) champ.select();
+  secteurFiltrer(true);
+}
+function secteurFiltrer(toutMontrer) {
+  var champ = document.getElementById('search-secteur-txt'), liste = document.getElementById('sect-liste');
+  if (!champ || !liste) return;
+  var q = toutMontrer ? '' : sansAccents(champ.value.trim());
+  if (!toutMontrer && !q) { document.getElementById('search-secteur').value = ''; }
+  var champLib = secteurLabelChamp();
+  var items = secteursTries().filter(function(s) { return !q || sansAccents(s[champLib] || s.label_fr).indexOf(q) !== -1; });
+  var html = '';
+  if (!q) html += '<div class="sect-item sect-tous" onmousedown="event.preventDefault()" onclick="secteurChoisir(\'\')">' + escHtml(T('search_secteur_tous')) + '</div>';
+  html += items.map(function(s) {
+    return '<div class="sect-item" data-code="' + escHtml(s.code) + '" onmousedown="event.preventDefault()" onclick="secteurChoisir(\'' + escHtml(s.code) + '\')"><span class="sect-ic">' + (s.icon || '') + '</span>' + escHtml(s[champLib] || s.label_fr) + '</div>';
+  }).join('');
+  if (!items.length) html += '<div class="sect-vide">Aucun métier ne correspond. Essayez un autre mot.</div>';
+  liste.innerHTML = html;
+  // La liste est aussi large que l'écran, quel que soit l'endroit où se trouve le champ.
+  var champCadre = liste.parentNode.getBoundingClientRect();
+  liste.style.left = (16 - champCadre.left) + 'px'; liste.style.width = (window.innerWidth - 32) + 'px';
+  liste.style.display = 'block';
+}
+function secteurChoisir(code) {
+  var champ = document.getElementById('search-secteur-txt'), cache = document.getElementById('search-secteur'), liste = document.getElementById('sect-liste');
+  var s = code ? _secteursCache.find(function(x) { return x.code === code; }) : null;
+  if (cache) cache.value = code || '';
+  if (champ) { champ.value = s ? ((s.icon || '') + ' ' + (s[secteurLabelChamp()] || s.label_fr)).trim() : ''; champ.blur(); }
+  if (liste) liste.style.display = 'none';
+  rechercheAuto(true);
+}
+function secteurPremier() {
+  var premier = document.querySelector('#sect-liste .sect-item[data-code]');
+  if (premier) secteurChoisir(premier.getAttribute('data-code'));
+}
+document.addEventListener('click', function(e) {
+  var liste = document.getElementById('sect-liste');
+  if (liste && liste.style.display !== 'none' && !e.target.closest('.sect-combo')) liste.style.display = 'none';
+});
+
 function secteurLabelChamp() {
   var lang = (typeof AT_LANG !== 'undefined' && AT_LANG) || 'fr';
   return lang === 'en' ? 'label_en' : lang === 'es' ? 'label_es' : 'label_fr';
@@ -376,12 +437,13 @@ function renderHero() {
         '<div class="search-bar">' +
           '<div class="search-question">🔍 ' + T('search_que') + '</div>' +
           '<div class="search-field"><label>' + T('search_secteur_label') + '</label>' +
+            (ecranTel() ? htmlChampSecteurTel() :
             '<select id="search-secteur" onchange="rechercheAuto(true)" onkeydown="if(event.key===\'Enter\')lancerRecherche()">' +
               '<option value="">' + T('search_secteur_tous') + '</option>' +
-              _secteursCache.map(function(s) {
+              secteursTries().map(function(s) {
                 return '<option value="' + s.code + '"' + (_searchState.secteur === s.code ? ' selected' : '') + '>' + (s.icon||'') + ' ' + escHtml(s[secteurLabelChamp()] || s.label_fr) + '</option>';
               }).join('') +
-            '</select></div>' +
+            '</select>') + '</div>' +
           '<div class="search-field"><label>' + T('search_lieu_label') + '</label>' +
             '<input id="search-commune" type="text" placeholder="' + (ecranTel() ? T('search_lieu_court') : T('search_lieu_ph')) + '" enterkeyhint="search" oninput="rechercheAuto(false)" value="' + escHtml(_searchState.commune) + '" onkeydown="if(event.key===\'Enter\')lancerRecherche()"/></div>' +
           '<div class="search-field"><label>' + T('search_nom_label') + '</label>' +
