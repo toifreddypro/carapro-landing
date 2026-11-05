@@ -503,7 +503,7 @@ var _searchState = { secteur:'', groupe:'', commune:'', nom:'', tri:'', rge:fals
   st.textContent =
     '.btn-boutique-or{position:relative;display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:999px;overflow:hidden;' +
       'font-size:13.5px;font-weight:800;letter-spacing:.6px;text-decoration:none;' +
-      'border:1px solid #b8923a;' +
+      'border:0;outline:none;' +
       'background:radial-gradient(circle at 20% 25%,rgba(255,255,255,.07) 0 1px,transparent 1.6px),radial-gradient(circle at 70% 70%,rgba(255,255,255,.05) 0 1px,transparent 1.6px),linear-gradient(180deg,#3a3d42,#2a2d31);' +
       'background-size:19px 15px,23px 17px,100% 100%;' +
       'box-shadow:0 2px 8px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08);}' +
@@ -516,7 +516,7 @@ var _searchState = { secteur:'', groupe:'', commune:'', nom:'', tri:'', rge:fals
       '-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;' +
       'filter:drop-shadow(0 1px 1px rgba(0,0,0,.55));animation:boutique-or-scintille 2.8s ease-in-out infinite;}' +
     '@keyframes boutique-or-scintille{0%,100%{filter:drop-shadow(0 1px 1px rgba(0,0,0,.55)) brightness(1)}50%{filter:drop-shadow(0 1px 1px rgba(0,0,0,.55)) brightness(1.25)}}' +
-    '.btn-boutique-or:hover{border-color:#e8c34e;box-shadow:0 3px 12px rgba(0,0,0,.45),0 0 0 2px rgba(232,195,78,.25);}' +
+    '.btn-boutique-or:hover,.btn-boutique-or:focus{border:0;outline:none;box-shadow:0 3px 12px rgba(0,0,0,.45);}' +
     '.btn-boutique-or-large{display:flex;justify-content:center;margin-top:12px;padding:11px 16px;font-size:14px;}' +
     '@media (prefers-reduced-motion:reduce){.btn-or-txt{animation:none;}}';
   document.head.appendChild(st);
@@ -1424,7 +1424,8 @@ function sectionFiche(cleTitre, icone, contenu) {
     var st = document.createElement('style'); st.id = 'style-fiche-sec';
     st.textContent = '.fiche-sec{border:1px solid var(--line,#e3eaf4);border-radius:12px;padding:14px 16px;margin:0 0 12px;background:var(--p2,#f8fafd);}' +
       '.fiche-sec-titre{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--mu2,#5b6b82);margin:0 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line,#e3eaf4);}' +
-      '.fiche-sec-titre span{font-size:14px;letter-spacing:0;}';
+      '.fiche-sec-titre span{font-size:14px;letter-spacing:0;}' +
+      '.fiche-sec[data-sec="fiche_realisations"] .fiche-sec-titre{display:none;}';
     document.head.appendChild(st);
   }
   return '<section class="fiche-sec" data-sec="' + cleTitre + '"><div class="fiche-sec-titre"><span>' + icone + '</span>' + escHtml(T(cleTitre)) + '</div>' + contenu + '</section>';
@@ -1467,8 +1468,7 @@ function buildProfilHTML(data) {
               '<span style="font-size:13.5px;font-weight:700;color:var(--ac,#B5502F);">' + (prixRemise != null ? prixRemise : p.prix) + ' €</span>' +
               (prixRemise != null ? ' <span style="font-size:11px;color:var(--mu,#999);text-decoration:line-through;">' + p.prix + ' €</span>' : '') +
             '</div>' : '') +
-            (data.artisan.slug_catalogue ? '<a href="catalogue.html?s=' + encodeURIComponent(data.artisan.slug_catalogue) + '" target="_blank" rel="noopener" style="display:block;box-sizing:border-box;text-align:center;width:100%;margin-top:6px;padding:6px;border-radius:6px;border:1px solid var(--ac,#B5502F);background:transparent;color:var(--ac,#B5502F);font-size:11px;font-weight:700;text-decoration:none;">Commander</a>' : '') +
-          '</div>';
+                      '</div>';
         }).join('') +
       '</div>' +
       (data.artisan.slug_catalogue ? '<a href="catalogue.html?s=' + encodeURIComponent(data.artisan.slug_catalogue) + '" target="_blank" rel="noopener" class="btn-boutique-or btn-boutique-or-large">🛍️<span class="btn-or-txt">Voir toute la boutique →</span></a>' : '') +
