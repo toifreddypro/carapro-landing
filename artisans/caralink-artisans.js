@@ -568,6 +568,7 @@ function renderHero() {
           '<button class="filter-pill' + (_searchState.rge?' active':'') + '" onclick="filtrerRge()">' + T('filter_rge') + '</button>' +
         '</div>' +
         htmlAidesInfo() +
+        htmlVideoClients() +
         '<div class="devis-desktop" style="margin-top:14px;font-size:12.5px;color:var(--mu);">' +
           '📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">' + T('hero_devisgen_lien') + '</a>' +
           T('hero_devisgen_suite') +
@@ -1065,6 +1066,23 @@ function htmlAidesInfo() {
     '<ul><li>' + escHtml(T('aides_p1')) + '</li><li>' + escHtml(T('aides_p2')) + '</li><li>' + escHtml(T('aides_p3')) + '</li></ul>' +
     '<p><a href="https://france-renov.gouv.fr/aides/mpr-outremer" target="_blank" rel="noopener noreferrer" style="color:var(--ac,#B5502F);font-weight:700;">' + escHtml(T('aides_lien')) + ' →</a></p>' +
     '<p class="aides-note">' + escHtml(T('aides_avert')) + '</p></div></details>';
+}
+
+// Vidéo de présentation pour les clients : repliée par défaut, ne charge rien tant qu'on ne l'ouvre pas.
+function htmlVideoClients() {
+  if (!document.getElementById('style-video-clients')) {
+    var st = document.createElement('style'); st.id = 'style-video-clients';
+    st.textContent = '.vid-clients{margin:12px auto 0;max-width:560px;text-align:left;border:1px solid var(--line,#e3eaf4);border-radius:14px;background:rgba(255,255,255,.75);font-size:13px;color:var(--ink,#13223c);}' +
+      '.vid-clients summary{cursor:pointer;padding:10px 16px;font-weight:600;list-style:none;}' +
+      '.vid-clients summary::-webkit-details-marker{display:none;}' +
+      '.vid-clients .vid-corps{padding:0 16px 16px;text-align:center;}' +
+      '.vid-clients video{width:min(72vw,280px);aspect-ratio:9/16;border-radius:24px;border:1px solid var(--line,#e3eaf4);box-shadow:0 14px 40px rgba(19,34,60,.14);background:#fff;object-fit:cover;display:block;margin:0 auto;}' +
+      '.vid-clients .vid-note{font-size:12px;color:var(--mu,#6b7a90);margin-top:8px;}';
+    document.head.appendChild(st);
+  }
+  return '<details class="vid-clients" ontoggle="if(!this.open){var v=this.querySelector(\'video\');if(v)v.pause();}"><summary>▶️ ' + escHtml(T('vid_clients_titre')) + '</summary><div class="vid-corps">' +
+    '<video controls playsinline preload="none" controlslist="nodownload" poster="/artisans/img/caralink-clients.jpg" aria-label="' + escHtml(T('vid_clients_label')) + '"><source src="/artisans/img/caralink-clients.mp4" type="video/mp4"></video>' +
+    '<p class="vid-note">' + escHtml(T('vid_clients_note')) + '</p></div></details>';
 }
 
 function badgeRgeTexte(a) {

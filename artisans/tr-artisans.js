@@ -12,6 +12,7 @@ var AT_LANG = (function() {
 var AT_TR = {
   fr: {
     nav_connexion: "Connexion",
+    vid_clients_titre: "Comment ça marche ? (50 secondes)", vid_clients_label: "Présentation de CaraLink Artisans pour les clients, en vidéo", vid_clients_note: "Écrans d’exemple · données fictives",
     nav_mon_espace: "Mon espace",
     avis_voir_plus: "Voir plus d'avis", fiche_titre_noir: "Choisissez", fiche_titre_marron: "votre créneau", cadre_sous: "Annuaire", search_que: "Que cherchez-vous ?", search_lieu_court: "Lieu", search_nom_court: "Nom",
     nav_client_court: "Client", nav_artisan_court: "Artisan", nav_artisan_connexion: "Me connecter", nav_artisan_inscription: "Créer ma fiche gratuite",
@@ -310,6 +311,7 @@ var AT_TR = {
   },
   en: {
     nav_connexion: "Log in",
+    vid_clients_titre: "How does it work? (50 seconds)", vid_clients_label: "CaraLink Artisans video for customers", vid_clients_note: "Sample screens · fictional data · video in French",
     nav_mon_espace: "My space",
     avis_voir_plus: "See more reviews", fiche_titre_noir: "Pick", fiche_titre_marron: "your time slot", cadre_sous: "Directory", search_que: "What are you looking for?", search_lieu_court: "Place", search_nom_court: "Name",
     nav_client_court: "Customer", nav_artisan_court: "Craftsman", nav_artisan_connexion: "Log in", nav_artisan_inscription: "Create my free profile",
@@ -608,6 +610,7 @@ var AT_TR = {
   },
   es: {
     nav_connexion: "Iniciar sesión",
+    vid_clients_titre: "¿Cómo funciona? (50 segundos)", vid_clients_label: "Vídeo de CaraLink Artisans para clientes", vid_clients_note: "Pantallas de ejemplo · datos ficticios · vídeo en francés",
     nav_mon_espace: "Mi espacio",
     avis_voir_plus: "Ver más opiniones", fiche_titre_noir: "Elija", fiche_titre_marron: "su horario", cadre_sous: "Directorio", search_que: "¿Qué busca?", search_lieu_court: "Lugar", search_nom_court: "Nombre",
     nav_client_court: "Cliente", nav_artisan_court: "Artesano", nav_artisan_connexion: "Iniciar sesión", nav_artisan_inscription: "Crear mi ficha gratis",
