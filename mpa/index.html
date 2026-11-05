@@ -880,6 +880,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   #content>footer{order:99;width:100%;box-sizing:border-box;}
   .mj-phrase{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:28px;font-weight:800;line-height:1.25;color:#111;margin:4px 2px 16px;}
   .mj-phrase span{color:var(--ac);}
+  .mj-barre{display:flex;align-items:center;justify-content:space-between;padding:18px 24px 14px;border-bottom:1px solid #e3e3e3;}
+  .mj-marque{font-weight:800;font-size:17px;color:#111;}
+  .mj-page{font-size:14px;font-weight:700;color:var(--ac);}
+  #p0.active{background:#fff;border:1px solid #e3e3e3;border-radius:20px;box-shadow:none;padding:22px 24px;margin-top:20px;}
+  #p0>div[style*="border-left:5px"]{background:none !important;border:0 !important;padding:0 0 12px !important;font-size:14px !important;font-weight:400 !important;color:#8a8580 !important;}
   #itineraire-widget{border-radius:20px;border:1px solid #e3e3e3;box-shadow:none;background:#fff;}
   #itineraire-widget>.dchdr{display:none;}
   #itineraire-widget>div[style]{padding:22px 24px 20px !important;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"jours jours" "liste titre" "liste carte" "rappel rappel";column-gap:28px;align-items:start;}
@@ -2745,6 +2750,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261105b"></script>
+<script src="/mpa/mpa-artisans.js?v=20261105c"></script>
 </body>
 </html>
