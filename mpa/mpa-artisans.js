@@ -1560,7 +1560,7 @@ function renderProjetsRecus() {
     }
     // Couleur + étiquette d'état : on voit d'un coup d'œil ce qui attend une réponse.
     var etatP = p.cloture === 'choisi' ? ['#16a34a', '🎉 Vous êtes choisi'] : p.cloture === 'autre' ? ['#94a3b8', '🔒 Clos'] : p.ma_reponse ? ['#16a34a', '✅ Répondu'] : p.complet ? ['#94a3b8', '⛔ Complet'] : ['#f59e0b', '✍️ À répondre'];
-    return '<div class="pj-carte" style="border-left-color:' + etatP[0] + ';">' +
+    var carteP = '<div class="pj-carte pc-plein" style="border-left-color:' + etatP[0] + ';">' +
       '<div class="pj-entete">' +
         '<span class="pj-num" style="background:' + etatP[0] + ';">' + (idxP + 1) + '</span>' +
         '<div class="pj-id"><div class="pj-nom">' + escHtml(p.besoin_icon || '') + ' ' + escHtml(p.besoin_fr) + '</div>' +
@@ -1570,7 +1570,11 @@ function renderProjetsRecus() {
       '<div class="pj-sec pj-besoin"><div class="pj-st">🛠️ Le besoin du client</div><div style="font-size:13.5px;line-height:1.55;white-space:pre-wrap;">' + escHtml(p.description) + '</div>' +
       (photos ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">' + photos + '</div>' : '') + '</div>' +
       bas + '</div>';
+    var vigP = vignetteProjet('pj-' + p.id, etatP[0], idxP + 1, escHtml(p.besoin_icon || '') + ' ' + escHtml(p.besoin_fr), '📍 ' + lieu + ' · publié le ' + dateAff, p.description,
+      '<span class="pj-pill" style="color:' + etatP[0] + ';border-color:' + etatP[0] + ';">' + etatP[1] + '</span>' + compteur);
+    return '<div class="pj-wrap" data-fid="pj-' + escHtml(p.id) + '">' + vigP + carteP + '</div>';
   }).join('');
+  if (typeof _ficheMobile !== 'undefined' && _ficheMobile && /^pj-/.test(_ficheMobile.fid)) rafraichirFicheMobile();
 }
 
 function ouvrirReponseProjet(id) {
@@ -1608,6 +1612,14 @@ async function envoyerReponseProjet(id) {
 }
 
 // ── Messagerie avec les clients : le client écrit en premier, l'artisan répond. Aucun téléphone / email / lien (le client décide seul, à la fin). ──
+// Version ordinateur : une vignette épurée ; la carte complète s'ouvre au clic dans une fenêtre (sur téléphone, la carte complète reste telle quelle).
+function vignetteProjet(fid, coul, num, titre, sous, extrait, pills) {
+  var ext = String(extrait || '').replace(/\s+/g, ' ').trim(); if (ext.length > 90) ext = ext.slice(0, 88) + '…';
+  return '<div class="pj-vignette" onclick="ouvrirFicheMobile(this)"><div class="cv-haut"><div class="cv-av" style="background:' + coul + '">' + num + '</div>' +
+    '<div class="cv-id"><div class="cv-nom">' + titre + '</div><div class="cv-lieu">' + sous + '</div></div></div>' +
+    (ext ? '<div style="font-size:14px;color:#6b7280;margin-top:10px;line-height:1.4;">« ' + escHtml(ext) + ' »</div>' : '') +
+    '<div class="cv-pills">' + pills + '</div></div>';
+}
 function renderFilsClients() {
   var zone = document.getElementById('zone-fils');
   if (!zone) return;
@@ -1616,7 +1628,7 @@ function renderFilsClients() {
     var id = escHtml(f.reponse_id);
     var nl = f.nb_non_lus > 0 ? ' <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--danger);color:#fff;">' + f.nb_non_lus + ' nouveau' + (f.nb_non_lus > 1 ? 'x' : '') + '</span>' : '';
     var coulF = f.nb_non_lus > 0 ? '#dc2626' : '#3b82f6';
-    return '<div class="pj-carte" style="border-left-color:' + coulF + ';">' +
+    var carteF = '<div class="pj-carte pc-plein" style="border-left-color:' + coulF + ';">' +
       '<div class="pj-entete"><span class="pj-num" style="background:' + coulF + ';">' + (idx + 1) + '</span>' +
       '<div class="pj-id"><div class="pj-nom">' + escHtml(f.besoin_icon || '') + ' ' + escHtml(f.besoin_fr) + ' <span style="font-weight:400;color:var(--mu);font-size:12.5px;">· ' + escHtml(f.commune) + '</span></div></div>' + nl + '</div>' +
       '<div class="pj-sec pj-besoin"><div class="pj-st">🛠️ Son besoin</div><div style="font-size:13px;line-height:1.5;">' + escHtml(f.description) + '</div></div>' +
@@ -1626,7 +1638,11 @@ function renderFilsClients() {
       '<div style="font-size:11.5px;color:var(--mu);margin-top:4px;">🔒 Pas de téléphone, d\'email ni de lien : le client décidera lui-même de vous donner ses coordonnées.</div>' +
       '<div id="fc-err-' + id + '" style="display:none;margin-top:6px;font-size:12.5px;color:var(--danger);"></div>' +
       '<button type="button" class="addb" id="fc-btn-' + id + '" style="margin-top:8px;" onclick="envoyerMessageClient(' + jsAttrLocal(f.reponse_id) + ')">Envoyer</button></div></div></div>';
+    var vigF = vignetteProjet('fc-' + f.reponse_id, coulF, idx + 1, escHtml(f.besoin_icon || '') + ' ' + escHtml(f.besoin_fr), '📍 ' + escHtml(f.commune), f.description,
+      f.nb_non_lus > 0 ? '<span class="pj-pill" style="color:#dc2626;border-color:#dc2626;">' + f.nb_non_lus + ' nouveau' + (f.nb_non_lus > 1 ? 'x' : '') + '</span>' : '<span class="pj-pill" style="color:#3b82f6;border-color:#3b82f6;">💬 Discussion</span>');
+    return '<div class="pj-wrap" data-fid="fc-' + escHtml(f.reponse_id) + '">' + vigF + carteF + '</div>';
   }).join('');
+  if (typeof _ficheMobile !== 'undefined' && _ficheMobile && /^fc-/.test(_ficheMobile.fid)) rafraichirFicheMobile();
 }
 
 function ouvrirFilClient(id) {
@@ -6996,7 +7012,7 @@ function pcWrap(prefixe, c, plein, sous, couleurSous, etiquette) {
 }
 var _ficheMobile = null;
 function ouvrirFicheMobile(el) {
-  var wrap = el.closest('.cm-wrap, .pc-wrap'); if (!wrap) return;
+  var wrap = el.closest('.cm-wrap, .pc-wrap, .pj-wrap'); if (!wrap) return;
   var plein = wrap.querySelector('.cm-carte, .pc-plein'); if (!plein) return;
   fermerFicheMobile();
   var fond = document.createElement('div');

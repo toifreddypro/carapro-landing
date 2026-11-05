@@ -444,7 +444,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 }
 
 /* ── Version téléphone : commandes et produits en cartes épurées, détail au clic (ordinateur inchangé) ── */
-.cm-vignette,.pc-ligne{display:none;}
+.cm-vignette,.pc-ligne,.pj-vignette{display:none;}
 .pc-wrap{display:contents;}
 .fm-fond{display:none;}
 @media(max-width:640px){
@@ -949,6 +949,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .cv-art{display:flex;justify-content:space-between;gap:10px;margin-top:12px;font-size:15px;font-weight:700;color:#111;}
   .cv-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
   .cv-pill{font-size:12.5px;font-weight:700;border-radius:99px;padding:5px 12px;background:#f3f4f6;color:#4b5563;}
+  /* projets de clients et messages : mêmes vignettes */
+  #carte-projets .dcbdy{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:stretch;}
+  #zone-fils:empty{display:none;}
+  #carte-projets .dcbdy>.pj-titre{grid-column:1/-1;margin:4px 0 0;}
+  .pj-wrap .pc-plein{display:none;}
+  .pj-vignette{display:block;background:#fff;border:1px solid #e3e3e3;border-radius:16px;padding:16px;cursor:pointer;height:100%;box-sizing:border-box;transition:border-color .15s,box-shadow .15s;}
+  .pj-vignette:hover{border-color:var(--ac);box-shadow:0 4px 14px rgba(0,0,0,.06);}
+  .pj-vignette .cv-av{font-size:18px;}
+  .fm-corps .pj-carte{display:block;border:0 !important;box-shadow:none !important;padding:0;margin:0;}
   /* photos */
   #zone-photos>div{border-radius:16px !important;border:1px solid #e3e3e3;}
   /* remises : 4 bulles qui s'ouvrent */
@@ -2819,6 +2828,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261105d"></script>
+<script src="/mpa/mpa-artisans.js?v=20261105e"></script>
 </body>
 </html>
