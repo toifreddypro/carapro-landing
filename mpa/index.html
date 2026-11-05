@@ -957,6 +957,14 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .pj-vignette{display:block;background:#fff;border:1px solid #e3e3e3;border-radius:16px;padding:16px;cursor:pointer;height:100%;box-sizing:border-box;transition:border-color .15s,box-shadow .15s;}
   .pj-vignette:hover{border-color:var(--ac);box-shadow:0 4px 14px rgba(0,0,0,.06);}
   .pj-vignette .cv-av{font-size:18px;}
+  /* sobriété : tout en gris, seules les pastilles utiles gardent leur couleur (Répondu, nombre de réponses, nouveau) */
+  .pj-vignette .cv-av,#zone-demandes .cv-av{background:#f3f4f6 !important;color:#4b5563;}
+  .pj-vignette .pj-pill:not([style*="#16a34a"]):not([style*="#dc2626"]){color:#4b5563 !important;border-color:#d6d6d6 !important;}
+  #zone-demandes .cv-pills>span{background:#fff !important;color:#4b5563 !important;border:1px solid #d6d6d6;}
+  #carte-projets .pj-titre{background:none;color:#111;padding:0;margin:6px 0 0;font-size:15px;}
+  #carte-projets .pj-titre span{background:#f3f4f6;color:#4b5563;}
+  .fm-corps .pj-num{background:#f3f4f6 !important;color:#4b5563;}
+  .fm-corps .pj-pill:not([style*="#16a34a"]):not([style*="#dc2626"]){color:#4b5563 !important;border-color:#d6d6d6 !important;}
   .fm-corps .pj-carte{display:block;border:0 !important;box-shadow:none !important;padding:0;margin:0;}
   /* photos */
   #zone-photos>div{border-radius:16px !important;border:1px solid #e3e3e3;}
@@ -2828,6 +2836,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261105e"></script>
+<script src="/mpa/mpa-artisans.js?v=20261105f"></script>
 </body>
 </html>
