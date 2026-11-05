@@ -229,6 +229,9 @@ function secteurChoisir(code) {
   rechercheAuto(true);
 }
 function secteurPremier() {
+  var champ = document.getElementById('search-secteur-txt');
+  // Champ vide : on ne choisit rien à la place du client, on referme et on relance (la zone reste vide s'il n'y a plus aucun critère).
+  if (!champ || !champ.value.trim()) { secteurChoisir(''); return; }
   var premier = document.querySelector('#sect-liste .sect-item[data-code]');
   if (premier) secteurChoisir(premier.getAttribute('data-code'));
 }
@@ -576,11 +579,17 @@ function rechercheAuto(immediat) {
 }
 function lancerRecherche(sansDefiler) {
   // Téléphone : les vignettes n'apparaissent qu'après une recherche (le style ne s'applique que sur petit écran).
-  window._rechercheFaite = true;
-  document.body.classList.remove('avant-recherche');
   _searchState.secteur = document.getElementById('search-secteur').value.trim();
   _searchState.commune = document.getElementById('search-commune').value.trim();
   _searchState.nom = document.getElementById('search-nom').value.trim();
+  // Aucun critère (champs vidés) : la zone des résultats reste vide, comme à l'arrivée sur la page.
+  if (ecranTel() && !_searchState.secteur && !_searchState.commune && !_searchState.nom && !_searchState.rge) {
+    window._rechercheFaite = false;
+    document.body.classList.add('avant-recherche');
+    return;
+  }
+  window._rechercheFaite = true;
+  document.body.classList.remove('avant-recherche');
   chargerArtisans();
   if (ecranTel() && sansDefiler !== true) {
     var zr = document.getElementById('main-results');
