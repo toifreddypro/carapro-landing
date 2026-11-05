@@ -256,7 +256,7 @@ function renderLangSwitcher() {
   var noms = { fr: 'Français', en: 'English', es: 'Español' };
   return '<div class="lang-switcher-desktop" style="position:relative;display:inline-block;">' +
     '<button onclick="toggleLangMenuArtisans()" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;border:1px solid var(--brd);background:var(--panel);cursor:pointer;font-size:12.5px;color:var(--tx);">' +
-      '<span class="flag-swatch ' + drapeaux[AT_LANG] + '"></span>' + noms[AT_LANG] +
+      '<span class="flag-swatch ' + drapeaux[AT_LANG] + '"></span><span class="lang-nom">' + noms[AT_LANG] + '</span>' +
     '</button>' +
     '<div id="lang-menu-artisans" style="display:none;position:absolute;top:100%;right:0;margin-top:6px;background:var(--panel);border:1px solid var(--brd);border-radius:10px;box-shadow:0 6px 20px rgba(19,34,60,.12);overflow:hidden;min-width:140px;z-index:50;">' +
       Object.keys(drapeaux).map(function(code) {
@@ -266,6 +266,14 @@ function renderLangSwitcher() {
       }).join('') +
     '</div>' +
   '</div>';
+}
+// Téléphone : le bouton « Artisan » propose se connecter OU créer sa fiche. Ordinateur : lien direct, comme avant.
+function ouvrirMenuArtisan(ev) {
+  if (!window.matchMedia('(max-width:768px)').matches) return true;
+  if (ev) ev.preventDefault();
+  var m = document.getElementById('menu-artisan');
+  if (m) m.style.display = (m.style.display === 'block') ? 'none' : 'block';
+  return false;
 }
 function toggleLangMenuArtisans() {
   var menu = document.getElementById('lang-menu-artisans');
@@ -283,6 +291,8 @@ function choisirLangArtisans(code) {
 document.addEventListener('click', function(e) {
   var menu = document.getElementById('lang-menu-artisans');
   if (menu && !e.target.closest('#nav')) menu.style.display = 'none';
+  var ma = document.getElementById('menu-artisan');
+  if (ma && !e.target.closest('.nav-art') && !e.target.closest('#menu-artisan')) ma.style.display = 'none';
 });
 
 // ════════════════════════════════════════
@@ -305,9 +315,10 @@ function renderNav() {
       nav-wrap passe à la ligne naturellement (flex-wrap) s'il n'y a pas la
       place — aucun code personnalisé, comportement natif du navigateur. */
       '<div class="nav-links">' +
-        '<a href="/artisans/compte.html" style="padding:6px 14px;border-radius:8px;border:1px solid var(--brd);color:var(--tx);font-weight:600;text-decoration:none;white-space:nowrap;">👤 ' + T('nav_compte_client') + '</a>' +
-        '<a href="https://caralink.app/mpa/" style="padding:6px 14px;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;text-decoration:none;white-space:nowrap;">🛠 ' + T('nav_espace_artisan') + '</a>' +
-        '<a href="/artisans/inscription.html" style="padding:6px 14px;border-radius:8px;border:1px solid var(--brd);color:var(--tx);font-weight:600;text-decoration:none;white-space:nowrap;">' + T('nav_devenir_artisan') + '</a>' +
+        '<a href="/artisans/compte.html" style="padding:6px 14px;border-radius:8px;border:1px solid var(--brd);color:var(--tx);font-weight:600;text-decoration:none;white-space:nowrap;">👤 <span class="nav-long">' + T('nav_compte_client') + '</span><span class="nav-court">' + T('nav_client_court') + '</span></a>' +
+        '<a href="https://caralink.app/mpa/" class="nav-art" onclick="return ouvrirMenuArtisan(event)" style="padding:6px 14px;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;text-decoration:none;white-space:nowrap;">🛠 <span class="nav-long">' + T('nav_espace_artisan') + '</span><span class="nav-court">' + T('nav_artisan_court') + '</span></a>' +
+        '<a href="/artisans/inscription.html" class="nav-devenir" style="padding:6px 14px;border-radius:8px;border:1px solid var(--brd);color:var(--tx);font-weight:600;text-decoration:none;white-space:nowrap;">' + T('nav_devenir_artisan') + '</a>' +
+        '<div id="menu-artisan" style="display:none;"><a href="https://caralink.app/mpa/">🔑 ' + T('nav_artisan_connexion') + '</a><a href="/artisans/inscription.html">✨ ' + T('nav_artisan_inscription') + '</a></div>' +
       '</div>' +
       '<div class="nav-right">' +
         renderLangSwitcher() +
@@ -319,7 +330,33 @@ function renderNav() {
 // ════════════════════════════════════════
 //  HERO / RECHERCHE — secteur + commune, jamais de date (V2)
 // ════════════════════════════════════════
-var _searchState = { secteur:'', commune:'', nom:'', tri:'' };
+var _searchState = { secteur:'', commune:'', nom:'', tri:'', rge:false };
+
+// Bouton « boutique » : fond ardoise sombre, lettres dorées à paillettes (comme l'enseigne « BOUTIQUE »).
+(function() {
+  if (document.getElementById('style-boutique-or')) return;
+  var st = document.createElement('style'); st.id = 'style-boutique-or';
+  st.textContent =
+    '.btn-boutique-or{position:relative;display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:999px;overflow:hidden;' +
+      'font-size:13.5px;font-weight:800;letter-spacing:.6px;text-decoration:none;' +
+      'border:1px solid #b8923a;' +
+      'background:radial-gradient(circle at 20% 25%,rgba(255,255,255,.07) 0 1px,transparent 1.6px),radial-gradient(circle at 70% 70%,rgba(255,255,255,.05) 0 1px,transparent 1.6px),linear-gradient(180deg,#3a3d42,#2a2d31);' +
+      'background-size:19px 15px,23px 17px,100% 100%;' +
+      'box-shadow:0 2px 8px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08);}' +
+    '.btn-or-txt{display:inline-block;color:#e8c34e;' +
+      'background:' +
+        'radial-gradient(circle at 12% 40%,#fff 0 .9px,transparent 1.3px),radial-gradient(circle at 38% 65%,#fff7d1 0 .8px,transparent 1.2px),' +
+        'radial-gradient(circle at 61% 30%,#fff 0 .9px,transparent 1.3px),radial-gradient(circle at 85% 60%,#fff7d1 0 .8px,transparent 1.2px),' +
+        'linear-gradient(135deg,#f7dc7a 0%,#d4a52a 30%,#fbeaa0 50%,#c28f1c 72%,#efcd5e 100%);' +
+      'background-size:17px 13px,21px 15px,15px 12px,19px 14px,100% 100%;' +
+      '-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;' +
+      'filter:drop-shadow(0 1px 1px rgba(0,0,0,.55));animation:boutique-or-scintille 2.8s ease-in-out infinite;}' +
+    '@keyframes boutique-or-scintille{0%,100%{filter:drop-shadow(0 1px 1px rgba(0,0,0,.55)) brightness(1)}50%{filter:drop-shadow(0 1px 1px rgba(0,0,0,.55)) brightness(1.25)}}' +
+    '.btn-boutique-or:hover{border-color:#e8c34e;box-shadow:0 3px 12px rgba(0,0,0,.45),0 0 0 2px rgba(232,195,78,.25);}' +
+    '.btn-boutique-or-large{display:flex;justify-content:center;margin-top:12px;padding:11px 16px;font-size:14px;}' +
+    '@media (prefers-reduced-motion:reduce){.btn-or-txt{animation:none;}}';
+  document.head.appendChild(st);
+})();
 
 function renderHero() {
   var hero = document.getElementById('hero');
@@ -334,28 +371,34 @@ function renderHero() {
         '<h1 class="hero-title">' + T('hero_title') + '</h1>' +
         '<p class="hero-soustitre">' + T('hero_soustitre') + '</p>' +
         '<p class="hero-note">' + T('hero_note_short') + '</p>' +
+        '<div class="cadre-haut">' +
+        '<div class="app-bar-cadre"><span>🔧 CaraLink Artisans</span><span class="app-bar-sub">' + T('cadre_sous') + '</span></div>' +
         '<div class="search-bar">' +
+          '<div class="search-question">🔍 ' + T('search_que') + '</div>' +
           '<div class="search-field"><label>' + T('search_secteur_label') + '</label>' +
-            '<select id="search-secteur" onkeydown="if(event.key===\'Enter\')lancerRecherche()">' +
+            '<select id="search-secteur" onchange="rechercheAuto(true)" onkeydown="if(event.key===\'Enter\')lancerRecherche()">' +
               '<option value="">' + T('search_secteur_tous') + '</option>' +
               _secteursCache.map(function(s) {
                 return '<option value="' + s.code + '"' + (_searchState.secteur === s.code ? ' selected' : '') + '>' + (s.icon||'') + ' ' + escHtml(s[secteurLabelChamp()] || s.label_fr) + '</option>';
               }).join('') +
             '</select></div>' +
           '<div class="search-field"><label>' + T('search_lieu_label') + '</label>' +
-            '<input id="search-commune" type="text" placeholder="' + T('search_lieu_ph') + '" value="' + escHtml(_searchState.commune) + '" onkeydown="if(event.key===\'Enter\')lancerRecherche()"/></div>' +
+            '<input id="search-commune" type="text" placeholder="' + (ecranTel() ? T('search_lieu_court') : T('search_lieu_ph')) + '" enterkeyhint="search" oninput="rechercheAuto(false)" value="' + escHtml(_searchState.commune) + '" onkeydown="if(event.key===\'Enter\')lancerRecherche()"/></div>' +
           '<div class="search-field"><label>' + T('search_nom_label') + '</label>' +
-            '<input id="search-nom" type="text" placeholder="' + T('search_nom_ph') + '" value="' + escHtml(_searchState.nom) + '" onkeydown="if(event.key===\'Enter\')lancerRecherche()"/></div>' +
+            '<input id="search-nom" type="text" placeholder="' + (ecranTel() ? T('search_nom_court') : T('search_nom_ph')) + '" enterkeyhint="search" oninput="rechercheAuto(false)" value="' + escHtml(_searchState.nom) + '" onkeydown="if(event.key===\'Enter\')lancerRecherche()"/></div>' +
           '<button class="search-btn" onclick="lancerRecherche()">' +
             '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>' +
             T('search_btn') +
           '</button>' +
         '</div>' +
-        '<div class="filters-wrap">' +
-          '<button class="filter-pill" title="' + T('filter_bientot_title') + '" style="opacity:.55;cursor:not-allowed;" onclick="return false;">' + T('filter_dispo') + '</button>' +
-          '<button class="filter-pill' + (_searchState.tri==='note'?' active':'') + '" onclick="trierPar(\'note\')">' + T('filter_note') + '</button>' +
+        '<div class="devis-mobile">📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">' + T('hero_devisgen_lien') + '</a>' + T('hero_devisgen_suite') + '</div>' +
         '</div>' +
-        '<div style="margin-top:14px;font-size:12.5px;color:var(--mu);">' +
+        '<div class="filters-wrap">' +
+          '<button class="filter-pill' + (_searchState.tri==='note'?' active':'') + '" onclick="trierPar(\'note\')">' + T('filter_note') + '</button>' +
+          '<button class="filter-pill' + (_searchState.rge?' active':'') + '" onclick="filtrerRge()">' + T('filter_rge') + '</button>' +
+        '</div>' +
+        htmlAidesInfo() +
+        '<div class="devis-desktop" style="margin-top:14px;font-size:12.5px;color:var(--mu);">' +
           '📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">' + T('hero_devisgen_lien') + '</a>' +
           T('hero_devisgen_suite') +
         '</div>' +
@@ -368,17 +411,119 @@ function renderHero() {
     '</div>';
 }
 
+// ════════════════════════════════════════
+//  BANDEAU D'INFOS QUI DÉFILENT (annuaire) : nombre d'artisans sur le site, dans une commune, dans un secteur.
+//  Chiffres calculés une seule fois depuis la liste publique (aucune fonction de plus), puis tirés au hasard.
+// ════════════════════════════════════════
+var _infosStats = null, _infosTimer = null, _infosDernier = '', _infosChargement = false;
+
+function normaliserLieu(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+function majusculesLieu(t) { return String(t).toLowerCase().replace(/(^|[\s\-'’])([a-zà-ÿ])/g, function(m, a, b) { return a + b.toUpperCase(); }); }
+
+function calculerInfosStats(artisans) {
+  var communes = {}, secteurs = {};
+  artisans.forEach(function(a) {
+    var c = String(a.commune || '').trim();
+    if (c) { var k = normaliserLieu(c); (communes[k] = communes[k] || { nom: majusculesLieu(c), n: 0 }).n++; }
+    if (a.secteur) { (secteurs[a.secteur] = secteurs[a.secteur] || { code: a.secteur, n: 0 }).n++; }
+  });
+  return {
+    total: artisans.length,
+    communes: Object.keys(communes).map(function(k) { return communes[k]; }),
+    secteurs: Object.keys(secteurs).map(function(k) { return secteurs[k]; })
+  };
+}
+
+function messagesInfos() {
+  if (!_infosStats || !_infosStats.total) return [];
+  var m = [], st = _infosStats;
+  var n = function(x) { return x + ' ' + (x > 1 ? T('artisan_plusieurs') : T('artisan_un')); };
+  m.push('total|' + '🛠️ ' + escHtml(T('info_total_avant')) + ' <b>' + n(st.total) + '</b> ' + escHtml(T('info_total_apres')));
+  st.communes.forEach(function(c) { m.push('c:' + c.nom + '|📍 <b>' + n(c.n) + '</b> ' + escHtml(T('info_commune')) + ' <b>' + escHtml(c.nom) + '</b>'); });
+  st.secteurs.forEach(function(x) { m.push('s:' + x.code + '|' + escHtml(T('info_secteur_avant')) + ' <b>' + secteurLabel(x.code) + '</b> : <b>' + n(x.n) + '</b>'); });
+  return m;
+}
+
+function afficherInfoAuHasard() {
+  var zone = document.getElementById('infos-defil-txt'), cadre = document.getElementById('infos-defil');
+  if (!zone || !cadre) { clearInterval(_infosTimer); _infosTimer = null; return; }
+  var tous = messagesInfos();
+  if (!tous.length) { cadre.style.display = 'none'; return; }
+  var choix = tous.filter(function(x) { return x.split('|')[0] !== _infosDernier; });
+  var un = (choix.length ? choix : tous)[Math.floor(Math.random() * (choix.length || tous.length))];
+  _infosDernier = un.split('|')[0];
+  cadre.style.display = 'block';
+  zone.style.opacity = '0';
+  setTimeout(function() { zone.innerHTML = un.slice(un.indexOf('|') + 1); zone.style.opacity = '1'; }, zone.innerHTML ? 250 : 0);
+}
+
+async function demarrerInfosAnnuaire() {
+  if (!document.getElementById('style-infos-defil')) {
+    var st = document.createElement('style'); st.id = 'style-infos-defil';
+    st.textContent = '.infos-defil{display:none;margin:10px 0 0;padding:9px 14px;border-radius:12px;background:rgba(255,255,255,.75);border:1px solid var(--line,#e3eaf4);font-size:13.5px;color:var(--ink,#13223c);text-align:center;min-height:20px;}' +
+      '.infos-defil b{color:var(--ac,#B5502F);}' +
+      '#infos-defil-txt{display:inline-block;transition:opacity .25s ease;}' +
+      '@media (prefers-reduced-motion:reduce){#infos-defil-txt{transition:none;}}';
+    document.head.appendChild(st);
+  }
+  var cadre = document.getElementById('infos-defil');
+  if (cadre && !cadre.dataset.survol) {
+    cadre.dataset.survol = '1';
+    cadre.addEventListener('mouseenter', function() { cadre.dataset.pause = '1'; });
+    cadre.addEventListener('mouseleave', function() { delete cadre.dataset.pause; });
+  }
+  if (!_infosStats && !_infosChargement) {
+    _infosChargement = true;
+    try {
+      var res = await fetch(SUPABASE_URL + '/functions/v1/lister-artisans', { headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON } });
+      var data = await res.json();
+      if (!data.error && Array.isArray(data.artisans)) _infosStats = calculerInfosStats(data.artisans);
+    } catch (e) { /* le bandeau reste simplement caché */ }
+    _infosChargement = false;
+  }
+  if (!_infosStats) return;
+  afficherInfoAuHasard();
+  clearInterval(_infosTimer);
+  _infosTimer = setInterval(function() {
+    var c = document.getElementById('infos-defil');
+    if (c && c.dataset.pause) return;
+    afficherInfoAuHasard();
+  }, 6000);
+}
+
+function filtrerRge() {
+  _searchState.rge = !_searchState.rge;
+  renderHero();
+  chargerArtisans();
+}
+
 function trierPar(critere) {
   _searchState.tri = (_searchState.tri === critere) ? '' : critere;
   renderHero();
   chargerArtisans();
 }
 
-function lancerRecherche() {
+function ecranTel() { return window.matchMedia('(max-width:768px)').matches; }
+var _timerRechercheAuto = null;
+// Téléphone : pas de bouton « Chercher » — la recherche part toute seule quand on choisit un secteur
+// ou quand on a fini de taper (0,7 s sans toucher le clavier). La touche « Rechercher » du clavier marche aussi.
+function rechercheAuto(immediat) {
+  if (!ecranTel()) return;
+  clearTimeout(_timerRechercheAuto);
+  _timerRechercheAuto = setTimeout(function() { lancerRecherche(!immediat); }, immediat ? 0 : 700);
+}
+function lancerRecherche(sansDefiler) {
+  // Téléphone : les vignettes n'apparaissent qu'après une recherche (le style ne s'applique que sur petit écran).
+  window._rechercheFaite = true;
+  document.body.classList.remove('avant-recherche');
   _searchState.secteur = document.getElementById('search-secteur').value.trim();
   _searchState.commune = document.getElementById('search-commune').value.trim();
   _searchState.nom = document.getElementById('search-nom').value.trim();
   chargerArtisans();
+  if (ecranTel() && sansDefiler !== true) {
+    var zr = document.getElementById('main-results');
+    if (zr && zr.scrollIntoView) setTimeout(function() { zr.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80);
+  }
 }
 
 // ════════════════════════════════════════
@@ -405,9 +550,12 @@ function renderResults() {
           '<span class="map-label">' + T('map_label') + '</span>' +
         '</div>' +
         '<div id="leaflet-map" style="width:100%;height:280px;border-radius:12px;border:1px solid var(--brd);overflow:hidden;"></div>' +
+        '<div class="infos-defil" id="infos-defil" aria-live="polite"><span id="infos-defil-txt"></span></div>' +
       '</div>' +
     '</div>';
   renderPartnerPanel();
+  demarrerInfosAnnuaire();
+  if (!window._rechercheFaite) document.body.classList.add('avant-recherche');
   chargerArtisans();
   setTimeout(initCarte, 100);
 }
@@ -470,10 +618,73 @@ function allerBesoinAlternancePublic(i) {
   setTimeout(remplacer, 350);
 }
 
+// ════════════════════════════════════════
+//  PUB DE L'ANNUAIRE : jusqu'à 4 logos qui défilent sous le panneau CaraLink Alternance (colonne de gauche).
+//  Allumée ou éteinte depuis la page d'administration (onglet « Pub »). Éteinte : rien ne s'affiche.
+// ════════════════════════════════════════
+var _pubListe = null, _pubIndex = 0, _pubTimer = null, _pubPause = false;
+var PUB_URL_LOGOS_OK = SUPABASE_URL + '/storage/v1/object/public/pub-logos/';
+
+function htmlPubLogo(a) {
+  var logo = '<div style="height:96px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--brd);border-radius:10px;padding:8px;">' +
+    '<img src="' + escHtml(a.logo_url) + '" alt="' + escHtml(a.nom) + '" style="max-width:100%;max-height:100%;object-fit:contain;" loading="lazy" decoding="async"></div>' +
+    '<div style="font-size:12.5px;font-weight:700;color:var(--tx);text-align:center;margin-top:8px;line-height:1.3;">' + escHtml(a.nom) + '</div>';
+  return a.lien ? '<a href="' + escHtml(a.lien) + '" target="_blank" rel="noopener sponsored" style="display:block;text-decoration:none;color:inherit;">' + logo + '</a>' : logo;
+}
+function htmlPubPoints() {
+  return _pubListe.map(function(_, i) {
+    var actif = i === _pubIndex;
+    return '<button type="button" onclick="allerPub(' + i + ')" aria-label="' + (i + 1) + '" aria-current="' + (actif ? 'true' : 'false') + '" style="width:' + (actif ? '18px' : '8px') + ';height:8px;border-radius:999px;border:none;padding:0;cursor:pointer;background:' + (actif ? 'var(--ac)' : 'var(--brd)') + ';transition:width .2s;"></button>';
+  }).join('');
+}
+function allerPub(i) {
+  var zone = document.getElementById('pub-zone'), points = document.getElementById('pub-points');
+  if (!zone || !_pubListe || !_pubListe.length) return;
+  _pubIndex = (i + _pubListe.length) % _pubListe.length;
+  var calme = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function remplacer() { zone.innerHTML = htmlPubLogo(_pubListe[_pubIndex]); if (points) points.innerHTML = htmlPubPoints(); zone.style.opacity = '1'; }
+  if (calme) { remplacer(); return; }
+  zone.style.opacity = '0';
+  setTimeout(remplacer, 300);
+}
+async function chargerPubAnnuaire() {
+  var carte = document.getElementById('pub-carte');
+  if (!carte) return;
+  try {
+    if (!_pubListe) {
+      var res = await fetch(SUPABASE_URL + '/rest/v1/rpc/pub_annonces_actives', {
+        method: 'POST',
+        headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON, 'Content-Type': 'application/json' },
+        body: '{}'
+      });
+      var data = await res.json();
+      // Défense en plus : un logo ne vient que de notre dossier de logos, un lien que en https.
+      _pubListe = (Array.isArray(data) ? data : []).filter(function(a) { return a && a.logo_url && String(a.logo_url).indexOf(PUB_URL_LOGOS_OK) === 0; })
+        .map(function(a) { return { nom: String(a.nom || ''), logo_url: a.logo_url, lien: /^https:\/\//i.test(a.lien || '') ? a.lien : null }; });
+    }
+    if (!_pubListe.length) { carte.innerHTML = ''; return; }
+    if (!document.getElementById('style-pub-annuaire')) {
+      var st = document.createElement('style'); st.id = 'style-pub-annuaire';
+      st.textContent = '.partner-panel{max-height:calc(100vh - 96px);overflow-y:auto;scrollbar-width:thin;}';
+      document.head.appendChild(st);
+    }
+    if (_pubIndex >= _pubListe.length) _pubIndex = 0;
+    carte.innerHTML = '<div style="border-top:1px solid var(--brd);margin-top:16px;padding-top:12px;">' +
+      '<div style="font-size:10.5px;font-weight:700;color:var(--mu2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px;display:flex;justify-content:space-between;"><span>' + escHtml(T('pub_titre')) + '</span><span style="font-weight:600;opacity:.7;">' + escHtml(T('pub_mention')) + '</span></div>' +
+      '<div id="pub-zone" style="transition:opacity .3s;">' + htmlPubLogo(_pubListe[_pubIndex]) + '</div>' +
+      (_pubListe.length > 1 ? '<div id="pub-points" style="display:flex;justify-content:center;gap:6px;margin-top:10px;">' + htmlPubPoints() + '</div>' : '') + '</div>';
+    carte.onmouseenter = function() { _pubPause = true; };
+    carte.onmouseleave = function() { _pubPause = false; };
+    clearInterval(_pubTimer);
+    if (_pubListe.length > 1) _pubTimer = setInterval(function() { if (_pubPause || document.hidden) return; allerPub(_pubIndex + 1); }, 5000);
+  } catch (e) { carte.innerHTML = ''; /* la pub ne doit jamais gêner l'annuaire */ }
+}
+
 function renderPartnerPanel() {
   var zone = document.getElementById('partner-panel');
   if (!zone) return;
-  zone.innerHTML = htmlPartnerPanel();
+  zone.innerHTML = htmlPartnerPanel() + '<div id="pub-carte"></div>';
+  chargerPubAnnuaire();
   BESOINS_ALTERNANCE_PUBLIC.forEach(function(b) { var im = new Image(); im.src = b.img; }); // les 4 photos sont prêtes avant d'être affichées
   zone.onmouseenter = function() { _pauseBesoinAlternancePublic = true; };
   zone.onmouseleave = function() { _pauseBesoinAlternancePublic = false; };
@@ -558,6 +769,7 @@ async function chargerArtisans() {
     var params = new URLSearchParams();
     if (_searchState.secteur) params.set('secteur', _searchState.secteur);
     if (_searchState.commune) params.set('commune', _searchState.commune);
+    if (_searchState.rge) params.set('rge', '1');
 
     var res = await fetch(SUPABASE_URL + '/functions/v1/lister-artisans?' + params.toString(), {
       headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON }
@@ -595,7 +807,8 @@ async function chargerArtisans() {
       ? cartesHtml.join('')
       : '<div class="etat-vide"><div class="etat-vide-titre">' + T('aucun_artisan_titre') + '</div>' + T('aucun_artisan_texte') + '</div>';
 
-    artisans.forEach(function(a) { chargerApercuCarte(a.id); });
+    artisans.forEach(function(a) { if (a.paiement_en_ligne !== false) chargerApercuCarte(a.id); });
+    planifierCoeurs();
     demarrerPubAlternanceMobile();
 
     mettreAJourCarte(artisans);
@@ -653,8 +866,45 @@ function badgeNouveauCarte(a) {
   return a.nouveau ? '<span class="badge-trust bt-blue" title="' + escHtml(T('badge_nouveau_info')) + '">' + escHtml(T('badge_nouveau')) + '</span>' : '';
 }
 // « Vérifié » en vert, à droite de la carte (là où se trouvait « Disponibilités en temps réel »).
+// Bloc d'information « aides à la rénovation » : INFORMATION SEULEMENT (aucun montant, aucune promesse d'aide, aucun calcul).
+// Source des règles : france-renov.gouv.fr (page « MaPrimeRénov' en Outre-mer »). Le lien renvoie vers le site officiel.
+function htmlAidesInfo() {
+  if (!document.getElementById('style-aides-info')) {
+    var st = document.createElement('style'); st.id = 'style-aides-info';
+    st.textContent = '.aides-info{margin:12px auto 0;max-width:560px;text-align:left;border:1px solid var(--line,#e3eaf4);border-radius:14px;background:rgba(255,255,255,.75);font-size:13px;color:var(--ink,#13223c);}' +
+      '.aides-info summary{cursor:pointer;padding:10px 16px;font-weight:600;list-style:none;}' +
+      '.aides-info summary::-webkit-details-marker{display:none;}' +
+      '.aides-info .aides-corps{padding:0 16px 14px;line-height:1.55;}' +
+      '.aides-info .aides-corps ul{margin:6px 0 8px 18px;padding:0;}' +
+      '.aides-info .aides-note{font-size:12px;color:var(--mu,#6b7a90);margin-top:8px;}';
+    document.head.appendChild(st);
+  }
+  return '<details class="aides-info"><summary>🌿 ' + escHtml(T('aides_titre')) + '</summary><div class="aides-corps">' +
+    '<p>' + escHtml(T('aides_intro')) + '</p>' +
+    '<ul><li>' + escHtml(T('aides_p1')) + '</li><li>' + escHtml(T('aides_p2')) + '</li><li>' + escHtml(T('aides_p3')) + '</li></ul>' +
+    '<p><a href="https://france-renov.gouv.fr/aides/mpr-outremer" target="_blank" rel="noopener noreferrer" style="color:var(--ac,#B5502F);font-weight:700;">' + escHtml(T('aides_lien')) + ' →</a></p>' +
+    '<p class="aides-note">' + escHtml(T('aides_avert')) + '</p></div></details>';
+}
+
+function badgeRgeTexte(a) {
+  if (!a.rge) return '';
+  var d = a.rge_jusqu ? new Date(a.rge_jusqu + 'T12:00:00Z').toLocaleDateString() : '';
+  return '<span class="badge-trust bt-green" title="' + escHtml(T('badge_rge_titre')) + (d ? ' — ' + escHtml(T('badge_rge_jusqu')) + ' ' + escHtml(d) : '') + '">🌿 RGE</span>';
+}
 function badgeVerifieCarte(a) {
-  return a.verifie ? '<span class="badge-trust bt-green" title="SIRET et assurance vérifiés">✅ ' + escHtml(T('badge_verifie')) + '</span>' : '';
+  return (a.verifie ? '<span class="badge-trust bt-green" title="SIRET et assurance vérifiés">✅ ' + escHtml(T('badge_verifie')) + '</span>' : '') + badgeRgeTexte(a);
+}
+// « sur les produits » / « sur les prestations » / les deux : où un cashback ou un code promo s'applique.
+function libelleScopeAvantage(ventes, interventions) {
+  return T(ventes && interventions ? 'avt_s_vi' : (ventes ? 'avt_s_v' : 'avt_s_i'));
+}
+// Pastilles de la vignette : cashback et code promo, avec ce qu'ils couvrent (jamais un code « partenaire » masqué : le serveur ne l'envoie pas).
+function avantagesCarteHtml(av) {
+  if (!av) return '';
+  var h = '';
+  if (av.cashback) h += '<span class="badge-trust bt-green">' + escHtml(T('perk_cashback').replace('{p}', Math.round(av.cashback.pct)) + ' ' + libelleScopeAvantage(av.cashback.ventes, av.cashback.interventions)) + '</span>';
+  if (av.code_promo) h += '<span class="badge-trust bt-accent">' + escHtml(T('avt_code').replace('{c}', av.code_promo.code).replace('{p}', Math.round(av.code_promo.pct)) + ' ' + libelleScopeAvantage(av.code_promo.ventes, av.code_promo.interventions)) + '</span>';
+  return h;
 }
 function pastillesSpecialesCarte(a) {
   var h = '';
@@ -683,6 +933,75 @@ function colonneJourCarte(j) {
   return '<div class="dispo-day"><div class="dispo-day-label">' + escHtml(dateCourteCarte(j.date)) + '</div>' + slots + '</div>';
 }
 
+// ── Favoris (cœur) : le client connecté retrouve ses artisans dans « Mon compte → Favoris ». Sans compte, on propose d'en créer un. ──
+var _favIds = null, _favTimer = null; // _favIds : { idArtisan: true } une fois chargé ; null = pas encore connu / pas connecté
+async function jetonFav() {
+  var cle = 'sb-uzgboxfxpxazhysusewv-auth-token';
+  try {
+    var o = JSON.parse(localStorage.getItem(cle) || 'null');
+    if (!o || !o.access_token) return null;
+    if (o.expires_at && o.expires_at * 1000 > Date.now() + 30000) return o.access_token;
+    if (!o.refresh_token) return null;
+    var r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON }, body: JSON.stringify({ refresh_token: o.refresh_token }) });
+    if (!r.ok) return null;
+    var n = await r.json();
+    if (!n.access_token) return null;
+    o.access_token = n.access_token; o.refresh_token = n.refresh_token || o.refresh_token; o.expires_at = n.expires_at || (Math.floor(Date.now() / 1000) + (n.expires_in || 3600)); if (n.user) o.user = n.user;
+    try { localStorage.setItem(cle, JSON.stringify(o)); } catch (e) {}
+    return o.access_token;
+  } catch (e) { return null; }
+}
+function coeurHtml(id, enLigne) {
+  return '<button type="button" class="coeur-btn' + (enLigne ? ' coeur-inline' : '') + '" data-coeur="' + escHtml(id) + '" aria-pressed="false" title="' + escHtml(T('coeur_ajouter')) + '" aria-label="' + escHtml(T('coeur_ajouter')) + '" onclick="basculerCoeur(event, ' + jsAttr(id) + ')">☆</button>';
+}
+function peindreCoeurs() {
+  if (!document.getElementById('style-coeur')) {
+    var st = document.createElement('style'); st.id = 'style-coeur';
+    st.textContent = '.coeur-btn{position:absolute;top:10px;right:12px;z-index:2;width:34px;height:34px;border-radius:50%;border:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.92);color:#B5502F;font-size:19px;line-height:1;cursor:pointer;padding:0;}' +
+      '.coeur-btn.coeur-inline{position:static;display:inline-block;vertical-align:middle;margin-left:10px;width:32px;height:32px;font-size:18px;}' +
+      '.coeur-btn.on{background:#B5502F;color:#fff;border-color:#B5502F;}';
+    document.head.appendChild(st);
+  }
+  var tous = document.querySelectorAll('[data-coeur]');
+  for (var i = 0; i < tous.length; i++) {
+    var b = tous[i], on = !!(_favIds && _favIds[b.getAttribute('data-coeur')]);
+    b.textContent = on ? '★' : '☆';
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.title = T(on ? 'coeur_retirer' : 'coeur_ajouter'); b.setAttribute('aria-label', b.title);
+  }
+}
+function planifierCoeurs() { clearTimeout(_favTimer); _favTimer = setTimeout(majCoeurs, 60); }
+async function majCoeurs() {
+  peindreCoeurs();
+  var jeton = await jetonFav();
+  if (!jeton) return;
+  if (_favIds === null) {
+    try {
+      var r = await fetch(SUPABASE_URL + '/rest/v1/rpc/mes_favoris_ids', { method: 'POST', headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + jeton, 'Content-Type': 'application/json' }, body: '{}' });
+      if (r.ok) { var ids = await r.json(); _favIds = {}; (Array.isArray(ids) ? ids : []).forEach(function(x) { _favIds[x] = true; }); }
+    } catch (e) { /* les cœurs restent vides : jamais bloquant */ }
+  }
+  peindreCoeurs();
+}
+async function basculerCoeur(ev, id) {
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  var jeton = await jetonFav();
+  if (!jeton) {
+    if (confirm(T('coeur_connexion'))) location.href = 'compte.html?retour=' + encodeURIComponent(location.href.split('#')[0]);
+    return;
+  }
+  if (_favIds === null) await majCoeurs();
+  if (_favIds === null) _favIds = {};
+  var veut = !_favIds[id];
+  try {
+    var r = await fetch(SUPABASE_URL + '/rest/v1/rpc/favori_basculer', { method: 'POST', headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + jeton, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_artisan: id, p_actif: veut }) });
+    var d = r.ok ? await r.json() : null;
+    if (d && d.ok) { if (veut) _favIds[id] = true; else delete _favIds[id]; peindreCoeurs(); return; }
+    alert(d && d.erreur === 'limite' ? T('coeur_limite') : T('cpt_err_generique'));
+  } catch (e) { alert(T('cpt_err_generique')); }
+}
+
 function renderArtisanCard(a) {
   _artisansCartes[a.id] = a;
   var ini = initiales(a.nom_entreprise);
@@ -691,7 +1010,15 @@ function renderArtisanCard(a) {
     : '<div class="avatar card-avatar">' + ini + '</div>';
   var noteAff = a.note_moyenne != null ? Number(a.note_moyenne) : 0;
   var nb = a.nb_avis || 0;
-  return '<div class="formateur-card" onclick="ouvrirProfil(' + jsAttr(a.id) + ')">' +
+  var grise = a.paiement_en_ligne === false; // Stripe pas finalisé : visible mais non réservable
+  if (grise && !document.getElementById('style-carte-grisee')) {
+    var stg = document.createElement('style'); stg.id = 'style-carte-grisee';
+    stg.textContent = '.formateur-card.carte-grisee{cursor:default;}.formateur-card.carte-grisee .card-top-row,.formateur-card.carte-grisee .card-bio,.formateur-card.carte-grisee .card-meta{opacity:.5;filter:grayscale(1);}' +
+      '.carte-grisee-note{margin-top:10px;padding:9px 12px;border-radius:10px;background:#f3f4f6;border:1px solid #d9dce1;color:#4b5563;font-size:12.5px;line-height:1.5;}.carte-grisee-note b{color:#374151;}';
+    document.head.appendChild(stg);
+  }
+  var noteGrisee = grise ? '<div class="carte-grisee-note"><b>' + escHtml(T('carte_grisee_titre')) + '</b><br>' + escHtml(T('carte_grisee_texte')) + '</div>' : '';
+  return '<div class="formateur-card' + (grise ? ' carte-grisee' : '') + '" style="position:relative;"' + (grise ? ' aria-disabled="true"' : ' onclick="ouvrirProfil(' + jsAttr(a.id) + ')"') + '>' + (grise ? '' : coeurHtml(a.id, false)) +
     '<div class="card-top-row">' + photo +
       '<div class="card-info">' +
         '<div class="card-name">' + escHtml(a.nom_entreprise) + '</div>' +
@@ -708,7 +1035,8 @@ function renderArtisanCard(a) {
     '</div>' +
     (a.a_photos ? '<div style="font-size:12px;color:var(--mu2,#777);margin:2px 0 6px;">📷 ' + escHtml(T('badge_photos')) + '</div>' : '') +
     '<div class="dispo-grid" id="grille-carte-' + escHtml(a.id) + '" style="display:none;"></div>' +
-    '<div id="phares-carte-' + escHtml(a.id) + '"></div>' +
+    '<div id="avantages-carte-' + escHtml(a.id) + '" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>' +
+    '<div id="phares-carte-' + escHtml(a.id) + '"></div>' + noteGrisee +
   '</div>';
 }
 
@@ -719,6 +1047,7 @@ async function chargerApercuCarte(id) {
   var zoneDispo = document.getElementById('dispo-carte-' + id);
   var grille = document.getElementById('grille-carte-' + id);
   var zonePhares = document.getElementById('phares-carte-' + id);
+  var zoneAvantages = document.getElementById('avantages-carte-' + id);
   if (!a || !zoneTags) return;
   try {
     var res = await fetch(SUPABASE_URL + '/functions/v1/verifier-disponibilite-artisan', {
@@ -730,6 +1059,7 @@ async function chargerApercuCarte(id) {
     if (data.error) return;
 
     zoneTags.innerHTML = badgeNouveauCarte(a) + pastillesServicesCarte(data.services) + pastillesSpecialesCarte(a);
+    if (zoneAvantages) zoneAvantages.innerHTML = avantagesCarteHtml(data.avantages);
 
     if (data.semaine && data.semaine.length && zoneDispo && grille) {
       var dispo = data.prochaine_date
@@ -747,9 +1077,10 @@ async function chargerApercuCarte(id) {
           : '<div class="phare-mini phare-mini-vide" title="' + escHtml(p.nom) + '">📦</div>';
       }).join('');
       var lienBoutique = data.slug_catalogue
-        ? '<a href="catalogue.html?s=' + encodeURIComponent(data.slug_catalogue) + '" class="phares-lien" target="_blank" rel="noopener" onclick="event.stopPropagation();" style="display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:999px;background:var(--ac);color:#fff;font-size:13px;font-weight:700;text-decoration:none;box-shadow:0 2px 8px rgba(181,80,47,.28);">🛍️ ' + escHtml(T('phares_voir_boutique')) + ' →</a>'
+        ? '<a href="catalogue.html?s=' + encodeURIComponent(data.slug_catalogue) + '" class="phares-lien btn-boutique-or" target="_blank" rel="noopener" onclick="event.stopPropagation();">🛍️<span class="btn-or-txt">' + escHtml(T('phares_voir_boutique')) + ' →</span></a>'
         : '';
-      var promo = data.code_promo
+      var promoVentes = !data.avantages || !data.avantages.code_promo || data.avantages.code_promo.ventes !== false; // code réservé aux interventions : pas à côté de la boutique
+      var promo = (data.code_promo && promoVentes)
         ? '<span class="phares-code-promo">🎁 ' + escHtml(data.code_promo) + '</span>'
         : '';
       zonePhares.innerHTML =
@@ -780,11 +1111,37 @@ async function ouvrirProfil(id) {
     if (data.error) throw new Error(data.error);
 
     div.innerHTML = buildProfilHTML(data);
+    regrouperFicheTel();
     _profilDataCourant = data;
     chargerApercuDispo(data.artisan.id);
 
   } catch(e) {
     afficherFicheIndisponible(id, statutHttp);
+  }
+}
+// Téléphone : on range la fiche en 3 formes arrondies (A : de l'artisan aux photos · B : boutique · C : présentation + avis).
+// L'ordinateur ne change pas : on ne touche à rien. Un seul avis visible, les autres derrière « Voir plus ».
+function regrouperFicheTel() {
+  if (!ecranTel()) return;
+  var card = document.querySelector('#modal-profil .fiche-card');
+  if (!card || card.querySelector('.fiche-bloc')) return;
+  function sec(n) { return card.querySelector('.fiche-sec[data-sec="' + n + '"]'); }
+  var barre = card.querySelector('.fiche-appbar'); if (!barre) return;
+  var A = document.createElement('div'); A.className = 'fiche-bloc fiche-bloc-a';
+  var C = document.createElement('div'); C.className = 'fiche-bloc fiche-bloc-c';
+  var titre = card.querySelector('.fiche-titre');
+  card.insertBefore(A, (titre || barre).nextSibling);
+  [card.querySelector('.fiche-head'), card.querySelector('.fiche-sous-tete'), sec('services_titre'), sec('fiche_dispos'), card.querySelector('.fiche-devis'), sec('fiche_realisations')]
+    .forEach(function(e) { if (e) A.appendChild(e); });
+  [sec('fiche_presentation'), sec('fiche_avantages'), sec('avis_titre')].forEach(function(e) { if (e) C.appendChild(e); });
+  if (C.children.length) card.appendChild(C); 
+  var items = card.querySelectorAll('.avis-item');
+  if (items.length > 1) {
+    for (var i = 1; i < items.length; i++) items[i].classList.add('avis-cache');
+    var plus = document.createElement('button'); plus.type = 'button'; plus.className = 'avis-plus';
+    plus.textContent = T('avis_voir_plus') + ' (' + (items.length - 1) + ')';
+    plus.onclick = function() { card.querySelectorAll('.avis-cache').forEach(function(x) { x.classList.remove('avis-cache'); }); plus.remove(); };
+    items[items.length - 1].parentNode.appendChild(plus);
   }
 }
 // Fiche impossible à afficher : un message DOUX (jamais « Erreur : … » brut) et toujours une sortie (avant, l'écran d'erreur ne se fermait pas).
@@ -861,6 +1218,19 @@ function fermerMenuPartage(e) { if (e && e.target !== e.currentTarget) return; v
 
 function fermerProfil(e) { if (e && e.target !== e.currentTarget) return; var div = document.getElementById('modal-profil'); if (div) div.innerHTML = ''; }
 
+// Fiche artisan : chaque thème dans sa propre carte (fond très clair, fine bordure, titre en petites capitales grises) pour une lecture claire et sobre.
+function sectionFiche(cleTitre, icone, contenu) {
+  if (!contenu) return '';
+  if (!document.getElementById('style-fiche-sec')) {
+    var st = document.createElement('style'); st.id = 'style-fiche-sec';
+    st.textContent = '.fiche-sec{border:1px solid var(--line,#e3eaf4);border-radius:12px;padding:14px 16px;margin:0 0 12px;background:var(--p2,#f8fafd);}' +
+      '.fiche-sec-titre{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--mu2,#5b6b82);margin:0 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line,#e3eaf4);}' +
+      '.fiche-sec-titre span{font-size:14px;letter-spacing:0;}';
+    document.head.appendChild(st);
+  }
+  return '<section class="fiche-sec" data-sec="' + cleTitre + '"><div class="fiche-sec-titre"><span>' + icone + '</span>' + escHtml(T(cleTitre)) + '</div>' + contenu + '</section>';
+}
+
 function buildProfilHTML(data) {
   var a = data.artisan;
   var ini = initiales(a.nom_entreprise);
@@ -871,22 +1241,21 @@ function buildProfilHTML(data) {
   var servicesHtml = data.services.length
     ? data.services.map(function(s) {
         var prix = s.prix_indicatif ? (escHtml(s.prix_indicatif) + '€' + (s.unite ? '/' + escHtml(s.unite) : '')) : T('sur_devis');
-        return '<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line,#eee);">' +
+        return '<div class="svc-ligne" style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line,#eee);">' +
           '<div><strong>' + escHtml(s.nom_service) + '</strong>' + (s.description ? '<div style="font-size:12.5px;color:var(--mu2,#777);">' + escHtml(s.description) + '</div>' : '') + '</div>' +
-          '<div style="font-weight:700;white-space:nowrap;margin-left:12px;">' + prix + '</div>' +
+          '<div class="svc-prix" style="font-weight:700;white-space:nowrap;margin-left:12px;">' + prix + '</div>' +
         '</div>';
       }).join('')
     : '<div style="color:var(--mu,#999);font-size:13px;">' + T('aucun_service') + '</div>';
 
   var photosHtml = data.photos.length
-    ? '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;">' +
+    ? '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">' +
         data.photos.map(function(p){ return '<img src="' + escHtml(p.url_photo) + '" style="width:100%;height:90px;object-fit:cover;border-radius:8px;" alt="' + escHtml(p.legende||'') + '">'; }).join('') +
       '</div>'
     : '';
 
-  var pharesHtml = data.produits_phares.length
-    ? '<div style="font-weight:700;margin:18px 0 10px;">⭐ Les produits phares</div>' +
-      '<div class="phares-grille" style="display:grid;grid-template-columns:repeat(' + (data.produits_phares.length >= 4 ? 4 : 3) + ',1fr);gap:12px;">' +
+  var pharesInner = data.produits_phares.length
+    ? '<div class="phares-grille" style="display:grid;grid-template-columns:repeat(' + (data.produits_phares.length >= 4 ? 4 : 3) + ',1fr);gap:12px;">' +
         data.produits_phares.map(function(p) {
           var prixRemise = p.prix != null && p.promo_pct ? Math.round(p.prix * (1 - p.promo_pct / 100) * 100) / 100 : null;
           var photo = p.url_photo
@@ -903,13 +1272,14 @@ function buildProfilHTML(data) {
           '</div>';
         }).join('') +
       '</div>' +
-      (data.artisan.slug_catalogue ? '<a href="catalogue.html?s=' + encodeURIComponent(data.artisan.slug_catalogue) + '" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:12px;padding:10px 14px;border-radius:999px;background:var(--ac,#B5502F);color:#fff;font-size:13.5px;font-weight:700;text-decoration:none;box-shadow:0 2px 8px rgba(181,80,47,.28);">🛍️ Voir toute la boutique →</a>' : '') +
-      (data.artisan.code_promo ? '<div style="text-align:center;margin-top:8px;font-family:monospace;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:7px;background:rgba(181,80,47,.08);color:var(--ac,#B5502F);border:1px dashed var(--ac,#B5502F);display:inline-block;">🎁 ' + escHtml(data.artisan.code_promo) + '</div>' : '')
+      (data.artisan.slug_catalogue ? '<a href="catalogue.html?s=' + encodeURIComponent(data.artisan.slug_catalogue) + '" target="_blank" rel="noopener" class="btn-boutique-or btn-boutique-or-large">🛍️<span class="btn-or-txt">Voir toute la boutique →</span></a>' : '') +
+      ((data.artisan.code_promo && data.artisan.code_promo_ventes !== false) ? '<div style="text-align:center;margin-top:8px;font-family:monospace;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:7px;background:rgba(181,80,47,.08);color:var(--ac,#B5502F);border:1px dashed var(--ac,#B5502F);display:inline-block;">🎁 ' + escHtml(data.artisan.code_promo) + '</div>' : '')
     : '';
+  var pharesHtml = sectionFiche('fiche_boutique', '🛍️', pharesInner);
 
   var avisHtml = data.avis.length
     ? data.avis.map(function(av) {
-        return '<div style="padding:10px 0;border-bottom:1px solid var(--line,#eee);font-size:13px;">' +
+        return '<div class="avis-item" style="padding:10px 0;border-bottom:1px solid var(--line,#eee);font-size:13px;">' +
           '<strong>' + '★'.repeat(av.note) + '☆'.repeat(5-av.note) + '</strong> — ' + escHtml(av.client_nom) +
           (av.commentaire ? '<div style="color:var(--mu2,#777);margin-top:3px;">' + escHtml(av.commentaire) + '</div>' : '') +
           (av.reponse_artisan ? '<div style="margin-top:6px;padding:8px 10px;background:var(--p2,#f6f9fe);border-radius:8px;font-size:12.5px;color:var(--mu2,#777);"><strong style="color:var(--ac,#B5502F);">' + T('reponse_artisan_prefix') + '</strong> ' + escHtml(av.reponse_artisan) + '</div>' : '') +
@@ -917,31 +1287,49 @@ function buildProfilHTML(data) {
       }).join('')
     : '<div style="color:var(--mu,#999);font-size:13px;">' + T('aucun_avis') + '</div>';
 
-  return '<div onclick="fermerProfil(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:12px;overflow-y:auto;">' +
-    '<div style="background:var(--panel,#fff);border-radius:16px;padding:28px;max-width:560px;width:100%;max-height:85vh;overflow-y:auto;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">' +
+  var badgesFicheM = (a.verifie ? '<span class="badge-trust bt-green">✅ ' + T('badge_verifie') + '</span>' : '') +
+    (a.rge ? badgeRgeTexte(a) : '') +
+    (a.nouveau ? '<span class="badge-trust bt-blue">' + escHtml(T('badge_nouveau')) + '</span>' : '');
+  var starsFiche = data.nb_avis > 0
+    ? etoilesCarte(Number(data.note_moyenne) || 0) + '<span>' + (Number(data.note_moyenne) || 0).toFixed(1) + ' (' + data.nb_avis + ' ' + (data.nb_avis === 1 ? T('avis_un') : T('avis_plusieurs')) + ')</span>'
+    : '<span style="color:var(--mu2,#777);">' + escHtml(T('avis_aucun_court')) + '</span>';
+  return '<div class="fiche-ov" onclick="fermerProfil(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:12px;overflow-y:auto;">' +
+    '<div class="fiche-card" style="background:var(--panel,#fff);border-radius:16px;padding:28px;max-width:560px;width:100%;max-height:85vh;overflow-y:auto;">' +
+      '<div class="fiche-appbar"><span>🔧 CaraLink Artisans</span><span class="fiche-appbar-btns">' +
+        '<button type="button" onclick="partagerFiche(' + jsAttr(a.id) + ')" aria-label="' + escHtml(T('partage_titre')) + '">🔗</button>' +
+        '<button type="button" onclick="fermerProfil({target:this,currentTarget:this})" aria-label="' + escHtml(T('partage_fermer')) + '">✕</button></span></div>' +
+      '<div class="fiche-titre">' + T('fiche_titre_noir') + ' <span>' + T('fiche_titre_marron') + '</span></div>' +
+      '<div class="fiche-head" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">' +
         '<div style="display:flex;gap:14px;align-items:center;">' + photo +
           '<div><div style="font-family:Fraunces,serif;font-size:19px;font-weight:700;">' + escHtml(a.nom_entreprise) + '</div>' +
-          '<div style="font-size:13px;color:var(--mu2,#777);">' + secteurLabel(a.secteur) + ' · 📍 ' + escHtml(a.commune) + '</div>' +
+          '<div class="fiche-sub" style="font-size:13px;color:var(--mu2,#777);">' + secteurLabel(a.secteur) + ' · 📍 ' + escHtml(a.commune) + '</div>' +
+          '<div class="fiche-badges-d">' +
           (a.nouveau ? '<span class="badge-trust bt-blue" style="margin-top:4px;margin-right:6px;display:inline-block;">' + escHtml(T('badge_nouveau')) + '</span>' : '') +
           (a.verifie ? '<span class="badge-trust bt-green" style="margin-top:4px;display:inline-block;">✅ ' + T('badge_verifie') + '</span>' : '') +
-          (a.profil_complet ? '<span class="badge-trust bt-more" style="margin-top:4px;margin-left:6px;display:inline-block;">📝 ' + escHtml(T('badge_complet')) + '</span>' : '') +
-          (a.alternance_niveau >= 2 ? '<span title="Cette entreprise s\'engage activement pour la formation locale" style="margin-top:4px;margin-left:6px;display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,158,11,.12);color:#b45309;">🟠 Tremplin des jeunes</span>' : '') +
+          (a.rge ? '<span style="margin-top:4px;margin-left:6px;display:inline-block;">' + badgeRgeTexte(a) + '</span>' : '') +
+          (a.profil_complet ? '<span class="badge-trust bt-more fiche-mini" style="margin-top:4px;margin-left:6px;display:inline-block;">📝 ' + escHtml(T('badge_complet')) + '</span>' : '') +
+          (a.alternance_niveau >= 2 ? '<span class="fiche-mini" title="Cette entreprise s\'engage activement pour la formation locale" style="margin-top:4px;margin-left:6px;display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,158,11,.12);color:#b45309;">🟠 Tremplin des jeunes</span>' : '') +
+          '</div>' +
           '</div>' +
         '</div>' +
-        '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;margin-left:8px;">' +
+        '<div class="fiche-actions" style="display:flex;gap:8px;align-items:center;flex-shrink:0;margin-left:8px;">' +
           '<button type="button" onclick="partagerFiche(' + jsAttr(a.id) + ')" aria-label="' + escHtml(T('partage_titre')) + '" style="background:none;border:1px solid var(--line,#ddd);border-radius:20px;padding:5px 12px;font-size:13px;cursor:pointer;color:var(--mu2,#555);font-family:inherit;white-space:nowrap;">🔗 ' + T('partage_bouton') + '</button>' +
           '<button onclick="fermerProfil({target:this,currentTarget:this})" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--mu,#999);">✕</button>' +
         '</div>' +
       '</div>' +
-      (a.nouveau ? '<p style="font-size:12.5px;color:var(--mu2,#777);margin:-6px 0 14px;">' + escHtml(T('badge_nouveau_info')) + '</p>' : '') +
-      (a.bio ? '<p style="font-size:14px;line-height:1.6;margin-bottom:18px;">' + escHtml(a.bio) + '</p>' : '') +
-      '<div style="font-weight:700;margin-bottom:6px;">' + T('services_titre') + '</div>' + servicesHtml +
-      photosHtml +
+      '<div class="fiche-sous-tete"><div class="fiche-stars">' + starsFiche + '</div><div class="fiche-badges-m">' + badgesFicheM + '</div></div>' +
+      sectionFiche('fiche_presentation', '👤', ((a.bio ? '<p style="font-size:14px;line-height:1.6;margin:0;">' + escHtml(a.bio) + '</p>' : '') + (a.nouveau ? '<p style="font-size:12.5px;color:var(--mu2,#777);margin:' + (a.bio ? '10px' : '0') + ' 0 0;">' + escHtml(T('badge_nouveau_info')) + '</p>' : ''))) +
+      sectionFiche('fiche_avantages', '🎁', ((a.cashback_pct || a.remise_fidele_pct || a.code_promo) ? (
+        (a.cashback_pct ? '<div style="font-weight:600;font-size:13px;line-height:1.5;">' + escHtml(T('perk_cashback').replace('{p}', Math.round(a.cashback_pct)) + ' ' + libelleScopeAvantage(a.cashback_ventes !== false, a.cashback_interventions !== false)) + '</div>' : '') +
+        (a.code_promo && Number(a.code_promo_pct) >= 1 ? '<div style="font-weight:600;font-size:13px;line-height:1.5;">' + escHtml(T('avt_code').replace('{c}', a.code_promo).replace('{p}', Math.round(Number(a.code_promo_pct))) + ' ' + libelleScopeAvantage(a.code_promo_ventes !== false, a.code_promo_interventions !== false)) + '</div>' : '') +
+        (a.remise_fidele_pct ? '<div style="font-weight:600;font-size:13px;line-height:1.5;">' + escHtml(T('perk_fidele').replace('{p}', Math.round(a.remise_fidele_pct))) + '</div>' : '') +
+        '<div style="font-size:11.5px;color:var(--mu2,#777);margin-top:4px;">' + escHtml(T('perk_info')) + '</div>') : '')) +
+      sectionFiche('services_titre', '🛠️', servicesHtml) +
+      sectionFiche('fiche_realisations', '📷', photosHtml) +
       pharesHtml +
-      '<div id="dispo-zone-' + escHtml(a.id) + '" style="margin:16px 0;"><div style="font-size:12.5px;color:var(--mu,#999);">⏳ Vérification des disponibilités…</div></div>' +
-      '<div style="font-weight:700;margin:18px 0 6px;">' + T('avis_titre') + (data.note_moyenne ? ' — ' + data.note_moyenne + '/5 (' + data.nb_avis + ')' : '') + '</div>' + avisHtml +
-      '<button onclick="ouvrirModalDevis(' + jsAttr(a.id) + ',' + jsAttr(a.nom_entreprise) + ',' + jsAttr(a.secteur) + ')" style="width:100%;margin-top:18px;padding:13px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">' + T('demander_devis') + '</button>' +
+      sectionFiche('fiche_dispos', '📅', '<div id="dispo-zone-' + escHtml(a.id) + '"><div style="font-size:12.5px;color:var(--mu,#999);">⏳ Vérification des disponibilités…</div></div>') +
+      sectionFiche('avis_titre', '⭐', (data.note_moyenne ? '<div style="font-size:13px;font-weight:700;margin-bottom:4px;">' + data.note_moyenne + '/5 (' + data.nb_avis + ')</div>' : '') + avisHtml) +
+      '<button class="fiche-devis" onclick="ouvrirModalDevis(' + jsAttr(a.id) + ',' + jsAttr(a.nom_entreprise) + ',' + jsAttr(a.secteur) + ')" style="width:100%;margin-top:18px;padding:13px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">' + T('demander_devis') + '</button>' +
     '</div>' +
   '</div>';
 }
@@ -969,11 +1357,14 @@ async function chargerApercuDispo(artisanId) {
       body: JSON.stringify({ mode: 'apercu', artisan_id: artisanId, aujourdhui: dateLocaleISO() }),
     });
     var data = await res.json();
-    if (data.error || !data.prochaine_date) {
+    var grilleFiche = (data.semaine && data.semaine.length) ? '<div class="dispo-grid fiche-grille">' + data.semaine.map(colonneJourCarte).join('') + '</div>' : '';
+    if (data.error || (!data.prochaine_date && !grilleFiche)) {
       zone.innerHTML = '';
+      var secVide = zone.closest('.fiche-sec'); if (secVide) secVide.classList.add('fiche-vide');
       return;
     }
-    zone.innerHTML =
+    if (!data.prochaine_date) { zone.innerHTML = grilleFiche; return; }
+    zone.innerHTML = grilleFiche +
       '<button type="button" onclick="ouvrirVerifDispo(' + jsAttr(artisanId) + ')" style="width:100%;text-align:left;padding:12px 14px;border-radius:10px;border:1px solid var(--ac-brd,#e8c4b8);background:rgba(181,80,47,.06);color:var(--ac,#B5502F);font-size:13.5px;font-weight:700;cursor:pointer;">' + T('dispo_apercu_prefix') + ' ' + data.label + ' →</button>' +
       '<div style="font-size:11.5px;color:var(--mu,#999);margin-top:5px;text-align:center;"><a href="#" onclick="ouvrirVerifDispo(' + jsAttr(artisanId) + ');return false;" style="color:var(--mu2,#777);">' + T('dispo_autres_creneaux') + '</a></div>';
   } catch (e) {
