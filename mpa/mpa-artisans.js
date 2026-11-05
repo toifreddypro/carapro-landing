@@ -5894,7 +5894,6 @@ function majHeroProfil() {
   }
 }
 function initProfilMobile() {
-  if (!window.matchMedia('(max-width:640px)').matches) return;
   var zone = document.getElementById('profil-lignes'); if (!zone || zone.getAttribute('data-ok')) return;
   zone.setAttribute('data-ok', '1');
   var entreprise = document.querySelector('#bp0 .fcol .fcard'); // « Informations entreprise »

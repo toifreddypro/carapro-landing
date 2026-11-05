@@ -732,6 +732,88 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 }
 
 
+/* ── Ordinateur : Mon profil au même style épuré que le téléphone (carte de présentation, lignes à ouvrir, clients en cartes) ── */
+@media(min-width:641px){
+
+  #profil-hero{display:block;background:#fff;border:1px solid #e3e3e3;border-radius:18px;padding:16px;margin-bottom:12px;}
+  .ph-haut{display:flex;align-items:center;gap:14px;}
+  .ph-av{width:58px;height:58px;border-radius:50%;background:#2f9e6e;color:#fff;font-weight:800;font-size:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .ph-nom{font-size:21px;font-weight:800;color:#111;line-height:1.2;}
+  .ph-sous{font-size:14px;color:#8a8580;margin-top:2px;}
+  .ph-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+  .ph-tags span{font-size:13px;font-weight:700;border-radius:99px;padding:5px 12px;background:#f3f4f6;color:#4b5563;}
+  .ph-btns{display:flex;gap:10px;margin-top:14px;}
+  .ph-btns button{flex:1;padding:12px;border-radius:14px;border:2px solid var(--ac);font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;cursor:pointer;background:#fff;color:var(--ac);}
+  .ph-btns .ph-b1{background:var(--ac);color:#fff;}
+  .ph-assist{display:block;width:100%;margin-top:10px;background:none;border:0;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#8a8580;cursor:pointer;padding:6px;}
+  #profil-lignes{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;}
+  .pl-chev{font-size:26px;color:#94a3b8;flex-shrink:0;line-height:1;}
+  .flay{display:none !important;}
+  #zone-rge:empty{display:none;}
+  .fm-corps .fcard{border:0 !important;box-shadow:none !important;border-radius:0 !important;background:#fff;}
+  .fm-corps .fchdr{padding:4px 0 12px;border-bottom:1px solid #eee;}
+  .fm-corps .fchdr .sbtn:not(:last-child){display:none;}
+  .fm-corps .fctit{font-size:18px;font-weight:800;}
+  /* fiches ouvertes : valeurs sous leur titre, jamais coupées */
+  .fm-corps .fbdy,.fm-corps .fcbdy{padding-left:0 !important;padding-right:0 !important;}
+  /* horaires : nom du jour + bouton sur une ligne, plages en pastilles dessous */
+  .fm-corps .hz-j{padding:15px 0 !important;gap:10px !important;}
+  .fm-corps .hz-nom{width:auto !important;flex:1;font-size:17px !important;font-weight:800 !important;}
+  .fm-corps .hz-add{order:2;padding:8px 16px !important;font-size:14px !important;border-radius:99px !important;border:1.5px dashed #c9c9c9 !important;}
+  .fm-corps .hz-plages{order:3;width:100%;flex:none !important;gap:8px !important;}
+  .fm-corps .hz-chip{font-size:15px !important;padding:8px 14px !important;border-radius:99px !important;background:#fff1e8 !important;color:#C2410C;}
+  .fm-corps .hz-plages>span:not(.hz-chip){font-size:14px !important;color:#9ca3af !important;}
+  .fm-corps .hz-form{padding:4px 0 14px !important;flex-wrap:wrap;gap:8px !important;}
+  .fm-corps .hz-form input{padding:10px 12px !important;font-size:16px !important;border-radius:10px !important;}
+  .fm-corps .hz-form button{padding:10px 18px !important;font-size:15px !important;border-radius:10px !important;}
+  /* congés : formulaire en colonne, grands champs */
+  .fm-corps .iz-form{flex-direction:column;align-items:stretch !important;gap:10px !important;}
+  .fm-corps .iz-form input,.fm-corps .iz-form select{width:100%;padding:12px !important;font-size:16px !important;border-radius:12px !important;min-width:0 !important;}
+  .fm-corps .iz-form span{font-size:13px !important;}
+  .fm-corps .iz-form button{padding:14px !important;font-size:16px !important;border-radius:14px !important;}
+  /* cotisations : un réglage par bloc */
+  .fm-corps .ccrow{flex-direction:column;align-items:flex-start !important;gap:8px;padding:14px 0;}
+  .fm-corps .ccrow>div:last-child{width:100%;}
+  .fm-corps .ccrow select.ccinp,.fm-corps .ccrow input[type=text].ccinp{width:100% !important;}
+  .fm-corps #zone-mon-offre{margin:0 !important;}
+  .fm-corps #zone-mon-offre .dcard{border:0 !important;}
+  #p-profil .dcard{border:1px solid #e3e3e3;border-radius:18px;box-shadow:none;background:#fff;}
+  #bp1 .scroll-hint,#bp1 .dtbl{display:none !important;}
+  #bp1 .dcbdy{padding:14px;display:flex;flex-direction:column;gap:10px;}
+  #zone-clients-m{display:flex;flex-direction:column;gap:10px;}
+  .cl-det .cl-lg{display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid #f0f0f0;font-size:15px;}
+  .cl-det .cl-lg span:first-child{color:#8a8580;min-width:96px;flex-shrink:0;}
+  .cl-det .cl-lg span:last-child{color:#111;font-weight:600;word-break:break-word;}
+  #avis-moyenne{font-size:20px !important;color:#f59e0b !important;}
+  #zone-avis>div{border-radius:16px !important;}
+  #profil-lignes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+  #profil-lignes .pc-wrap{display:block;}
+  #profil-lignes .pc-plein{display:none;}
+  #profil-lignes .pc-ligne{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e3e3e3;border-radius:16px;padding:14px 16px;cursor:pointer;height:100%;box-sizing:border-box;transition:border-color .15s,box-shadow .15s;}
+  #profil-lignes .pc-ligne:hover{border-color:var(--ac);box-shadow:0 4px 14px rgba(0,0,0,.06);}
+  #profil-lignes .sv-tuile{width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;}
+  #profil-lignes .pl-txt{flex:1;min-width:0;}
+  #profil-lignes .pl-nom{font-size:16.5px;font-weight:700;color:#111;line-height:1.25;}
+  #profil-lignes .pl-sous{font-size:13px;color:#8a8580;margin-top:3px;}
+  .ph-btns{max-width:520px;}
+  .ph-assist{width:auto;margin-left:0;}
+  .ph-av{width:64px;height:64px;}
+  #profil-hero{padding:20px 22px;margin-bottom:16px;}
+  #zone-clients-m{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+  #bp1 .dcbdy{padding:16px;}
+  #zone-clients-m .pc-wrap{display:block;}
+  #zone-clients-m .pc-plein{display:none;}
+  #zone-clients-m .pc-ligne{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e3e3e3;border-radius:16px;padding:12px 16px;cursor:pointer;height:100%;box-sizing:border-box;}
+  #zone-clients-m .pc-ligne:hover{border-color:var(--ac);box-shadow:0 4px 14px rgba(0,0,0,.06);}
+  .cv-av{width:46px;height:46px;border-radius:50%;color:#fff;font-weight:800;font-size:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  #zone-clients-m .cv-av{background:#f3f4f6 !important;color:#4b5563;}
+  #zone-clients-m .pl-txt{flex:1;min-width:0;}
+  #zone-clients-m .pl-nom{font-size:16.5px;font-weight:700;color:#111;}
+  #zone-clients-m .pl-sous{font-size:13px;color:#8a8580;margin-top:3px;}
+  .fm-corps .cl-det .cl-lg{display:flex;}
+  #zone-clients-m>.etat-vide-tbl{grid-column:1/-1;}
+}
+
 /* ── Version téléphone : Mon stock (fournitures en cartes, fiche « acheté / utilisé ») — ordinateur inchangé ── */
 #zone-fournitures-m{display:none;}
 @media(max-width:640px){
@@ -3041,6 +3123,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261105j"></script>
+<script src="/mpa/mpa-artisans.js?v=20261105k"></script>
 </body>
 </html>
