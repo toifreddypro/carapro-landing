@@ -768,6 +768,55 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 }
 
 
+/* ── Ordinateur : Mon stock au même style épuré que le téléphone (fournitures et produits en cartes, fiche au clic) ── */
+@media(min-width:641px){
+
+  #p-stock .dcard{border:1px solid #e3e3e3;border-radius:18px;box-shadow:none;background:#fff;}
+  #carte-fournitures{display:flex;flex-direction:column;}
+  #carte-fournitures #zone-fournitures{display:none;}
+  .fo-tag{font-size:12.5px;font-weight:800;border-radius:99px;padding:5px 12px;flex-shrink:0;background:#e6f7ef;color:#0f9d78;}
+  .fo-tag.bas{background:#fee2e2;color:#dc2626;}
+  .pc-ligne.fo-bas{border-color:#fca5a5;background:#fff6f6;}
+  .pc-ligne.fo-bas .pl-sous{color:#dc2626;font-weight:700;}
+  .fo-det .fo-lab{text-align:center;margin-top:22px;font-size:14px;color:#8a8580;font-weight:700;}
+  .fo-det .fo-big{display:flex;justify-content:center;align-items:baseline;gap:10px;margin:2px 0 6px;}
+  .fo-det .fo-big b{font-size:64px;font-weight:800;color:#0f9d78;letter-spacing:-2px;line-height:1.05;}
+  .fo-det .fo-big.bas b{color:#dc2626;}
+  .fo-det .fo-big span{font-size:20px;color:#8a8580;font-weight:700;}
+  .fo-det .fo-q{display:flex;align-items:center;justify-content:center;gap:12px;margin:10px 0 16px;}
+  .fo-det .fo-q button{width:46px;height:46px;border-radius:50%;border:1.5px solid #d6d6d6;background:#fff;font-size:24px;font-weight:700;color:#4b5563;cursor:pointer;line-height:1;}
+  .fo-det .fo-q input{width:90px;text-align:center;font-size:22px;font-weight:800;padding:8px;border-radius:12px;border:1.5px solid #d6d6d6;font-family:'Outfit',sans-serif;}
+  .fo-det .fo-btns{display:flex;gap:10px;}
+  .fo-det .fo-btns button{flex:1;padding:16px 6px;border-radius:14px;font-family:'Outfit',sans-serif;font-size:16px;font-weight:800;cursor:pointer;border:2px solid;}
+  .fo-det .fo-ach{background:#0f9d78;border-color:#0f9d78;color:#fff;}
+  .fo-det .fo-uti{background:#fff;border-color:#b45309;color:#b45309;}
+  .fo-det .fo-pied{display:flex;gap:8px;margin-top:18px;border-top:1px solid #eee;padding-top:14px;}
+  .fo-det .fo-pied button{flex:1;padding:10px 4px;border-radius:12px;border:1px solid #e3e3e3;background:#fff;font-family:'Outfit',sans-serif;font-size:13.5px;font-weight:700;color:#4b5563;cursor:pointer;}
+  .pl-droite{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;}
+  .pl-etiq{font-size:11.5px;font-weight:800;border-radius:99px;padding:3px 10px;background:#e6f7ef;color:#0f9d78;}
+  .pl-etiq.non{background:#f1f5f9;color:#64748b;}
+  #carte-fournitures .svc-ajout-m,#carte-produits-stock .svc-ajout-m{display:none;}
+  #carte-fournitures>div[style*="display:flex;gap:8px"]{padding:14px 16px 0 !important;}
+  #carte-fournitures>div[style*="display:flex;gap:8px"] button{flex:0 1 280px !important;padding:11px !important;border-radius:14px !important;font-size:14px !important;border-width:1.5px !important;font-family:'Outfit',sans-serif;}
+  #zone-fournitures-m{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px;order:1;}
+  #carte-fournitures>div[style*="display:flex;gap:8px"]{order:0;}
+  #carte-produits-stock>div[style*="border-top"]{display:none;}
+  #zone-produits-stock{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:12px !important;padding:16px !important;}
+  #zone-fournitures-m .pc-wrap,#zone-produits-stock .pc-wrap{display:block;}
+  #zone-fournitures-m .pc-plein,#zone-produits-stock .pc-plein{display:none;}
+  #zone-fournitures-m .pc-ligne,#zone-produits-stock .pc-ligne{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e3e3e3;border-radius:16px;padding:12px 16px;cursor:pointer;height:100%;box-sizing:border-box;transition:border-color .15s,box-shadow .15s;}
+  #zone-fournitures-m .pc-ligne:hover,#zone-produits-stock .pc-ligne:hover{border-color:var(--ac);box-shadow:0 4px 14px rgba(0,0,0,.06);}
+  #zone-produits-stock .pc-ligne.fo-bas,#zone-fournitures-m .pc-ligne.fo-bas{background:#fff6f6;border-color:#fca5a5;}
+  #zone-fournitures-m .pl-photo,#zone-produits-stock .pl-photo{width:72px;height:72px;border-radius:14px;object-fit:cover;flex-shrink:0;}
+  #zone-fournitures-m .pl-vide,#zone-produits-stock .pl-vide{background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:30px;}
+  #zone-fournitures-m .pl-txt,#zone-produits-stock .pl-txt{flex:1;min-width:0;}
+  #zone-fournitures-m .pl-nom,#zone-produits-stock .pl-nom{font-size:16.5px;font-weight:700;color:#111;line-height:1.25;}
+  #zone-fournitures-m .pl-sous,#zone-produits-stock .pl-sous{font-size:13px;color:#8a8580;margin-top:3px;}
+  #zone-fournitures-m .pl-prix,#zone-produits-stock .pl-prix{font-size:17px;font-weight:800;color:var(--ac);flex-shrink:0;}
+  #zone-produits-stock>p,#zone-produits-stock>.etat-vide-tbl{grid-column:1/-1;}
+  .fo-det .fo-pied button:hover,.fo-det .fo-q button:hover{border-color:var(--ac);}
+}
+
 /* ── Version téléphone : Planning (semaine + liste du jour + fiche d'intervention) — ordinateur inchangé ── */
 #plan-m{display:none;}
 @media(max-width:640px){
@@ -2992,6 +3041,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261105i"></script>
+<script src="/mpa/mpa-artisans.js?v=20261105j"></script>
 </body>
 </html>
