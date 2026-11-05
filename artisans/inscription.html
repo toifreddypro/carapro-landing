@@ -99,18 +99,24 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
         <label for="f-nom">Nom de votre entreprise</label>
         <input type="text" id="f-nom" placeholder="Ex : Jardins de Guadeloupe">
       </div>
-      <div class="field-row">
+      <div class="field-row" id="ligne-secteur">
+        <div class="field" id="champ-groupe">
+          <label for="f-groupe">Secteur</label>
+          <select id="f-groupe" onchange="onGroupeChoisi()">
+            <option value="">Choisir…</option>
+          </select>
+        </div>
         <div class="field">
-          <label for="f-secteur">Secteur</label>
+          <label for="f-secteur">Métier</label>
           <select id="f-secteur">
             <option value="">Choisir…</option>
           </select>
-          <div class="field-note">Vous ne voyez pas votre secteur ? <a href="mailto:contact@learnlogicstudio.com">Écrivez-nous</a> pour qu'on l'ajoute.</div>
         </div>
-        <div class="field">
-          <label for="f-commune">Commune</label>
-          <input type="text" id="f-commune" placeholder="Ex : Sainte-Anne">
-        </div>
+      </div>
+      <div class="field-note" style="margin:-4px 0 16px;">Votre métier n'est pas dans la liste ? Choisissez « Autre métier » dans votre secteur, ou <a href="mailto:contact@learnlogicstudio.com">écrivez-nous</a> pour qu'on l'ajoute.</div>
+      <div class="field">
+        <label for="f-commune">Commune</label>
+        <input type="text" id="f-commune" placeholder="Ex : Sainte-Anne">
       </div>
       <div class="field">
         <label for="f-telephone">Téléphone</label>
@@ -140,6 +146,16 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
           <div class="upload-zone-text" id="upload-zone-text">📎 Cliquez pour choisir un fichier (PDF, JPG, PNG)</div>
         </div>
         <input type="file" id="f-document" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="onFichierChoisi()">
+      </div>
+      <div class="field">
+        <label>Qualification RGE (facultatif)</label>
+        <div class="field-note" style="margin-bottom:8px;">Si vous êtes certifié RGE (Reconnu Garant de l'Environnement), déposez votre attestation : après vérification par notre équipe, un badge « 🌿 RGE » s'affichera sur votre fiche, avec la date de fin de validité. Le badge s'éteint tout seul à cette date.</div>
+        <div class="upload-zone" id="upload-zone-rge" onclick="document.getElementById('f-rge').click()">
+          <div class="upload-zone-text" id="upload-zone-rge-text">🌿 Cliquez pour choisir l'attestation RGE (PDF, JPG, PNG)</div>
+        </div>
+        <input type="file" id="f-rge" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="onRgeChoisi()">
+        <label for="f-rge-date" style="margin-top:10px;">Date de fin de validité de l'attestation</label>
+        <input type="date" id="f-rge-date">
       </div>
     </div>
 
@@ -191,26 +207,58 @@ function basculerMotDePasse(id, btn) {
 
 function escHtmlLocal(s) { return String(s || '').replace(/[&<>"']/g, function(m) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; }); }
 
-async function chargerSecteurs() {
+var _metiers = [];
+function tousLesMetiers(codeGroupe) {
+  return _metiers.filter(function(m) { return !codeGroupe || m.groupe === codeGroupe; }).sort(function(a, b) {
+    var aa = /^autre/.test(a.code) ? 1 : 0, bb = /^autre/.test(b.code) ? 1 : 0;
+    if (aa !== bb) return aa - bb;
+    return String(a.label_fr).localeCompare(String(b.label_fr), 'fr', { sensitivity: 'base' });
+  });
+}
+function remplirMetiers(liste, invite) {
   var sel = document.getElementById('f-secteur');
+  sel.innerHTML = '<option value="">' + invite + '</option>';
+  liste.forEach(function(s) {
+    var opt = document.createElement('option');
+    opt.value = s.code;
+    opt.textContent = (s.icon ? s.icon + ' ' : '') + s.label_fr;
+    sel.appendChild(opt);
+  });
+}
+// Le client choisit d'abord un grand secteur (Beauté, BTP…), puis son métier dans ce secteur.
+function onGroupeChoisi() {
+  var g = document.getElementById('f-groupe').value;
+  remplirMetiers(g ? tousLesMetiers(g) : [], g ? 'Choisir…' : 'Choisissez d\'abord un secteur');
+  document.getElementById('f-secteur').disabled = !g;
+}
+async function chargerSecteurs() {
+  var selG = document.getElementById('f-groupe');
   try {
-    var { data, error } = await sb.from('secteurs').select('*').order('ordre', { ascending: true });
-    if (error || !data || !data.length) throw error || new Error('vide');
-    data.forEach(function(s) {
-      var opt = document.createElement('option');
-      opt.value = s.code;
-      opt.textContent = (s.icon ? s.icon + ' ' : '') + s.label_fr;
-      sel.appendChild(opt);
-    });
+    var r = await sb.from('secteurs').select('*').order('ordre', { ascending: true });
+    if (r.error || !r.data || !r.data.length) throw r.error || new Error('vide');
+    _metiers = r.data;
+    var rg = await sb.from('secteurs_groupes').select('*').order('ordre', { ascending: true });
+    var groupes = (!rg.error && rg.data) ? rg.data : [];
+    if (groupes.length && _metiers.some(function(m) { return m.groupe; })) {
+      groupes.forEach(function(g) {
+        var opt = document.createElement('option');
+        opt.value = g.code; opt.textContent = (g.icon ? g.icon + ' ' : '') + g.label_fr;
+        selG.appendChild(opt);
+      });
+      onGroupeChoisi();
+    } else {
+      // Les grands secteurs ne sont pas encore en base : liste à plat, comme avant.
+      document.getElementById('champ-groupe').style.display = 'none';
+      document.getElementById('ligne-secteur').style.gridTemplateColumns = '1fr';
+      remplirMetiers(_metiers, 'Choisir…');
+    }
   } catch (e) {
     // Repli si jamais la table est inaccessible — mieux vaut une liste figée qu'un select vide
-    [['jardinage','🌿 Jardinage'],['plomberie','🔧 Plomberie'],['electricite','⚡ Électricité'],
-     ['peinture','🎨 Peinture'],['maconnerie','🧱 Maçonnerie'],['menuiserie','🪚 Menuiserie'],
-     ['climatisation','❄️ Climatisation'],['autre','✨ Autre']].forEach(function(s) {
-      var opt = document.createElement('option');
-      opt.value = s[0]; opt.textContent = s[1];
-      sel.appendChild(opt);
-    });
+    document.getElementById('champ-groupe').style.display = 'none';
+    document.getElementById('ligne-secteur').style.gridTemplateColumns = '1fr';
+    remplirMetiers([{code:'jardinage',icon:'🌿',label_fr:'Jardinage'},{code:'plomberie',icon:'🔧',label_fr:'Plomberie'},{code:'electricite',icon:'⚡',label_fr:'Électricité'},
+     {code:'peinture',icon:'🎨',label_fr:'Peinture'},{code:'maconnerie',icon:'🧱',label_fr:'Maçonnerie'},{code:'menuiserie',icon:'🪚',label_fr:'Menuiserie'},
+     {code:'climatisation',icon:'❄️',label_fr:'Climatisation'},{code:'autre',icon:'✨',label_fr:'Autre'}], 'Choisir…');
   }
 }
 chargerSecteurs();
@@ -223,6 +271,16 @@ function onFichierChoisi() {
     _fichierChoisi = input.files[0];
     zone.classList.add('has-file');
     texte.textContent = '✅ ' + _fichierChoisi.name;
+  }
+}
+
+var _fichierRge = null;
+function onRgeChoisi() {
+  var input = document.getElementById('f-rge');
+  if (input.files && input.files[0]) {
+    _fichierRge = input.files[0];
+    document.getElementById('upload-zone-rge').classList.add('has-file');
+    document.getElementById('upload-zone-rge-text').textContent = '✅ ' + _fichierRge.name;
   }
 }
 
@@ -244,6 +302,7 @@ async function creerCompte() {
   if (!email || !password) { afficherErreur('Merci de saisir votre email et un mot de passe.'); return; }
   if (password.length < 8) { afficherErreur('Le mot de passe doit comporter au moins 8 caractères.'); return; }
   if (!document.getElementById('f-cgu').checked) { afficherErreur("Merci d'accepter les conditions d'utilisation pour créer votre compte."); return; }
+  if (_fichierRge && !rgeDate) { afficherErreur('Indiquez la date de fin de validité de votre attestation RGE.'); return; }
   var turnstileToken = (typeof turnstile !== 'undefined' && _idWidgetForm != null) ? turnstile.getResponse(_idWidgetForm) : null;
   if (!turnstileToken) { afficherErreur('Merci de valider la vérification anti-robot.'); return; }
 
@@ -325,9 +384,10 @@ async function creerProfil() {
   var rayon = parseInt(document.getElementById('f-rayon').value, 10) || 15;
   var bio = document.getElementById('f-bio').value.trim();
   var siret = document.getElementById('f-siret').value.trim();
+  var rgeDate = document.getElementById('f-rge-date').value;
   document.getElementById('msg-err').classList.remove('show');
 
-  if (!nom || !secteur || !commune || !telephone) { afficherErreur('Merci de remplir tous les champs obligatoires.'); return; }
+  if (!nom || !secteur || !commune || !telephone) { afficherErreur(!secteur && nom ? 'Merci de choisir votre secteur puis votre métier.' : 'Merci de remplir tous les champs obligatoires.'); return; }
   if (siret && !/^\d{14}$/.test(siret)) { afficherErreur('Le SIRET doit comporter exactement 14 chiffres.'); return; }
   var turnstileToken = (typeof turnstile !== 'undefined' && _idWidgetForm != null) ? turnstile.getResponse(_idWidgetForm) : null;
   if (!turnstileToken) { afficherErreur('Merci de valider la vérification anti-robot.'); return; }
@@ -345,12 +405,20 @@ async function creerProfil() {
       if (up.error) throw new Error('Le document n\'a pas pu être envoyé : ' + up.error.message);
       documentPath = cheminFichier;
     }
+    var rgePath = null;
+    if (_fichierRge) {
+      var cheminRge = session.user.id + '/' + Date.now() + '_rge_' + _fichierRge.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      var upR = await sb.storage.from('artisans-documents').upload(cheminRge, _fichierRge);
+      if (upR.error) throw new Error('L\'attestation RGE n\'a pas pu être envoyée : ' + upR.error.message);
+      rgePath = cheminRge;
+    }
     var res = await fetch(SUPABASE_URL + '/functions/v1/finaliser-inscription-artisan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
       body: JSON.stringify({
         nom_entreprise: nom, secteur: secteur, commune: commune, telephone: telephone,
         bio: bio || null, rayon_intervention_km: rayon, siret: siret || null, document_path: documentPath,
+        rge_document_path: rgePath, rge_date_declaree: rgePath ? rgeDate : null,
         turnstile_token: turnstileToken,
       }),
     });

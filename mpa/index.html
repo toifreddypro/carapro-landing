@@ -2528,7 +2528,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="mi-section mi-s-entreprise">
 <div class="mi-section-titre">🏢 Mon entreprise</div>
 <div class="modal-field"><label for="m-nom">Nom / Raison sociale</label><input id="m-nom" type="text"/></div>
-<div class="modal-field"><label for="m-secteur">Secteur</label><select id="m-secteur"></select></div>
+<div class="modal-row" style="display:flex;gap:10px;flex-wrap:wrap;">
+<div class="modal-field" id="m-groupe-champ" style="flex:1;min-width:140px;"><label for="m-groupe">Secteur</label><select id="m-groupe" onchange="majMetiersModal()"></select></div>
+<div class="modal-field" style="flex:1;min-width:140px;"><label for="m-secteur">Métier</label><select id="m-secteur"></select></div>
+</div>
 <div class="modal-row" style="display:flex;gap:10px;flex-wrap:wrap;">
 <div class="modal-field" style="flex:1;min-width:140px;"><label for="m-statut">Statut</label><input id="m-statut" placeholder="Artisan Indépendant" type="text"/></div>
 <div class="modal-field" style="flex:1;min-width:140px;"><label for="m-siret">SIRET</label><input id="m-siret" type="text"/></div>
@@ -3247,6 +3250,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261105n"></script>
+<script src="/mpa/mpa-artisans.js?v=20261105o"></script>
 </body>
 </html>

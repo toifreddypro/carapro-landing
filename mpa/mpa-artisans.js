@@ -5511,7 +5511,8 @@ function renderFiche() {
   document.getElementById('fv-nom').textContent = a.nom_entreprise || '—';
   if (typeof majHeroProfil === 'function') majHeroProfil();
   document.getElementById('fv-statut').textContent = a.statut || 'Artisan Indépendant';
-  document.getElementById('fv-act').textContent = a.secteur || '—';
+  document.getElementById('fv-act').textContent = a.secteur ? etiquetteMetier(a.secteur) : '—';
+  if (a.secteur && !_secteursCache) chargerSecteursMpa().then(function() { var e = document.getElementById('fv-act'); if (e && _artisan) e.textContent = etiquetteMetier(_artisan.secteur) || '—'; if (typeof majHeroProfil === 'function') majHeroProfil(); }).catch(function() {});
   document.getElementById('fv-siret').textContent = a.siret || '—';
   document.getElementById('fv-ape').textContent = a.ape || '—';
   document.getElementById('fv-tva-intra').textContent = a.tva_intra || '—';
@@ -5549,6 +5550,32 @@ function renderFiche() {
 }
 
 var _secteursCache = null;
+var _groupesCache = [];
+// Charge les métiers (et les grands secteurs s'ils existent déjà en base) une seule fois.
+async function chargerSecteursMpa() {
+  if (_secteursCache) return;
+  var r = await sb.from('secteurs').select('code, label_fr, icon, groupe').order('ordre', { ascending: true });
+  if (r.error) r = await sb.from('secteurs').select('code, label_fr, icon').order('ordre', { ascending: true }); // pas encore de colonne « groupe » : liste à plat
+  _secteursCache = r.data || [];
+  try { var g = await sb.from('secteurs_groupes').select('code, label_fr, icon, ordre').order('ordre', { ascending: true }); _groupesCache = (g && !g.error && g.data) || []; } catch (e) { _groupesCache = []; }
+}
+function groupesActifs() { return _groupesCache.length > 0 && (_secteursCache || []).some(function(s) { return s.groupe; }); }
+// Nom du métier à afficher (« Plombier » plutôt que « plomberie ») ; le code seul tant que la liste n'est pas chargée.
+function etiquetteMetier(code) {
+  var s = (_secteursCache || []).find(function(x) { return x.code === code; });
+  return s && s.label_fr ? s.label_fr : (code || '');
+}
+function majMetiersModal(codeChoisi) {
+  var g = document.getElementById('m-groupe').value, sel = document.getElementById('m-secteur');
+  var liste = (_secteursCache || []).filter(function(s) { return !groupesActifs() || s.groupe === g; }).sort(function(a, b) {
+    var aa = /^autre/.test(a.code) ? 1 : 0, bb = /^autre/.test(b.code) ? 1 : 0;
+    if (aa !== bb) return aa - bb;
+    return String(a.label_fr).localeCompare(String(b.label_fr), 'fr', { sensitivity: 'base' });
+  });
+  sel.innerHTML = liste.map(function(s) {
+    return '<option value="' + escHtml(s.code) + '"' + (s.code === codeChoisi ? ' selected' : '') + '>' + escHtml((s.icon ? s.icon + ' ' : '') + s.label_fr) + '</option>';
+  }).join('');
+}
 
 async function openModifierFiche() {
   var a = _artisan;
@@ -5580,13 +5607,15 @@ async function openModifierFiche() {
   document.getElementById('m-web').value = a.site_web || '';
   document.getElementById('m-bio').value = a.bio || '';
 
-  if (!_secteursCache) {
-    var { data } = await sb.from('secteurs').select('code, label_fr').order('ordre', { ascending: true });
-    _secteursCache = data || [];
-  }
-  document.getElementById('m-secteur').innerHTML = _secteursCache.map(function(s) {
-    return '<option value="' + s.code + '"' + (s.code === a.secteur ? ' selected' : '') + '>' + s.label_fr + '</option>';
-  }).join('');
+  await chargerSecteursMpa();
+  var selG = document.getElementById('m-groupe'), champG = document.getElementById('m-groupe-champ');
+  if (groupesActifs()) {
+    var actuel = _secteursCache.find(function(s) { return s.code === a.secteur; });
+    var gActuel = (actuel && actuel.groupe) || 'autres';
+    champG.style.display = '';
+    selG.innerHTML = _groupesCache.map(function(g) { return '<option value="' + escHtml(g.code) + '"' + (g.code === gActuel ? ' selected' : '') + '>' + escHtml((g.icon ? g.icon + ' ' : '') + g.label_fr) + '</option>'; }).join('');
+  } else { champG.style.display = 'none'; selG.innerHTML = ''; } // pas encore de grands secteurs en base : liste à plat, comme avant
+  majMetiersModal(a.secteur);
 
   ouvrirModale('modal-fiche');
 }
@@ -5881,7 +5910,7 @@ function majHeroProfil() {
   var ini = nom.split(/\s+/).map(function(m) { return m.charAt(0); }).join('').slice(0, 2).toUpperCase() || '?';
   var set = function(id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
   set('ph-av', ini); set('ph-nom', nom);
-  set('ph-sous', [a.secteur, a.commune].filter(Boolean).join(' · '));
+  set('ph-sous', [a.secteur ? etiquetteMetier(a.secteur) : '', a.commune].filter(Boolean).join(' · '));
   var tags = document.getElementById('ph-tags');
   if (tags) {
     var t = '';

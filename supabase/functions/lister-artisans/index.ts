@@ -95,7 +95,12 @@ Deno.serve(async (req: Request) => {
     // Filtre « artisans RGE » : uniquement un badge validé par l'administrateur ET encore dans sa date de validité.
     if (url.searchParams.get("rge") === "1") requete = requete.eq("rge_statut", "valide").gte("rge_valide_jusqu", aujourdhui);
 
-    if (secteur) requete = requete.eq("secteur", secteur);
+    // Un métier précis, ou plusieurs codes séparés par des virgules (tous les métiers d'un grand secteur). Seuls les codes bien formés sont gardés.
+    if (secteur) {
+      const codes = [...new Set(secteur.split(",").map((s) => s.trim()).filter((s) => /^[a-z0-9-]{1,50}$/.test(s)))].slice(0, 200);
+      if (codes.length === 1) requete = requete.eq("secteur", codes[0]);
+      else if (codes.length > 1) requete = requete.in("secteur", codes);
+    }
     if (commune) requete = requete.ilike("commune", "%" + commune + "%");
     // Audit du 01/11 : le texte cherché entrait tel quel dans le filtre « .or(...) » de la base. Avec une virgule, un visiteur pouvait y glisser
     // une condition sur une colonne PRIVÉE (téléphone, email, SIRET) et deviner ces valeurs en regardant quels artisans apparaissent.

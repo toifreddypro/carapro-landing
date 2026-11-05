@@ -174,7 +174,64 @@ async function chargerSecteurs() {
     var data = await res.json();
     if (res.ok && Array.isArray(data) && data.length) _secteursCache = data;
   } catch (e) { console.warn('Chargement des secteurs échoué, liste de repli utilisée.', e); }
+  // Grands secteurs (Beauté, BTP, Animaux…) : s'ils manquent, la recherche garde l'ancienne liste à plat (mode dégradé).
+  try {
+    var res2 = await fetch(SUPABASE_URL + '/rest/v1/secteurs_groupes?select=*&order=ordre.asc', {
+      headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON },
+    });
+    var data2 = await res2.json();
+    if (res2.ok && Array.isArray(data2) && data2.length) _groupesCache = data2;
+  } catch (e) { console.warn('Chargement des grands secteurs échoué, liste à plat utilisée.', e); }
 }
+
+// ── Deux niveaux : grand secteur (Beauté…) puis métier (Coiffeur…) ──
+var _groupesCache = [];
+function modeGroupes() { return _groupesCache.length > 0 && _secteursCache.some(function(s) { return s.groupe; }); }
+function libelleDe(o) { return String(o[secteurLabelChamp()] || o.label_fr || o.code || ''); }
+function groupesTries() {
+  return _groupesCache.slice().sort(function(a, b) { return (a.ordre || 0) - (b.ordre || 0); });
+}
+function metiersDuGroupe(g) {
+  return _secteursCache.filter(function(s) { return s.groupe === g; }).sort(function(a, b) {
+    var aa = /^autre/.test(a.code) ? 1 : 0, bb = /^autre/.test(b.code) ? 1 : 0;
+    if (aa !== bb) return aa - bb;
+    return libelleDe(a).localeCompare(libelleDe(b), AT_LANG || 'fr', { sensitivity: 'base' });
+  });
+}
+function groupeDe(code) { var s = _secteursCache.find(function(x) { return x.code === code; }); return s && s.groupe ? s.groupe : ''; }
+function etiquetteGroupe(g) { var o = _groupesCache.find(function(x) { return x.code === g; }); return o ? ((o.icon || '') + ' ' + libelleDe(o)).trim() : ''; }
+function valeurSecteur() { return _searchState.secteur ? 'm:' + _searchState.secteur : (_searchState.groupe ? 'g:' + _searchState.groupe : ''); }
+// Lit le champ « Secteur » (liste sur ordinateur, champ caché sur téléphone) et met à jour le secteur / le métier choisis.
+function lireChampSecteur() {
+  var el = document.getElementById('search-secteur'), v = el ? el.value.trim() : '';
+  if (!modeGroupes()) { _searchState.secteur = v; _searchState.groupe = ''; return; }
+  if (v.indexOf('g:') === 0) {
+    var g = v.slice(2);
+    if (g !== _searchState.groupe) { _searchState.groupe = g; _searchState.secteur = ''; } // un autre secteur : on repart de tous ses métiers
+  } else if (v.indexOf('m:') === 0) {
+    _searchState.secteur = v.slice(2); _searchState.groupe = groupeDe(_searchState.secteur) || _searchState.groupe;
+  } else { _searchState.groupe = ''; _searchState.secteur = ''; }
+}
+// Petites pastilles « Tous · Coiffeur · Esthéticienne… » pour affiner dans le secteur choisi.
+function majPuces() {
+  var z = document.getElementById('metier-puces');
+  if (!z) return;
+  if (!modeGroupes() || !_searchState.groupe) { z.innerHTML = ''; z.style.display = 'none'; return; }
+  var puce = function(code, txt, actif) {
+    return '<button type="button" class="metier-puce' + (actif ? ' on' : '') + '" onclick="choisirMetier(\'' + escHtml(code) + '\')">' + txt + '</button>';
+  };
+  z.innerHTML = puce('', escHtml(T('search_metier_tous')), !_searchState.secteur) +
+    metiersDuGroupe(_searchState.groupe).map(function(s) { return puce(s.code, escHtml(libelleDe(s)), _searchState.secteur === s.code); }).join('');
+  z.style.display = 'flex';
+}
+function choisirMetier(code) {
+  _searchState.secteur = code || '';
+  var el = document.getElementById('search-secteur');
+  if (el && el.tagName === 'INPUT') el.value = valeurSecteur();   // téléphone : champ caché à jour (la liste de l'ordinateur reste sur le grand secteur)
+  majPuces();
+  lancerRecherche(true);
+}
+function secteurSelectChange() { lireChampSecteur(); majPuces(); rechercheAuto(true); }
 
 // Secteurs dans l'ordre alphabétique (« Autre » toujours en dernier) — l'ordre de la base ne sert plus à l'affichage de la recherche.
 function secteursTries() {
@@ -191,10 +248,10 @@ function sansAccents(t) { return String(t || '').normalize('NFD').replace(/[\u03
 // donc tout le reste de la recherche fonctionne sans changement.
 function htmlChampSecteurTel() {
   var actuel = _secteursCache.find(function(s) { return s.code === _searchState.secteur; });
-  var texte = actuel ? ((actuel.icon || '') + ' ' + (actuel[secteurLabelChamp()] || actuel.label_fr)).trim() : '';
+  var texte = actuel ? ((actuel.icon || '') + ' ' + (actuel[secteurLabelChamp()] || actuel.label_fr)).trim() : (_searchState.groupe ? etiquetteGroupe(_searchState.groupe) : '');
   return '<div class="sect-combo">' +
     '<input id="search-secteur-txt" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="' + escHtml(T('search_secteur_tous')) + '" value="' + escHtml(texte) + '" onfocus="secteurOuvrir()" oninput="secteurFiltrer()" onkeydown="if(event.key===\'Enter\'){secteurPremier();return false;}"/>' +
-    '<input id="search-secteur" type="hidden" value="' + escHtml(_searchState.secteur || '') + '"/></div>';
+    '<input id="search-secteur" type="hidden" value="' + escHtml(modeGroupes() ? valeurSecteur() : (_searchState.secteur || '')) + '"/></div>';
 }
 function secteurOuvrir() {
   var champ = document.getElementById('search-secteur-txt'); if (champ) champ.select();
@@ -208,13 +265,28 @@ function secteurFiltrer(toutMontrer) {
   var q = toutMontrer ? '' : sansAccents(champ.value.trim());
   if (!toutMontrer && !q) { document.getElementById('search-secteur').value = ''; }
   var champLib = secteurLabelChamp();
-  var items = secteursTries().filter(function(s) { return !q || sansAccents(s[champLib] || s.label_fr).indexOf(q) !== -1; });
   var html = '';
-  if (!q) html += '<div class="sect-item sect-tous" onmousedown="event.preventDefault()" onclick="secteurChoisir(\'\')">' + escHtml(T('search_secteur_tous')) + '</div>';
-  html += items.map(function(s) {
-    return '<div class="sect-item" data-code="' + escHtml(s.code) + '" onmousedown="event.preventDefault()" onclick="secteurChoisir(\'' + escHtml(s.code) + '\')"><span class="sect-ic">' + (s.icon || '') + '</span>' + escHtml(s[champLib] || s.label_fr) + '</div>';
-  }).join('');
-  if (!items.length) html += '<div class="sect-vide">Aucun métier ne correspond. Essayez un autre mot.</div>';
+  if (modeGroupes()) {
+    // Sans texte : les grands secteurs. Avec du texte : les secteurs ET les métiers qui correspondent (« coiff » → Coiffeur, « bât » → BTP).
+    if (!q) html += '<div class="sect-item sect-tous" onmousedown="event.preventDefault()" onclick="secteurChoisir(\'\')">' + escHtml(T('search_secteur_tous')) + '</div>';
+    groupesTries().forEach(function(g) {
+      var metiers = metiersDuGroupe(g.code);
+      var gOk = !q || sansAccents(libelleDe(g)).indexOf(q) !== -1;
+      if (gOk) html += '<div class="sect-item sect-groupe" data-v="g:' + escHtml(g.code) + '" onmousedown="event.preventDefault()" onclick="secteurChoisir(\'g:' + escHtml(g.code) + '\')"><span class="sect-ic">' + (g.icon || '') + '</span>' + escHtml(libelleDe(g)) + '</div>';
+      if (q) metiers.forEach(function(s) {
+        if (/^autre/.test(s.code) || sansAccents(libelleDe(s)).indexOf(q) === -1) return;
+        html += '<div class="sect-item" data-v="m:' + escHtml(s.code) + '" onmousedown="event.preventDefault()" onclick="secteurChoisir(\'m:' + escHtml(s.code) + '\')"><span class="sect-ic">' + (s.icon || '') + '</span>' + escHtml(libelleDe(s)) + '<small>' + escHtml(libelleDe(g)) + '</small></div>';
+      });
+    });
+    if (q && !html) html = '<div class="sect-vide">' + escHtml(T('search_secteur_aucun')) + '</div>';
+  } else {
+    var items = secteursTries().filter(function(s) { return !q || sansAccents(s[champLib] || s.label_fr).indexOf(q) !== -1; });
+    if (!q) html += '<div class="sect-item sect-tous" onmousedown="event.preventDefault()" onclick="secteurChoisir(\'\')">' + escHtml(T('search_secteur_tous')) + '</div>';
+    html += items.map(function(s) {
+      return '<div class="sect-item" data-v="' + escHtml(s.code) + '" onmousedown="event.preventDefault()" onclick="secteurChoisir(\'' + escHtml(s.code) + '\')"><span class="sect-ic">' + (s.icon || '') + '</span>' + escHtml(s[champLib] || s.label_fr) + '</div>';
+    }).join('');
+    if (!items.length) html += '<div class="sect-vide">Aucun métier ne correspond. Essayez un autre mot.</div>';
+  }
   liste.innerHTML = html;
   liste.style.display = 'block';
   secteurPlacer();
@@ -233,20 +305,34 @@ function secteurPlacer() {
 }
 window.addEventListener('scroll', secteurPlacer, { passive: true });
 if (window.visualViewport) window.visualViewport.addEventListener('resize', secteurPlacer);
-function secteurChoisir(code) {
+function secteurChoisir(val) {
   var champ = document.getElementById('search-secteur-txt'), cache = document.getElementById('search-secteur'), liste = document.getElementById('sect-liste');
-  var s = code ? _secteursCache.find(function(x) { return x.code === code; }) : null;
-  if (cache) cache.value = code || '';
-  if (champ) { champ.value = s ? ((s.icon || '') + ' ' + (s[secteurLabelChamp()] || s.label_fr)).trim() : ''; champ.blur(); }
+  val = val || '';
+  var etiq = '';
+  if (modeGroupes()) {
+    if (val.indexOf('g:') === 0) { _searchState.groupe = val.slice(2); _searchState.secteur = ''; etiq = etiquetteGroupe(_searchState.groupe); }
+    else if (val.indexOf('m:') === 0) {
+      var m = _secteursCache.find(function(x) { return x.code === val.slice(2); });
+      _searchState.secteur = val.slice(2); _searchState.groupe = (m && m.groupe) || '';
+      etiq = m ? ((m.icon || '') + ' ' + libelleDe(m)).trim() : '';
+    } else { _searchState.groupe = ''; _searchState.secteur = ''; }
+    if (cache) cache.value = valeurSecteur();
+  } else {
+    var s = val ? _secteursCache.find(function(x) { return x.code === val; }) : null;
+    _searchState.secteur = val; if (cache) cache.value = val;
+    etiq = s ? ((s.icon || '') + ' ' + (s[secteurLabelChamp()] || s.label_fr)).trim() : '';
+  }
+  if (champ) { champ.value = etiq; champ.blur(); }
   if (liste) liste.style.display = 'none';
+  majPuces();
   rechercheAuto(true);
 }
 function secteurPremier() {
   var champ = document.getElementById('search-secteur-txt');
   // Champ vide : on ne choisit rien à la place du client, on referme et on relance (la zone reste vide s'il n'y a plus aucun critère).
   if (!champ || !champ.value.trim()) { secteurChoisir(''); return; }
-  var premier = document.querySelector('#sect-liste .sect-item[data-code]');
-  if (premier) secteurChoisir(premier.getAttribute('data-code'));
+  var premier = document.querySelector('#sect-liste .sect-item[data-v]');
+  if (premier) secteurChoisir(premier.getAttribute('data-v'));
 }
 document.addEventListener('click', function(e) {
   var liste = document.getElementById('sect-liste');
@@ -407,7 +493,7 @@ function renderNav() {
 // ════════════════════════════════════════
 //  HERO / RECHERCHE — secteur + commune, jamais de date (V2)
 // ════════════════════════════════════════
-var _searchState = { secteur:'', commune:'', nom:'', tri:'', rge:false };
+var _searchState = { secteur:'', groupe:'', commune:'', nom:'', tri:'', rge:false };
 
 // Bouton « boutique » : fond ardoise sombre, lettres dorées à paillettes (comme l'enseigne « BOUTIQUE »).
 (function() {
@@ -454,11 +540,15 @@ function renderHero() {
           '<div class="search-question">🔍 ' + T('search_que') + '</div>' +
           '<div class="search-field"><label>' + T('search_secteur_label') + '</label>' +
             (ecranTel() ? htmlChampSecteurTel() :
-            '<select id="search-secteur" onchange="rechercheAuto(true)" onkeydown="if(event.key===\'Enter\')lancerRecherche()">' +
+            '<select id="search-secteur" onchange="secteurSelectChange()" onkeydown="if(event.key===\'Enter\')lancerRecherche()">' +
               '<option value="">' + T('search_secteur_tous') + '</option>' +
-              secteursTries().map(function(s) {
-                return '<option value="' + s.code + '"' + (_searchState.secteur === s.code ? ' selected' : '') + '>' + (s.icon||'') + ' ' + escHtml(s[secteurLabelChamp()] || s.label_fr) + '</option>';
-              }).join('') +
+              (modeGroupes()
+                ? groupesTries().map(function(g) {
+                    return '<option value="g:' + g.code + '"' + (_searchState.groupe === g.code ? ' selected' : '') + '>' + (g.icon||'') + ' ' + escHtml(libelleDe(g)) + '</option>';
+                  }).join('')
+                : secteursTries().map(function(s) {
+                    return '<option value="' + s.code + '"' + (_searchState.secteur === s.code ? ' selected' : '') + '>' + (s.icon||'') + ' ' + escHtml(s[secteurLabelChamp()] || s.label_fr) + '</option>';
+                  }).join('')) +
             '</select>') + '</div>' +
           '<div class="search-field"><label>' + T('search_lieu_label') + '</label>' +
             '<input id="search-commune" type="text" placeholder="' + (ecranTel() ? T('search_lieu_court') : T('search_lieu_ph')) + '" enterkeyhint="search" oninput="rechercheAuto(false)" value="' + escHtml(_searchState.commune) + '" onkeydown="if(event.key===\'Enter\')lancerRecherche()"/></div>' +
@@ -469,6 +559,7 @@ function renderHero() {
             T('search_btn') +
           '</button>' +
         '</div>' +
+        '<div id="metier-puces" class="metier-puces" style="display:none"></div>' +
         '<div class="devis-mobile">📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">' + T('hero_devisgen_lien') + '</a>' + T('hero_devisgen_suite') + '</div>' +
         '</div>' +
         '<div class="filters-wrap">' +
@@ -487,6 +578,7 @@ function renderHero() {
         '</div>' +
       '</div>' +
     '</div>';
+  majPuces();
 }
 
 // ════════════════════════════════════════
@@ -594,11 +686,11 @@ function rechercheAuto(immediat) {
 }
 function lancerRecherche(sansDefiler) {
   // Téléphone : les vignettes n'apparaissent qu'après une recherche (le style ne s'applique que sur petit écran).
-  _searchState.secteur = document.getElementById('search-secteur').value.trim();
+  lireChampSecteur();
   _searchState.commune = document.getElementById('search-commune').value.trim();
   _searchState.nom = document.getElementById('search-nom').value.trim();
   // Aucun critère (champs vidés) : la zone des résultats reste vide, comme à l'arrivée sur la page.
-  if (!_searchState.secteur && !_searchState.commune && !_searchState.nom && !_searchState.rge) {
+  if (!_searchState.secteur && !_searchState.groupe && !_searchState.commune && !_searchState.nom && !_searchState.rge) {
     window._rechercheFaite = false;
     document.body.classList.add('avant-recherche');
     return;
@@ -853,7 +945,9 @@ async function chargerArtisans() {
 
   try {
     var params = new URLSearchParams();
-    if (_searchState.secteur) params.set('secteur', _searchState.secteur);
+    // Un métier précis, ou tous les métiers du grand secteur choisi (codes séparés par des virgules).
+    var codesSecteur = _searchState.secteur || (_searchState.groupe ? metiersDuGroupe(_searchState.groupe).map(function(s) { return s.code; }).join(',') : '');
+    if (codesSecteur) params.set('secteur', codesSecteur);
     if (_searchState.commune) params.set('commune', _searchState.commune);
     if (_searchState.rge) params.set('rge', '1');
 
