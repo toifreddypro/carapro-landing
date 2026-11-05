@@ -899,6 +899,24 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .itin-trajet{text-align:center;font-size:12.5px;color:#a39d97;padding:7px 0;}
 }
 
+
+/* ── Ordinateur : bandeau « interventions passées » et grande fenêtre MPA-AI, même style épuré que sur téléphone ── */
+@media(min-width:641px){
+  #encart-rappel-cloture-journee>div{background:#fff !important;border:1px solid #e3e3e3 !important;border-radius:16px !important;padding:16px 22px !important;}
+  #encart-rappel-cloture-journee>div>span:first-child{display:none;}
+  #encart-rappel-cloture-journee>div>div{font-size:15px !important;color:#8a8580 !important;line-height:1.5;}
+  #encart-rappel-cloture-journee strong{color:#111 !important;}
+  #encart-rappel-cloture-journee .rc-sep{display:none;}
+  #encart-rappel-cloture-journee .rc-2{display:block;color:#8a8580;font-size:14px;margin-top:3px;}
+  #encart-rappel-cloture-journee button{border:1px solid #e3e3e3 !important;background:#fff !important;color:var(--ac) !important;font-size:13.5px !important;padding:10px 18px !important;border-radius:999px !important;}
+  .mpa-ai-grand-box{border-radius:28px;border:1px solid #e3e3e3;border-top:1px solid #e3e3e3 !important;padding:30px 28px 24px;box-shadow:0 20px 60px rgba(15,23,42,.3);}
+  .mpa-ai-grand-msg{text-align:center;margin:6px 0 24px;}
+  .mpa-ai-grand-msg .gm-t{display:block;font-size:24px;font-weight:800;line-height:1.3;color:#13223c;}
+  .mpa-ai-grand-msg .gm-s{display:block;margin-top:10px;font-size:17px;font-weight:600;line-height:1.5;color:#6b7c96;}
+  .mpa-ai-grand-msg br.gm-br{display:none;}
+  .mpa-ai-grand-cta,.mpa-ai-grand-plus-tard,.mpa-ai-grand-suivant{min-height:52px;font-size:16px;border-radius:99px;}
+}
+
 /* ── Tableau de bord ── */
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 @media(max-width:900px){.dash-grid{grid-template-columns:1fr;}}
@@ -2727,6 +2745,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261105a"></script>
+<script src="/mpa/mpa-artisans.js?v=20261105b"></script>
 </body>
 </html>
