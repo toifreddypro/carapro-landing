@@ -1044,9 +1044,81 @@ async function chargerInterventions() {
     .lte('date_debut', finStr).gte('date_fin', debutStr);
   _indisposMois = ind.error ? [] : (ind.data || []);
 
+  await chargerRetards();
   renderCalendrier();
   renderPlanningMobile();
   renderRecapInterventions();
+}
+
+// ── Interventions passées encore « Planifiée » : mises en évidence (contour orange) dans le planning ──
+var _retardIds = {}, _retardDates = {}, _noteRetardVoulue = false;
+function styleRetard() {
+  if (document.getElementById('style-retard')) return;
+  var st = document.createElement('style'); st.id = 'style-retard';
+  st.textContent = '.cal-day.jour-retard{border-color:#d97706 !important;box-shadow:0 0 0 2px rgba(217,119,6,.35);background:rgba(245,158,11,.07);}' +
+    '.cal-pill.cal-pill-retard{outline:2px solid #d97706;outline-offset:1px;}' +
+    '.pm-j.retard b{border-color:#d97706;background:rgba(245,158,11,.2);}' +
+    '.pm-ligne.retard{border-color:#d97706;box-shadow:0 0 0 2px rgba(217,119,6,.3);}' +
+    '#note-retard{display:flex;align-items:flex-start;gap:10px;background:rgba(245,158,11,.1);border:1.5px solid rgba(217,119,6,.45);border-radius:14px;padding:12px 16px;margin-bottom:14px;font-size:13.5px;line-height:1.45;font-weight:600;color:#92400e;}' +
+    '#note-retard button{flex-shrink:0;border:0;background:transparent;font-size:18px;line-height:1;color:#92400e;cursor:pointer;padding:0 2px;}';
+  document.head.appendChild(st);
+}
+async function chargerRetards() {
+  _retardIds = {}; _retardDates = {};
+  if (typeof _artisan === 'undefined' || !_artisan) return;
+  var auj = isoLocalM(new Date());
+  var res = await sb.from('mpa_artisans_interventions').select('id, date_intervention')
+    .eq('artisan_id', _artisan.id).eq('statut', 'planifiee').lt('date_intervention', auj).limit(1000);
+  if (!res.error) (res.data || []).forEach(function(x) { _retardIds[x.id] = true; _retardDates[x.date_intervention] = true; });
+  majNoteRetard();
+}
+function majNoteRetard() {
+  var note = document.getElementById('note-retard');
+  var reste = Object.keys(_retardIds).length;
+  if (!_noteRetardVoulue || !reste) {
+    if (note) note.remove();
+    if (!reste) _noteRetardVoulue = false;
+    return;
+  }
+  var p0 = document.getElementById('p0'); if (!p0) return;
+  styleRetard();
+  if (!note) { note = document.createElement('div'); note.id = 'note-retard'; p0.insertBefore(note, p0.firstChild); }
+  var nbJours = Object.keys(_retardDates).length;
+  note.innerHTML = '<span style="font-size:20px;">⏰</span><div style="flex:1;">' + reste + ' intervention' + (reste > 1 ? 's' : '') + ' passée' + (reste > 1 ? 's' : '') + ' à clôturer : les jours entourés en orange. Cliquez sur une intervention pour la passer en Terminée, puis Payée.' +
+    (reste > 1 ? '<div style="margin-top:8px;"><button class="btn-retard-suiv" onclick="retardSuivant()" style="border:1.5px solid #b45309;background:#fff;color:#b45309;border-radius:8px;padding:6px 12px;font-size:12.5px;font-weight:700;cursor:pointer;">Voir la suivante →</button></div>' : '') +
+    '</div><button onclick="_noteRetardVoulue=false;majNoteRetard()" aria-label="Fermer">×</button>';
+}
+// « Voir la suivante » : prochain jour en retard après celui affiché (puis retour au plus ancien).
+function retardSuivant() {
+  var dates = Object.keys(_retardDates).sort();
+  if (!dates.length) return;
+  var courant = _jourPlanM || '';
+  var suivante = dates.filter(function(d) { return d > courant; })[0] || dates[0];
+  choisirJourPlanM(suivante);
+  setTimeout(function() {
+    var el = document.querySelector('.pm-ligne.retard');
+    if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 250);
+}
+// Bouton « Voir le planning » du rappel : va au mois de la plus ancienne intervention en retard.
+async function voirInterventionsEnRetard() {
+  styleRetard();
+  var auj = isoLocalM(new Date());
+  var res = await sb.from('mpa_artisans_interventions').select('id, date_intervention')
+    .eq('artisan_id', _artisan.id).eq('statut', 'planifiee').lt('date_intervention', auj)
+    .order('date_intervention', { ascending: true }).limit(1);
+  var premiere = !res.error && res.data && res.data[0] ? res.data[0].date_intervention : null;
+  _noteRetardVoulue = !!premiere;
+  if (premiere) {
+    var d = new Date(premiere + 'T12:00:00');
+    _calMois = d.getMonth(); _calAnnee = d.getFullYear(); _jourPlanM = premiere;
+  }
+  switchTab(2);
+  await chargerInterventions();
+  setTimeout(function() {
+    var el = document.querySelector('.cal-day.jour-retard, .pm-ligne.retard');
+    if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 200);
 }
 
 function renderCalendrier() {
@@ -1074,7 +1146,7 @@ function renderCalendrier() {
     var estAuj = dateStr === aujStr;
 
     var blocage = dateStr ? _indisposMois.find(function(x) { return dateStr >= x.date_debut && dateStr <= x.date_fin; }) : null;
-    var classes = 'cal-day' + (c.autreMonth ? ' other-month' : '') + (estWeekend ? ' weekend' : '') + (estAuj ? ' today' : '') + (blocage ? ' bloque' : '');
+    var classes = 'cal-day' + (c.autreMonth ? ' other-month' : '') + (estWeekend ? ' weekend' : '') + (estAuj ? ' today' : '') + (blocage ? ' bloque' : '') + (dateStr && _retardDates[dateStr] ? ' jour-retard' : '');
 
     var interDuJour = dateStr ? _interventionsCache.filter(function(i) { return i.date_intervention === dateStr; }) : [];
     var interMatin = interDuJour.filter(function(i) { return i.creneau !== 'apres_midi'; });
@@ -1131,7 +1203,7 @@ function renderPlanningMobile() {
   for (var k = 0; k < 7; k++) {
     var d = new Date(lundi); d.setDate(lundi.getDate() + k); var iso = isoLocalM(d);
     var a = (_interventionsCache || []).some(function(x) { return x.date_intervention === iso; });
-    strip += '<button class="pm-j' + (iso === _jourPlanM ? ' sel' : '') + (iso === auj ? ' auj' : '') + (a ? ' a' : '') + (memeMois(iso) ? '' : ' autre') + '" onclick="choisirJourPlanM(\'' + iso + '\')"><small>' + noms[k] + '</small><b>' + d.getDate() + '</b><i></i></button>';
+    strip += '<button class="pm-j' + (iso === _jourPlanM ? ' sel' : '') + (iso === auj ? ' auj' : '') + (a ? ' a' : '') + (_retardDates[iso] ? ' retard' : '') + (memeMois(iso) ? '' : ' autre') + '" onclick="choisirJourPlanM(\'' + iso + '\')"><small>' + noms[k] + '</small><b>' + d.getDate() + '</b><i></i></button>';
   }
   document.getElementById('pm-semaine').innerHTML = strip;
   var liste = (_interventionsCache || []).filter(function(x) { return x.date_intervention === _jourPlanM; }).sort(function(a, b) { return (a.heure_debut || '').localeCompare(b.heure_debut || ''); });
@@ -1150,7 +1222,7 @@ function ligneInterventionM(i) {
   var client = i.mpa_artisans_clients && i.mpa_artisans_clients.nom ? i.mpa_artisans_clients.nom : '—';
   var service = libelleServiceIntervention(i), heure = i.heure_debut ? i.heure_debut.slice(0, 5) : (i.creneau === 'apres_midi' ? '🌇' : '☀️');
   var prix = i.prix != null ? eurosFR(Number(i.prix)) : '';
-  return '<div class="pc-wrap" data-fid="int-' + i.id + '"><div class="pm-ligne" onclick="ouvrirFicheMobile(this)"><div class="pm-h">' + escHtml(heure) + '</div><div class="pm-txt"><div class="pm-nom">' + escHtml(client) + '</div><div class="pm-sv">' + (estLivraisonIntervention(i) ? '🚚 ' : '') + escHtml(service) + '</div></div>' +
+  return '<div class="pc-wrap" data-fid="int-' + i.id + '"><div class="pm-ligne' + (_retardIds[i.id] ? ' retard' : '') + '" onclick="ouvrirFicheMobile(this)"><div class="pm-h">' + escHtml(heure) + '</div><div class="pm-txt"><div class="pm-nom">' + escHtml(client) + '</div><div class="pm-sv">' + (estLivraisonIntervention(i) ? '🚚 ' : '') + escHtml(service) + '</div></div>' +
     '<div class="pm-droite">' + (prix ? '<div class="pm-prix">' + prix + '</div>' : '') + '<span class="pm-st" style="background:' + c[1] + ';color:' + c[0] + '">' + (LIB_ST_M[st] || st) + '</span></div></div>' + ficheInterventionM(i) + '</div>';
 }
 function ficheInterventionM(i) {
@@ -1201,7 +1273,7 @@ function renderCreneauHtml(creneau, dateStr, liste) {
     var titreStatut = statut === 'annulee' ? 'Intervention annulée' : 'Statut : ' + LABEL_STATUT[statut] + ' — cliquer pour passer à ' + LABEL_STATUT[statutSuivant];
     var icone = estLivraisonIntervention(i) ? '🚚' : '🔧';
     var texte = client || service;
-    return '<div class="cal-pill st-' + statut + '" onclick="event.stopPropagation();ouvrirIntervention(\'' + i.id + '\')" title="' + escHtml(service + (client ? ' — ' + client : '')) + '">' +
+    return '<div class="cal-pill st-' + statut + (_retardIds[i.id] ? ' cal-pill-retard' : '') + '" onclick="event.stopPropagation();ouvrirIntervention(\'' + i.id + '\')" title="' + escHtml(service + (client ? ' — ' + client : '')) + '">' +
       '<span class="cal-pill-txt">' +
         '<span class="cal-pill-ico">' + icone + '</span>' +
         (heure ? '<span class="cal-pill-heure">' + heure + '</span> ' : '') +
@@ -5276,7 +5348,7 @@ function renderMonOffre() {
 async function renderRappelCloture(idZone) {
   var zone = document.getElementById(idZone || 'encart-rappel-cloture');
   if (!zone) return;
-  var aujourdhui = new Date().toISOString().slice(0, 10);
+  var aujourdhui = isoLocalM(new Date()); // date locale (Guadeloupe) : jamais toISOString, qui passe au lendemain dès 20 h
   var { count, error } = await sb.from('mpa_artisans_interventions')
     .select('id', { count: 'exact', head: true })
     .eq('artisan_id', _artisan.id)
@@ -5290,7 +5362,7 @@ async function renderRappelCloture(idZone) {
       '<div style="flex:1;font-size:12.5px;color:var(--mu2);">' +
         '<strong style="color:#b45309;">' + count + ' intervention' + (count > 1 ? 's' : '') + ' passée' + (count > 1 ? 's' : '') + '</strong> encore marquée' + (count > 1 ? 's' : '') + ' "Planifiée"<span class="rc-sep"> — </span><span class="rc-2">pensez à les clôturer (Terminée/Payée) pour pouvoir les facturer et demander un avis au client.</span>' +
       '</div>' +
-      '<button onclick="switchTab(2)" style="flex-shrink:0;padding:7px 14px;border-radius:7px;border:1.5px solid #b45309;background:transparent;color:#b45309;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">Voir le planning →</button>' +
+      '<button onclick="voirInterventionsEnRetard()" style="flex-shrink:0;padding:7px 14px;border-radius:7px;border:1.5px solid #b45309;background:transparent;color:#b45309;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">Voir le planning →</button>' +
     '</div>';
 }
 
