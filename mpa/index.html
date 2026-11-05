@@ -1295,6 +1295,35 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .sv-det .sv-ret{background:#fff;color:var(--ac);}
 }
 
+/* ── Ordinateur : Ma comptabilité allégée (les tableaux restent des tableaux : polices lisibles, contours gris, sans bandeaux de couleur) ── */
+@media(min-width:641px){
+  #p-compta .cpv2-card,#p-compta .dcard,#p-compta .dash-jauge-card{border:1px solid #e3e3e3 !important;border-radius:18px !important;box-shadow:none !important;background:#fff;}
+  #p-compta .dchdr.fam-vert,#p-compta .dchdr.fam-bleu,#p-compta .dchdr.fam-orange,#p-compta .dchdr.fam-violet{background:#fff !important;border-left:0 !important;border-radius:18px 18px 0 0 !important;}
+  #p-compta .cpv2-matrix-subtitle,#p-compta .cpv2-matrix-note,#p-compta .dj-sub,#p-compta .dj-footer,#p-compta .cpv2-fact-field label,#p-compta .cpv2-yearnav span{font-family:'Outfit',sans-serif !important;}
+  #p-compta .cpv2-matrix-subtitle{font-size:14px;color:#8a8580;}
+  #p-compta .cpv2-matrix-note{font-size:12.5px;opacity:1;color:#8a8580;line-height:1.5;}
+  #p-compta .dj-sub{font-size:12.5px;color:#8a8580;}
+  #p-compta .dj-footer{font-size:12.5px;}
+  #p-compta .cpv2-kpi{background:#fff;border:1px solid #e3e3e3;border-radius:16px;}
+  #p-compta .cpv2-kpi-lbl{font-family:'Outfit',sans-serif;font-size:12px;letter-spacing:.04em;color:#8a8580;}
+  #tbl-compta{font-family:'Outfit',sans-serif;font-size:14.5px;font-variant-numeric:tabular-nums;}
+  #tbl-compta thead th{font-size:12px;letter-spacing:.03em;color:#8a8580;}
+  #tbl-compta tbody td{font-size:14.5px;}
+  #tbl-compta tbody tr:nth-child(even) td{background:none;}
+  #tbl-compta thead th.col-now{background:#f3f4f6;color:#111;}
+  #tbl-compta tbody td.col-now{background:#f7f7f8;}
+  #tbl-compta,#tbl-compta th,#tbl-compta td{font-family:'Outfit',sans-serif !important;}
+  #p-compta .dash-grid{grid-template-columns:1fr;}
+  .dash-grid>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px;align-items:start;}
+  #encart-carte-prestations>div{background:#fff !important;border:1px solid #e3e3e3 !important;border-radius:18px !important;}
+  #encart-carte-prestations button{background:var(--ac) !important;}
+  .dash-grid>div>.dash-jauge-card,.dash-grid>div>#encart-carte-prestations{margin-bottom:0 !important;}
+  .dash-grid>div>#encart-carte-prestations:empty{display:none;}
+  #p-compta .rappel-cloture{background:#fff !important;border:1px solid #e3e3e3 !important;border-radius:16px !important;}
+  #p-compta .rappel-cloture strong{color:#111 !important;}
+  #p-compta .rappel-cloture>div{color:#6b7280 !important;}
+}
+
 /* ── Tableau de bord ── */
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 @media(max-width:900px){.dash-grid{grid-template-columns:1fr;}}
@@ -3123,6 +3152,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261105k"></script>
+<script src="/mpa/mpa-artisans.js?v=20261105l"></script>
 </body>
 </html>
