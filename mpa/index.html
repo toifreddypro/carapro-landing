@@ -974,6 +974,62 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 }
 
 
+/* ── Ordinateur : Mes livraisons au même style épuré que le téléphone (liste en cartes, onglet Tarifs, fiche au clic) ── */
+@media(min-width:641px){
+
+  #nav-livraisons{display:flex;}
+  #conteneur-livraisons>.bpnl{display:none;}
+  #conteneur-livraisons>.bpnl.active{display:block;}
+  #p-livraisons .dcard{border:1px solid #e3e3e3;border-radius:18px;box-shadow:none;background:#fff;margin-top:0 !important;}
+  #p-livraisons .dchdr{display:none;}
+  #zone-livraisons{padding:14px !important;}
+  #zone-livraisons .lv-titre{background:none;border-radius:0;padding:0;margin:16px 0 10px;font-size:17px;}
+  #zone-livraisons .lv-titre:first-child{margin-top:2px;}
+  #zone-livraisons .lv-titre span{background:#f1f5f9;color:#475569;padding:2px 11px;font-size:13px;}
+  #zone-livraisons .pc-wrap{margin-bottom:10px;}
+  .lv-ligne-m{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e3e3e3;border-radius:16px;padding:13px 14px;cursor:pointer;}
+  .lv-quand-m{width:62px;flex-shrink:0;text-align:center;font-size:15px;font-weight:800;color:#111;line-height:1.2;}
+  .lv-txt-m{flex:1;min-width:0;}
+  .lv-nom-m{font-size:17px;font-weight:800;color:#111;line-height:1.25;}
+  .lv-sous-m{font-size:13px;color:#8a8580;margin-top:3px;}
+  .lv-pill-m{display:inline-block;margin-top:7px;font-size:12.5px;font-weight:700;border-radius:99px;padding:4px 11px;}
+  .fm-corps .lv-carte{border:0 !important;padding:4px 0 0;margin:0;}
+  .fm-corps .lv-haut{margin-bottom:14px;}
+  .fm-corps .lv-quand{font-size:19px;}
+  .fm-corps .lv-article{font-size:14px;}
+  .fm-corps .lv-corps{gap:10px;margin-bottom:14px;}
+  .fm-corps .lv-ligne{font-size:17px;line-height:1.5;}
+  .fm-corps .lv-puce{font-size:14px;padding:5px 12px;}
+  .fm-corps .lv-m-only{display:block;}
+  .lv-bouton-m{display:block;width:100%;text-align:center;margin-top:12px;padding:15px;border-radius:14px;border:0;background:#C2410C;color:#fff !important;font-size:17px;font-weight:800;text-decoration:none;cursor:pointer;}
+  .lv-bouton-m.lv-gris{background:#fff;color:#C2410C !important;border:1.5px solid #e3e3e3;}
+  #bp-liv-tarifs .dcard>div[style*="padding:16px"]{padding:18px !important;}
+  #bp-liv-tarifs label{font-size:14px !important;color:#4b5563 !important;margin-bottom:6px !important;}
+  #bp-liv-tarifs input{padding:12px !important;font-size:16px !important;border-radius:12px !important;border:1px solid #d1d5db !important;}
+  #bp-liv-tarifs .lv-expl-long,#livraison-exemple{display:none !important;}
+  #livraison-exemple-m{display:block;margin-top:20px;}
+  .lv-ex-m{display:flex;justify-content:space-between;align-items:flex-end;border:1px solid #e3e3e3;border-radius:16px;padding:16px 18px;margin-bottom:12px;}
+  .lv-ex-m small{display:block;font-size:13px;color:#6b7280;font-weight:600;}
+  .lv-ex-m b{display:block;font-size:30px;font-weight:800;color:#111;line-height:1.15;}
+  .lv-ex-m .lv-ex-prix{text-align:right;}
+  .lv-ex-m .lv-ex-prix b{color:#C2410C;}
+  .lv-ex-note{text-align:center;font-size:14px;color:#6b7280;font-weight:600;margin-top:4px;}
+
+  #zone-livraisons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:stretch;}
+  #zone-livraisons>*:not(.pc-wrap){grid-column:1/-1;}
+  #zone-livraisons .pc-wrap{display:block;margin-bottom:0;}
+  #zone-livraisons .pc-plein{display:none;}
+  #zone-livraisons .lv-titre{color:#111;margin:14px 0 0;}
+  #zone-livraisons .lv-titre:first-child{margin-top:0;}
+  #zone-livraisons .lv-ligne-m{height:100%;box-sizing:border-box;transition:border-color .15s,box-shadow .15s;}
+  #zone-livraisons .lv-ligne-m:hover{border-color:var(--ac);box-shadow:0 4px 14px rgba(0,0,0,.06);}
+  #zone-livraisons>.etat-vide-tbl,#zone-livraisons>p{grid-column:1/-1;}
+  .lv-bouton-m{max-width:420px;margin-left:auto;margin-right:auto;}
+  #btn-livraison-sauver{padding:13px 28px !important;font-size:16px !important;border-radius:14px !important;margin-top:18px !important;}
+  #livraison-exemple-m{max-width:520px;}
+  #bp-liv-tarifs .dcard{max-width:760px;}
+}
+
 /* ── Ma journée : version ordinateur — même style épuré que sur téléphone, en deux colonnes (liste à gauche, carte à droite) ── */
 @media(min-width:641px){
   #content{display:flex;flex-direction:column;}
@@ -2936,6 +2992,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261105h"></script>
+<script src="/mpa/mpa-artisans.js?v=20261105i"></script>
 </body>
 </html>
