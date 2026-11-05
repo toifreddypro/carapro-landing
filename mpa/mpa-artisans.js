@@ -8330,7 +8330,7 @@ async function choisirJourItineraire(dateStr) {
 
   liste.innerHTML = '<p style="font-size:12px;color:var(--mu);">Calcul des trajets…</p>';
   var morceaux = [];
-  var tel = window.matchMedia && window.matchMedia('(max-width:640px)').matches;
+  var tel = true; // même présentation en cartes sur téléphone et sur ordinateur (la mise en page change par le CSS)
   if (tel) {
     var baseT = baseArtisanCoords();
     if (baseT) {
