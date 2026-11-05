@@ -571,12 +571,14 @@ async function demarrerInfosAnnuaire() {
 
 function filtrerRge() {
   _searchState.rge = !_searchState.rge;
+  window._rechercheFaite = true; document.body.classList.remove('avant-recherche');
   renderHero();
   chargerArtisans();
 }
 
 function trierPar(critere) {
   _searchState.tri = (_searchState.tri === critere) ? '' : critere;
+  window._rechercheFaite = true; document.body.classList.remove('avant-recherche');
   renderHero();
   chargerArtisans();
 }
@@ -596,7 +598,7 @@ function lancerRecherche(sansDefiler) {
   _searchState.commune = document.getElementById('search-commune').value.trim();
   _searchState.nom = document.getElementById('search-nom').value.trim();
   // Aucun critère (champs vidés) : la zone des résultats reste vide, comme à l'arrivée sur la page.
-  if (ecranTel() && !_searchState.secteur && !_searchState.commune && !_searchState.nom && !_searchState.rge) {
+  if (!_searchState.secteur && !_searchState.commune && !_searchState.nom && !_searchState.rge) {
     window._rechercheFaite = false;
     document.body.classList.add('avant-recherche');
     return;
@@ -604,7 +606,7 @@ function lancerRecherche(sansDefiler) {
   window._rechercheFaite = true;
   document.body.classList.remove('avant-recherche');
   chargerArtisans();
-  if (ecranTel() && sansDefiler !== true) {
+  if (sansDefiler !== true) {
     var zr = document.getElementById('main-results');
     if (zr && zr.scrollIntoView) setTimeout(function() { zr.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80);
   }

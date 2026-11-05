@@ -1165,6 +1165,47 @@ body.theme-light footer { background:#fbfcfe; }
 
 /* Champs de recherche : rectangle jaune autour du texte qu'on écrit */
 .search-field input:focus,.search-field input:focus-visible,#search-secteur-txt:focus{outline:2px solid #E69A00 !important;outline-offset:0 !important;}
+
+/* ===== ANNUAIRE ORDINATEUR ÉPURÉ : même principe que le téléphone ===== */
+@media(min-width:769px){
+  /* Aucun artisan tant qu'on n'a pas cherché */
+  body.avant-recherche #main-results{display:none !important;}
+  /* Cartes aérées : nom, métier · commune, « Nouveau », Vérifié, étoiles, disponibilité — le détail est dans la fiche */
+  .formateur-card{border-radius:22px !important;padding:22px 24px !important;gap:12px !important;border:2px solid #e3eaf4 !important;box-shadow:0 8px 26px rgba(19,34,60,.07) !important;margin-bottom:18px !important;}
+  .card-avatar{width:64px !important;height:64px !important;font-size:22px !important;}
+  .card-top-row{align-items:center !important;gap:16px !important;}
+  .card-name{font-size:21px !important;font-weight:800 !important;letter-spacing:-.3px !important;margin-bottom:3px !important;}
+  .card-title{font-size:15px !important;font-weight:600 !important;margin-bottom:6px !important;color:var(--mu) !important;}
+  .card-tags .badge-trust{background:transparent !important;padding:0 !important;font-size:13.5px !important;font-style:italic !important;font-weight:600 !important;color:#1266e3 !important;}
+  .card-tags .badge-trust.bt-purple,.card-tags .badge-trust.bt-accent,.card-tags .badge-trust.bt-more{display:none !important;}
+  .card-bio,.formateur-card .dispo-grid,[id^="avantages-carte-"],[id^="phares-carte-"],.formateur-card > div[style*="margin:2px 0 6px"]{display:none !important;}
+  .card-meta{display:flex !important;flex-direction:column !important;align-items:flex-start !important;gap:10px !important;}
+  .card-meta .card-badges{order:-1 !important;}
+  .card-dispo.now{background:#fff1e8 !important;color:#C2410C !important;padding:5px 13px !important;border-radius:30px !important;font-size:14px !important;font-weight:700 !important;}
+  .card-dispo.none{display:none !important;}
+  .card-stars{font-size:15px !important;font-weight:700 !important;}
+  .card-stars .star-on,.card-stars .star-off{font-size:17px;}
+  /* Fiche : on ajoute les créneaux de la semaine */
+  .fiche-grille{display:grid !important;grid-template-columns:repeat(7,1fr);gap:6px;border-top:none !important;padding-top:0 !important;margin-bottom:6px;}
+  .fiche-card .dispo-day-label{font-size:11px !important;white-space:nowrap;}
+  .fiche-card .dispo-slot{font-size:11px !important;font-weight:700 !important;}
+  .fiche-card .dispo-slot.available{background:#fff !important;color:#13223C !important;border-color:#cfd9e8 !important;}
+  /* Fiche : les créneaux de la semaine juste après les services (au lieu d'être tout en bas) */
+  .fiche-card{display:flex !important;flex-direction:column;}
+  .fiche-card > .fiche-sec[data-sec="fiche_presentation"]{order:1;}
+  .fiche-card > .fiche-sec[data-sec="fiche_avantages"]{order:2;}
+  .fiche-card > .fiche-sec[data-sec="services_titre"]{order:3;}
+  .fiche-card > .fiche-sec[data-sec="fiche_dispos"]{order:4;}
+  .fiche-card > .fiche-sec[data-sec="fiche_realisations"]{order:5;}
+  .fiche-card > .fiche-sec[data-sec="fiche_boutique"]{order:6;}
+  .fiche-card > .fiche-sec[data-sec="avis_titre"]{order:7;}
+  .fiche-card > .fiche-devis{order:8;align-self:flex-start;}
+  /* « Voir la boutique » : bouton clair, sans fond noir ni paillettes */
+  .fiche-card .btn-boutique-or{background:#fff !important;border:2px solid #e3eaf4 !important;box-shadow:none !important;padding:13px 22px !important;}
+  .fiche-card .btn-boutique-or:hover{border-color:#C2410C !important;}
+  .fiche-card .btn-or-txt{background:none !important;-webkit-text-fill-color:#C2410C !important;color:#C2410C !important;filter:none !important;animation:none !important;font-size:16px;font-weight:800;letter-spacing:0;}
+  .fiche-card .btn-boutique-or::before,.fiche-card .btn-boutique-or::after{display:none !important;}
+}
 </style>
 </head>
 <body class="theme-light">
