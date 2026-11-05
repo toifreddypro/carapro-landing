@@ -237,7 +237,8 @@ function secteurSelectChange() { lireChampSecteur(); majPuces(); rechercheAuto(t
 function secteursTries() {
   var champ = secteurLabelChamp();
   var nom = function(s) { return String(s[champ] || s.label_fr || s.code || ''); };
-  return _secteursCache.slice().sort(function(a, b) {
+  // Liste à plat (mode dégradé) : les « Autre métier » de chaque grand secteur n'ont de sens que dans la liste à deux niveaux.
+  return _secteursCache.filter(function(s) { return !/^autre-/.test(s.code); }).sort(function(a, b) {
     var aa = a.code === 'autre' ? 1 : 0, bb = b.code === 'autre' ? 1 : 0;
     if (aa !== bb) return aa - bb;
     return nom(a).localeCompare(nom(b), AT_LANG || 'fr', { sensitivity: 'base' });
