@@ -8821,7 +8821,6 @@ function carteServiceMobile(s, i) {
 
 // ── Version téléphone : Remises = 4 bulles ; un clic déplie les réglages juste en dessous (plus de titres en double). ──
 function initRemisesMobile() {
-  if (!window.matchMedia('(max-width:640px)').matches) return;
   var cles = { promo: 'code promo', cashback: 'cashback', fidele: 'client fidèle' };
   var cartes = document.querySelectorAll('#bp-remises .carte-repliable');
   Object.keys(cles).forEach(function(k) {

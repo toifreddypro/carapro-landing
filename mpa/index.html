@@ -922,6 +922,75 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .mpa-ai-grand-cta,.mpa-ai-grand-plus-tard,.mpa-ai-grand-suivant{min-height:52px;font-size:16px;border-radius:99px;}
 }
 
+/* ── Ordinateur : Mes interventions au même style épuré que le téléphone (services en cartes, demandes, photos, remises) ── */
+@media(min-width:641px){
+  #p-interventions .dcard{border:1px solid #e3e3e3;border-radius:18px;box-shadow:none;background:#fff;}
+  #carte-services .dtbl,#carte-services .scroll-hint,#carte-services>div[style*="border-top"],#zone-demandes+div[style*="border-top"]{display:none !important;}
+  #carte-services .dcbdy{padding:16px;}
+  #zone-services-m{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+  #zone-services-m .pc-wrap,#zone-demandes .pc-wrap{display:block;}
+  #zone-services-m .pc-plein,#zone-demandes .pc-plein{display:none;}
+  #zone-services-m .pc-ligne{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e3e3e3;border-radius:16px;padding:14px 16px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+  #zone-services-m .pc-ligne:hover{border-color:var(--ac);box-shadow:0 4px 14px rgba(0,0,0,.06);}
+  .sv-tuile{width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;}
+  #zone-services-m .pl-txt{flex:1;min-width:0;}
+  #zone-services-m .pl-nom{font-size:16px;font-weight:700;color:#111;line-height:1.25;}
+  #zone-services-m .pl-sous{font-size:13px;color:#8a8580;margin-top:3px;}
+  #zone-services-m .pl-prix{font-size:17px;font-weight:800;color:var(--ac);flex-shrink:0;}
+  /* demandes : grille de vignettes */
+  #zone-demandes{padding:16px !important;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:stretch;}
+  #zone-demandes>*:not(.pc-wrap){grid-column:1/-1;}
+  #zone-demandes .cm-vignette{display:block;background:#fff;border:1px solid #e3e3e3;border-radius:16px;padding:16px;cursor:pointer;height:100%;box-sizing:border-box;transition:border-color .15s,box-shadow .15s;}
+  #zone-demandes .cm-vignette:hover{border-color:var(--ac);box-shadow:0 4px 14px rgba(0,0,0,.06);}
+  .cv-haut{display:flex;align-items:center;gap:12px;}
+  .cv-av{width:46px;height:46px;border-radius:50%;color:#fff;font-weight:800;font-size:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .cv-nom{font-size:17px;font-weight:800;color:#111;}
+  .cv-lieu{font-size:13px;color:#8a8580;margin-top:1px;}
+  .cv-art{display:flex;justify-content:space-between;gap:10px;margin-top:12px;font-size:15px;font-weight:700;color:#111;}
+  .cv-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+  .cv-pill{font-size:12.5px;font-weight:700;border-radius:99px;padding:5px 12px;background:#f3f4f6;color:#4b5563;}
+  /* photos */
+  #zone-photos>div{border-radius:16px !important;border:1px solid #e3e3e3;}
+  /* remises : 4 bulles qui s'ouvrent */
+  .rm-simple{display:flex;flex-direction:column;gap:10px;margin:6px 0 4px;}
+  .rm-l{display:flex;align-items:center;gap:12px;border:1px solid #e3e3e3;border-radius:16px;padding:14px 16px;background:#fff;}
+  .rm-i{font-size:26px;flex-shrink:0;}
+  .rm-t{flex:1;min-width:0;}
+  .rm-t b{display:block;font-size:16px;color:#111;}
+  .rm-t small{display:block;font-size:13px;color:#8a8580;margin-top:2px;}
+  .rm-o{font-size:12px;font-weight:800;color:var(--ac);background:#fff1e8;border-radius:99px;padding:4px 11px;flex-shrink:0;}
+  .rm-o.rm-tous{color:#0f9d78;background:#e6f7ef;}
+  .rm-item{border:1px solid #e3e3e3;border-radius:16px;background:#fff;overflow:hidden;}
+  .rm-item .rm-l{border:0;border-radius:0;cursor:pointer;}
+  .rm-chev{font-size:16px;color:#94a3b8;transition:transform .2s;flex-shrink:0;}
+  .rm-item.rm-open .rm-chev{transform:rotate(180deg);}
+  .rm-item .rm-card{display:none;border-top:1px solid #eee;}
+  .rm-item.rm-open .rm-card{display:block;}
+  #p-interventions .rm-item .rm-card.dcard{border:0;border-radius:0;margin:0 !important;background:#fff;}
+  .rm-item .rm-card>.dchdr{display:none;}
+  .rm-geste-txt{padding:14px 16px;font-size:14px;line-height:1.5;color:#4b5563;}
+  #bp-remises .rm-table,#bp-remises .dcard:first-child p:nth-of-type(n+2){display:none;}
+  .dur-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .dur-pills button{border:1.5px solid #d6d6d6;background:#fff;border-radius:99px;padding:7px 15px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#4b5563;cursor:pointer;}
+  .dur-pills button:hover{background:var(--ac);color:#fff;border-color:var(--ac);}
+  /* fenêtre de détail au centre de l'écran */
+  .fm-fond{display:flex;position:fixed;inset:0;z-index:900;background:rgba(17,17,17,.45);align-items:center;justify-content:center;padding:24px;}
+  .fm-carte{position:relative;width:100%;max-width:560px;max-height:86vh;overflow-y:auto;background:#fff;border:1px solid #e3e3e3;border-radius:22px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+  .fm-x{position:sticky;top:0;float:right;z-index:3;width:34px;height:34px;border-radius:50%;border:1px solid #e3e3e3;background:#fff;color:#111;font-size:15px;cursor:pointer;margin:-6px -6px 6px 8px;}
+  .fm-fantome{display:none;}
+  .fm-corps .pc-plein{display:block;border:0 !important;}
+  .fm-corps .dm-carte{border:0 !important;box-shadow:none !important;padding:0;margin:0 !important;}
+  .sv-det .sv-tete{display:flex;align-items:center;gap:14px;}
+  .sv-det .sv-nom{font-size:20px;font-weight:800;color:#111;line-height:1.2;}
+  .sv-det .sv-meta{font-size:14px;color:#8a8580;margin-top:3px;}
+  .sv-det .sv-desc{font-size:15.5px;color:#4b5563;line-height:1.45;margin-top:16px;}
+  .sv-det .sv-rappel{display:inline-block;margin-top:14px;font-size:13px;font-weight:700;color:#C2410C;background:#fff1e8;border-radius:99px;padding:6px 14px;}
+  .sv-det .sv-btns{display:flex;gap:10px;margin-top:22px;}
+  .sv-det .sv-btns button{flex:1;padding:14px;border-radius:14px;font-family:'Outfit',sans-serif;font-size:15.5px;font-weight:800;cursor:pointer;border:2px solid var(--ac);}
+  .sv-det .sv-mod{background:var(--ac);color:#fff;}
+  .sv-det .sv-ret{background:#fff;color:var(--ac);}
+}
+
 /* ── Tableau de bord ── */
 .dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 @media(max-width:900px){.dash-grid{grid-template-columns:1fr;}}
@@ -2750,6 +2819,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261105c"></script>
+<script src="/mpa/mpa-artisans.js?v=20261105d"></script>
 </body>
 </html>
