@@ -54,6 +54,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);min-he
 .access-denied h1{font-size:22px;margin-bottom:10px;}
 .loader{text-align:center;padding:40px;color:var(--mu);}
 .note{font-size:12px;color:var(--mu);padding:12px 18px;border-top:1px solid var(--brd);}
+#zone-secteurs .dtbl td,#zone-secteurs .dtbl th{padding:8px 7px;}
+#zone-secteurs .dtbl td:last-child{white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -66,7 +68,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);min-he
 
 <div id="admin-nav" style="display:none;">
   <button class="atab active" onclick="switchAdminTab(0)">Artisans</button>
-  <button class="atab" onclick="switchAdminTab(1)">Secteurs</button>
+  <button class="atab" onclick="switchAdminTab(1)">Secteurs et métiers</button>
   <button class="atab" onclick="switchAdminTab(2)">Quoi de neuf</button>
   <button class="atab" onclick="switchAdminTab(3)">Avis produit</button>
   <button class="atab" onclick="switchAdminTab(4)">Prélèvements</button>
@@ -157,47 +159,148 @@ async function supprimerNouveaute(id, titre) {
   await chargerNouveautes();
 }
 
+// ── Secteurs : grands secteurs (recherche) + métiers (inscription). Un métier = une ligne de la table « secteurs ». ──
+var _secteursListe = [], _groupesListe = [], _groupesOk = false;
+function nomSecteur(code) {
+  var s = _secteursListe.find(function(x) { return x.code === code; });
+  return s ? s.label_fr : code;
+}
+var STYLE_CHAMP_SECT = 'padding:5px 7px;border-radius:6px;border:1px solid var(--b2);font-family:\'Outfit\',sans-serif;font-size:12.5px;';
+
 async function chargerSecteurs() {
-  var { data: secteurs, error } = await sb.from('secteurs').select('*').order('ordre', { ascending: true });
-  if (error) {
-    document.getElementById('zone-secteurs').innerHTML = '<p style="color:var(--danger);">Erreur secteurs : ' + escHtml(error.message) + '</p>';
+  var zone = document.getElementById('zone-secteurs');
+  var r1 = await sb.from('secteurs').select('*').order('ordre', { ascending: true });
+  var r2 = await sb.from('secteurs_groupes').select('*').order('ordre', { ascending: true });
+  if (r1.error) {
+    zone.innerHTML = '<p style="color:var(--danger);">Erreur secteurs : ' + escHtml(r1.error.message) + '</p>';
     return;
   }
-  document.getElementById('zone-secteurs').innerHTML =
+  _secteursListe = r1.data || [];
+  _groupesOk = !r2.error && (r2.data || []).length > 0;
+  _groupesListe = _groupesOk ? r2.data : [];
+
+  var optionsGroupe = function(choisi) {
+    return _groupesListe.map(function(g) {
+      return '<option value="' + escHtml(g.code) + '"' + (g.code === choisi ? ' selected' : '') + '>' + escHtml((g.icon || '') + ' ' + g.label_fr) + '</option>';
+    }).join('');
+  };
+
+  // Métiers rangés par grand secteur (ceux sans grand secteur connu vont à la fin, signalés).
+  var parGroupe = {};
+  _secteursListe.forEach(function(s) {
+    var c = _groupesOk && _groupesListe.some(function(g) { return g.code === s.groupe; }) ? s.groupe : '__sans__';
+    (parGroupe[c] = parGroupe[c] || []).push(s);
+  });
+  var lignes = '';
+  if (_groupesOk) {
+    _groupesListe.concat([{ code: '__sans__', icon: '⚠️', label_fr: 'Sans grand secteur (à ranger)' }]).forEach(function(g) {
+      var liste = parGroupe[g.code] || [];
+      if (!liste.length) return;
+      lignes += '<tr class="ligne-groupe"><td colspan="7" style="background:var(--p2);font-weight:700;font-size:12.5px;">' + escHtml((g.icon || '') + ' ' + g.label_fr) + ' <span style="color:var(--mu);font-weight:600;">(' + liste.length + ')</span></td></tr>';
+      lignes += liste.map(renderLigneSecteur).join('');
+    });
+  } else {
+    lignes = _secteursListe.map(renderLigneSecteur).join('');
+  }
+
+  var avertGroupes = _groupesOk ? '' :
+    '<div class="note" style="color:var(--danger);">⚠️ Les grands secteurs ne se chargent pas' + (r2.error ? ' (' + escHtml(r2.error.message) + ')' : '') + ' : la liste est affichée à plat.</div>';
+
+  zone.innerHTML =
     '<div class="dcard">' +
-      '<div class="dchdr"><span>Secteurs d\'activité (' + secteurs.length + ')</span></div>' +
-      '<div class="dcbdy"><table class="dtbl">' +
-        '<thead><tr><th>Icône</th><th>Nom (FR)</th><th>Code</th><th></th></tr></thead>' +
-        '<tbody>' + secteurs.map(renderLigneSecteur).join('') + '</tbody>' +
+      '<div class="dchdr"><span>Métiers (' + _secteursListe.length + ')</span>' +
+        '<input id="filtre-secteurs" type="search" placeholder="🔍 Chercher un métier…" oninput="filtrerSecteurs()" style="' + STYLE_CHAMP_SECT + 'width:210px;font-weight:400;"></div>' +
+      avertGroupes +
+      '<div class="dcbdy"><table class="dtbl" id="tbl-secteurs">' +
+        '<thead><tr><th>Icône</th><th>Nom (FR)</th><th>Nom (EN)</th><th>Nom (ES)</th>' + (_groupesOk ? '<th>Grand secteur</th>' : '') + '<th>Code</th><th></th></tr></thead>' +
+        '<tbody>' + lignes + '</tbody>' +
       '</table></div>' +
-      '<div style="padding:14px 18px;border-top:1px solid var(--brd);display:flex;gap:8px;align-items:center;">' +
-        '<input id="nouveau-secteur" type="text" placeholder="Ex : Esthétique, Comptabilité…" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--b2);font-family:\'Outfit\',sans-serif;font-size:13px;" onkeydown="if(event.key===\'Enter\')ajouterSecteur()">' +
+      '<div style="padding:14px 18px;border-top:1px solid var(--brd);display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+        '<input id="nouveau-secteur" type="text" placeholder="Nouveau métier. Ex : Tatoueur" style="flex:1;min-width:200px;padding:8px 12px;border-radius:8px;border:1px solid var(--b2);font-family:\'Outfit\',sans-serif;font-size:13px;" onkeydown="if(event.key===\'Enter\')ajouterSecteur()">' +
+        (_groupesOk ? '<select id="nouveau-secteur-groupe" style="' + STYLE_CHAMP_SECT + 'padding:8px 10px;">' + optionsGroupe('autres') + '</select>' : '') +
         '<button onclick="ajouterSecteur()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;">+ Ajouter</button>' +
       '</div>' +
-      '<div class="note">💡 Cliquez sur l\'icône d\'un secteur pour la modifier, puis "OK" pour l\'enregistrer.</div>' +
-    '</div>';
+      '<div class="note">💡 Modifiez ce que vous voulez dans une ligne, puis cliquez « Enregistrer ». Un nom EN ou ES laissé vide s\'affiche en français. Changer le « Grand secteur » d\'un métier le déplace dans la recherche. Changer un nom ne casse rien : les artisans sont reliés au métier par son code.</div>' +
+    '</div>' +
+    renderCarteGroupes();
+}
+
+function filtrerSecteurs() {
+  var q = slugify(document.getElementById('filtre-secteurs').value);
+  document.querySelectorAll('#tbl-secteurs tbody tr').forEach(function(tr) {
+    if (tr.classList.contains('ligne-groupe')) { tr.style.display = q ? 'none' : ''; return; }
+    tr.style.display = !q || slugify(tr.getAttribute('data-nom')).indexOf(q) !== -1 ? '' : 'none';
+  });
 }
 
 function renderLigneSecteur(s) {
-  return '<tr>' +
-    '<td>' +
-      '<input type="text" value="' + escHtml(s.icon || '✨') + '" maxlength="4" id="icone-' + s.id + '" ' +
-        'style="width:44px;text-align:center;padding:5px 4px;border-radius:6px;border:1px solid var(--b2);font-size:16px;" ' +
-        'onkeydown="if(event.key===\'Enter\')sauverIconeSecteur(\'' + s.id + '\')">' +
-      '<button onclick="sauverIconeSecteur(\'' + s.id + '\')" title="Enregistrer l\'icône" style="margin-left:4px;padding:5px 8px;border-radius:6px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:11px;font-weight:700;cursor:pointer;">OK</button>' +
-    '</td>' +
-    '<td><strong>' + escHtml(s.label_fr) + '</strong></td>' +
+  var id = s.id;
+  var optG = _groupesOk ? '<td><select id="sx-grp-' + id + '" style="' + STYLE_CHAMP_SECT + 'max-width:150px;">' +
+    _groupesListe.map(function(g) { return '<option value="' + escHtml(g.code) + '"' + (g.code === s.groupe ? ' selected' : '') + '>' + escHtml((g.icon || '') + ' ' + g.label_fr) + '</option>'; }).join('') +
+    (_groupesListe.some(function(g) { return g.code === s.groupe; }) ? '' : '<option value="" selected>— choisir —</option>') +
+    '</select></td>' : '';
+  return '<tr data-nom="' + escHtml(s.label_fr + ' ' + s.code) + '">' +
+    '<td><input type="text" value="' + escHtml(s.icon || '✨') + '" maxlength="4" id="sx-ico-' + id + '" style="width:48px;text-align:center;font-size:16px;' + STYLE_CHAMP_SECT + '"></td>' +
+    '<td><input type="text" value="' + escHtml(s.label_fr) + '" maxlength="80" id="sx-fr-' + id + '" style="width:150px;font-weight:600;' + STYLE_CHAMP_SECT + '"></td>' +
+    '<td><input type="text" value="' + escHtml(s.label_en || '') + '" maxlength="80" id="sx-en-' + id + '" placeholder="(français)" style="width:118px;' + STYLE_CHAMP_SECT + '"></td>' +
+    '<td><input type="text" value="' + escHtml(s.label_es || '') + '" maxlength="80" id="sx-es-' + id + '" placeholder="(français)" style="width:118px;' + STYLE_CHAMP_SECT + '"></td>' +
+    optG +
     '<td style="color:var(--mu);font-family:\'JetBrains Mono\',monospace;font-size:11.5px;">' + escHtml(s.code) + '</td>' +
-    '<td><button class="btn-del" onclick="supprimerSecteur(' + attrJs(s.id) + ',' + attrJs(s.label_fr) + ')">Supprimer</button></td>' +
+    '<td><button id="sx-ok-' + id + '" onclick="sauverSecteur(' + attrJs(id) + ')" style="padding:5px 10px;border-radius:6px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:11.5px;font-weight:700;cursor:pointer;margin-right:6px;">Enregistrer</button>' +
+      '<button class="btn-del" onclick="supprimerSecteur(' + attrJs(id) + ',' + attrJs(s.label_fr) + ')">Supprimer</button></td>' +
   '</tr>';
 }
 
-async function sauverIconeSecteur(id) {
-  var champ = document.getElementById('icone-' + id);
-  var icone = champ.value.trim() || '✨';
-  var { error } = await sb.from('secteurs').update({ icon: icone }).eq('id', id);
+async function sauverSecteur(id) {
+  var v = function(p) { var e = document.getElementById(p + id); return e ? e.value.trim() : ''; };
+  var label = v('sx-fr-');
+  if (!label) { alert('Le nom français est obligatoire.'); return; }
+  var ancien = _secteursListe.find(function(x) { return String(x.id) === String(id); }) || {};
+  var maj = { icon: v('sx-ico-') || '✨', label_fr: label, label_en: v('sx-en-') || null, label_es: v('sx-es-') || null };
+  var grp = document.getElementById('sx-grp-' + id);
+  if (grp) {
+    if (!grp.value) { alert('Choisissez un grand secteur pour ce métier.'); return; }
+    maj.groupe = grp.value;
+  }
+  var { error } = await sb.from('secteurs').update(maj).eq('id', id);
   if (error) { alert('Erreur : ' + error.message); return; }
-  champ.value = icone;
+  if (grp && ancien.groupe !== grp.value) { await chargerSecteurs(); return; }
+  Object.assign(ancien, maj);
+  var b = document.getElementById('sx-ok-' + id);
+  if (b) { b.textContent = '✓ Enregistré'; setTimeout(function() { b.textContent = 'Enregistrer'; }, 1500); }
+}
+
+// Grands secteurs : on peut les renommer (3 langues) et changer l'icône. Pas d'ajout ni de suppression ici (ça se fait par SQL).
+function renderCarteGroupes() {
+  if (!_groupesOk) return '';
+  return '<div class="dcard">' +
+    '<div class="dchdr"><span>Grands secteurs (' + _groupesListe.length + ')</span></div>' +
+    '<div class="dcbdy"><table class="dtbl"><thead><tr><th>Icône</th><th>Nom (FR)</th><th>Nom (EN)</th><th>Nom (ES)</th><th>Code</th><th></th></tr></thead><tbody>' +
+    _groupesListe.map(function(g) {
+      return '<tr>' +
+        '<td><input type="text" value="' + escHtml(g.icon || '✨') + '" maxlength="4" id="gx-ico-' + g.code + '" style="width:48px;text-align:center;font-size:16px;' + STYLE_CHAMP_SECT + '"></td>' +
+        '<td><input type="text" value="' + escHtml(g.label_fr) + '" maxlength="80" id="gx-fr-' + g.code + '" style="width:210px;font-weight:600;' + STYLE_CHAMP_SECT + '"></td>' +
+        '<td><input type="text" value="' + escHtml(g.label_en || '') + '" maxlength="80" id="gx-en-' + g.code + '" placeholder="(français)" style="width:190px;' + STYLE_CHAMP_SECT + '"></td>' +
+        '<td><input type="text" value="' + escHtml(g.label_es || '') + '" maxlength="80" id="gx-es-' + g.code + '" placeholder="(français)" style="width:190px;' + STYLE_CHAMP_SECT + '"></td>' +
+        '<td style="color:var(--mu);font-family:\'JetBrains Mono\',monospace;font-size:11.5px;">' + escHtml(g.code) + '</td>' +
+        '<td><button id="gx-ok-' + g.code + '" onclick="sauverGroupe(' + attrJs(g.code) + ')" style="padding:5px 10px;border-radius:6px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:11.5px;font-weight:700;cursor:pointer;">Enregistrer</button></td>' +
+      '</tr>';
+    }).join('') +
+    '</tbody></table></div>' +
+    '<div class="note">💡 Ce sont les grands secteurs proposés en premier dans la recherche et à l\'inscription.</div></div>';
+}
+
+async function sauverGroupe(code) {
+  var v = function(p) { return document.getElementById(p + code).value.trim(); };
+  if (!v('gx-fr-')) { alert('Le nom français est obligatoire.'); return; }
+  var maj = { icon: v('gx-ico-') || '✨', label_fr: v('gx-fr-'), label_en: v('gx-en-') || null, label_es: v('gx-es-') || null };
+  var { data, error } = await sb.from('secteurs_groupes').update(maj).eq('code', code).select('code');
+  if (error) { alert('Erreur : ' + error.message); return; }
+  if (!data || !data.length) { alert('Rien n\'a été enregistré : la règle d\'écriture sur les grands secteurs manque dans Supabase (fichier admin-secteurs.sql à lancer).'); return; }
+  var g = _groupesListe.find(function(x) { return x.code === code; });
+  if (g) Object.assign(g, maj);
+  var b = document.getElementById('gx-ok-' + code);
+  if (b) { b.textContent = '✓ Enregistré'; setTimeout(function() { b.textContent = 'Enregistrer'; }, 1500); }
 }
 
 async function ajouterSecteur() {
@@ -205,19 +308,21 @@ async function ajouterSecteur() {
   var label = input.value.trim();
   if (!label) return;
   var code = slugify(label);
+  if (!code) { alert('Ce nom ne contient aucun caractère utilisable.'); return; }
   var { data: existant } = await sb.from('secteurs').select('id').eq('code', code).maybeSingle();
-  if (existant) { alert('Un secteur avec un code très proche existe déjà.'); return; }
+  if (existant) { alert('Un métier avec un code très proche existe déjà.'); return; }
   var { data: max } = await sb.from('secteurs').select('ordre').order('ordre', { ascending: false }).limit(1).maybeSingle();
-  var { error } = await sb.from('secteurs').insert({
-    code: code, label_fr: label, icon: '✨', ordre: (max ? max.ordre : 0) + 1,
-  });
+  var ligne = { code: code, label_fr: label, icon: '✨', ordre: (max ? max.ordre : 0) + 1 };
+  var g = document.getElementById('nouveau-secteur-groupe');
+  if (g) ligne.groupe = g.value || 'autres';
+  var { error } = await sb.from('secteurs').insert(ligne);
   if (error) { alert('Erreur : ' + error.message); return; }
   input.value = '';
   await chargerSecteurs();
 }
 
 async function supprimerSecteur(id, nom) {
-  if (!confirm('Supprimer le secteur "' + nom + '" ?\n\nLes artisans déjà enregistrés sous ce secteur garderont ce code, mais il ne sera plus proposé pour les nouvelles inscriptions ni les recherches.')) return;
+  if (!confirm('Supprimer le métier "' + nom + '" ?\n\nLes artisans déjà enregistrés sous ce métier garderont ce code, mais il ne sera plus proposé pour les nouvelles inscriptions ni les recherches.')) return;
   var { error } = await sb.from('secteurs').delete().eq('id', id);
   if (error) { alert('Erreur : ' + error.message); return; }
   await chargerSecteurs();
@@ -662,7 +767,7 @@ function renderLigneArtisan(a) {
 
   return '<tr>' +
     '<td><strong>' + escHtml(a.nom_entreprise) + '</strong></td>' +
-    '<td>' + escHtml(a.secteur) + '</td>' +
+    '<td>' + escHtml(nomSecteur(a.secteur)) + '</td>' +
     '<td>' + escHtml(a.commune) + '</td>' +
     '<td>' + badgeVerifie + '</td>' +
     '<td>' + renderCelluleOffre(a) + '</td>' +
