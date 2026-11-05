@@ -7645,7 +7645,7 @@ function renderCommandes() {
       return '<details ' + (_moisCommandesOuverts[g.mois] ? 'open ' : '') + 'ontoggle="basculerMoisCommandes(\'' + g.mois + '\', this.open)" style="margin-bottom:12px;">' +
         '<summary style="cursor:pointer;font-size:14px;font-weight:700;padding:8px 0;border-bottom:1px solid var(--brd);margin-bottom:10px;">' + nom + ' ' + annee +
         ' <span style="font-weight:500;font-size:12.5px;color:var(--mu);">· ' + g.cartes.length + ' commande' + (g.cartes.length > 1 ? 's' : '') + ' · ' + eurosFR(vendu) + (aTraiter ? ' · <span style="color:var(--ac);font-weight:700;">' + aTraiter + ' à traiter</span>' : '') + '</span></summary>' +
-        g.cartes.map(function(k) { return k.html; }).join('') + '</details>';
+        '<div class="cm-grille">' + g.cartes.map(function(k) { return k.html; }).join('') + '</div></details>';
     }).join('');
   rafraichirFicheMobile();
 }

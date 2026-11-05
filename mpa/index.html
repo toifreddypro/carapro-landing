@@ -891,6 +891,37 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   #plan-m .svc-ajout-m:hover{background:var(--ac);color:#fff;}
 }
 
+/* ── Ordinateur : Mes ventes au même style épuré que le téléphone (catalogue, boutique, commandes) ── */
+@media(min-width:641px){
+  #p-ventes .dcard{border:1px solid #e3e3e3;border-radius:18px;box-shadow:none;background:#fff;}
+  #p-ventes .dchdr.fam-bleu,#p-ventes .dchdr.fam-violet{background:#fff !important;border-left:0 !important;border-radius:18px 18px 0 0;}
+  #p-ventes .dcard>div[style*="border-top"]{display:none;}
+  /* catalogue */
+  #zone-catalogue{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:12px !important;padding:16px !important;}
+  #zone-catalogue .pc-wrap{display:block;}
+  #zone-catalogue .pc-plein{display:none;}
+  #zone-catalogue .pc-ligne{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e3e3e3;border-radius:16px;padding:12px 16px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+  #zone-catalogue .pc-ligne:hover{border-color:var(--ac);box-shadow:0 4px 14px rgba(0,0,0,.06);}
+  #zone-catalogue .pl-photo{width:72px;height:72px;border-radius:14px;object-fit:cover;flex-shrink:0;}
+  #zone-catalogue .pl-vide{background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:30px;}
+  #zone-catalogue .pl-txt{flex:1;min-width:0;}
+  #zone-catalogue .pl-nom{font-size:16.5px;font-weight:700;color:#111;line-height:1.25;}
+  #zone-catalogue .pl-sous{font-size:13px;color:#8a8580;margin-top:3px;}
+  #zone-catalogue .pl-prix{font-size:17px;font-weight:800;color:var(--ac);flex-shrink:0;}
+  #zone-catalogue>p{grid-column:1/-1;}
+  /* commandes */
+  #zone-commandes{padding:16px !important;}
+  .cm-grille{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:stretch;}
+  .cm-wrap{display:block;}
+  .cm-wrap>.cm-carte{display:none;}
+  .cm-vignette{display:block;background:#fff;border:1px solid #e3e3e3;border-radius:16px;padding:16px;cursor:pointer;height:100%;box-sizing:border-box;transition:border-color .15s,box-shadow .15s;}
+  .cm-vignette:hover{border-color:var(--ac);box-shadow:0 4px 14px rgba(0,0,0,.06);}
+  .cm-vignette .cv-av{background:#f3f4f6 !important;color:#4b5563;}
+  .cm-vignette .cv-pill{color:#4b5563 !important;background:#fff !important;border:1px solid #d6d6d6 !important;font-weight:700;}
+  .fm-corps .cm-carte{display:block;margin:0;border:0;border-left:0 !important;padding:4px 0 0;}
+  .fm-corps .pc-plein img,.fm-corps .pc-plein [style*="aspect-ratio"]{aspect-ratio:auto !important;height:190px !important;border-radius:14px !important;}
+}
+
 /* ── Mes livraisons : version téléphone (ordinateur inchangé) ── */
 #nav-livraisons{display:none;}
 #conteneur-livraisons>.bpnl{display:block;}
@@ -2905,6 +2936,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261105g"></script>
+<script src="/mpa/mpa-artisans.js?v=20261105h"></script>
 </body>
 </html>
