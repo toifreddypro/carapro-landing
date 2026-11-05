@@ -194,8 +194,7 @@ function htmlChampSecteurTel() {
   var texte = actuel ? ((actuel.icon || '') + ' ' + (actuel[secteurLabelChamp()] || actuel.label_fr)).trim() : '';
   return '<div class="sect-combo">' +
     '<input id="search-secteur-txt" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="' + escHtml(T('search_secteur_tous')) + '" value="' + escHtml(texte) + '" onfocus="secteurOuvrir()" oninput="secteurFiltrer()" onkeydown="if(event.key===\'Enter\'){secteurPremier();return false;}"/>' +
-    '<input id="search-secteur" type="hidden" value="' + escHtml(_searchState.secteur || '') + '"/>' +
-    '<div id="sect-liste" class="sect-liste" style="display:none;"></div></div>';
+    '<input id="search-secteur" type="hidden" value="' + escHtml(_searchState.secteur || '') + '"/></div>';
 }
 function secteurOuvrir() {
   var champ = document.getElementById('search-secteur-txt'); if (champ) champ.select();
@@ -203,7 +202,9 @@ function secteurOuvrir() {
 }
 function secteurFiltrer(toutMontrer) {
   var champ = document.getElementById('search-secteur-txt'), liste = document.getElementById('sect-liste');
-  if (!champ || !liste) return;
+  if (!champ) return;
+  // La bulle vit directement dans la page (pas dans le cadre de recherche, qui la coupe).
+  if (!liste) { liste = document.createElement('div'); liste.id = 'sect-liste'; liste.className = 'sect-liste'; liste.style.display = 'none'; document.body.appendChild(liste); }
   var q = toutMontrer ? '' : sansAccents(champ.value.trim());
   if (!toutMontrer && !q) { document.getElementById('search-secteur').value = ''; }
   var champLib = secteurLabelChamp();
@@ -215,11 +216,23 @@ function secteurFiltrer(toutMontrer) {
   }).join('');
   if (!items.length) html += '<div class="sect-vide">Aucun métier ne correspond. Essayez un autre mot.</div>';
   liste.innerHTML = html;
-  // La liste est aussi large que l'écran, quel que soit l'endroit où se trouve le champ.
-  var champCadre = liste.parentNode.getBoundingClientRect();
-  liste.style.left = (16 - champCadre.left) + 'px'; liste.style.width = (window.innerWidth - 32) + 'px';
   liste.style.display = 'block';
+  secteurPlacer();
 }
+// La bulle est posée sur l'écran (et non dans le cadre de recherche, qui la coupait) : sous le champ, aussi large que l'écran,
+// et jamais plus haute que la place restante au-dessus du clavier — le dernier métier reste atteignable en faisant défiler.
+function secteurPlacer() {
+  var liste = document.getElementById('sect-liste'), champ = document.getElementById('search-secteur-txt');
+  if (!liste || !champ || liste.style.display === 'none') return;
+  var vv = window.visualViewport, haut = vv ? vv.height : window.innerHeight, larg = vv ? vv.width : window.innerWidth;
+  var r = champ.getBoundingClientRect();
+  var top = r.bottom + 16;
+  liste.style.position = 'fixed';
+  liste.style.top = top + 'px'; liste.style.left = '16px'; liste.style.width = (larg - 32) + 'px';
+  liste.style.maxHeight = Math.max(150, haut - top - 12) + 'px';
+}
+window.addEventListener('scroll', secteurPlacer, { passive: true });
+if (window.visualViewport) window.visualViewport.addEventListener('resize', secteurPlacer);
 function secteurChoisir(code) {
   var champ = document.getElementById('search-secteur-txt'), cache = document.getElementById('search-secteur'), liste = document.getElementById('sect-liste');
   var s = code ? _secteursCache.find(function(x) { return x.code === code; }) : null;
@@ -237,7 +250,7 @@ function secteurPremier() {
 }
 document.addEventListener('click', function(e) {
   var liste = document.getElementById('sect-liste');
-  if (liste && liste.style.display !== 'none' && !e.target.closest('.sect-combo')) liste.style.display = 'none';
+  if (liste && liste.style.display !== 'none' && !e.target.closest('.sect-combo') && !e.target.closest('#sect-liste')) liste.style.display = 'none';
 });
 
 function secteurLabelChamp() {

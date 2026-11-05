@@ -1155,13 +1155,16 @@ body.theme-light footer { background:#fbfcfe; }
 }
 
 /* ── Recherche d'un métier (téléphone) : champ qui se filtre pendant la frappe ── */
-.sect-combo{position:relative;}.sect-combo input{outline:none !important;box-shadow:none !important;}
-.sect-liste{position:absolute;top:calc(100% + 10px);z-index:60;max-height:min(46vh,340px);overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border:1px solid #e3e3e3;border-radius:18px;box-shadow:0 14px 40px rgba(15,23,42,.18);padding:6px;}
+.sect-combo{position:relative;}
+.sect-liste{position:fixed;z-index:1100;max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border:1px solid #e3e3e3;border-radius:18px;box-shadow:0 14px 40px rgba(15,23,42,.18);padding:6px;}
 .sect-item{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:12px;font-size:17px;font-weight:600;color:#13223c;cursor:pointer;}
 .sect-item:active{background:#fff1e8;}
 .sect-tous{color:#6b7c96;font-weight:700;}
 .sect-ic{width:26px;text-align:center;font-size:19px;}
 .sect-vide{padding:16px;font-size:15px;color:#6b7c96;text-align:center;}
+
+/* Champs de recherche : rectangle jaune autour du texte qu'on écrit */
+.search-field input:focus,.search-field input:focus-visible,#search-secteur-txt:focus{outline:2px solid #E69A00 !important;outline-offset:0 !important;}
 </style>
 </head>
 <body class="theme-light">
