@@ -6547,8 +6547,8 @@ var COULEURS_BOUTIQUE = { terre: '#B5502F', bleu: '#2563A8', vert: '#2F7D4F', ro
 var NOMS_COULEURS = { terre: 'Terre cuite', bleu: 'Bleu', vert: 'Vert', rose: 'Rose', violet: 'Violet', ocre: 'Ocre' };
 var _accentChoisi = null;
 var _fondChoisi = 'clair';
-var NOMS_FONDS = { clair: 'Clair', creme: 'Crème', terre: 'Terre cuite pâle', bleu: 'Bleu pâle', vert: 'Vert pâle', rose: 'Rose pâle', violet: 'Violet pâle', ocre: 'Ocre pâle', sombre: 'Sombre', plage: 'Plage', sable: 'Sable', motif: 'Ardoise', soie: 'Soie', emeraude: 'Émeraude', couleurs: 'Couleurs', bois: 'Bois madras', jungle: 'Jungle', brume: 'Brume', aube: 'Aube', menthe: 'Menthe', ciel: 'Ciel', lavande: 'Lavande', perle: 'Gris perle' };
-var APERCU_FONDS = { clair: ['#ffffff', '#13223c'], creme: ['#f6efe4', '#2a2118'], terre: ['#f8ebe4', '#13223c'], bleu: ['#e6eff9', '#13223c'], vert: ['#e5f2e9', '#13223c'], rose: ['#fae6f1', '#13223c'], violet: ['#ece7f8', '#13223c'], ocre: ['#f8efd9', '#13223c'], sombre: ['#0f1115', '#f3f1ec'], plage: ['linear-gradient(rgba(255,255,255,.45),rgba(255,255,255,.45)),url(/artisans/img/fond-plage-mini.webp) center/cover', '#13223c'], sable: ['linear-gradient(rgba(255,255,255,.45),rgba(255,255,255,.45)),url(/artisans/img/fond-sable-mini.webp) center/cover', '#13223c'], motif: ['linear-gradient(rgba(15,17,21,.2),rgba(15,17,21,.2)),url(/artisans/img/fond-motif-mini.webp) center/cover', '#f3f1ec'], soie: ['linear-gradient(rgba(255,255,255,.3),rgba(255,255,255,.3)),url(/artisans/img/fond-soie-mini.webp) center/cover', '#13223c'], emeraude: ['linear-gradient(rgba(8,24,19,.45),rgba(8,24,19,.45)),url(/artisans/img/fond-emeraude-mini.webp) center/cover', '#f3f1ec'], couleurs: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-couleurs-mini.webp) center/cover', '#13223c'], bois: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-bois-mini.webp) center/cover', '#13223c'], jungle: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-jungle-mini.webp) center/cover', '#13223c'], brume: ['linear-gradient(160deg,#f7f9fc,#e6ecf4)', '#13223c'], aube: ['linear-gradient(160deg,#fffafa,#fdeef0)', '#13223c'], menthe: ['linear-gradient(160deg,#fbfefc,#e3f4ea)', '#13223c'], ciel: ['linear-gradient(160deg,#fafdff,#e1effb)', '#13223c'], lavande: ['linear-gradient(160deg,#fcfbff,#ece8f8)', '#13223c'], perle: ['linear-gradient(160deg,#f6f6f7,#e9eaed)', '#13223c'] };
+var NOMS_FONDS = { clair: 'Clair', creme: 'Crème', terre: 'Terre cuite pâle', ocre: 'Ocre pâle', sombre: 'Sombre', plage: 'Plage', sable: 'Sable', motif: 'Ardoise', soie: 'Soie', emeraude: 'Émeraude', couleurs: 'Couleurs', bois: 'Bois madras', jungle: 'Jungle', brume: 'Brume', aube: 'Aube', menthe: 'Menthe', ciel: 'Ciel', lavande: 'Lavande', perle: 'Gris perle' };
+var APERCU_FONDS = { clair: ['#ffffff', '#13223c'], creme: ['#f6efe4', '#2a2118'], terre: ['#f8ebe4', '#13223c'], ocre: ['#f8efd9', '#13223c'], sombre: ['#0f1115', '#f3f1ec'], plage: ['linear-gradient(rgba(255,255,255,.45),rgba(255,255,255,.45)),url(/artisans/img/fond-plage-mini.webp) center/cover', '#13223c'], sable: ['linear-gradient(rgba(255,255,255,.45),rgba(255,255,255,.45)),url(/artisans/img/fond-sable-mini.webp) center/cover', '#13223c'], motif: ['linear-gradient(rgba(15,17,21,.2),rgba(15,17,21,.2)),url(/artisans/img/fond-motif-mini.webp) center/cover', '#f3f1ec'], soie: ['linear-gradient(rgba(255,255,255,.3),rgba(255,255,255,.3)),url(/artisans/img/fond-soie-mini.webp) center/cover', '#13223c'], emeraude: ['linear-gradient(rgba(8,24,19,.45),rgba(8,24,19,.45)),url(/artisans/img/fond-emeraude-mini.webp) center/cover', '#f3f1ec'], couleurs: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-couleurs-mini.webp) center/cover', '#13223c'], bois: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-bois-mini.webp) center/cover', '#13223c'], jungle: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-jungle-mini.webp) center/cover', '#13223c'], brume: ['linear-gradient(160deg,#f7f9fc,#e6ecf4)', '#13223c'], aube: ['linear-gradient(160deg,#fffafa,#fdeef0)', '#13223c'], menthe: ['linear-gradient(160deg,#fbfefc,#e3f4ea)', '#13223c'], ciel: ['linear-gradient(160deg,#fafdff,#e1effb)', '#13223c'], lavande: ['linear-gradient(160deg,#fcfbff,#ece8f8)', '#13223c'], perle: ['linear-gradient(160deg,#f6f6f7,#e9eaed)', '#13223c'] };
 function afficherPersonnalisation() {
   initGlisserBanniere();
   var ap = document.getElementById('pers-apercu');
@@ -6575,7 +6575,7 @@ function afficherPersonnalisation() {
   document.getElementById('pers-compteur').textContent = (_artisan.boutique_texte || '').length;
   _accentChoisi = _artisan.boutique_accent || 'terre';
   dessinerCouleursBoutique();
-  _fondChoisi = _artisan.boutique_fond || 'clair';
+  _fondChoisi = FONDS_RETIRES[_artisan.boutique_fond] || _artisan.boutique_fond || 'clair';
   dessinerFondsBoutique();
   afficherStyleBoutique();
   assurerImagePartage();
@@ -6590,7 +6590,8 @@ function dessinerCouleursBoutique() {
   }).join('');
 }
 var _fondsTous = false;
-var FONDS_PROPOSES = ['clair', 'bleu', 'sombre'];
+var FONDS_PROPOSES = ['clair', 'ciel', 'sombre'];
+var FONDS_RETIRES = { bleu: 'ciel', rose: 'aube', vert: 'menthe', violet: 'lavande' }; // anciens fonds proches des nouveaux : remplacés dans le choix (la boutique ne change qu'à l'enregistrement)
 function dessinerFondsBoutique() {
   var z = document.getElementById('pers-fonds'); if (!z) return;
   var tous = _fondsTous || FONDS_PROPOSES.indexOf(_fondChoisi) < 0;
