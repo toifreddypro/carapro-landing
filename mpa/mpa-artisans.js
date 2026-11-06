@@ -6569,6 +6569,9 @@ function afficherPersonnalisation() {
   document.getElementById('pers-tel').checked = _artisan.boutique_affiche_telephone === true;
   document.getElementById('pers-email').checked = _artisan.boutique_affiche_email === true;
   document.getElementById('pers-texte').value = _artisan.boutique_texte || '';
+  var mt = document.getElementById('pers-marques-titre'); if (mt) mt.value = _artisan.boutique_marques_titre || '';
+  var mm = document.getElementById('pers-message'); if (mm) mm.value = _artisan.boutique_message || '';
+  dessinerMarques();
   document.getElementById('pers-compteur').textContent = (_artisan.boutique_texte || '').length;
   _accentChoisi = _artisan.boutique_accent || 'terre';
   dessinerCouleursBoutique();
@@ -6920,6 +6923,59 @@ async function retirerBanniere(n) {
   supprimerAncienneBanniere(ancienne);
   afficherPersonnalisation();
 }
+// ── « Nos marques » : jusqu'à 4 petites images (logos) sous les produits. Enregistrées tout de suite, comme les images de fond. ──
+var _marqueSlot = 0;
+function marquesActuelles() { var m = _artisan && _artisan.boutique_marques; return [0, 1, 2, 3].map(function(i) { return Array.isArray(m) && typeof m[i] === 'string' ? m[i] : null; }); }
+function dessinerMarques() {
+  var m = marquesActuelles();
+  m.forEach(function(u, i) {
+    var el = document.getElementById('pers-marque-' + i), rb = document.getElementById('btn-marque-ret-' + i);
+    if (el) { el.style.backgroundImage = u ? 'url("' + u + '")' : ''; el.textContent = u ? '' : 'Logo ' + (i + 1); }
+    if (rb) rb.style.display = u ? '' : 'none';
+  });
+}
+function choisirMarque(i) { _marqueSlot = i; var inp = document.getElementById('marque-input'); inp.value = ''; inp.click(); }
+function supprimerAncienneMarque(url) {
+  try {
+    var marque = '/artisans-photos/'; if (!url || url.indexOf(marque) < 0) return;
+    var chemin = decodeURIComponent(url.split(marque)[1]);
+    if (chemin.indexOf(_artisan.user_id + '/marque_') !== 0) return;
+    sb.storage.from('artisans-photos').remove([chemin]);
+  } catch (e) { /* sans importance */ }
+}
+async function enregistrerMarques(arr) {
+  var { error } = await sb.from('artisans').update({ boutique_marques: arr }).eq('id', _artisan.id);
+  if (error) throw error;
+  _artisan.boutique_marques = arr;
+}
+async function uploaderMarque() {
+  if (!verifierAccesEcriture()) return;
+  var inp = document.getElementById('marque-input'), f = inp.files[0]; if (!f) return;
+  var slot = _marqueSlot, url = URL.createObjectURL(f), img = new Image();
+  img.onload = async function() {
+    try {
+      var r = Math.min(1, 400 / Math.max(img.naturalWidth, img.naturalHeight)), cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(img.naturalWidth * r)); cv.height = Math.max(1, Math.round(img.naturalHeight * r));
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      var blob = await new Promise(function(ok, ko) { cv.toBlob(function(b) { b ? ok(b) : ko(new Error('Image illisible.')); }, 'image/png'); });
+      var chemin = _artisan.user_id + '/marque_' + slot + '_' + Date.now() + '.png';
+      var up = await sb.storage.from('artisans-photos').upload(chemin, blob, { contentType: 'image/png' });
+      if (up.error) throw new Error(up.error.message);
+      var { data: pub } = sb.storage.from('artisans-photos').getPublicUrl(chemin);
+      var arr = marquesActuelles(), ancienne = arr[slot]; arr[slot] = pub.publicUrl;
+      await enregistrerMarques(arr); supprimerAncienneMarque(ancienne); dessinerMarques();
+      document.getElementById('pers-statut').textContent = '✓ Logo enregistré.';
+    } catch (e) { alert('Erreur : ' + e.message); }
+    finally { URL.revokeObjectURL(url); inp.value = ''; }
+  };
+  img.onerror = function() { URL.revokeObjectURL(url); inp.value = ''; alert('Cette image ne peut pas être lue. Utilisez une image JPG, PNG ou WebP.'); };
+  img.src = url;
+}
+async function retirerMarque(i) {
+  if (!verifierAccesEcriture()) return;
+  try { var arr = marquesActuelles(), ancienne = arr[i]; arr[i] = null; await enregistrerMarques(arr); supprimerAncienneMarque(ancienne); dessinerMarques(); }
+  catch (e) { alert('Erreur : ' + e.message); }
+}
 async function sauverPersonnalisation() {
   if (!verifierAccesEcriture()) return;
   var texte = document.getElementById('pers-texte').value.trim();
@@ -6935,6 +6991,10 @@ async function sauverPersonnalisation() {
   if (fb && !/^[A-Za-z0-9.\-]{1,80}$/.test(fb)) { alert('Facebook : écrivez seulement le nom de votre page (lettres, chiffres, point, tiret).'); return; }
   if (wa && !/^[0-9]{8,15}$/.test(wa)) { alert('WhatsApp : numéro non valide. Exemple : 0690 12 34 56, ou +590 690 12 34 56.'); return; }
   var finAnn = document.getElementById('pers-annonce-fin').value || null;
+  var marquesTitre = document.getElementById('pers-marques-titre').value.trim(), messageBas = document.getElementById('pers-message').value.trim();
+  if (marquesTitre.length > 40) { alert('Le titre des marques est limité à 40 caractères.'); return; }
+  if (messageBas.length > 300) { alert('Le message est limité à 300 caractères.'); return; }
+  if (/https?:|www\./i.test(marquesTitre + ' ' + messageBas)) { alert('Les liens ne sont pas autorisés dans ces textes.'); return; }
   var libre = document.getElementById('pers-libre-on').checked ? document.getElementById('pers-libre').value.toLowerCase() : null;
   var maj = {
     boutique_police: _policeChoisie, boutique_disposition: _dispoChoisie, boutique_cartes: _cartesChoisies,
@@ -6942,6 +7002,8 @@ async function sauverPersonnalisation() {
     boutique_instagram: insta || null, boutique_facebook: fb || null, boutique_tiktok: tik || null, boutique_whatsapp: wa || null,
     boutique_accent_libre: libre,
     boutique_texte: texte || null,
+    boutique_marques_titre: marquesTitre || null,
+    boutique_message: messageBas || null,
     boutique_accent: _accentChoisi && _accentChoisi !== 'terre' ? _accentChoisi : null,
     boutique_fond: _fondChoisi && _fondChoisi !== 'clair' ? _fondChoisi : null,
     boutique_affiche_adresse: document.getElementById('pers-adresse').checked,

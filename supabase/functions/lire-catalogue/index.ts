@@ -59,7 +59,7 @@ Deno.serve(async (req: Request) => {
     if (!slug) return json({ error: "Lien manquant." }, 400);
 
     const { data: artisan, error } = await sb.from("artisans")
-      .select("id, nom_entreprise, secteur, commune, photo_profil_url, verifie, code_promo, code_promo_pct, code_promo_fin, code_promo_visible, stripe_connect_statut, boutique_en_pause, plan, cashback_pct, cashback_ventes, code_promo_ventes, boutique_banniere_url, boutique_banniere2_url, boutique_banniere3_url, boutique_texte, boutique_accent, boutique_fond, boutique_police, boutique_accroche, boutique_annonce, boutique_annonce_fin, boutique_instagram, boutique_facebook, boutique_tiktok, boutique_whatsapp, boutique_accent_libre, boutique_disposition, boutique_cartes, boutique_affiche_adresse, boutique_affiche_telephone, boutique_affiche_email, adresse, code_postal, telephone, email")
+      .select("id, nom_entreprise, secteur, commune, photo_profil_url, verifie, code_promo, code_promo_pct, code_promo_fin, code_promo_visible, stripe_connect_statut, boutique_en_pause, plan, cashback_pct, cashback_ventes, code_promo_ventes, boutique_banniere_url, boutique_banniere2_url, boutique_banniere3_url, boutique_marques, boutique_marques_titre, boutique_message, boutique_texte, boutique_accent, boutique_fond, boutique_police, boutique_accroche, boutique_annonce, boutique_annonce_fin, boutique_instagram, boutique_facebook, boutique_tiktok, boutique_whatsapp, boutique_accent_libre, boutique_disposition, boutique_cartes, boutique_affiche_adresse, boutique_affiche_telephone, boutique_affiche_email, adresse, code_postal, telephone, email")
       .eq("slug_catalogue", slug)
       .eq("actif", true)
       .eq("suspendu_commission", false)
@@ -119,6 +119,13 @@ Deno.serve(async (req: Request) => {
           .slice(0, nbPhares).map((p: any) => p.id),
       );
     }
+
+    // « Nos meilleures ventes » : les 8 produits les plus vendus (au moins 1 vente). Aucun chiffre n'est publié, seulement le drapeau.
+    const idsMeilleures = new Set(
+      [...liste].filter((p: any) => (ventesParProduit.get(p.id) || 0) > 0)
+        .sort((a: any, b: any) => (ventesParProduit.get(b.id) || 0) - (ventesParProduit.get(a.id) || 0))
+        .slice(0, 8).map((p: any) => p.id),
+    );
 
     // Souvent achetés ensemble — jamais une heuristique, toujours les vraies commandes panier
     // réglées (table commandes_catalogue_lignes, la seule source possible : une commande d'un
@@ -180,13 +187,17 @@ Deno.serve(async (req: Request) => {
       photos_sup: photosSup.get(p.id) || [],
       type: p.type, delai_preparation: p.delai_preparation, promo_pct: p.promo_pct, categorie: p.categorie,
       est_phare: idsPhares.has(p.id),
+      est_meilleure_vente: idsMeilleures.has(p.id),
       est_nouveaute: new Date(p.created_at).getTime() >= seuilNouveaute,
       complementaires: complementaires.get(p.id) || [],
     }));
 
     const codeOk = codePromoValide(artisan, artisan.plan) && artisan.code_promo_ventes !== false; // décoché « Sur mes ventes » : le code ne vaut que pour les interventions
     return json({
-      artisan: { id: artisan.id, nom_entreprise: artisan.nom_entreprise, secteur: artisan.secteur, commune: artisan.commune, photo_profil_url: artisan.photo_profil_url, verifie: artisan.verifie, code_promo: (codeOk && artisan.code_promo_visible !== false) ? artisan.code_promo : null, code_promo_pct: (codeOk && artisan.code_promo_visible !== false) ? Number(artisan.code_promo_pct) : null, code_promo_fin: (codeOk && artisan.code_promo_visible !== false) ? (artisan.code_promo_fin ?? null) : null, code_promo_actif: codeOk, boutique_banniere_url: artisan.boutique_banniere_url ?? null, boutique_banniere2_url: artisan.boutique_banniere2_url ?? null, boutique_banniere3_url: artisan.boutique_banniere3_url ?? null, boutique_texte: (artisan.boutique_texte ?? "").trim() || null, boutique_accent: artisan.boutique_accent ?? null, boutique_fond: artisan.boutique_fond ?? null,
+      artisan: { id: artisan.id, nom_entreprise: artisan.nom_entreprise, secteur: artisan.secteur, commune: artisan.commune, photo_profil_url: artisan.photo_profil_url, verifie: artisan.verifie, code_promo: (codeOk && artisan.code_promo_visible !== false) ? artisan.code_promo : null, code_promo_pct: (codeOk && artisan.code_promo_visible !== false) ? Number(artisan.code_promo_pct) : null, code_promo_fin: (codeOk && artisan.code_promo_visible !== false) ? (artisan.code_promo_fin ?? null) : null, code_promo_actif: codeOk, boutique_banniere_url: artisan.boutique_banniere_url ?? null, boutique_banniere2_url: artisan.boutique_banniere2_url ?? null, boutique_banniere3_url: artisan.boutique_banniere3_url ?? null,
+        boutique_marques: (Array.isArray(artisan.boutique_marques) ? artisan.boutique_marques : []).filter((u: any) => typeof u === "string" && /^https:\/\/[a-z0-9.-]+\.supabase\.co\/storage\//i.test(u)).slice(0, 4),
+        boutique_marques_titre: (artisan.boutique_marques_titre ?? "").trim().slice(0, 40) || null,
+        boutique_message: (artisan.boutique_message ?? "").trim().slice(0, 300) || null, boutique_texte: (artisan.boutique_texte ?? "").trim() || null, boutique_accent: artisan.boutique_accent ?? null, boutique_fond: artisan.boutique_fond ?? null,
         boutique_police: artisan.boutique_police ?? null, boutique_accroche: (artisan.boutique_accroche ?? "").trim() || null,
         boutique_annonce: (artisan.boutique_annonce ?? "").trim() || null, boutique_annonce_fin: artisan.boutique_annonce_fin ?? null,
         boutique_instagram: artisan.boutique_instagram ?? null, boutique_facebook: artisan.boutique_facebook ?? null, boutique_tiktok: artisan.boutique_tiktok ?? null, boutique_whatsapp: artisan.boutique_whatsapp ?? null,

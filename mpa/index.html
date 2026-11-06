@@ -2110,6 +2110,12 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <button type="button" class="addb" onclick="annulerBanniere()">Annuler</button>
 </div>
 </div>
+<div class="pw-t" style="margin-top:18px;">🏷️ Mes marques (facultatif)</div>
+<div class="pw-note">Jusqu'à 4 logos, affichés sous vos produits. Les images sont enregistrées tout de suite ; le titre, lui, avec le bouton « Enregistrer ».</div>
+<div class="pw-lab">Titre au-dessus des logos</div>
+<input id="pers-marques-titre" maxlength="40" placeholder="Nos marques" style="width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);">
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px;"><div style="display:flex;flex-direction:column;align-items:center;gap:5px;"><div id="pers-marque-0" style="width:100%;aspect-ratio:1;border-radius:10px;border:1px dashed var(--brd);background:var(--bg) center/contain no-repeat;font-size:11px;color:var(--mu);display:flex;align-items:center;justify-content:center;"></div><button type="button" class="addb" onclick="choisirMarque(0)">Choisir</button><button type="button" class="pw-lien" id="btn-marque-ret-0" onclick="retirerMarque(0)" style="display:none;">Retirer</button></div><div style="display:flex;flex-direction:column;align-items:center;gap:5px;"><div id="pers-marque-1" style="width:100%;aspect-ratio:1;border-radius:10px;border:1px dashed var(--brd);background:var(--bg) center/contain no-repeat;font-size:11px;color:var(--mu);display:flex;align-items:center;justify-content:center;"></div><button type="button" class="addb" onclick="choisirMarque(1)">Choisir</button><button type="button" class="pw-lien" id="btn-marque-ret-1" onclick="retirerMarque(1)" style="display:none;">Retirer</button></div><div style="display:flex;flex-direction:column;align-items:center;gap:5px;"><div id="pers-marque-2" style="width:100%;aspect-ratio:1;border-radius:10px;border:1px dashed var(--brd);background:var(--bg) center/contain no-repeat;font-size:11px;color:var(--mu);display:flex;align-items:center;justify-content:center;"></div><button type="button" class="addb" onclick="choisirMarque(2)">Choisir</button><button type="button" class="pw-lien" id="btn-marque-ret-2" onclick="retirerMarque(2)" style="display:none;">Retirer</button></div><div style="display:flex;flex-direction:column;align-items:center;gap:5px;"><div id="pers-marque-3" style="width:100%;aspect-ratio:1;border-radius:10px;border:1px dashed var(--brd);background:var(--bg) center/contain no-repeat;font-size:11px;color:var(--mu);display:flex;align-items:center;justify-content:center;"></div><button type="button" class="addb" onclick="choisirMarque(3)">Choisir</button><button type="button" class="pw-lien" id="btn-marque-ret-3" onclick="retirerMarque(3)" style="display:none;">Retirer</button></div></div>
+<input accept="image/jpeg,image/png,image/webp" id="marque-input" onchange="uploaderMarque()" style="display:none;" type="file"/>
 </div>
 <div class="pw-panel" id="pw-p2" style="display:none;"><div class="pw-t">🎨 Ma couleur</div>
 <div id="pers-couleurs" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;"></div>
@@ -2122,7 +2128,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="pw-lab">Une annonce (facultatif)</div>
 <input id="pers-annonce" maxlength="140" placeholder="Ex : Fermé du 24 au 31 décembre" style="width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);">
 <label class="pw-note" style="display:flex;align-items:center;gap:6px;margin-top:8px;">jusqu'au <input id="pers-annonce-fin" type="date" style="padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);"></label>
-<div class="pw-note"><span id="pers-annonce-cpt">0</span>/140 · le bandeau disparaît tout seul après la date. Laissez vide pour ne rien afficher.</div></div>
+<div class="pw-note"><span id="pers-annonce-cpt">0</span>/140 · le bandeau disparaît tout seul après la date. Laissez vide pour ne rien afficher.</div><div class="pw-lab" style="margin-top:14px;">Un message sous vos produits (facultatif)</div>
+<textarea id="pers-message" maxlength="300" rows="3" placeholder="Ex : Carte de fidélité : le 10e soin offert ! Demandez-la en boutique." style="width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);"></textarea>
+<div class="pw-note">300 caractères maximum · pas de lien.</div></div>
 <div class="pw-panel" id="pw-p4" style="display:none;"><div class="pw-t">📲 Ce que mes clients voient</div>
 <div class="pw-row"><label class="pw-rowl"><span class="pw-ic">📞</span><span class="pw-rt">Mon téléphone<span id="pers-tel-val" class="pw-val">—</span></span><input type="checkbox" id="pers-tel" class="pw-in" onchange="majApercuLive()"><span class="pw-sw"></span></label></div>
 <div class="pw-row"><label class="pw-rowl"><span class="pw-ic">💬</span><span class="pw-rt">WhatsApp</span><input type="checkbox" id="pw-wa-on" class="pw-in" onchange="persReseau('whatsapp')"><span class="pw-sw"></span></label>
@@ -3299,6 +3307,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261106b"></script>
+<script src="/mpa/mpa-artisans.js?v=20261106c"></script>
 </body>
 </html>
