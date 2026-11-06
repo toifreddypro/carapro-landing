@@ -6556,6 +6556,11 @@ function afficherPersonnalisation() {
   if (_artisan.boutique_banniere_url) { ap.style.backgroundImage = 'url("' + _artisan.boutique_banniere_url + '")'; ap.textContent = ''; }
   else { ap.style.backgroundImage = ''; ap.textContent = 'Pas encore d\'image de fond'; }
   document.getElementById('btn-banniere-retirer').style.display = _artisan.boutique_banniere_url ? '' : 'none';
+  [2, 3].forEach(function(n) {
+    var u = _artisan[banCol(n)], el = document.getElementById('pers-ban-' + n), rb = document.getElementById('btn-ban-ret-' + n);
+    if (el) { el.style.backgroundImage = u ? 'url("' + u + '")' : ''; el.textContent = u ? '' : 'Image ' + n + ' (facultatif)'; }
+    if (rb) rb.style.display = u ? '' : 'none';
+  });
   var adr = [_artisan.adresse, [_artisan.code_postal, _artisan.commune].filter(Boolean).join(' ')].filter(function(x) { return x && String(x).trim(); }).join(', ');
   document.getElementById('pers-adresse-val').textContent = adr || 'non renseignée (à compléter dans Mon profil)';
   document.getElementById('pers-tel-val').textContent = _artisan.telephone || 'non renseigné (à compléter dans Mon profil)';
@@ -6784,6 +6789,9 @@ function banRafraichir() {
 }
 function banMode(mode) { if (_ban) { _ban.mode = mode; banRafraichir(); } }
 function banPos() { if (_ban) { _ban.py = +document.getElementById('ban-v').value; _ban.px = +document.getElementById('ban-h').value; banRafraichir(); } }
+var _banSlot = 1; // image 1, 2 ou 3 du carrousel de la boutique
+function banCol(n) { return n === 2 ? 'boutique_banniere2_url' : (n === 3 ? 'boutique_banniere3_url' : 'boutique_banniere_url'); }
+function choisirBanniere(n) { _banSlot = n; document.getElementById('banniere-input').click(); }
 function ouvrirEditeurBanniere() {
   var input = document.getElementById('banniere-input'), fichier = input.files[0];
   if (!fichier) return;
@@ -6841,11 +6849,11 @@ async function uploaderBanniere() {
     var up = await sb.storage.from('artisans-photos').upload(chemin, blob, { contentType: 'image/jpeg' });
     if (up.error) throw new Error(up.error.message);
     var { data: pub } = sb.storage.from('artisans-photos').getPublicUrl(chemin);
-    await envoyerImagePartage(cv, chemin); // copie légère pour WhatsApp / Facebook (jamais bloquant)
-    var ancienne = _artisan.boutique_banniere_url;
-    var { error } = await sb.from('artisans').update({ boutique_banniere_url: pub.publicUrl }).eq('id', _artisan.id);
+    if (_banSlot === 1) await envoyerImagePartage(cv, chemin); // copie légère pour WhatsApp / Facebook (jamais bloquant)
+    var col = banCol(_banSlot), ancienne = _artisan[col], majCol = {}; majCol[col] = pub.publicUrl;
+    var { error } = await sb.from('artisans').update(majCol).eq('id', _artisan.id);
     if (error) throw error;
-    _artisan.boutique_banniere_url = pub.publicUrl;
+    _artisan[col] = pub.publicUrl;
     supprimerAncienneBanniere(ancienne);
     annulerBanniere();
     afficherPersonnalisation();
@@ -6903,12 +6911,12 @@ function supprimerAncienneBanniere(url) {
     sb.storage.from('artisans-photos').remove([chemin, cheminImagePartage(chemin)]);
   } catch (e) { /* sans importance */ }
 }
-async function retirerBanniere() {
+async function retirerBanniere(n) {
   if (!verifierAccesEcriture()) return;
-  var ancienne = _artisan.boutique_banniere_url;
-  var { error } = await sb.from('artisans').update({ boutique_banniere_url: null }).eq('id', _artisan.id);
+  var col = banCol(n || 1), ancienne = _artisan[col], majCol = {}; majCol[col] = null;
+  var { error } = await sb.from('artisans').update(majCol).eq('id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
-  _artisan.boutique_banniere_url = null;
+  _artisan[col] = null;
   supprimerAncienneBanniere(ancienne);
   afficherPersonnalisation();
 }
