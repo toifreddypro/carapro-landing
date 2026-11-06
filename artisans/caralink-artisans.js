@@ -567,8 +567,7 @@ function renderHero() {
           '<button class="filter-pill' + (_searchState.tri==='note'?' active':'') + '" onclick="trierPar(\'note\')">' + T('filter_note') + '</button>' +
           '<button class="filter-pill' + (_searchState.rge?' active':'') + '" onclick="filtrerRge()">' + T('filter_rge') + '</button>' +
         '</div>' +
-        htmlAidesInfo() +
-        htmlVideoClients() +
+        '<div class="infos-duo">' + htmlAidesInfo() + htmlVideoClients() + '</div>' +
         '<div class="devis-desktop" style="margin-top:14px;font-size:12.5px;color:var(--mu);">' +
           '📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">' + T('hero_devisgen_lien') + '</a>' +
           T('hero_devisgen_suite') +
@@ -1077,7 +1076,13 @@ function htmlVideoClients() {
       '.vid-clients summary::-webkit-details-marker{display:none;}' +
       '.vid-clients .vid-corps{padding:0 16px 16px;text-align:center;}' +
       '.vid-clients video{width:min(72vw,280px);aspect-ratio:9/16;border-radius:24px;border:1px solid var(--line,#e3eaf4);box-shadow:0 14px 40px rgba(19,34,60,.14);background:#fff;object-fit:cover;display:block;margin:0 auto;}' +
-      '.vid-clients .vid-note{font-size:12px;color:var(--mu,#6b7a90);margin-top:8px;}';
+      '.vid-clients .vid-note{font-size:12px;color:var(--mu,#6b7a90);margin-top:8px;}' +
+      '.infos-duo{display:flex;flex-wrap:wrap;gap:0 12px;justify-content:center;align-items:flex-start;max-width:1160px;margin:0 auto;}' +
+      '.infos-duo .aides-info,.infos-duo .vid-clients{flex:1 1 420px;min-width:0;}' +
+      '.vid-clients:not([open]){animation:vidDouce 2.6s ease-in-out infinite;}' +
+      '.vid-clients:not([open]):hover{animation:none;}' +
+      '@keyframes vidDouce{0%,100%{box-shadow:0 0 0 0 rgba(181,80,47,0);border-color:var(--line,#e3eaf4);background:rgba(255,255,255,.75);}50%{box-shadow:0 0 0 5px rgba(181,80,47,.16);border-color:rgba(181,80,47,.55);background:rgba(255,246,241,.95);}}' +
+      '@media (prefers-reduced-motion:reduce){.vid-clients:not([open]){animation:none;border-color:rgba(181,80,47,.45);}}';
     document.head.appendChild(st);
   }
   return '<details class="vid-clients" ontoggle="if(!this.open){var v=this.querySelector(\'video\');if(v)v.pause();}"><summary>▶️ ' + escHtml(T('vid_clients_titre')) + '</summary><div class="vid-corps">' +
