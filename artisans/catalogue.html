@@ -1208,10 +1208,10 @@ function render() {
   _onglets = [];
   if (phares.length) _onglets.push({ k: 'selection', lib: L('selection'), liste: phares });
   var ventes = prods.filter(function(p) { return p.est_meilleure_vente; }).slice(0, 10);
-  if (ventes.length && ventes.map(function(p) { return p.id; }).join() !== phares.map(function(p) { return p.id; }).join()) _onglets.push({ k: 'ventes', lib: L('meilleures'), liste: ventes });
+  if (prods.length) _onglets.push({ k: 'ventes', lib: L('meilleures'), liste: ventes });
   var promos = prods.filter(function(p) { return p.promo_pct; }).slice(0, 10);
   if (promos.length) _onglets.push({ k: 'promos', lib: L('promos'), liste: promos });
-  _ongletActif = _onglets.length ? _onglets[0].k : null;
+  _ongletActif = (_onglets.filter(function(o) { return o.liste.length; })[0] || _onglets[0] || {}).k || null;
   if (_onglets.length) html += '<div id="bloc-onglets" style="scroll-margin-top:130px;"></div>';
   if (prods.length) {
     html += '<h2 class="section-titre" id="produits">' + T('cat_tous_produits') + '</h2>';
@@ -1246,9 +1246,9 @@ function render() {
 
 // ── Textes propres à la nouvelle page (FR / EN / ES) ──
 var LB = {
-  fr: { paiement: 'Paiement sécurisé', livraison: 'Livraison ou retrait', cashback: 'Cashback fidélité', nouveautes: 'Nouveautés', promos: 'Promotions', meilleures: 'Nos meilleures ventes', decouvre: 'Je découvre', rechercher: 'Rechercher un produit…', suivez: 'Suivez-nous', selection: 'Notre sélection du mois', marques: 'Nos marques', toutes: 'Toutes les catégories' },
-  en: { paiement: 'Secure payment', livraison: 'Delivery or pick-up', cashback: 'Loyalty cashback', nouveautes: 'New in', promos: 'Offers', meilleures: 'Our best sellers', decouvre: 'Discover', rechercher: 'Search a product…', suivez: 'Follow us', selection: 'Our selection of the month', marques: 'Our brands', toutes: 'All categories' },
-  es: { paiement: 'Pago seguro', livraison: 'Entrega o recogida', cashback: 'Cashback fidelidad', nouveautes: 'Novedades', promos: 'Ofertas', meilleures: 'Nuestros más vendidos', decouvre: 'Descubrir', rechercher: 'Buscar un producto…', suivez: 'Síguenos', selection: 'Nuestra selección del mes', marques: 'Nuestras marcas', toutes: 'Todas las categorías' }
+  fr: { paiement: 'Paiement sécurisé', livraison: 'Livraison ou retrait', cashback: 'Cashback fidélité', nouveautes: 'Nouveautés', promos: 'Promotions', meilleures: 'Nos meilleures ventes', decouvre: 'Je découvre', rechercher: 'Rechercher un produit…', suivez: 'Suivez-nous', selection: 'Notre sélection du mois', marques: 'Nos marques', toutes: 'Toutes les catégories', vide_ventes: 'Les meilleures ventes apparaîtront ici dès les premières commandes.', vide_promos: 'Aucune promotion pour le moment.', vide_selection: '' },
+  en: { paiement: 'Secure payment', livraison: 'Delivery or pick-up', cashback: 'Loyalty cashback', nouveautes: 'New in', promos: 'Offers', meilleures: 'Our best sellers', decouvre: 'Discover', rechercher: 'Search a product…', suivez: 'Follow us', selection: 'Our selection of the month', marques: 'Our brands', toutes: 'All categories', vide_ventes: 'Best sellers will appear here after the first orders.', vide_promos: 'No offers at the moment.', vide_selection: '' },
+  es: { paiement: 'Pago seguro', livraison: 'Entrega o recogida', cashback: 'Cashback fidelidad', nouveautes: 'Novedades', promos: 'Ofertas', meilleures: 'Nuestros más vendidos', decouvre: 'Descubrir', rechercher: 'Buscar un producto…', suivez: 'Síguenos', selection: 'Nuestra selección del mes', marques: 'Nuestras marcas', toutes: 'Todas las categorías', vide_ventes: 'Los más vendidos aparecerán aquí tras los primeros pedidos.', vide_promos: 'No hay ofertas por ahora.', vide_selection: '' }
 };
 function L(k) { return (LB[AT_LANG] || LB.fr)[k] || LB.fr[k] || k; }
 var _special = null, _recherche = '', _onglets = [], _ongletActif = null;
@@ -1269,7 +1269,9 @@ function renderOnglets() {
   var z = document.getElementById('bloc-onglets'); if (!z || !_onglets.length) return;
   var cur = _onglets.filter(function(o) { return o.k === _ongletActif; })[0] || _onglets[0];
   z.innerHTML = '<div class="onglets" role="tablist">' + _onglets.map(function(o) { return '<button type="button" role="tab" aria-selected="' + (o.k === cur.k) + '" class="onglet' + (o.k === cur.k ? ' actif' : '') + '" onclick="choisirOnglet(' + jsAttr(o.k) + ')">' + escHtml(o.lib) + '</button>'; }).join('') + '</div>' +
-    '<div class="rangee vue-petites">' + cur.liste.map(function(p) { return carteProduit(p, 'bv-'); }).join('') + '</div>';
+    (cur.liste.length
+      ? '<div class="rangee vue-petites">' + cur.liste.map(function(p) { return carteProduit(p, 'bv-'); }).join('') + '</div>'
+      : '<p style="text-align:center;color:var(--mu);padding:26px 0;">' + L('vide_' + cur.k) + '</p>');
 }
 function choisirOnglet(k) { _ongletActif = k; renderOnglets(); }
 function allerA(id) { var e = document.getElementById(id); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
