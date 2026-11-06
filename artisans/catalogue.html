@@ -48,6 +48,19 @@
   :root.fond-couleurs body::before{background-image:linear-gradient(rgba(255,255,255,.6),rgba(255,255,255,.6)),url('img/fond-couleurs.webp');}
   :root.fond-bois body::before{background-image:linear-gradient(rgba(255,255,255,.62),rgba(255,255,255,.62)),url('img/fond-bois.webp');}
   :root.fond-jungle body::before{background-image:linear-gradient(rgba(255,255,255,.6),rgba(255,255,255,.6)),url('img/fond-jungle.webp');}
+  /* Fonds minimalistes : un très léger dégradé, en-tête et bas de page en teinte foncée */
+  :root.fond-brume{--bg:#e6ecf4;--panel:#ffffff;--brd:#dde3ee;--b2:#dde3ee;--inp:#f7f9fc;--hf:#2f3b52;--hf-tx:#ffffff;--hf-brd:rgba(255,255,255,.28);--hf-hover:rgba(255,255,255,.14);--hf-act-bg:#ffffff;--hf-act-tx:#13223c;}
+  :root.fond-brume body{background:linear-gradient(160deg,#f7f9fc,#e6ecf4) fixed;}
+  :root.fond-aube{--bg:#fdeef0;--panel:#ffffff;--brd:#f3d9dd;--b2:#f3d9dd;--inp:#fffafa;--hf:#7a3b45;--hf-tx:#ffffff;--hf-brd:rgba(255,255,255,.28);--hf-hover:rgba(255,255,255,.14);--hf-act-bg:#ffffff;--hf-act-tx:#13223c;}
+  :root.fond-aube body{background:linear-gradient(160deg,#fffafa,#fdeef0) fixed;}
+  :root.fond-menthe{--bg:#e3f4ea;--panel:#ffffff;--brd:#cfe6d8;--b2:#cfe6d8;--inp:#fbfefc;--hf:#1f5a45;--hf-tx:#ffffff;--hf-brd:rgba(255,255,255,.28);--hf-hover:rgba(255,255,255,.14);--hf-act-bg:#ffffff;--hf-act-tx:#13223c;}
+  :root.fond-menthe body{background:linear-gradient(160deg,#fbfefc,#e3f4ea) fixed;}
+  :root.fond-ciel{--bg:#e1effb;--panel:#ffffff;--brd:#cddff2;--b2:#cddff2;--inp:#fafdff;--hf:#1d4e89;--hf-tx:#ffffff;--hf-brd:rgba(255,255,255,.28);--hf-hover:rgba(255,255,255,.14);--hf-act-bg:#ffffff;--hf-act-tx:#13223c;}
+  :root.fond-ciel body{background:linear-gradient(160deg,#fafdff,#e1effb) fixed;}
+  :root.fond-lavande{--bg:#ece8f8;--panel:#ffffff;--brd:#dcd5f0;--b2:#dcd5f0;--inp:#fcfbff;--hf:#4a3b7c;--hf-tx:#ffffff;--hf-brd:rgba(255,255,255,.28);--hf-hover:rgba(255,255,255,.14);--hf-act-bg:#ffffff;--hf-act-tx:#13223c;}
+  :root.fond-lavande body{background:linear-gradient(160deg,#fcfbff,#ece8f8) fixed;}
+  :root.fond-perle{--bg:#e9eaed;--panel:#ffffff;--brd:#d9dbe0;--b2:#d9dbe0;--inp:#f6f6f7;--hf:#30343b;--hf-tx:#ffffff;--hf-brd:rgba(255,255,255,.28);--hf-hover:rgba(255,255,255,.14);--hf-act-bg:#ffffff;--hf-act-tx:#13223c;}
+  :root.fond-perle body{background:linear-gradient(160deg,#f6f6f7,#e9eaed) fixed;}
   :root[class*="fond-"] .modal-overlay{--bg:#f7f8fb;--panel:#ffffff;--brd:#e3eaf4;--b2:#c9d8ef;--inp:#f6f9fe;--tx:#13223c;--mu:#6b7c96;--mu2:#4a5c78;--ok:#059669;--gold:#b45309;color-scheme:light;}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);line-height:1.5;padding-bottom:60px;}
@@ -1128,7 +1141,7 @@ function render() {
 
   // ── Personnalisation de l'artisan : couleur d'accent, image de fond, coordonnées et texte choisis par lui ──
   var COULEURS = { terre: '#B5502F', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
-  if (['creme', 'sombre', 'terre', 'bleu', 'vert', 'rose', 'violet', 'ocre', 'plage', 'sable', 'motif', 'emeraude', 'soie', 'couleurs', 'bois', 'jungle'].indexOf(a.boutique_fond) >= 0) {
+  if (['creme', 'sombre', 'terre', 'bleu', 'vert', 'rose', 'violet', 'ocre', 'plage', 'sable', 'motif', 'emeraude', 'soie', 'couleurs', 'bois', 'jungle', 'brume', 'aube', 'menthe', 'ciel', 'lavande', 'perle'].indexOf(a.boutique_fond) >= 0) {
     document.documentElement.classList.add('fond-' + a.boutique_fond);
     if (a.boutique_fond === 'sombre' || a.boutique_fond === 'motif' || a.boutique_fond === 'emeraude') COULEURS = { terre: '#D0623B', bleu: '#3F86D6', vert: '#2F9A62', rose: '#D0449A', violet: '#8061DB', ocre: '#C48A1F' };
   }

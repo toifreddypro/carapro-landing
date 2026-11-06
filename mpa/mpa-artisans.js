@@ -6547,8 +6547,8 @@ var COULEURS_BOUTIQUE = { terre: '#B5502F', bleu: '#2563A8', vert: '#2F7D4F', ro
 var NOMS_COULEURS = { terre: 'Terre cuite', bleu: 'Bleu', vert: 'Vert', rose: 'Rose', violet: 'Violet', ocre: 'Ocre' };
 var _accentChoisi = null;
 var _fondChoisi = 'clair';
-var NOMS_FONDS = { clair: 'Clair', creme: 'Crème', terre: 'Terre cuite pâle', bleu: 'Bleu pâle', vert: 'Vert pâle', rose: 'Rose pâle', violet: 'Violet pâle', ocre: 'Ocre pâle', sombre: 'Sombre', plage: 'Plage', sable: 'Sable', motif: 'Ardoise', soie: 'Soie', emeraude: 'Émeraude', couleurs: 'Couleurs', bois: 'Bois madras', jungle: 'Jungle' };
-var APERCU_FONDS = { clair: ['#ffffff', '#13223c'], creme: ['#f6efe4', '#2a2118'], terre: ['#f8ebe4', '#13223c'], bleu: ['#e6eff9', '#13223c'], vert: ['#e5f2e9', '#13223c'], rose: ['#fae6f1', '#13223c'], violet: ['#ece7f8', '#13223c'], ocre: ['#f8efd9', '#13223c'], sombre: ['#0f1115', '#f3f1ec'], plage: ['linear-gradient(rgba(255,255,255,.45),rgba(255,255,255,.45)),url(/artisans/img/fond-plage-mini.webp) center/cover', '#13223c'], sable: ['linear-gradient(rgba(255,255,255,.45),rgba(255,255,255,.45)),url(/artisans/img/fond-sable-mini.webp) center/cover', '#13223c'], motif: ['linear-gradient(rgba(15,17,21,.2),rgba(15,17,21,.2)),url(/artisans/img/fond-motif-mini.webp) center/cover', '#f3f1ec'], soie: ['linear-gradient(rgba(255,255,255,.3),rgba(255,255,255,.3)),url(/artisans/img/fond-soie-mini.webp) center/cover', '#13223c'], emeraude: ['linear-gradient(rgba(8,24,19,.45),rgba(8,24,19,.45)),url(/artisans/img/fond-emeraude-mini.webp) center/cover', '#f3f1ec'], couleurs: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-couleurs-mini.webp) center/cover', '#13223c'], bois: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-bois-mini.webp) center/cover', '#13223c'], jungle: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-jungle-mini.webp) center/cover', '#13223c'] };
+var NOMS_FONDS = { clair: 'Clair', creme: 'Crème', terre: 'Terre cuite pâle', bleu: 'Bleu pâle', vert: 'Vert pâle', rose: 'Rose pâle', violet: 'Violet pâle', ocre: 'Ocre pâle', sombre: 'Sombre', plage: 'Plage', sable: 'Sable', motif: 'Ardoise', soie: 'Soie', emeraude: 'Émeraude', couleurs: 'Couleurs', bois: 'Bois madras', jungle: 'Jungle', brume: 'Brume', aube: 'Aube', menthe: 'Menthe', ciel: 'Ciel', lavande: 'Lavande', perle: 'Gris perle' };
+var APERCU_FONDS = { clair: ['#ffffff', '#13223c'], creme: ['#f6efe4', '#2a2118'], terre: ['#f8ebe4', '#13223c'], bleu: ['#e6eff9', '#13223c'], vert: ['#e5f2e9', '#13223c'], rose: ['#fae6f1', '#13223c'], violet: ['#ece7f8', '#13223c'], ocre: ['#f8efd9', '#13223c'], sombre: ['#0f1115', '#f3f1ec'], plage: ['linear-gradient(rgba(255,255,255,.45),rgba(255,255,255,.45)),url(/artisans/img/fond-plage-mini.webp) center/cover', '#13223c'], sable: ['linear-gradient(rgba(255,255,255,.45),rgba(255,255,255,.45)),url(/artisans/img/fond-sable-mini.webp) center/cover', '#13223c'], motif: ['linear-gradient(rgba(15,17,21,.2),rgba(15,17,21,.2)),url(/artisans/img/fond-motif-mini.webp) center/cover', '#f3f1ec'], soie: ['linear-gradient(rgba(255,255,255,.3),rgba(255,255,255,.3)),url(/artisans/img/fond-soie-mini.webp) center/cover', '#13223c'], emeraude: ['linear-gradient(rgba(8,24,19,.45),rgba(8,24,19,.45)),url(/artisans/img/fond-emeraude-mini.webp) center/cover', '#f3f1ec'], couleurs: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-couleurs-mini.webp) center/cover', '#13223c'], bois: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-bois-mini.webp) center/cover', '#13223c'], jungle: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-jungle-mini.webp) center/cover', '#13223c'], brume: ['linear-gradient(160deg,#f7f9fc,#e6ecf4)', '#13223c'], aube: ['linear-gradient(160deg,#fffafa,#fdeef0)', '#13223c'], menthe: ['linear-gradient(160deg,#fbfefc,#e3f4ea)', '#13223c'], ciel: ['linear-gradient(160deg,#fafdff,#e1effb)', '#13223c'], lavande: ['linear-gradient(160deg,#fcfbff,#ece8f8)', '#13223c'], perle: ['linear-gradient(160deg,#f6f6f7,#e9eaed)', '#13223c'] };
 function afficherPersonnalisation() {
   initGlisserBanniere();
   var ap = document.getElementById('pers-apercu');
@@ -6603,9 +6603,8 @@ function dessinerFondsBoutique() {
 function basculerFondsTous() { _fondsTous = !_fondsTous; dessinerFondsBoutique(); }
 function choisirFondBoutique(k) { _fondChoisi = k; dessinerFondsBoutique(); majApercuLive(); }
 // ── Style de la boutique : police, disposition, cartes, couleur libre, accroche, annonce, réseaux ──
-var _policeChoisie = null, _dispoChoisie = null, _cartesChoisies = null;
+var _policeChoisie = null, _cartesChoisies = null;
 var POLICES_BOUTIQUE = { '': ['Par défaut', 'Bricolage Grotesque'], classique: ['Classique', 'Playfair Display'], elegant: ['Élégante', 'Cormorant Garamond'], moderne: ['Moderne', 'Poppins'], manuscrit: ['Manuscrite', 'Caveat'], arrondi: ['Arrondie', 'Fredoka'] };
-var DISPOS_BOUTIQUE = { '': 'Nom sur l\'image', dessous: 'Nom sous l\'image', centre: 'Centré sous l\'image' };
 var CARTES_BOUTIQUE = { '': 'Arrondies', carre: 'Carrées', sobre: 'Sobres (sans ombre)' };
 function chargerPolicesApercu() {
   if (document.getElementById('polices-apercu')) return;
@@ -6623,11 +6622,9 @@ function boutonsChoix(idZone, options, courant, fnChoix, styleLabel) {
 function dessinerStyleBoutique() {
   chargerPolicesApercu();
   boutonsChoix('pers-polices', POLICES_BOUTIQUE, _policeChoisie, 'choisirPolice', function(k) { return "font-family:'" + POLICES_BOUTIQUE[k][1] + "',sans-serif;font-size:" + (k === 'manuscrit' ? 17 : 14) + 'px;'; });
-  boutonsChoix('pers-dispo', DISPOS_BOUTIQUE, _dispoChoisie, 'choisirDispo');
   boutonsChoix('pers-cartes', CARTES_BOUTIQUE, _cartesChoisies, 'choisirCartes');
 }
 function choisirPolice(k) { _policeChoisie = k || null; dessinerStyleBoutique(); majApercuLive(); }
-function choisirDispo(k) { _dispoChoisie = k || null; dessinerStyleBoutique(); }
 function choisirCartes(k) { _cartesChoisies = k || null; dessinerStyleBoutique(); }
 function lumRel(hex) { var v = [1, 3, 5].map(function(i) { var x = parseInt(hex.substr(i, 2), 16) / 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; }
 function contrasteCouleurs(a, b) { var x = lumRel(a), y = lumRel(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
@@ -6656,7 +6653,7 @@ function nettoyerWhatsapp(txt) {
   return d;
 }
 function afficherStyleBoutique() {
-  _policeChoisie = _artisan.boutique_police || null; _dispoChoisie = _artisan.boutique_disposition || null; _cartesChoisies = _artisan.boutique_cartes || null;
+  _policeChoisie = _artisan.boutique_police || null; _cartesChoisies = _artisan.boutique_cartes || null;
   dessinerStyleBoutique();
   document.getElementById('pers-libre-on').checked = !!_artisan.boutique_accent_libre;
   if (_artisan.boutique_accent_libre) document.getElementById('pers-libre').value = _artisan.boutique_accent_libre;
@@ -6997,7 +6994,7 @@ async function sauverPersonnalisation() {
   if (/https?:|www\./i.test(marquesTitre + ' ' + messageBas)) { alert('Les liens ne sont pas autorisés dans ces textes.'); return; }
   var libre = document.getElementById('pers-libre-on').checked ? document.getElementById('pers-libre').value.toLowerCase() : null;
   var maj = {
-    boutique_police: _policeChoisie, boutique_disposition: _dispoChoisie, boutique_cartes: _cartesChoisies,
+    boutique_police: _policeChoisie, boutique_cartes: _cartesChoisies,
     boutique_accroche: accroche || null, boutique_annonce: annonce || null, boutique_annonce_fin: annonce ? finAnn : null,
     boutique_instagram: insta || null, boutique_facebook: fb || null, boutique_tiktok: tik || null, boutique_whatsapp: wa || null,
     boutique_accent_libre: libre,

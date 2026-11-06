@@ -2141,7 +2141,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="pw-row"><label class="pw-rowl"><span class="pw-ic">✉️</span><span class="pw-rt">Mon e-mail<span id="pers-email-val" class="pw-val">—</span></span><input type="checkbox" id="pers-email" class="pw-in" onchange="majApercuLive()"><span class="pw-sw"></span></label></div>
 <div class="pw-note" style="margin-top:12px;">Ces informations viennent de « Mon profil ». Rien ne s'affiche sans votre accord.</div></div>
 <div class="pw-avance"><button type="button" class="pw-av-t" id="pw-av-btn" onclick="persAvance()" aria-expanded="false"><span>⚙️ Pour aller plus loin</span><span class="pw-av-ch">▾</span></button>
-<div class="pw-av-sub">Police · Forme des cartes · Disposition · Couleur libre · Texte de présentation · Facebook · TikTok</div>
+<div class="pw-av-sub">Police · Forme des cartes · Couleur libre · Texte de présentation · Facebook · TikTok</div>
 <div id="pw-avance" style="display:none;">
 <div class="pw-lab">Votre texte de présentation</div>
 <textarea id="pers-texte" maxlength="600" rows="4" placeholder="Ex : Fleuriste à Capesterre depuis 2015. Compositions sur mesure, mariages, deuils. Ouvert du mardi au samedi…" style="width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;resize:vertical;" oninput="document.getElementById('pers-compteur').textContent=this.value.length"></textarea>
@@ -2152,7 +2152,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <input type="color" id="pers-libre" value="#2563a8" oninput="majCouleurLibre()" style="width:44px;height:34px;border:1px solid var(--brd);border-radius:8px;padding:2px;background:var(--bg);cursor:pointer;">
 <span id="pers-libre-info" class="pw-note" style="margin:0;"></span></div>
 <div class="pw-lab">Police des titres</div><div id="pers-polices" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
-<div class="pw-lab">Disposition du haut de la boutique</div><div id="pers-dispo" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
 <div class="pw-lab">Forme des cartes produits</div><div id="pers-cartes" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
 <div class="pw-lab">Facebook et TikTok</div>
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;">
@@ -3307,6 +3306,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261106c"></script>
+<script src="/mpa/mpa-artisans.js?v=20261106d"></script>
 </body>
 </html>
