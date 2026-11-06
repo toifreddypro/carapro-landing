@@ -6547,8 +6547,8 @@ var COULEURS_BOUTIQUE = { terre: '#B5502F', bleu: '#2563A8', vert: '#2F7D4F', ro
 var NOMS_COULEURS = { terre: 'Terre cuite', bleu: 'Bleu', vert: 'Vert', rose: 'Rose', violet: 'Violet', ocre: 'Ocre' };
 var _accentChoisi = null;
 var _fondChoisi = 'clair';
-var NOMS_FONDS = { clair: 'Clair', creme: 'Crème', terre: 'Terre cuite pâle', ocre: 'Ocre pâle', sombre: 'Sombre', plage: 'Plage', sable: 'Sable', motif: 'Ardoise', soie: 'Soie', emeraude: 'Émeraude', couleurs: 'Couleurs', bois: 'Bois madras', jungle: 'Jungle', brume: 'Brume', aube: 'Aube', menthe: 'Menthe', ciel: 'Ciel', lavande: 'Lavande', perle: 'Gris perle' };
-var APERCU_FONDS = { clair: ['#ffffff', '#13223c'], creme: ['#f6efe4', '#2a2118'], terre: ['#f8ebe4', '#13223c'], ocre: ['#f8efd9', '#13223c'], sombre: ['#0f1115', '#f3f1ec'], plage: ['linear-gradient(rgba(255,255,255,.45),rgba(255,255,255,.45)),url(/artisans/img/fond-plage-mini.webp) center/cover', '#13223c'], sable: ['linear-gradient(rgba(255,255,255,.45),rgba(255,255,255,.45)),url(/artisans/img/fond-sable-mini.webp) center/cover', '#13223c'], motif: ['linear-gradient(rgba(15,17,21,.2),rgba(15,17,21,.2)),url(/artisans/img/fond-motif-mini.webp) center/cover', '#f3f1ec'], soie: ['linear-gradient(rgba(255,255,255,.3),rgba(255,255,255,.3)),url(/artisans/img/fond-soie-mini.webp) center/cover', '#13223c'], emeraude: ['linear-gradient(rgba(8,24,19,.45),rgba(8,24,19,.45)),url(/artisans/img/fond-emeraude-mini.webp) center/cover', '#f3f1ec'], couleurs: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-couleurs-mini.webp) center/cover', '#13223c'], bois: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-bois-mini.webp) center/cover', '#13223c'], jungle: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-jungle-mini.webp) center/cover', '#13223c'], brume: ['linear-gradient(160deg,#f7f9fc,#e6ecf4)', '#13223c'], aube: ['linear-gradient(160deg,#fffafa,#fdeef0)', '#13223c'], menthe: ['linear-gradient(160deg,#fbfefc,#e3f4ea)', '#13223c'], ciel: ['linear-gradient(160deg,#fafdff,#e1effb)', '#13223c'], lavande: ['linear-gradient(160deg,#fcfbff,#ece8f8)', '#13223c'], perle: ['linear-gradient(160deg,#f6f6f7,#e9eaed)', '#13223c'] };
+var NOMS_FONDS = { clair: 'Clair', ocean: 'Océan', lagon: 'Lagon', corail: 'Corail', foret: 'Forêt', schiste: 'Schiste', aurore: 'Aurore', sombre: 'Sombre', plage: 'Plage', sable: 'Sable', motif: 'Ardoise motif', soie: 'Soie', emeraude: 'Émeraude', couleurs: 'Couleurs', bois: 'Bois madras', jungle: 'Jungle' };
+var APERCU_FONDS = { clair: ['#ffffff', '#13223c'], ocean: ['linear-gradient(180deg,#b9d6f2,#f2f8fe)', '#13223c'], lagon: ['linear-gradient(180deg,#b4e5e1,#effaf9)', '#13223c'], corail: ['linear-gradient(180deg,#fbc9c0,#fff1ee)', '#13223c'], foret: ['linear-gradient(180deg,#c3e4c8,#f1faf2)', '#13223c'], schiste: ['linear-gradient(180deg,#c6cfdd,#f1f3f7)', '#13223c'], aurore: ['linear-gradient(180deg,#f9c6d8,#c8d6fb)', '#13223c'], sombre: ['#0f1115', '#f3f1ec'], plage: ['linear-gradient(rgba(255,255,255,.45),rgba(255,255,255,.45)),url(/artisans/img/fond-plage-mini.webp) center/cover', '#13223c'], sable: ['linear-gradient(rgba(255,255,255,.45),rgba(255,255,255,.45)),url(/artisans/img/fond-sable-mini.webp) center/cover', '#13223c'], motif: ['linear-gradient(rgba(15,17,21,.2),rgba(15,17,21,.2)),url(/artisans/img/fond-motif-mini.webp) center/cover', '#f3f1ec'], soie: ['linear-gradient(rgba(255,255,255,.3),rgba(255,255,255,.3)),url(/artisans/img/fond-soie-mini.webp) center/cover', '#13223c'], emeraude: ['linear-gradient(rgba(8,24,19,.45),rgba(8,24,19,.45)),url(/artisans/img/fond-emeraude-mini.webp) center/cover', '#f3f1ec'], couleurs: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-couleurs-mini.webp) center/cover', '#13223c'], bois: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-bois-mini.webp) center/cover', '#13223c'], jungle: ['linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)),url(/artisans/img/fond-jungle-mini.webp) center/cover', '#13223c'] };
 function afficherPersonnalisation() {
   initGlisserBanniere();
   var ap = document.getElementById('pers-apercu');
@@ -6590,8 +6590,8 @@ function dessinerCouleursBoutique() {
   }).join('');
 }
 var _fondsTous = false;
-var FONDS_PROPOSES = ['clair', 'ciel', 'sombre'];
-var FONDS_RETIRES = { bleu: 'ciel', rose: 'aube', vert: 'menthe', violet: 'lavande' }; // anciens fonds proches des nouveaux : remplacés dans le choix (la boutique ne change qu'à l'enregistrement)
+var FONDS_PROPOSES = ['clair', 'ocean', 'sombre'];
+var FONDS_RETIRES = { bleu: 'ocean', rose: 'corail', vert: 'foret', violet: 'aurore', terre: 'corail', ocre: 'corail', creme: 'clair', brume: 'schiste', aube: 'corail', menthe: 'lagon', ciel: 'ocean', lavande: 'aurore', perle: 'schiste' }; // anciens fonds proches des nouveaux : remplacés dans le choix (la boutique ne change qu'à l'enregistrement)
 function dessinerFondsBoutique() {
   var z = document.getElementById('pers-fonds'); if (!z) return;
   var tous = _fondsTous || FONDS_PROPOSES.indexOf(_fondChoisi) < 0;
@@ -7422,6 +7422,7 @@ function openAjouterCatalogue() {
   document.getElementById('cat-desc').value = '';
   document.getElementById('cat-prix').value = '';
   document.getElementById('cat-type').value = 'disponible';
+  document.getElementById('cat-mention').value = '';
   document.getElementById('cat-delai').value = '';
   document.getElementById('cat-delai-wrap').style.display = 'none';
   document.getElementById('cat-stock').value = '';
@@ -7442,6 +7443,7 @@ function ouvrirModifierCatalogue(id) {
   document.getElementById('cat-desc').value = c.description || '';
   document.getElementById('cat-prix').value = c.prix != null ? c.prix : '';
   document.getElementById('cat-type').value = c.type || 'disponible';
+  document.getElementById('cat-mention').value = c.mention || '';
   document.getElementById('cat-delai').value = c.delai_preparation || '';
   document.getElementById('cat-delai-wrap').style.display = c.type === 'sur_commande' ? 'block' : 'none';
   document.getElementById('cat-stock').value = c.quantite_stock != null ? c.quantite_stock : '';
@@ -7581,6 +7583,7 @@ async function sauverCatalogue() {
       description: document.getElementById('cat-desc').value.trim() || null,
       prix: parseFloat(document.getElementById('cat-prix').value) || null,
       type: document.getElementById('cat-type').value,
+      mention: document.getElementById('cat-mention').value || null,
       delai_preparation: document.getElementById('cat-delai').value.trim() || null,
       quantite_stock: document.getElementById('cat-stock').value !== '' ? parseInt(document.getElementById('cat-stock').value, 10) : null,
       // Un seuil n'a de sens que si le stock est suivi (pas illimité).

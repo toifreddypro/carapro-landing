@@ -61,6 +61,19 @@
   :root.fond-lavande body{background:linear-gradient(160deg,#fcfbff,#ece8f8) fixed;}
   :root.fond-perle{--bg:#e9eaed;--panel:#ffffff;--brd:#d9dbe0;--b2:#d9dbe0;--inp:#f6f6f7;--hf:#30343b;--hf-tx:#ffffff;--hf-brd:rgba(255,255,255,.28);--hf-hover:rgba(255,255,255,.14);--hf-act-bg:#ffffff;--hf-act-tx:#13223c;}
   :root.fond-perle body{background:linear-gradient(160deg,#f6f6f7,#e9eaed) fixed;}
+  /* Fonds dégradés (nov. 2026) : un ton soutenu en haut, plus clair en bas ; en-tête et bas de page en teinte foncée */
+  :root.fond-ocean{--bg:#f2f8fe;--panel:#ffffff;--brd:#c9ddf2;--b2:#c9ddf2;--inp:#f2f8fe;--hf:#173a66;--hf-tx:#ffffff;--hf-brd:rgba(255,255,255,.28);--hf-hover:rgba(255,255,255,.14);--hf-act-bg:#ffffff;--hf-act-tx:#13223c;}
+  :root.fond-ocean body{background:linear-gradient(180deg,#b9d6f2 0%,#f2f8fe 100%) fixed;}
+  :root.fond-lagon{--bg:#effaf9;--panel:#ffffff;--brd:#c2e5e2;--b2:#c2e5e2;--inp:#effaf9;--hf:#0f5257;--hf-tx:#ffffff;--hf-brd:rgba(255,255,255,.28);--hf-hover:rgba(255,255,255,.14);--hf-act-bg:#ffffff;--hf-act-tx:#13223c;}
+  :root.fond-lagon body{background:linear-gradient(180deg,#b4e5e1 0%,#effaf9 100%) fixed;}
+  :root.fond-corail{--bg:#fff1ee;--panel:#ffffff;--brd:#f0cfc9;--b2:#f0cfc9;--inp:#fff1ee;--hf:#8a2f3f;--hf-tx:#ffffff;--hf-brd:rgba(255,255,255,.28);--hf-hover:rgba(255,255,255,.14);--hf-act-bg:#ffffff;--hf-act-tx:#13223c;}
+  :root.fond-corail body{background:linear-gradient(180deg,#fbc9c0 0%,#fff1ee 100%) fixed;}
+  :root.fond-foret{--bg:#f1faf2;--panel:#ffffff;--brd:#cbe3cf;--b2:#cbe3cf;--inp:#f1faf2;--hf:#1f5a35;--hf-tx:#ffffff;--hf-brd:rgba(255,255,255,.28);--hf-hover:rgba(255,255,255,.14);--hf-act-bg:#ffffff;--hf-act-tx:#13223c;}
+  :root.fond-foret body{background:linear-gradient(180deg,#c3e4c8 0%,#f1faf2 100%) fixed;}
+  :root.fond-schiste{--bg:#f1f3f7;--panel:#ffffff;--brd:#d0d6e2;--b2:#d0d6e2;--inp:#f1f3f7;--hf:#2f3b52;--hf-tx:#ffffff;--hf-brd:rgba(255,255,255,.28);--hf-hover:rgba(255,255,255,.14);--hf-act-bg:#ffffff;--hf-act-tx:#13223c;}
+  :root.fond-schiste body{background:linear-gradient(180deg,#c6cfdd 0%,#f1f3f7 100%) fixed;}
+  :root.fond-aurore{--bg:#c8d6fb;--panel:#ffffff;--brd:#d6d6f2;--b2:#d6d6f2;--inp:#c8d6fb;--hf:#3b3a7a;--hf-tx:#ffffff;--hf-brd:rgba(255,255,255,.28);--hf-hover:rgba(255,255,255,.14);--hf-act-bg:#ffffff;--hf-act-tx:#13223c;}
+  :root.fond-aurore body{background:linear-gradient(180deg,#f9c6d8 0%,#c8d6fb 100%) fixed;}
   :root[class*="fond-"] .modal-overlay{--bg:#f7f8fb;--panel:#ffffff;--brd:#e3eaf4;--b2:#c9d8ef;--inp:#f6f9fe;--tx:#13223c;--mu:#6b7c96;--mu2:#4a5c78;--ok:#059669;--gold:#b45309;color-scheme:light;}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);line-height:1.5;padding-bottom:60px;}
@@ -191,6 +204,9 @@
   /* Pastilles : sur une bande AU-DESSUS de la photo, jamais dessus (la photo reste entière). */
   .bandeau-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:34px;padding:6px 10px;border-bottom:1px solid var(--brd);}
   .badge-remise,.badge-phare,.badge-nouveaute{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;color:#fff;white-space:nowrap;}
+  .badge-limitee{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;color:#fff;white-space:nowrap;background:#6d28d9;} .badge-indispo{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;color:#fff;white-space:nowrap;background:#4b5563;}
+  .carte-produit.indispo .photo-wrap img,.carte-produit.indispo .photo-vide{filter:grayscale(1);opacity:.5;} .carte-produit.indispo .btn-commander{background:#9ca3af;cursor:not-allowed;}
+  .cartes-carre .badge-limitee,.cartes-sobre .badge-limitee,.cartes-carre .badge-indispo,.cartes-sobre .badge-indispo{border-radius:3px;}
   .badge-remise{background:#be123c;margin-left:auto;} .badge-phare{background:#b45309;} .badge-nouveaute{background:#059669;}
 
   .carte-corps{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1;}
@@ -243,12 +259,21 @@
   .rass-milieu{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;flex:1;}
   .rass-retour{color:var(--hf-tx);text-decoration:none;font-weight:700;white-space:nowrap;}
   .rass-retour:hover{opacity:.8;}
-  .rassurance .btn-langue{border-color:var(--hf-brd)!important;color:var(--hf-tx)!important;background:transparent!important;}
-  .rassurance .btn-langue.actif{background:var(--hf-act-bg)!important;color:var(--hf-act-tx)!important;border-color:var(--hf-act-bg)!important;}
+    .sel-langue{display:flex;gap:6px;}
+  .btn-lang{display:inline-flex;align-items:center;gap:7px;padding:4px 10px;border:1px solid var(--hf-brd);background:transparent;color:var(--hf-tx);border-radius:4px;font-family:'Outfit',sans-serif;font-size:12.5px;font-weight:600;cursor:pointer;}
+  .btn-lang.actif{background:var(--hf-act-bg);color:var(--hf-act-tx);border-color:var(--hf-act-bg);}
+  .flag-swatch{display:inline-block;width:18px;height:12px;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.18);flex-shrink:0;}
+  .flag-fr{background:linear-gradient(90deg,#002395 33.33%,#ffffff 33.33% 66.66%,#ED2939 66.66%);}
+  .flag-es{background:linear-gradient(180deg,#AA151B 25%,#F1BF00 25% 75%,#AA151B 75%);}
+  .flag-gb{background:#012169;position:relative;overflow:hidden;}
+  .flag-gb::before{content:'';position:absolute;inset:0;background:linear-gradient(to bottom right,transparent 46%,#fff 46% 54%,transparent 54%),linear-gradient(to bottom left,transparent 46%,#fff 46% 54%,transparent 54%),linear-gradient(to bottom,transparent 42%,#fff 42% 58%,transparent 58%),linear-gradient(to right,transparent 42%,#fff 42% 58%,transparent 58%);}
+  .flag-gb::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom right,transparent 48%,#C8102E 48% 52%,transparent 52%),linear-gradient(to bottom left,transparent 48%,#C8102E 48% 52%,transparent 52%),linear-gradient(to bottom,transparent 45%,#C8102E 45% 55%,transparent 55%),linear-gradient(to right,transparent 45%,#C8102E 45% 55%,transparent 55%);}
+  @media(max-width:700px){.lang-nom{display:none}.btn-lang{padding:5px 7px}}
   .rassurance .btn-langue{padding:3px 8px!important;font-size:10.5px!important;}
   @media(max-width:600px){.rass-retour-txt{display:none}.rass-2,.rass-3{display:none}.rassurance{font-size:11.5px;padding:6px 12px}.rass-milieu{justify-content:flex-start}}
   @media(min-width:601px) and (max-width:900px){.rass-3{display:none}}
-  .entete{position:sticky;top:0;z-index:50;background:var(--hf);color:var(--hf-tx);border-bottom:1px solid var(--hf-brd);padding:0;margin:0;box-shadow:0 2px 10px rgba(19,34,60,.10);}
+  .entete-bloc{position:sticky;top:0;z-index:50;box-shadow:0 6px 18px rgba(10,20,40,.30);}
+  .entete{background:var(--hf);color:var(--hf-tx);padding:0;margin:0;}
   :root.fond-sombre .entete,:root.fond-motif .entete,:root.fond-emeraude .entete{box-shadow:none;}
   .entete-in{max-width:1400px;margin:0 auto;padding:10px 16px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;}
   .entete-g{display:flex;justify-content:flex-start;}
@@ -266,13 +291,15 @@
   .recherche-in{max-width:720px;margin:0 auto;position:relative;}
   .recherche-in span{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none;}
   .recherche-in input{width:100%;padding:12px 16px 12px 42px;border-radius:6px;border:1px solid var(--hf-brd);background:var(--panel);color:var(--tx);font-family:'Outfit',sans-serif;font-size:15px;}
-  .nav-chips{background:var(--hf);border-top:1px solid var(--hf-brd);border-bottom:1px solid var(--hf-brd);}
-  .nav-chips-in{max-width:1400px;margin:0 auto;padding:8px 16px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;justify-content:center;}
+  .nav-chips{background:var(--hf);border-top:1px solid var(--hf-brd);}
+  .nav-chips-in{max-width:1400px;margin:0 auto;padding:0 16px;display:flex;gap:0;overflow-x:auto;scrollbar-width:none;}
+  .nav-chips-in>.nav-chip:first-child{margin-left:auto;} .nav-chips-in>.nav-chip:last-child{margin-right:auto;}
   .nav-chips-in::-webkit-scrollbar{display:none;}
-  @media(max-width:700px){.nav-chips-in{justify-content:flex-start;padding:7px 10px}}
-  .nav-chip{flex:0 0 176px;width:176px;padding:8px 10px;border-radius:4px;border:1px solid var(--hf-brd);background:transparent;color:var(--hf-tx);font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;}
+  @media(max-width:700px){.nav-chips-in{padding:0 6px}}
+  .nav-chip{flex:1 1 0;min-width:176px;max-width:260px;padding:13px 6px;border:none;border-radius:0;background:transparent;color:var(--hf-tx);font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;}
   .nav-chip:hover{background:var(--hf-hover);}
-  .nav-chip.actif{background:var(--hf-act-bg);color:var(--hf-act-tx);border-color:var(--hf-act-bg);}
+  .nav-chip.actif{background:var(--hf-hover);box-shadow:inset 0 -3px 0 var(--hf-tx);}
+  @media(max-width:600px){.nav-chip{flex:0 0 200px;max-width:none;font-size:12px;letter-spacing:.03em;padding:12px 6px}}
   .hero-c{max-width:1400px;margin:0 auto;}
   .hero-cadre{position:relative;overflow:hidden;background:var(--b2);}
   @media(min-width:701px){.hero-c{padding:16px 16px 0}.hero-cadre{border-radius:18px}}
@@ -289,12 +316,12 @@
   .car-point{width:9px;height:9px;border-radius:50%;border:none;padding:0;background:rgba(255,255,255,.55);cursor:pointer;}
   .car-point.actif{background:#fff;width:22px;border-radius:5px;}
   .hero-c + .wrap .promo-bandeau,.hero-c ~ .wrap .promo-bandeau{margin-top:14px;}
-  h2.section-titre{scroll-margin-top:130px;margin:34px 0 14px;}
+  h2.section-titre{scroll-margin-top:200px;margin:34px 0 14px;}
   .rangee{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 12px;scroll-snap-type:x proximity;scrollbar-width:thin;}
   .rangee>.carte-produit:first-child{margin-left:auto;} .rangee>.carte-produit:last-child{margin-right:auto;}
   .rangee .carte-produit{flex:0 0 168px;scroll-snap-align:start;}
   @media(min-width:701px){.rangee .carte-produit{flex-basis:210px}}
-  .pied{margin-top:46px;background:var(--hf);color:var(--hf-tx);border-top:1px solid var(--hf-brd);padding:30px 0 26px;scroll-margin-top:110px;}
+  .pied{margin-top:46px;background:var(--hf);color:var(--hf-tx);border-top:1px solid var(--hf-brd);padding:30px 0 26px;scroll-margin-top:200px;}
   .pied .info-titre{color:var(--hf-tx);opacity:.7;} .pied .info-texte,.pied .info-ligne a{color:var(--hf-tx);}
   .pied .reseau{color:var(--hf-tx);border-color:var(--hf-brd);} .pied .reseau:hover{background:var(--hf-hover);}
   .pied .btn-partage{border-color:var(--hf-brd)!important;color:var(--hf-tx)!important;}
@@ -425,7 +452,7 @@ function prixEffectifProduit(p) { return p.promo_pct ? Math.round(p.prix * (1 - 
 
 function ajouterAuPanier(produitId) {
   var p = DATA.produits.find(function(x) { return x.id === produitId; });
-  if (!p) return;
+  if (!p || p.mention === 'indisponible') return;
   var ligne = PANIER.find(function(l) { return l.catalogue_id === produitId; });
   if (ligne) { ligne.quantite += 1; } else { PANIER.push({ catalogue_id: p.id, nom: p.nom, url_photo: p.url_photo, prix: prixEffectifProduit(p), quantite: 1 }); }
   sauverPanier();
@@ -968,9 +995,12 @@ var _BADGES_PRESENTS = false; // vrai si au moins un produit affiché porte une 
 function carteProduit(p, pre) {
   pre = pre || '';
   var promo = p.prix != null && p.promo_pct ? Math.round(p.prix * (1 - p.promo_pct / 100) * 100) / 100 : null;
-  var badgeCoin = p.est_nouveaute
+  var indispo = p.mention === 'indisponible';
+  var badgeCoin = p.mention === 'edition_limitee' ? '<span class="badge-limitee">🔥 ' + L('limitee') + '</span>'
+    : (indispo ? '<span class="badge-indispo">' + L('indispo') + '</span>'
+    : (p.est_nouveaute
     ? '<span class="badge-nouveaute">✨ ' + T('cat_nouveau') + '</span>'
-    : (p.est_phare ? '<span class="badge-phare">⭐ ' + T('cat_bestseller') + '</span>' : '');
+    : (p.est_phare ? '<span class="badge-phare">⭐ ' + T('cat_bestseller') + '</span>' : '')));
   var badgeRemise = p.promo_pct ? '<span class="badge-remise">-' + p.promo_pct + '%</span>' : '';
   var bandeauBadges = (badgeCoin || badgeRemise || _BADGES_PRESENTS)
     ? '<div class="bandeau-badges">' + badgeCoin + badgeRemise + '</div>' : '';
@@ -986,14 +1016,15 @@ function carteProduit(p, pre) {
   var photoWrap = p.url_photo
     ? '<div class="photo-wrap cliquable" role="button" tabindex="0" aria-label="' + escHtml(T('cat_galerie_zoom')) + ' — ' + escHtml(p.nom) + '" onclick="ouvrirGalerie(' + jsAttr(p.id) + ')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();ouvrirGalerie(' + jsAttr(p.id) + ');}">' + photo + (nbPhotos > 1 ? '<span class="badge-photos" aria-hidden="true">📷 ' + nbPhotos + '</span>' : '') + '</div>'
     : '<div class="photo-wrap">' + photo + '</div>';
-  return '<div class="carte-produit">' + bandeauBadges +
+  return '<div class="carte-produit' + (indispo ? ' indispo' : '') + '">' + bandeauBadges +
     photoWrap +
     '<div class="carte-corps">' +
       '<div class="produit-nom">' + escHtml(p.nom) + '</div>' +
       (p.description ? '<div class="produit-desc">' + escHtml(p.description) + '</div>' : '') +
       prixHtml +
       (p.type === 'sur_commande' && p.delai_preparation ? '<div class="delai-sur-commande">⏱️ ' + T('cat_sur_commande') + ' — ' + escHtml(p.delai_preparation) + '</div>' : '') +
-      '<button class="btn-commander" onclick="ajouterAuPanier(' + jsAttr(p.id) + ')" id="btn-add-' + pre + escHtml(p.id) + '">' + T('cat_ajouter_panier') + '</button>' +
+      (indispo ? '<button class="btn-commander" disabled>' + L('indispo') + '</button>'
+        : '<button class="btn-commander" onclick="ajouterAuPanier(' + jsAttr(p.id) + ')" id="btn-add-' + pre + escHtml(p.id) + '">' + T('cat_ajouter_panier') + '</button>') +
     '</div>' +
   '</div>';
 }
@@ -1039,6 +1070,7 @@ function ouvrirGalerie(id) {
     var sp = document.createElement('strong'); sp.textContent = fmtEur(prix); infos.appendChild(sp);
   }
   var add = document.createElement('button'); add.type = 'button'; add.className = 'btn-commander'; add.textContent = T('cat_ajouter_panier');
+  if (p.mention === 'indisponible') { add.disabled = true; add.textContent = L('indispo'); }
   add.addEventListener('click', function() { ajouterAuPanier(p.id); add.textContent = '✓ ' + T('cat_ajouter_panier'); setTimeout(function() { add.textContent = T('cat_ajouter_panier'); }, 1200); });
   infos.appendChild(add);
   // Zoom : un clic agrandit (l'image devient défilable, donc déplaçable au doigt), un second clic revient.
@@ -1129,19 +1161,16 @@ function render() {
     ? '<img class="avatar" src="' + escHtml(a.photo_profil_url) + '" alt="">'
     : '<div class="avatar">' + initiales(a.nom_entreprise) + '</div>';
 
-  var selecteurLangue =
-    '<div style="display:flex;gap:6px;">' +
-      ['fr', 'en', 'es'].map(function(code) {
-        var actif = AT_LANG === code;
-        return '<button class="btn-langue' + (actif ? ' actif' : '') + '" onclick="changerLangueCatalogue(' + jsAttr(code) + ')" style="padding:4px 9px;border-radius:6px;border:1px solid ' + (actif ? 'var(--ac)' : 'var(--brd)') + ';background:' + (actif ? 'var(--ac)' : 'transparent') + ';color:' + (actif ? '#fff' : 'var(--mu)') + ';font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;">' + code + '</button>';
-      }).join('') +
-    '</div>';
+  var NOMS_LANGUES = { fr: ['Français', 'flag-fr'], en: ['English', 'flag-gb'], es: ['Español', 'flag-es'] };
+  var selecteurLangue = '<div class="sel-langue">' + ['fr', 'en', 'es'].map(function(code) {
+    return '<button type="button" class="btn-lang' + (AT_LANG === code ? ' actif' : '') + '" onclick="changerLangueCatalogue(' + jsAttr(code) + ')" aria-label="' + NOMS_LANGUES[code][0] + '" title="' + NOMS_LANGUES[code][0] + '"><span class="flag-swatch ' + NOMS_LANGUES[code][1] + '"></span><span class="lang-nom">' + NOMS_LANGUES[code][0] + '</span></button>';
+  }).join('') + '</div>';
 
   var boutonPartage = '<button type="button" class="btn-partage" onclick="partagerBoutique()" aria-label="' + escHtml(T('partage_titre_boutique')) + '" style="padding:6px 13px;border-radius:20px;border:1px solid var(--brd);background:transparent;color:var(--mu2);font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;white-space:nowrap;">🔗 ' + T('partage_bouton') + '</button>';
 
   // ── Personnalisation de l'artisan : couleur d'accent, image de fond, coordonnées et texte choisis par lui ──
   var COULEURS = { terre: '#B5502F', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
-  if (['creme', 'sombre', 'terre', 'bleu', 'vert', 'rose', 'violet', 'ocre', 'plage', 'sable', 'motif', 'emeraude', 'soie', 'couleurs', 'bois', 'jungle', 'brume', 'aube', 'menthe', 'ciel', 'lavande', 'perle'].indexOf(a.boutique_fond) >= 0) {
+  if (['creme', 'sombre', 'terre', 'bleu', 'vert', 'rose', 'violet', 'ocre', 'plage', 'sable', 'motif', 'emeraude', 'soie', 'couleurs', 'bois', 'jungle', 'brume', 'aube', 'menthe', 'ciel', 'lavande', 'perle', 'ocean', 'lagon', 'corail', 'foret', 'schiste', 'aurore'].indexOf(a.boutique_fond) >= 0) {
     document.documentElement.classList.add('fond-' + a.boutique_fond);
     if (a.boutique_fond === 'sombre' || a.boutique_fond === 'motif' || a.boutique_fond === 'emeraude') COULEURS = { terre: '#D0623B', bleu: '#3F86D6', vert: '#2F9A62', rose: '#D0449A', violet: '#8061DB', ocre: '#C48A1F' };
   }
@@ -1184,7 +1213,7 @@ function render() {
   var phares = prods.filter(function(p) { return p.est_phare; }).slice(0, 10);
   var nbNouv = prods.filter(function(p) { return p.est_nouveaute; }).length;
   var nbPromo = prods.filter(function(p) { return p.promo_pct; }).length;
-  _BADGES_PRESENTS = prods.some(function(p) { return p.est_nouveaute || p.est_phare || p.promo_pct; });
+  _BADGES_PRESENTS = prods.some(function(p) { return p.est_nouveaute || p.est_phare || p.promo_pct || p.mention; });
   var avatarHaut = a.photo_profil_url
     ? '<img class="avatar-haut" src="' + escHtml(a.photo_profil_url) + '" alt="">'
     : '<span class="avatar-haut">' + initiales(a.nom_entreprise) + '</span>';
@@ -1193,14 +1222,14 @@ function render() {
     '<div class="rassurance"><a class="rass-retour" href="https://caralink.app/artisans/" aria-label="' + escHtml(T('cat_retour_annuaire')) + '">←<span class="rass-retour-txt"> ' + T('cat_retour_annuaire').replace(/^\s*←\s*/, '') + '</span></a>' +
       '<div class="rass-milieu">' + rassure + '</div>' + selecteurLangue + '</div>';
   var entete =
-    '<header class="entete"><div class="entete-in">' +
+    '<div class="entete-bloc"><header class="entete"><div class="entete-in">' +
       '<div class="entete-g"></div>' +
       '<div class="entete-c">' + avatarHaut + '<span class="boutique-nom">' + escHtml(a.nom_entreprise) + (a.verifie ? '<span class="badge-verifie">✅ ' + T('cat_verifie') + '</span>' : '') + (a.id ? coeurHtml(a.id, true) : '') + '</span></div>' +
       '<div class="entete-d"><a class="ic-btn" href="' + lienCompte() + '" aria-label="' + escHtml(T('nav_compte_client')) + '" title="' + escHtml(T('nav_compte_client')) + '">👤</a>' +
         '<button type="button" class="ic-btn" onclick="ouvrirPanier()" aria-label="' + escHtml(T('cat_mon_panier')) + '">🛒<span class="pastille-panier" id="panier-badge-haut">0</span></button></div>' +
     '</div></header>' +
     '<div class="recherche"><div class="recherche-in"><span aria-hidden="true">🔍</span><input type="search" id="champ-recherche" placeholder="' + escHtml(L('rechercher')) + '" aria-label="' + escHtml(L('rechercher')) + '" oninput="chercher(this.value)"></div></div>' +
-    '<nav class="nav-chips" aria-label="Menu"><div class="nav-chips-in" id="nav-chips-in">' + navHtml() + '</div></nav>';
+    '<nav class="nav-chips" aria-label="Menu"><div class="nav-chips-in" id="nav-chips-in">' + navHtml() + '</div></nav></div>';
   var slides = (bannieres.length ? bannieres : [null]).map(function(u) {
     return '<div class="slide' + (u ? '' : ' sans-image') + '"' + (u ? ' style="background-image:url(&quot;' + escHtml(u) + '&quot;);" role="img" aria-label="' + escHtml(a.nom_entreprise) + '"' : '') + '></div>';
   }).join('');
@@ -1225,7 +1254,7 @@ function render() {
   var promos = prods.filter(function(p) { return p.promo_pct; }).slice(0, 10);
   if (promos.length) _onglets.push({ k: 'promos', lib: L('promos'), liste: promos });
   _ongletActif = (_onglets.filter(function(o) { return o.liste.length; })[0] || _onglets[0] || {}).k || null;
-  if (_onglets.length) html += '<div id="bloc-onglets" style="scroll-margin-top:130px;"></div>';
+  if (_onglets.length) html += '<div id="bloc-onglets" style="scroll-margin-top:200px;"></div>';
   if (prods.length) {
     html += '<h2 class="section-titre" id="produits">' + T('cat_tous_produits') + '</h2>';
     html += '<div id="barre-filtres" style="margin-bottom:16px;"></div>';
@@ -1259,9 +1288,9 @@ function render() {
 
 // ── Textes propres à la nouvelle page (FR / EN / ES) ──
 var LB = {
-  fr: { paiement: 'Paiement sécurisé', livraison: 'Livraison ou retrait', cashback: 'Cashback fidélité', nouveautes: 'Nouveautés', promos: 'Promotions', meilleures: 'Nos meilleures ventes', decouvre: 'Je découvre', rechercher: 'Rechercher un produit…', suivez: 'Suivez-nous', selection: 'Notre sélection du mois', marques: 'Nos marques', toutes: 'Toutes les catégories', vide_ventes: 'Les meilleures ventes apparaîtront ici dès les premières commandes.', vide_promos: 'Aucune promotion pour le moment.', vide_selection: '' },
-  en: { paiement: 'Secure payment', livraison: 'Delivery or pick-up', cashback: 'Loyalty cashback', nouveautes: 'New in', promos: 'Offers', meilleures: 'Our best sellers', decouvre: 'Discover', rechercher: 'Search a product…', suivez: 'Follow us', selection: 'Our selection of the month', marques: 'Our brands', toutes: 'All categories', vide_ventes: 'Best sellers will appear here after the first orders.', vide_promos: 'No offers at the moment.', vide_selection: '' },
-  es: { paiement: 'Pago seguro', livraison: 'Entrega o recogida', cashback: 'Cashback fidelidad', nouveautes: 'Novedades', promos: 'Ofertas', meilleures: 'Nuestros más vendidos', decouvre: 'Descubrir', rechercher: 'Buscar un producto…', suivez: 'Síguenos', selection: 'Nuestra selección del mes', marques: 'Nuestras marcas', toutes: 'Todas las categorías', vide_ventes: 'Los más vendidos aparecerán aquí tras los primeros pedidos.', vide_promos: 'No hay ofertas por ahora.', vide_selection: '' }
+  fr: { paiement: 'Paiement sécurisé', livraison: 'Livraison ou retrait', cashback: 'Cashback fidélité', nouveautes: 'Nouveautés', promos: 'Promotions', meilleures: 'Nos meilleures ventes', decouvre: 'Je découvre', limitee: 'Édition limitée', indispo: 'Indisponible', rechercher: 'Rechercher un produit…', suivez: 'Suivez-nous', selection: 'Notre sélection du mois', marques: 'Nos marques', toutes: 'Toutes les catégories', vide_ventes: 'Les meilleures ventes apparaîtront ici dès les premières commandes.', vide_promos: 'Aucune promotion pour le moment.', vide_selection: '' },
+  en: { paiement: 'Secure payment', livraison: 'Delivery or pick-up', cashback: 'Loyalty cashback', nouveautes: 'New in', promos: 'Offers', meilleures: 'Our best sellers', decouvre: 'Discover', limitee: 'Limited edition', indispo: 'Unavailable', rechercher: 'Search a product…', suivez: 'Follow us', selection: 'Our selection of the month', marques: 'Our brands', toutes: 'All categories', vide_ventes: 'Best sellers will appear here after the first orders.', vide_promos: 'No offers at the moment.', vide_selection: '' },
+  es: { paiement: 'Pago seguro', livraison: 'Entrega o recogida', cashback: 'Cashback fidelidad', nouveautes: 'Novedades', promos: 'Ofertas', meilleures: 'Nuestros más vendidos', decouvre: 'Descubrir', limitee: 'Edición limitada', indispo: 'No disponible', rechercher: 'Buscar un producto…', suivez: 'Síguenos', selection: 'Nuestra selección del mes', marques: 'Nuestras marcas', toutes: 'Todas las categorías', vide_ventes: 'Los más vendidos aparecerán aquí tras los primeros pedidos.', vide_promos: 'No hay ofertas por ahora.', vide_selection: '' }
 };
 function L(k) { return (LB[AT_LANG] || LB.fr)[k] || LB.fr[k] || k; }
 var _special = null, _recherche = '', _onglets = [], _ongletActif = null;
@@ -1400,7 +1429,7 @@ function rerenderGrillePrincipale() {
   var grille = document.getElementById('grille-principale');
   grille.className = 'grille' + (_vueGrille === 'petites' ? ' vue-petites' : (_vueGrille === 'liste' ? ' vue-liste' : ''));
   grille.innerHTML = liste.length
-    ? (_BADGES_PRESENTS = liste.some(function(p) { return p.est_nouveaute || p.est_phare || p.promo_pct; }), liste.map(carteProduit).join(''))
+    ? (_BADGES_PRESENTS = liste.some(function(p) { return p.est_nouveaute || p.est_phare || p.promo_pct || p.mention; }), liste.map(carteProduit).join(''))
     : '<p style="grid-column:1/-1;color:var(--mu);padding:30px 0;text-align:center;">' + T('cat_aucun_produit_categorie') + '</p>';
 }
 

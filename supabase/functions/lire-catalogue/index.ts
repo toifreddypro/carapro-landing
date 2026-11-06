@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data: produits, error: errP } = await sb.from("artisans_catalogue")
-      .select("id, nom, description, prix, url_photo, type, delai_preparation, est_phare, promo_pct, categorie, created_at")
+      .select("id, nom, description, prix, url_photo, type, delai_preparation, est_phare, promo_pct, categorie, mention, created_at")
       .eq("artisan_id", artisan.id)
       .or("en_vente.is.null,en_vente.eq.true") // « Mon stock » (en_vente = false) n'est jamais affiché : seulement ce que l'artisan a mis au catalogue
       .order("ordre", { ascending: true });
@@ -187,6 +187,7 @@ Deno.serve(async (req: Request) => {
       photos_sup: photosSup.get(p.id) || [],
       type: p.type, delai_preparation: p.delai_preparation, promo_pct: p.promo_pct, categorie: p.categorie,
       est_phare: idsPhares.has(p.id),
+      mention: (p.mention === "edition_limitee" || p.mention === "indisponible") ? p.mention : null,
       est_meilleure_vente: idsMeilleures.has(p.id),
       est_nouveaute: new Date(p.created_at).getTime() >= seuilNouveaute,
       complementaires: complementaires.get(p.id) || [],
