@@ -144,6 +144,51 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .carte-repliable.carte-repliee>.dchdr{border-bottom:0;border-radius:12px;}
 .carte-repliable.carte-repliee>.dchdr .chev{transform:rotate(-90deg);}
 .carte-repliable.carte-repliee>.carte-corps{display:none;}
+/* Personnaliser ma boutique : 4 étapes + aperçu en direct (même écran téléphone et ordinateur) */
+.pw-wrap{max-width:640px;margin:0 auto;}
+.pw-intro{font-size:12.5px;color:var(--mu);line-height:1.5;margin-bottom:12px;}
+.pw-live{border:1px solid var(--brd);border-radius:16px;overflow:hidden;background:#fff;margin-bottom:12px;}
+.pw-ban{aspect-ratio:3/1;width:100%;background:linear-gradient(135deg,#e9eef7,#d5dff0);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:12px;}
+.pw-live-corps{padding:12px 16px 14px;}
+.pw-live-top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.pw-nom{font-size:19px;font-weight:800;letter-spacing:-.3px;line-height:1.2;}
+.pw-icones{display:flex;gap:8px;font-size:18px;}
+.pw-accroche{font-size:13px;opacity:.75;margin-top:3px;min-height:18px;}
+.pw-live-bas{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;}
+.pw-btn{display:inline-block;padding:8px 16px;border-radius:12px;color:#fff;font-weight:800;font-size:13px;}
+.pw-annonce{font-size:12px;font-weight:700;padding:5px 11px;border-radius:12px;background:#fff7e6;border:1px solid #f7d58a;color:#8a5a00;}
+.pw-steps{display:flex;gap:6px;margin-bottom:12px;}
+.pw-step{flex:1;padding:9px 2px;border-radius:999px;border:1px solid var(--brd);background:var(--bg);color:var(--tx);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.pw-step.on{background:var(--ac);border-color:var(--ac);color:#fff;}
+.pw-panel{border:1px solid var(--brd);border-radius:16px;padding:16px;background:var(--bg);margin-bottom:12px;}
+.pw-t{font-size:15px;font-weight:800;margin-bottom:12px;}
+.pw-lab{font-size:12.5px;font-weight:700;margin:16px 0 6px;}
+.pw-note{font-size:11.5px;color:var(--mu);margin-top:6px;line-height:1.5;}
+.pw-val{display:block;font-size:11.5px;font-weight:600;color:var(--mu);}
+.pw-drop{display:block;width:100%;padding:18px;border:2px dashed var(--brd);border-radius:14px;background:var(--inp);color:var(--mu2);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+.pw-lien{margin-top:8px;border:0;background:none;color:var(--mu);font-size:12px;text-decoration:underline;cursor:pointer;font-family:inherit;padding:0;}
+.pw-row{border-top:1px solid var(--brd);padding:12px 0;}
+.pw-row:first-of-type{border-top:0;}
+.pw-rowl{display:flex;align-items:center;gap:12px;cursor:pointer;position:relative;}
+.pw-ic{font-size:22px;width:30px;text-align:center;}
+.pw-rt{flex:1;font-size:14.5px;font-weight:700;}
+.pw-in{position:absolute;opacity:0;width:0;height:0;}
+.pw-sw{width:48px;height:28px;border-radius:30px;background:#cbd5e1;position:relative;flex-shrink:0;transition:background .15s;}
+.pw-sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .15s;}
+.pw-in:checked+.pw-sw{background:#0f9d78;}
+.pw-in:checked+.pw-sw::after{left:23px;}
+.pw-in:focus-visible+.pw-sw{outline:2px solid var(--ac);outline-offset:2px;}
+.pw-champ{margin:10px 0 0 42px;}
+.pw-avance{border:1px dashed var(--brd);border-radius:16px;padding:14px 16px;margin-bottom:12px;}
+.pw-av-t{display:flex;justify-content:space-between;width:100%;border:0;background:none;font-size:15px;font-weight:800;color:var(--tx);cursor:pointer;font-family:inherit;padding:0;}
+.pw-av-sub{font-size:11.5px;color:var(--mu);margin-top:6px;}
+.pw-avance.ouvert .pw-av-ch{transform:rotate(180deg);}
+.pw-bas{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.pw-save{flex:1;min-width:180px;padding:13px;border:0;border-radius:14px;background:var(--ac);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;}
+.pw-save:disabled{opacity:.6;}
+.pw-voir{font-size:12.5px;font-weight:700;color:var(--ac);text-decoration:none;}
+.pw-statut{font-size:12px;color:var(--mu);margin-top:8px;min-height:16px;}
+
 .hdr-indice{font-size:11.5px;font-weight:700;color:var(--ac);white-space:nowrap;margin-right:6px;}
 .carte-repliable .hdr-indice .i-ouvrir{display:none;}
 .carte-repliable.carte-repliee .hdr-indice .i-ouvrir{display:inline;}
@@ -2032,15 +2077,23 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="dcard" style="margin-top:16px;"><div style="padding:14px 16px;font-size:13px;line-height:1.5;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
 <span style="flex:1;min-width:220px;">🎁 <strong>Code promo, cashback et remise « client fidèle »</strong> se règlent maintenant dans <strong>Mes interventions → Remises et fidélité</strong> : ils servent aussi pour vos interventions.</span>
 <button class="addb" onclick="allerRemises()">Régler mes remises</button></div></div>
-<div class="dcard carte-repliable carte-repliee" style="margin-top:16px;"><div class="dchdr fam-violet" role="button" tabindex="0" aria-expanded="false" onclick="basculerCarte(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();basculerCarte(this);}"><div class="dctit">🎨 Personnaliser ma boutique <span style="font-size:11px;font-weight:700;color:var(--ok,#059669);">Gratuit</span></div><span class="hdr-sub">Image, fond, couleurs, police, coordonnées</span><span class="chev" aria-hidden="true">▾</span></div><div class="carte-corps" style="padding:16px;">
-<div style="font-size:12px;color:var(--mu);margin-bottom:10px;line-height:1.5;">Votre boutique est votre vitrine : donnez-lui votre image. Le <strong>logo</strong> se change dans « Mon profil ».</div>
-<div id="pers-apercu" style="aspect-ratio:3/1;width:100%;border-radius:9px;background:linear-gradient(135deg,#e9eef7,#d5dff0);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:12px;margin-bottom:8px;">Pas encore d'image de fond</div>
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
-<button class="addb" id="btn-banniere" onclick="document.getElementById('banniere-input').click()" style="flex-shrink:0;">🖼️ Choisir une image de fond</button>
-<button class="addb" id="btn-banniere-retirer" onclick="retirerBanniere()" style="flex-shrink:0;display:none;">Retirer</button>
+<div class="dcard carte-repliable carte-repliee" style="margin-top:16px;"><div class="dchdr fam-violet" role="button" tabindex="0" aria-expanded="false" onclick="basculerCarte(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();basculerCarte(this);}"><div class="dctit">🎨 Personnaliser ma boutique <span style="font-size:11px;font-weight:700;color:var(--ok,#059669);">Gratuit</span></div><span class="hdr-sub">Image, couleurs, message, contacts</span><span class="chev" aria-hidden="true">▾</span></div><div class="carte-corps pw" style="padding:16px;"><div class="pw-wrap">
+<div class="pw-intro">Votre boutique est votre vitrine : donnez-lui votre image. Le <strong>logo</strong> se change dans « Mon profil ».</div>
+<div class="pw-live" id="pers-live">
+<div id="pers-apercu" class="pw-ban">Pas encore d'image de fond</div>
+<div class="pw-live-corps"><div class="pw-live-top"><div id="pw-nom" class="pw-nom"></div><div id="pw-icones" class="pw-icones"></div></div>
+<div id="pw-accroche" class="pw-accroche"></div>
+<div class="pw-live-bas"><span id="pw-btn" class="pw-btn">Voir les produits</span><span id="pw-annonce" class="pw-annonce" style="display:none;"></span></div></div></div>
+<div class="pw-steps" role="tablist">
+<button type="button" class="pw-step on" id="pw-s1" onclick="persEtape(1)">① Image</button>
+<button type="button" class="pw-step" id="pw-s2" onclick="persEtape(2)">② Couleurs</button>
+<button type="button" class="pw-step" id="pw-s3" onclick="persEtape(3)">③ Message</button>
+<button type="button" class="pw-step" id="pw-s4" onclick="persEtape(4)">④ Contacts</button></div>
+<div class="pw-panel" id="pw-p1"><div class="pw-t">🖼️ Mon image de fond</div>
+<button type="button" class="pw-drop" id="btn-banniere" onclick="document.getElementById('banniere-input').click()">Choisir une photo</button>
+<button class="pw-lien" id="btn-banniere-retirer" onclick="retirerBanniere()" style="display:none;">Retirer l'image</button>
 <input accept="image/jpeg,image/png,image/webp" id="banniere-input" onchange="ouvrirEditeurBanniere()" style="display:none;" type="file"/>
-<span style="font-size:11.5px;color:var(--mu);">Format panoramique 3:1 (idéal : 2400 px de large sur 800 px de haut, soit environ 63 cm de large sur 21 cm de haut). Ce cadre montre exactement ce que verront vos clients : le centre de l'image est conservé, le haut et le bas (ou les côtés) sont coupés.</span>
-</div>
+<div class="pw-note">Format panoramique 3:1 (idéal : 2400 × 800 px). Le cadre ci-dessus montre exactement ce que verront vos clients.</div>
 <div id="ban-editeur" style="display:none;border:1px solid var(--brd);border-radius:10px;padding:12px;background:var(--bg);margin-bottom:12px;">
 <div style="font-size:12.5px;font-weight:700;margin-bottom:8px;">Comment votre image remplit le cadre</div>
 <canvas id="ban-canvas" width="900" height="300" style="width:100%;aspect-ratio:3/1;border-radius:9px;display:block;cursor:grab;background:var(--b2);" aria-label="Aperçu de votre image de fond"></canvas>
@@ -2057,53 +2110,49 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <button type="button" class="addb" onclick="annulerBanniere()">Annuler</button>
 </div>
 </div>
-<div style="font-size:12.5px;font-weight:700;margin-bottom:5px;">Coordonnées affichées sur la boutique</div>
-<label style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;margin-bottom:4px;cursor:pointer;"><input type="checkbox" id="pers-adresse" style="margin-top:3px;"><span>Adresse : <span id="pers-adresse-val" style="color:var(--mu);">—</span></span></label>
-<label style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;margin-bottom:4px;cursor:pointer;"><input type="checkbox" id="pers-tel" style="margin-top:3px;"><span>Téléphone : <span id="pers-tel-val" style="color:var(--mu);">—</span></span></label>
-<label style="display:flex;gap:7px;align-items:flex-start;font-size:12.5px;margin-bottom:4px;cursor:pointer;"><input type="checkbox" id="pers-email" style="margin-top:3px;"><span>Email : <span id="pers-email-val" style="color:var(--mu);">—</span></span></label>
-<div style="font-size:11.5px;color:var(--mu);margin-bottom:12px;">Ces informations viennent de « Mon profil ». Rien n'est publié tant que vous ne cochez pas.</div>
-<div style="font-size:12.5px;font-weight:700;margin-bottom:5px;">Votre texte de présentation</div>
+</div>
+<div class="pw-panel" id="pw-p2" style="display:none;"><div class="pw-t">🎨 Ma couleur</div>
+<div id="pers-couleurs" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;"></div>
+<div class="pw-t" style="margin-top:18px;">Fond de la boutique</div>
+<div id="pers-fonds" style="display:flex;gap:10px;flex-wrap:wrap;"></div></div>
+<div class="pw-panel" id="pw-p3" style="display:none;"><div class="pw-t">✍️ Mon message</div>
+<div class="pw-lab">Une phrase d'accueil</div>
+<input id="pers-accroche" maxlength="90" placeholder="Ex : Bijoux créoles faits main, avec amour" style="width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);">
+<div class="pw-note"><span id="pers-accroche-cpt">0</span>/90 · pas de lien.</div>
+<div class="pw-lab">Une annonce (facultatif)</div>
+<input id="pers-annonce" maxlength="140" placeholder="Ex : Fermé du 24 au 31 décembre" style="width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);">
+<label class="pw-note" style="display:flex;align-items:center;gap:6px;margin-top:8px;">jusqu'au <input id="pers-annonce-fin" type="date" style="padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);"></label>
+<div class="pw-note"><span id="pers-annonce-cpt">0</span>/140 · le bandeau disparaît tout seul après la date. Laissez vide pour ne rien afficher.</div></div>
+<div class="pw-panel" id="pw-p4" style="display:none;"><div class="pw-t">📲 Ce que mes clients voient</div>
+<div class="pw-row"><label class="pw-rowl"><span class="pw-ic">📞</span><span class="pw-rt">Mon téléphone<span id="pers-tel-val" class="pw-val">—</span></span><input type="checkbox" id="pers-tel" class="pw-in" onchange="majApercuLive()"><span class="pw-sw"></span></label></div>
+<div class="pw-row"><label class="pw-rowl"><span class="pw-ic">💬</span><span class="pw-rt">WhatsApp</span><input type="checkbox" id="pw-wa-on" class="pw-in" onchange="persReseau('whatsapp')"><span class="pw-sw"></span></label>
+<div class="pw-champ" id="pw-wa-champ" style="display:none;"><input id="pers-whatsapp" placeholder="0690 12 34 56" style="width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);"><div id="pers-wa-info" class="pw-note"></div><div class="pw-note">Vos clients ont un bouton « Poser une question ».</div></div></div>
+<div class="pw-row"><label class="pw-rowl"><span class="pw-ic">📸</span><span class="pw-rt">Instagram</span><input type="checkbox" id="pw-ig-on" class="pw-in" onchange="persReseau('instagram')"><span class="pw-sw"></span></label>
+<div class="pw-champ" id="pw-ig-champ" style="display:none;"><input id="pers-instagram" placeholder="votre_nom" style="width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);"><div class="pw-note">Écrivez seulement votre nom d'utilisateur, ou collez votre adresse.</div></div></div>
+<div class="pw-row"><label class="pw-rowl"><span class="pw-ic">📍</span><span class="pw-rt">Mon adresse<span id="pers-adresse-val" class="pw-val">—</span></span><input type="checkbox" id="pers-adresse" class="pw-in" onchange="majApercuLive()"><span class="pw-sw"></span></label></div>
+<div class="pw-row"><label class="pw-rowl"><span class="pw-ic">✉️</span><span class="pw-rt">Mon e-mail<span id="pers-email-val" class="pw-val">—</span></span><input type="checkbox" id="pers-email" class="pw-in" onchange="majApercuLive()"><span class="pw-sw"></span></label></div>
+<div class="pw-note" style="margin-top:12px;">Ces informations viennent de « Mon profil ». Rien ne s'affiche sans votre accord.</div></div>
+<div class="pw-avance"><button type="button" class="pw-av-t" id="pw-av-btn" onclick="persAvance()" aria-expanded="false"><span>⚙️ Pour aller plus loin</span><span class="pw-av-ch">▾</span></button>
+<div class="pw-av-sub">Police · Forme des cartes · Disposition · Couleur libre · Texte de présentation · Facebook · TikTok</div>
+<div id="pw-avance" style="display:none;">
+<div class="pw-lab">Votre texte de présentation</div>
 <textarea id="pers-texte" maxlength="600" rows="4" placeholder="Ex : Fleuriste à Capesterre depuis 2015. Compositions sur mesure, mariages, deuils. Ouvert du mardi au samedi…" style="width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;resize:vertical;" oninput="document.getElementById('pers-compteur').textContent=this.value.length"></textarea>
-<div style="font-size:11.5px;color:var(--mu);margin-bottom:12px;"><span id="pers-compteur">0</span>/600 · texte simple (pas de lien ni de mise en forme).</div>
-<div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">Fond de votre boutique</div>
-<div id="pers-fonds" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;"></div>
-<div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">Couleur de votre boutique</div>
-<div id="pers-couleurs" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;"></div>
-<div style="margin:0 0 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-<label style="font-size:12.5px;display:flex;align-items:center;gap:7px;cursor:pointer;"><input type="checkbox" id="pers-libre-on" onchange="majCouleurLibre()"> Ou une couleur de votre choix</label>
+<div class="pw-note"><span id="pers-compteur">0</span>/600 · texte simple (pas de lien ni de mise en forme).</div>
+<div class="pw-lab">Une couleur de votre choix</div>
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+<label style="font-size:12.5px;display:flex;align-items:center;gap:7px;cursor:pointer;"><input type="checkbox" id="pers-libre-on" onchange="majCouleurLibre()"> Utiliser cette couleur</label>
 <input type="color" id="pers-libre" value="#2563a8" oninput="majCouleurLibre()" style="width:44px;height:34px;border:1px solid var(--brd);border-radius:8px;padding:2px;background:var(--bg);cursor:pointer;">
-<span id="pers-libre-info" style="font-size:11.5px;color:var(--mu);"></span>
-</div>
-<div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">Police des titres</div>
-<div id="pers-polices" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;"></div>
-<div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">Disposition du haut de la boutique</div>
-<div id="pers-dispo" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;"></div>
-<div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">Forme des cartes produits</div>
-<div id="pers-cartes" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;"></div>
-<div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">Accroche (une phrase sous votre nom)</div>
-<input id="pers-accroche" maxlength="90" placeholder="Ex : Bijoux créoles faits main, avec amour" style="width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);margin-bottom:4px;">
-<div style="font-size:11.5px;color:var(--mu);margin-bottom:14px;"><span id="pers-accroche-cpt">0</span>/90 · pas de lien.</div>
-<div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">Bandeau d'annonce (en haut de la boutique)</div>
-<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">
-<input id="pers-annonce" maxlength="140" placeholder="Ex : Fermé du 24 au 31 décembre" style="flex:1;min-width:220px;padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);">
-<label style="font-size:12px;color:var(--mu);display:flex;align-items:center;gap:5px;">jusqu'au <input id="pers-annonce-fin" type="date" style="padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);"></label>
-</div>
-<div style="font-size:11.5px;color:var(--mu);margin-bottom:14px;"><span id="pers-annonce-cpt">0</span>/140 · le bandeau disparaît tout seul après la date. Laissez vide pour ne rien afficher.</div>
-<div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">Vos réseaux et WhatsApp</div>
-<div style="font-size:11.5px;color:var(--mu);margin-bottom:8px;line-height:1.5;">Écrivez seulement votre nom d'utilisateur, ou collez votre adresse : nous gardons le bon morceau. Avec WhatsApp, vos clients ont un bouton « Poser une question ».</div>
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-bottom:6px;">
-<input id="pers-instagram" placeholder="Instagram : votre_nom" style="padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);">
-<input id="pers-facebook" placeholder="Facebook : nom de votre page" style="padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);">
-<input id="pers-tiktok" placeholder="TikTok : votre_nom" style="padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);">
-<input id="pers-whatsapp" placeholder="WhatsApp : 0690 12 34 56" style="padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);">
-</div>
-<div id="pers-wa-info" style="font-size:11.5px;color:var(--mu);margin-bottom:14px;"></div>
-<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-<button class="addb" id="btn-pers" onclick="sauverPersonnalisation()" style="flex-shrink:0;">Enregistrer</button>
-<a id="pers-voir" href="#" target="_blank" rel="noopener" style="font-size:12.5px;font-weight:700;color:var(--ac);text-decoration:none;">Voir ma boutique →</a>
-</div>
-<div id="pers-statut" style="font-size:12px;color:var(--mu);margin-top:8px;"></div>
-</div></div></div><div class="bpnl" id="p7">
+<span id="pers-libre-info" class="pw-note" style="margin:0;"></span></div>
+<div class="pw-lab">Police des titres</div><div id="pers-polices" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
+<div class="pw-lab">Disposition du haut de la boutique</div><div id="pers-dispo" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
+<div class="pw-lab">Forme des cartes produits</div><div id="pers-cartes" style="display:flex;gap:10px;flex-wrap:wrap;"></div>
+<div class="pw-lab">Facebook et TikTok</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;">
+<input id="pers-facebook" placeholder="Facebook : nom de votre page" style="padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);"><input id="pers-tiktok" placeholder="TikTok : votre_nom" style="padding:9px 11px;border-radius:8px;border:1px solid var(--brd);background:var(--bg);font-family:'Outfit',sans-serif;font-size:13px;color:var(--tx);"></div></div></div>
+<div class="pw-bas"><button class="pw-save" id="btn-pers" onclick="sauverPersonnalisation()">Enregistrer</button>
+<a id="pers-voir" href="#" target="_blank" rel="noopener" class="pw-voir">Voir ma boutique →</a></div>
+<div id="pers-statut" class="pw-statut"></div>
+</div></div></div></div><div class="bpnl" id="p7">
 <div class="dcard">
 <div class="dchdr">
 <div class="dctit"><svg fill="none" stroke="#B5502F" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Commandes</div>
@@ -3250,6 +3299,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261105p"></script>
+<script src="/mpa/mpa-artisans.js?v=20261106a"></script>
 </body>
 </html>

@@ -6581,14 +6581,19 @@ function dessinerCouleursBoutique() {
     return '<button type="button" title="' + NOMS_COULEURS[k] + '" aria-label="' + NOMS_COULEURS[k] + '" onclick="choisirCouleurBoutique(\'' + k + '\')" style="width:34px;height:34px;border-radius:50%;border:3px solid ' + (sel ? 'var(--tx)' : 'transparent') + ';background:' + COULEURS_BOUTIQUE[k] + ';cursor:pointer;box-shadow:0 0 0 1px var(--brd);"></button>';
   }).join('');
 }
+var _fondsTous = false;
+var FONDS_PROPOSES = ['clair', 'bleu', 'sombre'];
 function dessinerFondsBoutique() {
   var z = document.getElementById('pers-fonds'); if (!z) return;
-  z.innerHTML = Object.keys(NOMS_FONDS).map(function(k) {
+  var tous = _fondsTous || FONDS_PROPOSES.indexOf(_fondChoisi) < 0;
+  var cles = tous ? Object.keys(NOMS_FONDS) : FONDS_PROPOSES;
+  z.innerHTML = cles.map(function(k) {
     var sel = k === _fondChoisi, c = APERCU_FONDS[k];
-    return '<button type="button" onclick="choisirFondBoutique(\'' + k + '\')" aria-pressed="' + sel + '" style="padding:9px 16px;border-radius:9px;border:3px solid ' + (sel ? 'var(--ac)' : 'var(--brd)') + ';background:' + c[0] + ';color:' + c[1] + ';font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;">' + NOMS_FONDS[k] + '</button>';
-  }).join('');
+    return '<button type="button" onclick="choisirFondBoutique(\'' + k + '\')" aria-pressed="' + sel + '" style="padding:9px 16px;border-radius:9px;border:3px solid ' + (sel ? 'var(--ac)' : 'var(--brd)') + ';background:' + c[0] + ';color:' + c[1] + ';font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">' + NOMS_FONDS[k] + '</button>';
+  }).join('') + (FONDS_PROPOSES.indexOf(_fondChoisi) >= 0 ? '<button type="button" onclick="basculerFondsTous()" style="border:0;background:none;color:var(--mu);font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;padding:9px 4px;">' + (tous ? 'Voir moins ▴' : 'Voir les ' + (Object.keys(NOMS_FONDS).length - FONDS_PROPOSES.length) + ' autres fonds ▾') + '</button>' : '');
 }
-function choisirFondBoutique(k) { _fondChoisi = k; dessinerFondsBoutique(); }
+function basculerFondsTous() { _fondsTous = !_fondsTous; dessinerFondsBoutique(); }
+function choisirFondBoutique(k) { _fondChoisi = k; dessinerFondsBoutique(); majApercuLive(); }
 // ── Style de la boutique : police, disposition, cartes, couleur libre, accroche, annonce, réseaux ──
 var _policeChoisie = null, _dispoChoisie = null, _cartesChoisies = null;
 var POLICES_BOUTIQUE = { '': ['Par défaut', 'Bricolage Grotesque'], classique: ['Classique', 'Playfair Display'], elegant: ['Élégante', 'Cormorant Garamond'], moderne: ['Moderne', 'Poppins'], manuscrit: ['Manuscrite', 'Caveat'], arrondi: ['Arrondie', 'Fredoka'] };
@@ -6613,15 +6618,16 @@ function dessinerStyleBoutique() {
   boutonsChoix('pers-dispo', DISPOS_BOUTIQUE, _dispoChoisie, 'choisirDispo');
   boutonsChoix('pers-cartes', CARTES_BOUTIQUE, _cartesChoisies, 'choisirCartes');
 }
-function choisirPolice(k) { _policeChoisie = k || null; dessinerStyleBoutique(); }
+function choisirPolice(k) { _policeChoisie = k || null; dessinerStyleBoutique(); majApercuLive(); }
 function choisirDispo(k) { _dispoChoisie = k || null; dessinerStyleBoutique(); }
 function choisirCartes(k) { _cartesChoisies = k || null; dessinerStyleBoutique(); }
 function lumRel(hex) { var v = [1, 3, 5].map(function(i) { var x = parseInt(hex.substr(i, 2), 16) / 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; }
 function contrasteCouleurs(a, b) { var x = lumRel(a), y = lumRel(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
 function majCouleurLibre() {
   var on = document.getElementById('pers-libre-on').checked, v = document.getElementById('pers-libre').value, info = document.getElementById('pers-libre-info');
-  if (!on) { info.textContent = 'Vous gardez la couleur choisie dans la liste ci-dessus.'; return; }
+  if (!on) { info.textContent = 'Vous gardez la couleur choisie dans la liste ci-dessus.'; majApercuLive(); return; }
   info.textContent = contrasteCouleurs(v, '#ffffff') < 4.5 ? 'Cette couleur est un peu claire : elle sera légèrement assombrie dans la boutique pour que les boutons restent lisibles.' : 'Cette couleur sera utilisée pour les boutons et les accents de votre boutique.';
+  majApercuLive();
 }
 // L'artisan peut écrire un pseudo, un @pseudo ou coller l'adresse entière : on garde seulement l'identifiant.
 function nettoyerReseau(txt, domaine) {
@@ -6663,13 +6669,74 @@ function afficherStyleBoutique() {
     document.getElementById('pers-annonce').addEventListener('input', function() { document.getElementById('pers-annonce-cpt').textContent = this.value.length; });
     document.getElementById('pers-whatsapp').addEventListener('input', majInfoWhatsapp);
   }
+  persInitUI();
 }
 function majInfoWhatsapp() {
   var n = nettoyerWhatsapp(document.getElementById('pers-whatsapp').value), z = document.getElementById('pers-wa-info');
   z.textContent = n ? (/^[0-9]{8,15}$/.test(n) ? 'Numéro utilisé pour WhatsApp : +' + n + ' (vérifiez qu\'il est correct).' : 'Ce numéro ne semble pas valide.') : '';
 }
 
-function choisirCouleurBoutique(k) { _accentChoisi = k; dessinerCouleursBoutique(); }
+function choisirCouleurBoutique(k) { _accentChoisi = k; dessinerCouleursBoutique(); majApercuLive(); }
+
+// ── Écran « Personnaliser ma boutique » : aperçu en direct + 4 étapes (même écran téléphone et ordinateur) ──
+var _persEtape = 1, _persLie = false;
+function persEtape(n) {
+  _persEtape = n;
+  for (var i = 1; i <= 4; i++) {
+    var p = document.getElementById('pw-p' + i), c = document.getElementById('pw-s' + i);
+    if (p) p.style.display = i === n ? '' : 'none';
+    if (c) c.classList.toggle('on', i === n);
+  }
+}
+function persAvance() {
+  var z = document.getElementById('pw-avance'), btn = document.getElementById('pw-av-btn'); if (!z) return;
+  var ouvre = z.style.display === 'none';
+  z.style.display = ouvre ? '' : 'none';
+  btn.setAttribute('aria-expanded', ouvre);
+  btn.parentNode.classList.toggle('ouvert', ouvre);
+  if (ouvre) chargerPolicesApercu();
+}
+function persReseau(k) {
+  var cfg = { whatsapp: ['pw-wa-on', 'pw-wa-champ', 'pers-whatsapp'], instagram: ['pw-ig-on', 'pw-ig-champ', 'pers-instagram'] }[k];
+  var on = document.getElementById(cfg[0]).checked, champ = document.getElementById(cfg[1]), inp = document.getElementById(cfg[2]);
+  champ.style.display = on ? '' : 'none';
+  if (on) inp.focus(); else { inp.value = ''; if (k === 'whatsapp') majInfoWhatsapp(); }
+  majApercuLive();
+}
+function majApercuLive() {
+  var live = document.getElementById('pers-live'); if (!live || !_artisan) return;
+  var fond = APERCU_FONDS[_fondChoisi || 'clair'] || APERCU_FONDS.clair;
+  var corps = live.querySelector('.pw-live-corps');
+  corps.style.background = fond[0]; corps.style.color = fond[1];
+  var libre = document.getElementById('pers-libre-on') && document.getElementById('pers-libre-on').checked ? document.getElementById('pers-libre').value : null;
+  var acc = libre || COULEURS_BOUTIQUE[_accentChoisi || 'terre'] || COULEURS_BOUTIQUE.terre;
+  document.getElementById('pw-btn').style.background = acc;
+  var nom = document.getElementById('pw-nom');
+  nom.textContent = _artisan.nom_entreprise || 'Ma boutique';
+  var pol = POLICES_BOUTIQUE[_policeChoisie || ''];
+  nom.style.fontFamily = pol ? "'" + pol[1] + "',sans-serif" : '';
+  document.getElementById('pw-accroche').textContent = document.getElementById('pers-accroche').value;
+  var an = document.getElementById('pers-annonce').value.trim(), za = document.getElementById('pw-annonce');
+  za.style.display = an ? '' : 'none'; za.textContent = '📢 ' + an;
+  var ic = [];
+  if (document.getElementById('pers-tel').checked) ic.push('📞');
+  if (document.getElementById('pw-wa-on').checked) ic.push('💬');
+  if (document.getElementById('pw-ig-on').checked) ic.push('📸');
+  if (document.getElementById('pers-adresse').checked) ic.push('📍');
+  if (document.getElementById('pers-email').checked) ic.push('✉️');
+  document.getElementById('pw-icones').innerHTML = ic.map(function(x) { return '<span>' + x + '</span>'; }).join('');
+}
+function persInitUI() {
+  var wa = document.getElementById('pers-whatsapp').value.trim(), ig = document.getElementById('pers-instagram').value.trim();
+  document.getElementById('pw-wa-on').checked = !!wa; document.getElementById('pw-wa-champ').style.display = wa ? '' : 'none';
+  document.getElementById('pw-ig-on').checked = !!ig; document.getElementById('pw-ig-champ').style.display = ig ? '' : 'none';
+  if (!_persLie) {
+    _persLie = true;
+    ['pers-accroche', 'pers-annonce'].forEach(function(id) { document.getElementById(id).addEventListener('input', majApercuLive); });
+  }
+  persEtape(_persEtape);
+  majApercuLive();
+}
 
 // ── Image de fond : l'artisan choisit comment elle remplit le cadre 3:1, avec un aperçu identique au résultat ──
 // « Remplir » : l'image couvre tout le cadre, on choisit la partie visible (glisser ou curseurs).
