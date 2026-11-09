@@ -9,6 +9,50 @@ const SUPABASE_URL  = 'https://uzgboxfxpxazhysusewv.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
+// ── Ouverture animée : fondu du haut vers le bas, cases grises pendant l'attente, chiffres qui défilent ──
+// Tout est coupé automatiquement si le téléphone demande « réduire les animations ».
+(function() {
+  var st = document.createElement('style');
+  st.textContent = '@keyframes mpaEntree{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}' +
+    '.mpa-entree{animation:mpaEntree .45s ease-out both;animation-delay:var(--d,0s)}' +
+    '@keyframes mpaBrille{0%{background-position:200% 0}100%{background-position:-200% 0}}' +
+    '.mpa-sq{height:62px;border-radius:14px;margin-bottom:8px;background:linear-gradient(90deg,#eef2f8 25%,#f8fafd 50%,#eef2f8 75%);background-size:200% 100%;animation:mpaBrille 1.4s linear infinite}' +
+    '@media (prefers-reduced-motion:reduce){.mpa-entree,.mpa-sq{animation:none !important}}';
+  document.head.appendChild(st);
+})();
+function mpaEntree(liste, pas) {
+  Array.prototype.forEach.call(liste || [], function(el, i) {
+    el.style.setProperty('--d', (i * (pas || 0.1)).toFixed(2) + 's');
+    el.classList.remove('mpa-entree'); void el.offsetWidth; el.classList.add('mpa-entree');
+  });
+}
+// Au tout début de l'ouverture : les blocs de « Ma journée » descendent l'un après l'autre, et des cases grises tiennent la place des rendez-vous.
+function mpaOuvertureAnimee() {
+  var pj = document.getElementById('p-journee'); if (!pj) return;
+  var p0 = document.getElementById('p0');
+  var blocs = Array.prototype.filter.call([].concat(Array.prototype.slice.call(pj.children), p0 ? Array.prototype.slice.call(p0.children) : []), function(el) { return el.offsetHeight > 0; });
+  mpaEntree(blocs, 0.12);
+  var l = document.getElementById('itin-liste');
+  if (l && !l.children.length) l.innerHTML = '<div class="mpa-sq"></div><div class="mpa-sq"></div>';
+}
+// Fait défiler un nombre de 0 jusqu'à sa vraie valeur (le texte final reste exactement celui calculé).
+function mpaDefilerNombre(el, duree) {
+  if (!el) return;
+  try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) {}
+  var texteFinal = el.textContent, m = texteFinal.match(/\d(?:[\d\s\u00a0\u202f]*\d)?(?:[.,]\d+)?/);
+  if (!m) return;
+  var cible = parseFloat(m[0].replace(/[\s\u00a0\u202f]/g, '').replace(',', '.'));
+  if (!isFinite(cible) || cible <= 0) return;
+  var mDec = m[0].match(/[.,](\d+)$/), dec = mDec ? mDec[1].length : 0, t0 = performance.now(), d = duree || 900;
+  (function pas(now) {
+    var k = Math.min(1, (now - t0) / d), e = 1 - Math.pow(1 - k, 3);
+    if (k >= 1) { el.textContent = texteFinal; return; }
+    el.textContent = texteFinal.replace(m[0], (cible * e).toLocaleString('fr-FR', { minimumFractionDigits: dec, maximumFractionDigits: dec }));
+    requestAnimationFrame(pas);
+  })(t0);
+}
+var _chiffresDefiles = false;
+
 var _session = null;
 var _artisan = null;
 var _clientsCache = [];
@@ -678,6 +722,10 @@ function switchTab(i) {
   // intervention "Payée" depuis Ma journée) — on la rafraîchit systématiquement en y entrant,
   // plutôt que de compter sur chaque endroit qui pourrait la rendre périmée pour y penser.
   if (TAB_PANNEAUX[i] === 'p-compta' && typeof chargerCompta === 'function') chargerCompta();
+  if (TAB_PANNEAUX[i] === 'p-compta' && !_chiffresDefiles) { // première ouverture : les chiffres défilent jusqu'à leur vraie valeur
+    _chiffresDefiles = true;
+    ['dash-me-pct', 'dash-me-amt', 'dash-annuaire-pct', 'dash-annuaire-amt'].forEach(function(id, k) { setTimeout(function() { mpaDefilerNombre(document.getElementById(id), 900); }, k * 120); });
+  }
   if (TAB_PANNEAUX[i] === 'p-livraisons' && typeof chargerLivraisons === 'function') chargerLivraisons();
   majBarreBas(i);
 }
@@ -873,6 +921,7 @@ function switchSousOnglet(idNav, idConteneur, i) {
 //  INIT
 // ════════════════════════════════════════
 async function init() {
+  mpaOuvertureAnimee();
   var { data: sessionData } = await sb.auth.getSession();
   if (!sessionData.session) { window.location.href = 'https://caralink.app/artisans/connexion.html'; return; }
   _session = sessionData.session;
@@ -1014,9 +1063,12 @@ async function initPlanning(attendre) {
   _calAnnee = auj.getFullYear();
   _calMois = auj.getMonth();
   renderDows();
+  // « Ma journée » (l'écran d'accueil) se prépare en même temps que le calendrier, et ne retient plus le reste du démarrage.
+  (async function() {
+    if (attendre) await attendre; // l'itinéraire utilise les fournitures
+    await renderItineraireWidget();
+  })().catch(function(e) { console.error('Ma journée :', e); });
   await chargerInterventions();
-  if (attendre) await attendre; // l'itinéraire de la semaine utilise les fournitures : on les attend, mais le calendrier est déjà affiché
-  await renderItineraireWidget();
 }
 
 function renderDows() {
@@ -2572,7 +2624,9 @@ async function tempsTrajetMinutes(latA, lonA, latB, lonB) {
   if (_trajetCache[cle] != null) return _trajetCache[cle];
   try {
     var url = 'https://data.geopf.fr/navigation/itineraire?resource=bdtopo-osrm&profile=car&optimization=fastest&getSteps=false&geometryFormat=polyline&distanceUnit=meter&timeUnit=second&start=' + lonA + ',' + latA + '&end=' + lonB + ',' + latB;
-    var res = await fetch(url);
+    var ctrlT = new AbortController(); var minT = setTimeout(function() { ctrlT.abort(); }, 4000); // pas plus de 4 s d'attente par trajet
+    var res;
+    try { res = await fetch(url, { signal: ctrlT.signal }); } finally { clearTimeout(minT); }
     var data = await res.json();
     if (data.duration != null) {
       var min = Math.ceil(data.duration / 60);
@@ -8544,7 +8598,7 @@ async function renderItineraireWidget() {
     .gte('date_intervention', debutStr)
     .lte('date_intervention', finStr)
     .order('heure_debut', { ascending: true });
-  if (error) { console.error('renderItineraireWidget:', error); return; }
+  if (error) { console.error('renderItineraireWidget:', error); var sqs = document.querySelectorAll('#itin-liste .mpa-sq'); Array.prototype.forEach.call(sqs, function(x) { x.remove(); }); return; }
   _itinInterventionsSemaine = data || [];
 
   var jours = document.getElementById('itin-jours');
@@ -8608,13 +8662,17 @@ async function choisirJourItineraire(dateStr) {
     return;
   }
 
-  liste.innerHTML = '<p style="font-size:12px;color:var(--mu);">Calcul des trajets…</p>';
   var morceaux = [];
   var tel = true; // même présentation en cartes sur téléphone et sur ordinateur (la mise en page change par le CSS)
-  if (tel) {
-    var baseT = baseArtisanCoords();
+  // Les durées de trajet sont demandées toutes en même temps (au lieu de l'une après l'autre) ;
+  // la liste des rendez-vous s'affiche tout de suite, les trajets s'ajoutent dès qu'ils arrivent.
+  var baseT = baseArtisanCoords();
+  var pDep = baseT ? tempsTrajetMinutes(baseT.latitude, baseT.longitude, duJour[0].latitude, duJour[0].longitude) : Promise.resolve(null);
+  var pLegs = duJour.slice(0, -1).map(function(it, q) { return tempsTrajetMinutes(it.latitude, it.longitude, duJour[q + 1].latitude, duJour[q + 1].longitude); });
+  var peindre = async function(avecTrajets) {
+    var morceaux = [];
     if (baseT) {
-      var mDep = await tempsTrajetMinutes(baseT.latitude, baseT.longitude, duJour[0].latitude, duJour[0].longitude);
+      var mDep = avecTrajets ? await pDep : null;
       if (mDep != null) morceaux.push('<div class="itin-trajet">🏠 Départ de chez vous · 🚗 ' + mDep + ' min</div>');
     }
     var auj = dateStr === new Date().toISOString().slice(0, 10);
@@ -8629,15 +8687,20 @@ async function choisirJourItineraire(dateStr) {
         ((auj && estPro()) ? '<button class="itin-retard" onclick="signalerRetard(\'' + it.id + '\')" title="Prévenir le client d\'un retard" style="background:#fff7ed;border:1.5px solid #f59e0b;color:#b45309;font-weight:700;cursor:pointer;border-radius:8px;">⏰ Je suis en retard</button>' : '') +
       '</div>');
       if (q < duJour.length - 1) {
-        var mm = await tempsTrajetMinutes(it.latitude, it.longitude, duJour[q + 1].latitude, duJour[q + 1].longitude);
+        var mm = avecTrajets ? await pLegs[q] : null;
         if (mm != null) morceaux.push('<div class="itin-trajet">🚗 ' + mm + ' min de trajet</div>');
         else morceaux.push('<div style="height:8px;"></div>');
       }
     }
+    if (_itinDateChoisie !== dateStr) return; // l'artisan a changé de jour entre-temps
     liste.innerHTML = morceaux.join('');
-    await dessinerCarteItineraire(duJour);
-    return;
-  }
+    if (!avecTrajets) mpaEntree(liste.querySelectorAll('.itin-bulle'), 0.12);
+  };
+  await peindre(false);                              // 1) les rendez-vous, tout de suite
+  var pCarte = dessinerCarteItineraire(duJour);      // 2) la carte démarre sans attendre les trajets
+  await peindre(true);                               // 3) les durées de trajet, dès qu'elles sont prêtes
+  await pCarte;
+  return;
   var base = baseArtisanCoords();
   if (base) {
     var premier = duJour[0];
