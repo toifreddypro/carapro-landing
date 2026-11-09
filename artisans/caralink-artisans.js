@@ -577,6 +577,105 @@ function atDefilerNombre(el, duree) {
   })(t0);
 }
 
+// ── Fenêtres animées : le fond blanc apparaît réduit puis s'élargit de haut en bas, les informations arrivent l'une après l'autre, les chiffres défilent ──
+// Tout est coupé automatiquement si le téléphone demande « réduire les animations ».
+(function() {
+  var reduit = false; try { reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  if (reduit) return;
+  var st = document.createElement('style');
+  st.textContent = '@keyframes zfBoite{0%{opacity:0;transform:scale(.88,.25)}55%{opacity:1}100%{opacity:1;transform:none}}' +
+    '.zf-boite{animation:zfBoite .45s cubic-bezier(.22,1,.36,1) both}' +
+    '@keyframes zfFond{from{opacity:0}to{opacity:1}}.zf-fond{animation:zfFond .25s ease-out both}' +
+    '@keyframes zfItem{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}' +
+    '.zf-item{animation:zfItem .45s ease-out both;animation-delay:var(--d,0s)}';
+  (document.head || document.documentElement).appendChild(st);
+
+  function feuilles(racine) {
+    var sortie = [];
+    (function descendre(els, prof) {
+      Array.prototype.forEach.call(els, function(el) {
+        if (el.nodeType !== 1 || /^(SCRIPT|STYLE|LINK)$/.test(el.tagName)) return;
+        var cs = getComputedStyle(el);
+        if (cs.position === 'fixed' || cs.display === 'none') return;
+        var h = el.offsetHeight; if (h <= 0) return;
+        var enfants = Array.prototype.filter.call(el.children, function(c) { return c.offsetHeight > 0; });
+        if (prof < 3 && h > 150 && enfants.length >= 2) descendre(enfants, prof + 1); else sortie.push(el);
+      });
+    })(racine.children, 0);
+    return sortie;
+  }
+  // Un nombre seul (« 12 », « 37,50 € », « 45 % ») défile de 0 jusqu'à sa vraie valeur ; le texte final reste exactement celui d'origine.
+  function defiler(el, attente) {
+    var texteFinal = el.textContent, m = texteFinal.match(/\d(?:[\d\s  ]*\d)?(?:[.,]\d+)?/);
+    if (!m) return;
+    var cible = parseFloat(m[0].replace(/[\s  ]/g, '').replace(',', '.'));
+    if (!isFinite(cible) || cible <= 0) return;
+    var mDec = m[0].match(/[.,](\d+)$/), dec = mDec ? mDec[1].length : 0;
+    setTimeout(function() {
+      var t0 = performance.now();
+      (function pas(now) {
+        var k = Math.min(1, (now - t0) / 800), e = 1 - Math.pow(1 - k, 3);
+        if (k >= 1) { el.textContent = texteFinal; return; }
+        el.textContent = texteFinal.replace(m[0], (cible * e).toLocaleString('fr-FR', { minimumFractionDigits: dec, maximumFractionDigits: dec }));
+        requestAnimationFrame(pas);
+      })(t0);
+    }, attente);
+  }
+  // Seuls les vrais chiffres défilent (montants en €, pourcentages, petits nombres) : jamais un téléphone, un code postal ou une année.
+  function nombreSeul(t) {
+    if (/^\s*\d{1,3}(?:[\s\u00a0\u202f]\d{3})*(?:[.,]\d+)?\s*(?:€|%)\s*$/.test(t)) return true;
+    var m = /^\s*(\d{1,4})\s*$/.exec(t);
+    return !!m && !(Number(m[1]) >= 1900 && Number(m[1]) <= 2100) && m[1].charAt(0) !== '0';
+  }
+  var dernier = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+  function ouvrir(ov, boite, origine) {
+    var t = Date.now();
+    if (dernier) { if (dernier.get(ov) && t - dernier.get(ov) < 400) return; dernier.set(ov, t); }
+    if (!boite) boite = Array.prototype.filter.call(ov.children, function(c) { return c.offsetHeight > 0 && !/^(SCRIPT|STYLE|LINK)$/.test(c.tagName); })[0];
+    if (!boite) return;
+    if (ov !== boite) { ov.classList.remove('zf-fond'); void ov.offsetWidth; ov.classList.add('zf-fond'); }
+    boite.style.transformOrigin = origine || '50% 50%';
+    boite.classList.remove('zf-boite'); void boite.offsetWidth; boite.classList.add('zf-boite');
+    var items = feuilles(boite).slice(0, 14);
+    items.forEach(function(el, i) {
+      var d = 0.22 + i * 0.09;
+      el.classList.remove('zf-item'); el.style.setProperty('--d', d.toFixed(2) + 's'); void el.offsetWidth; el.classList.add('zf-item');
+      if (!el.children.length && nombreSeul(el.textContent)) defiler(el, d * 1000 + 150);
+    });
+    setTimeout(function() {
+      ov.classList.remove('zf-fond'); boite.classList.remove('zf-boite');
+      items.forEach(function(el) { el.classList.remove('zf-item'); });
+    }, 2400);
+  }
+  function estFenetre(n) {
+    return (n.style && n.style.position === 'fixed') || (n.matches && n.matches('.galerie,.modal-overlay,.overlay-bg'));
+  }
+  function couvre(n) {
+    var r = n.getBoundingClientRect();
+    return r.width >= window.innerWidth * 0.9 && r.height >= window.innerHeight * 0.9;
+  }
+  function demarrer() {
+    new MutationObserver(function(liste) {
+      liste.forEach(function(m) {
+        if (m.type === 'attributes') {
+          var el = m.target; if (!el.classList) return;
+          var avant = ' ' + (m.oldValue || '') + ' ';
+          var ouvertAvant = / (show|open) /.test(avant);
+          var ouvertMaintenant = el.classList.contains('show') || el.classList.contains('open');
+          if (ouvertAvant || !ouvertMaintenant) return;
+          if (el.matches('.modal-overlay,.overlay-bg,.faq-overlay,.legal-modal-overlay')) ouvrir(el);
+          else if (el.matches('.mpa-ai-panel')) ouvrir(el, el, 'left bottom');
+        } else {
+          Array.prototype.forEach.call(m.addedNodes, function(n) {
+            if (n.nodeType === 1 && estFenetre(n) && n.offsetHeight > 0 && couvre(n)) ouvrir(n);
+          });
+        }
+      });
+    }).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+  }
+  if (document.body) demarrer(); else document.addEventListener('DOMContentLoaded', demarrer);
+})();
+
 function renderHero() {
   var hero = document.getElementById('hero');
   if (!hero) return;
@@ -1373,8 +1472,6 @@ async function ouvrirProfil(id) {
 
     div.innerHTML = buildProfilHTML(data);
     regrouperFicheTel();
-    var carteFiche = div.querySelector('.fiche-card');
-    if (carteFiche) atEntree(carteFiche.children, 0.07); // la fiche s'ouvre section par section
     _profilDataCourant = data;
     chargerApercuDispo(data.artisan.id);
 
