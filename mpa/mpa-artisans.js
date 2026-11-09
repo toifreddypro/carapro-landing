@@ -73,6 +73,111 @@ function mpaDefilerNombre(el, duree) {
   })(t0);
 }
 var _chiffresDefiles = false;
+// ── Chiffres qui défilent PARTOUT (tous les onglets, tous les sous-onglets, y compris la compta) ──
+// Tout nombre visible (montants en €, pourcentages, quantités, compteurs) défile de 0 jusqu'à sa vraie valeur, au moment où la page s'ouvre
+// ET quand les vraies données arrivent juste après. Jamais : dates, heures, années, téléphones, numéros longs, jours du planning.
+// Le texte final est toujours exactement celui d'origine. Coupé si le téléphone demande « réduire les animations ».
+var mpaChiffresRelancer = function() {};
+(function() {
+  var reduit = false; try { reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  if (reduit || typeof WeakMap === 'undefined' || typeof WeakSet === 'undefined') return;
+  var UNITES = '€|%|km|kg|min|jours?|factures?|clients?|produits?|articles?|commandes?|interventions?|devis|avis|pts|points?|HT|TTC';
+  var NUM = '[+\\-\\u2212\\u2013]?\\d[\\d\\s\\u00a0\\u202f]*(?:[.,]\\d+)?';
+  var RE_TOUT = new RegExp('^\\s*(?:' + NUM + '\\s*(?:(?:' + UNITES + ')\\b|€|%)?\\s*(?:(?:\\s\\/\\s|\\s·\\s|\\sx\\s)\\s*)?)+$', 'i');
+  var RE_NUM = new RegExp(NUM, 'g');
+  var EXCLU_TAGS = /^(SCRIPT|STYLE|TEXTAREA|INPUT|SELECT|OPTION|NOSCRIPT|SVG|CANVAS|BUTTON)$/i;
+  var EXCLU_CLASSES = /(^|[\s_-])(cal|calendar|calendrier|planning|agenda|jour|day|date|heure|hour|time|slot|creneau|plan|pl-)([\s_-]|$)/i;
+  var fait = new WeakMap(), enCours = new WeakSet(), file = [], tourne = false, minuterie = null;
+
+  function visible(el) {
+    if (!el.getClientRects().length) return false;
+    var r = el.getBoundingClientRect();
+    return r.bottom > 0 && r.top < window.innerHeight + 20 && r.width > 0;
+  }
+  function exclu(el) {
+    for (var k = 0, e = el; e && e.nodeType === 1 && k < 6; k++, e = e.parentElement) {
+      if (EXCLU_TAGS.test(e.tagName) || e.isContentEditable) return true;
+      if (e.id === 'content') return false;
+      var cn = typeof e.className === 'string' ? e.className : '';
+      if (cn && (EXCLU_CLASSES.test(cn) || /mpa-sq/.test(cn))) return true;
+    }
+    return false;
+  }
+  function eligible(txt) {
+    if (!/\d/.test(txt) || txt.length > 40 || !RE_TOUT.test(txt)) return null;
+    var nombres = txt.match(RE_NUM); if (!nombres) return null;
+    var chiffres = txt.replace(/\D/g, '').length;
+    if (chiffres >= 9 && !/[.,]/.test(txt) && !/€|%/.test(txt)) return null; // téléphone, SIRET, numéros longs
+    var avecUnite = /[€%a-zA-Z]/.test(txt);
+    for (var i = 0; i < nombres.length; i++) {
+      var brut = nombres[i].trim(), propre = brut.replace(/[+\-−–\s  ]/g, '');
+      if (/^0\d/.test(propre) && !/[.,]/.test(propre)) return null;      // 0690…, 05…
+      if (!avecUnite && /^\d{4}$/.test(propre) && +propre >= 1900 && +propre <= 2100 && !/\s/.test(brut)) return null; // une année
+    }
+    return nombres;
+  }
+  function pas(now) {
+    var vivants = [];
+    for (var i = 0; i < file.length; i++) {
+      var a = file[i];
+      if (now < a.debut) { vivants.push(a); continue; }
+      var k = Math.min(1, (now - a.debut) / a.duree), e = 1 - Math.pow(1 - k, 3);
+      if (!a.noeud.parentNode) { enCours.delete(a.noeud); continue; }
+      if (k >= 1) { a.noeud.nodeValue = a.final; enCours.delete(a.noeud); fait.set(a.noeud, a.final); continue; }
+      var n = 0;
+      a.noeud.nodeValue = a.final.replace(RE_NUM, function(m) {
+        var j = a.jetons[n++]; if (!j) return m;
+        var lead = /^\s/.test(m) ? m.match(/^\s+/)[0] : '', trail = /\s$/.test(m) ? m.match(/\s+$/)[0] : '';
+        return lead + j.signe + (j.cible * e).toLocaleString('fr-FR', { minimumFractionDigits: j.dec, maximumFractionDigits: j.dec }) + trail;
+      });
+      vivants.push(a);
+    }
+    file = vivants;
+    if (file.length) requestAnimationFrame(pas); else tourne = false;
+  }
+  function lancer(noeud, nombres, rang) {
+    var final = noeud.nodeValue, jetons = [], utile = false;
+    nombres.forEach(function(m) {
+      var signe = /^\s*[\-−–]/.test(m) ? '-' : (/^\s*\+/.test(m) ? '+' : '');
+      var propre = m.replace(/[+\-−–\s  ]/g, '').replace(',', '.'), cible = parseFloat(propre), mDec = propre.match(/\.(\d+)$/);
+      if (isFinite(cible) && cible > 0) utile = true;
+      jetons.push({ cible: isFinite(cible) ? cible : 0, dec: mDec ? mDec[1].length : 0, signe: signe });
+    });
+    if (!utile) { fait.set(noeud, final); return; }
+    enCours.add(noeud);
+    file.push({ noeud: noeud, final: final, jetons: jetons, debut: performance.now() + 120 + Math.min(rang * 40, 700), duree: 1100 });
+    if (!tourne) { tourne = true; requestAnimationFrame(pas); }
+  }
+  function balayer(racine) {
+    var tw = document.createTreeWalker(racine, NodeFilter.SHOW_TEXT, null), n, rang = 0, vus = 0;
+    while ((n = tw.nextNode()) && vus < 400) {
+      var txt = n.nodeValue; if (!txt || enCours.has(n)) continue;
+      if (fait.get(n) === txt) continue;
+      var nombres = eligible(txt); if (!nombres) continue;
+      var p = n.parentElement; if (!p || exclu(p) || !visible(p)) continue;
+      vus++; lancer(n, nombres, rang++);
+    }
+  }
+  function panneauxActifs() {
+    return Array.prototype.slice.call(document.querySelectorAll('#content > .pnl.active'));
+  }
+  function balayerActifs() { panneauxActifs().forEach(balayer); }
+  // Changement d'onglet / de sous-onglet : tout est rejoué (même les nombres déjà défilés).
+  mpaChiffresRelancer = function() {
+    fait = new WeakMap();
+    clearTimeout(minuterie);
+    minuterie = setTimeout(balayerActifs, 60);
+  };
+  // Les vraies données arrivent après l'ouverture (chargement) : les nouveaux nombres défilent à leur tour.
+  function brancher() {
+    var c = document.getElementById('content'); if (!c) return;
+    var attente = null;
+    new MutationObserver(function() { clearTimeout(attente); attente = setTimeout(balayerActifs, 160); })
+      .observe(c, { childList: true, subtree: true, characterData: true });
+    setTimeout(balayerActifs, 400);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', brancher); else brancher();
+})();
 // ── Fenêtres animées : le fond blanc apparaît réduit puis s'élargit de haut en bas, les informations arrivent l'une après l'autre, les chiffres défilent ──
 // Tout est coupé automatiquement si le téléphone demande « réduire les animations ».
 (function() {
@@ -852,10 +957,7 @@ function switchTab(i) {
   // intervention "Payée" depuis Ma journée) — on la rafraîchit systématiquement en y entrant,
   // plutôt que de compter sur chaque endroit qui pourrait la rendre périmée pour y penser.
   if (TAB_PANNEAUX[i] === 'p-compta' && typeof chargerCompta === 'function') chargerCompta();
-  if (TAB_PANNEAUX[i] === 'p-compta' && !_chiffresDefiles) { // première ouverture : les chiffres défilent jusqu'à leur vraie valeur
-    _chiffresDefiles = true;
-    ['dash-me-pct', 'dash-me-amt', 'dash-annuaire-pct', 'dash-annuaire-amt'].forEach(function(id, k) { setTimeout(function() { mpaDefilerNombre(document.getElementById(id), 900); }, k * 120); });
-  }
+  mpaChiffresRelancer(); // les chiffres de la page ouverte défilent (compta comprise)
   if (TAB_PANNEAUX[i] === 'p-livraisons' && typeof chargerLivraisons === 'function') chargerLivraisons();
   majBarreBas(i);
 }
@@ -1046,6 +1148,7 @@ function switchSousOnglet(idNav, idConteneur, i) {
   document.querySelectorAll('#' + idNav + ' .btab').forEach(function(b, idx) { b.classList.toggle('active', idx === i); });
   document.querySelectorAll('#' + idConteneur + ' > .bpnl').forEach(function(p, idx) { p.classList.toggle('active', idx === i); });
   mpaCascadePanneau(document.querySelector('#' + idConteneur + ' > .bpnl.active'));
+  mpaChiffresRelancer();
 }
 
 // ════════════════════════════════════════
