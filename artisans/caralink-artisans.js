@@ -800,9 +800,8 @@ async function demarrerInfosAnnuaire() {
   if (!_infosStats && !_infosChargement) {
     _infosChargement = true;
     try {
-      var res = await fetch(SUPABASE_URL + '/functions/v1/lister-artisans', { headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON } });
-      var data = await res.json();
-      if (!data.error && Array.isArray(data.artisans)) _infosStats = calculerInfosStats(data.artisans);
+      var liste = await listePublique();
+      if (liste.length) _infosStats = calculerInfosStats(liste);
     } catch (e) { /* le bandeau reste simplement caché */ }
     _infosChargement = false;
   }
@@ -816,16 +815,100 @@ async function demarrerInfosAnnuaire() {
   }, 6000);
 }
 
+
+// ════════════════════════════════════════
+//  VITRINE : avant toute recherche, 1 vignette (téléphone) ou 2 (ordinateur) d'artisans qui défilent doucement toutes seules.
+//  Même liste publique que le bandeau d'infos (un seul appel). Seuls les artisans réservables (Stripe finalisé) sont montrés.
+//  Ordre mélangé à chaque visite ; une vignette de plus toutes les 6 s ; pause au survol ou au toucher. Disparaît dès qu'on cherche.
+// ════════════════════════════════════════
+var _pListePublique = null;
+function listePublique() {
+  if (!_pListePublique) {
+    _pListePublique = fetch(SUPABASE_URL + '/functions/v1/lister-artisans', { headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON } })
+      .then(function(r) { return r.json(); })
+      .then(function(d) { return (!d.error && Array.isArray(d.artisans)) ? d.artisans : []; })
+      .catch(function() { _pListePublique = null; return []; });
+  }
+  return _pListePublique;
+}
+
+var _vitrine = { liste: [], debut: 0, timer: null, pause: false, actif: false };
+var VITRINE_TITRE = { fr: 'Des artisans près de chez vous', en: 'Artisans near you', es: 'Artesanos cerca de usted' };
+
+function melangerListe(t) {
+  var a = t.slice();
+  for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var x = a[i]; a[i] = a[j]; a[j] = x; }
+  return a;
+}
+function htmlVitrineCartes() {
+  var v = _vitrine, n = Math.min(ecranTel() ? 1 : 2, v.liste.length), h = '';
+  for (var i = 0; i < n; i++) h += renderArtisanCard(v.liste[(v.debut + i) % v.liste.length]);
+  return h;
+}
+function peindreVitrineCartes(avecEntree) {
+  var z = document.getElementById('vitrine-cartes');
+  if (!z) return;
+  z.innerHTML = htmlVitrineCartes();
+  var v = _vitrine, n = Math.min(ecranTel() ? 1 : 2, v.liste.length);
+  for (var i = 0; i < n; i++) chargerApercuCarte(v.liste[(v.debut + i) % v.liste.length].id);
+  planifierCoeurs();
+  if (avecEntree) atEntree(z.children, 0.1);
+}
+function arreterVitrine() {
+  clearInterval(_vitrine.timer); _vitrine.timer = null; _vitrine.actif = false;
+  var v = document.getElementById('vitrine'); if (v) v.innerHTML = ''; // vidé : aucun doublon d'identifiants avec les vrais résultats
+}
+async function afficherVitrine() {
+  var zone = document.getElementById('vitrine');
+  if (!zone) return;
+  if (!document.getElementById('style-vitrine')) {
+    var st = document.createElement('style'); st.id = 'style-vitrine';
+    st.textContent = '#vitrine{display:none;}body.avant-recherche #vitrine{display:block;}' +
+      '#vitrine .vit-titre{text-align:center;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mu2,#6b7c96);margin:0 0 12px;}' +
+      '#vitrine-cartes{transition:opacity .45s ease;}' +
+      '@media(min-width:769px){#vitrine{max-width:1100px;margin:22px auto 8px;padding:0 24px;}#vitrine-cartes{display:grid;grid-template-columns:1fr 1fr;column-gap:20px;}}' +
+      '@media(max-width:768px){#vitrine{margin:6px 12px 22px;}}' +
+      '@media (prefers-reduced-motion:reduce){#vitrine-cartes{transition:none;}}';
+    document.head.appendChild(st);
+  }
+  var liste;
+  try { liste = await listePublique(); } catch (e) { liste = []; }
+  liste = liste.filter(function(a) { return a.paiement_en_ligne !== false; });
+  if (!liste.length || window._rechercheFaite) { arreterVitrine(); return; }
+  var v = _vitrine;
+  if (!v.actif || v.liste.length !== liste.length) { v.liste = melangerListe(liste); v.debut = 0; }
+  v.actif = true;
+  var titre = VITRINE_TITRE[(typeof AT_LANG !== 'undefined' && AT_LANG) || 'fr'] || VITRINE_TITRE.fr;
+  zone.innerHTML = '<div class="vit-titre">' + escHtml(titre) + '</div><div id="vitrine-cartes"></div>';
+  peindreVitrineCartes(true);
+  zone.onmouseenter = function() { v.pause = true; };
+  zone.onmouseleave = function() { v.pause = false; };
+  zone.ontouchstart = function() { v.pause = true; clearTimeout(v.repriseTactile); v.repriseTactile = setTimeout(function() { v.pause = false; }, 4000); };
+  clearInterval(v.timer);
+  var visibles = ecranTel() ? 1 : 2;
+  if (v.liste.length > visibles) {
+    var calme = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    v.timer = setInterval(function() {
+      var z = document.getElementById('vitrine-cartes');
+      if (!z) { arreterVitrine(); return; }
+      if (v.pause || document.hidden || window._rechercheFaite) return;
+      var changer = function() { v.debut = (v.debut + 1) % v.liste.length; peindreVitrineCartes(false); z.style.opacity = '1'; };
+      if (calme) { changer(); return; }
+      z.style.opacity = '0'; setTimeout(changer, 450);
+    }, 6000);
+  }
+}
+
 function filtrerRge() {
   _searchState.rge = !_searchState.rge;
-  window._rechercheFaite = true; document.body.classList.remove('avant-recherche');
+  window._rechercheFaite = true; document.body.classList.remove('avant-recherche'); arreterVitrine();
   renderHero();
   chargerArtisans();
 }
 
 function trierPar(critere) {
   _searchState.tri = (_searchState.tri === critere) ? '' : critere;
-  window._rechercheFaite = true; document.body.classList.remove('avant-recherche');
+  window._rechercheFaite = true; document.body.classList.remove('avant-recherche'); arreterVitrine();
   renderHero();
   chargerArtisans();
 }
@@ -848,10 +931,12 @@ function lancerRecherche(sansDefiler) {
   if (!_searchState.secteur && !_searchState.groupe && !_searchState.commune && !_searchState.nom && !_searchState.rge) {
     window._rechercheFaite = false;
     document.body.classList.add('avant-recherche');
+    afficherVitrine();
     return;
   }
   window._rechercheFaite = true;
   document.body.classList.remove('avant-recherche');
+  arreterVitrine();
   chargerArtisans();
   if (sansDefiler !== true) {
     var zr = document.getElementById('main-results');
@@ -889,6 +974,7 @@ function renderResults() {
   renderPartnerPanel();
   demarrerInfosAnnuaire();
   if (!window._rechercheFaite) document.body.classList.add('avant-recherche');
+  afficherVitrine();
   chargerArtisans();
   setTimeout(initCarte, 100);
 }
