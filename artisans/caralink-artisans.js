@@ -818,7 +818,7 @@ async function demarrerInfosAnnuaire() {
 
 // ════════════════════════════════════════
 //  VITRINE : avant toute recherche, 1 vignette (téléphone) ou 2 (ordinateur) d'artisans qui défilent doucement toutes seules.
-//  Même liste publique que le bandeau d'infos (un seul appel). Seuls les artisans réservables (Stripe finalisé) sont montrés.
+//  Même liste publique que le bandeau d'infos (un seul appel). Les artisans grisés (Stripe pas finalisé) y sont aussi : ça montre que l'annuaire se remplit.
 //  Ordre mélangé à chaque visite ; une vignette de plus toutes les 6 s ; pause au survol ou au toucher. Disparaît dès qu'on cherche.
 // ════════════════════════════════════════
 var _pListePublique = null;
@@ -860,7 +860,12 @@ function arreterVitrine() {
 }
 async function afficherVitrine() {
   var zone = document.getElementById('vitrine');
-  if (!zone) return;
+  if (!zone) { // la page ne la contient pas (ancienne version en mémoire) : on la crée juste sous le haut de page
+    var hero = document.getElementById('hero');
+    if (!hero || !hero.parentNode) return;
+    zone = document.createElement('section'); zone.id = 'vitrine';
+    hero.parentNode.insertBefore(zone, hero.nextSibling);
+  }
   if (!document.getElementById('style-vitrine')) {
     var st = document.createElement('style'); st.id = 'style-vitrine';
     st.textContent = '#vitrine{display:none;}body.avant-recherche #vitrine{display:block;}' +
@@ -873,7 +878,6 @@ async function afficherVitrine() {
   }
   var liste;
   try { liste = await listePublique(); } catch (e) { liste = []; }
-  liste = liste.filter(function(a) { return a.paiement_en_ligne !== false; });
   if (!liste.length || window._rechercheFaite) { arreterVitrine(); return; }
   var v = _vitrine;
   if (!v.actif || v.liste.length !== liste.length) { v.liste = melangerListe(liste); v.debut = 0; }
