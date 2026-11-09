@@ -96,6 +96,7 @@ var mpaChiffresRelancer = function() {};
   }
   function exclu(el) {
     for (var k = 0, e = el; e && e.nodeType === 1 && k < 6; k++, e = e.parentElement) {
+      if (/^svg$/i.test(e.tagName) && e.parentElement && e.parentElement.classList.contains('cx-rond')) continue; // le « 45 % » du rond défile aussi
       if (EXCLU_TAGS.test(e.tagName) || e.isContentEditable) return true;
       if (e.id === 'content') return false;
       var cn = typeof e.className === 'string' ? e.className : '';
@@ -173,10 +174,40 @@ var mpaChiffresRelancer = function() {};
   function panneauxActifs() {
     return Array.prototype.slice.call(document.querySelectorAll('#content > .pnl.active'));
   }
-  function balayerActifs() { numeroBalayage++; panneauxActifs().forEach(balayer); }
+  // ── Graphiques : barres, histogramme des mois, jauges et rond se remplissent depuis 0 (même moment que les chiffres) ──
+  var graphes = new WeakMap(), recentsG = {};
+  function lancerGraphe(el, type, final, rang) {
+    var now = performance.now(), duree = 1000, debut = now + 80 + Math.min(rang * 70, 600), cle = type + '|' + final + '|' + rang;
+    var r = recentsG[cle];
+    if (r && r.balayage !== numeroBalayage && now - r.debut < 3000) debut = r.debut; else recentsG[cle] = { debut: debut, balayage: numeroBalayage };
+    if (now - debut >= duree) return; // la même course est déjà finie : le graphique est simplement à sa vraie valeur
+    var de, vers;
+    if (type === 'haut') { de = { height: '0%' }; vers = { height: final }; }
+    else if (type === 'arc') { var circ = final.split(/\s+/)[1] || '326.7'; de = { strokeDasharray: '0 ' + circ }; vers = { strokeDasharray: final }; }
+    else { de = { width: '0%' }; vers = { width: final }; }
+    try { el.animate([de, vers], { duration: duree, delay: debut - now, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'backwards' }); } catch (e) {}
+  }
+  function balayerGraphiques(racine) {
+    if (!Element.prototype.animate) return;
+    var els = racine.querySelectorAll('.cx-bar, .dj-bar, .piste > div, div[style*="height:100%"][style*="width:"], .cx-rond circle[stroke-dasharray]'), rang = 0;
+    Array.prototype.forEach.call(els, function(el) {
+      var type, final;
+      if (el.tagName.toLowerCase() === 'circle') { type = 'arc'; final = el.getAttribute('stroke-dasharray'); if (!/^\s*[\d.]+\s+[\d.]+\s*$/.test(final || '')) return; }
+      else if (el.classList.contains('cx-bar')) { type = 'haut'; final = el.style.height; }
+      else {
+        type = 'large'; final = el.style.width;
+        var tr = el.parentElement; if (!tr || tr.getBoundingClientRect().height > 14) return; // seulement les vraies pistes fines (jamais un grand bloc)
+      }
+      if (!final || (type !== 'arc' && !/%$/.test(final)) || !(parseFloat(final) > 0)) return;
+      if (!visible(el.tagName.toLowerCase() === 'circle' ? el.parentNode : el)) return;
+      var sig = type + ':' + final; if (graphes.get(el) === sig) return; graphes.set(el, sig);
+      lancerGraphe(el, type, final, rang++);
+    });
+  }
+  function balayerActifs() { numeroBalayage++; panneauxActifs().forEach(function(pn) { balayer(pn); balayerGraphiques(pn); }); }
   // Changement d'onglet / de sous-onglet : tout est rejoué (même les nombres déjà défilés). Immédiat : les nombres passent à 0 AVANT le premier affichage.
   mpaChiffresRelancer = function() {
-    fait = new WeakMap(); recents = {};
+    fait = new WeakMap(); recents = {}; graphes = new WeakMap(); recentsG = {};
     balayerActifs();
   };
   // Les vraies données arrivent après l'ouverture : les nouveaux nombres sont mis à 0 aussitôt (avant l'affichage), puis défilent.
