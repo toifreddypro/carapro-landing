@@ -909,28 +909,40 @@ async function init() {
   majInfoAbonnementMpaAi();
 
   renderFiche();
-  await chargerClients();
-  await chargerProjetsRecus();
-  await chargerRecapCommission();
-  await chargerEtatModerationMpa();
-  await chargerDemandes();
-  await chargerAvis();
-  await chargerCommandes();
-  await chargerLivraisons();
-  await chargerHoraires();
-  await chargerIndispos();
-  await chargerServices();
-  await chargerPhotos();
-  await chargerCatalogue();
-  await chargerFournitures();
-  await initPlanning();
-  await chargerCompta();
+
+  // ── Démarrage rapide ──
+  // Avant : une trentaine de chargements l'un après l'autre (le planning arrivait en 17e).
+  // Maintenant : le planning part en premier et, en même temps, tout ce qui ne dépend de rien d'autre.
+  // Les chiffres de l'année ne sont demandés qu'une fois (mémoire valable seulement pendant le démarrage).
+  _memoLignesCA = {};
+  var tente = function(p) { return Promise.resolve(p).catch(function(e) { console.error('Démarrage :', e); }); };
+  var pFournitures = tente(chargerFournitures());
+  await Promise.all([
+    tente(initPlanning(pFournitures)),                 // le planning d'abord
+    pFournitures,
+    tente((async function() {                          // ces trois-là se suivent : chacun a besoin du précédent
+      await chargerCommandes();
+      await chargerLivraisons();
+      await chargerCatalogue();
+    })()),
+    tente(chargerClients()),
+    tente(chargerProjetsRecus()),
+    tente(chargerRecapCommission()),
+    tente(chargerEtatModerationMpa()),
+    tente(chargerDemandes()),
+    tente(chargerAvis()),
+    tente(chargerHoraires()),
+    tente(chargerIndispos()),
+    tente(chargerServices()),
+    tente(chargerPhotos())
+  ]);
+  // Comptabilité, factures et tableau de bord ont besoin des commandes : on les lance ensemble, juste après.
+  await Promise.all([ tente(chargerCompta()), tente(chargerFactures()), tente(initDashboard()) ]);
   remplirSelectClientFacture();
-  await chargerFactures();
-  await initDashboard();
   renderMpaAiFeed();
   await verifierAlertesMpaAi();
   await verifierBilanMensuel();
+  _memoLignesCA = null;
   appliquerActivites();
   // Une seule question à la fois : d'abord l'activité, puis l'impôt (versement libératoire), la visite d'estimation en dernier.
   if (!(await demanderActivites()) && !(await demanderRegimeFiscal())) await demanderAssistantReglages(false); // après les autres alertes : la question de MPA-AI est la plus visible
@@ -997,12 +1009,13 @@ var _serviceEnCours = null; // id de l'intervention ouverte dans la modale, ou n
 const MOIS_NOMS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 const JOURS_NOMS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 
-async function initPlanning() {
+async function initPlanning(attendre) {
   var auj = new Date();
   _calAnnee = auj.getFullYear();
   _calMois = auj.getMonth();
   renderDows();
   await chargerInterventions();
+  if (attendre) await attendre; // l'itinéraire de la semaine utilise les fournitures : on les attend, mais le calendrier est déjà affiché
   await renderItineraireWidget();
 }
 
@@ -1025,6 +1038,10 @@ async function chargerInterventions() {
   var finStr = finMois.toISOString().slice(0, 10);
 
   // Si une colonne du client manque en base (ex. telephone), on réessaie sans elle plutôt que de vider tout le planning.
+  // Les journées bloquées et les retards sont demandés en même temps que les interventions (au lieu de l'un après l'autre).
+  var pIndMois = Promise.resolve(sb.from('artisans_indisponibilites').select('*').eq('artisan_id', _artisan.id)
+    .lte('date_debut', finStr).gte('date_fin', debutStr)); // Promise.resolve : la requête part tout de suite
+  var pRetards = chargerRetards();
   var res = null;
   for (var champs of ['nom, email, telephone', 'nom, email']) {
     res = await sb.from('mpa_artisans_interventions')
@@ -1040,11 +1057,10 @@ async function chargerInterventions() {
   else { _interventionsCache = data || []; }
 
   // Journées bloquées qui touchent ce mois (pour les afficher dans le calendrier).
-  var ind = await sb.from('artisans_indisponibilites').select('*').eq('artisan_id', _artisan.id)
-    .lte('date_debut', finStr).gte('date_fin', debutStr);
+  var ind = await pIndMois;
   _indisposMois = ind.error ? [] : (ind.data || []);
 
-  await chargerRetards();
+  await pRetards;
   renderCalendrier();
   renderPlanningMobile();
   renderRecapInterventions();
@@ -3794,20 +3810,32 @@ function _dateJour(s) {
 }
 
 // Toutes les lignes de CA dont une date tombe dans [debut, finExclue[ (chaînes 'AAAA-MM-JJ'). Lève une erreur si la lecture échoue.
+// Mémoire courte : pendant le démarrage, la même période demandée plusieurs fois n'est lue qu'une fois.
+var _memoLignesCA = null;
 async function chargerLignesCA(debut, finExclue) {
+  if (!_memoLignesCA) return chargerLignesCABrut(debut, finExclue);
+  var cle = debut + '|' + finExclue, memo = _memoLignesCA;
+  if (!memo[cle]) {
+    memo[cle] = chargerLignesCABrut(debut, finExclue);
+    memo[cle].catch(function() { delete memo[cle]; });
+  }
+  return (await memo[cle]).slice();
+}
+async function chargerLignesCABrut(debut, finExclue) {
   var d0 = _dateJour(debut), d1 = _dateJour(finExclue);
   var margeA = new Date(d0.getTime()); margeA.setDate(margeA.getDate() - 1);
   var margeB = new Date(d1.getTime()); margeB.setDate(margeB.getDate() + 1);
-  var rI = await sb.from('mpa_artisans_interventions')
+  var qI = sb.from('mpa_artisans_interventions')
     .select('id, prix, statut, date_intervention, date_paiement, facture_id, mpa_artisans_clients(nom), artisans_services(nom_service)')
     .eq('artisan_id', _artisan.id).neq('statut', 'annulee')
     .or('and(date_intervention.gte.' + debut + ',date_intervention.lt.' + finExclue + '),and(date_paiement.gte.' + debut + ',date_paiement.lt.' + finExclue + ')');
-  var rL = await sb.from('commandes_catalogue').select('intervention_id')
+  var qL = sb.from('commandes_catalogue').select('intervention_id')
     .eq('artisan_id', _artisan.id).not('intervention_id', 'is', null);
-  var rV = await sb.from('commandes_catalogue')
+  var qV = sb.from('commandes_catalogue')
     .select('id, nom_article, catalogue_id, montant_total, montant_rembourse, frais_livraison, created_at, client_nom')
     .eq('artisan_id', _artisan.id).in('paiement_statut', STATUTS_COMMANDE_REGLEE)
     .gte('created_at', margeA.toISOString()).lt('created_at', margeB.toISOString());
+  var [rI, rL, rV] = await Promise.all([qI, qL, qV]);
   var err = rI.error || rL.error || rV.error;
   if (err) throw err;
 
