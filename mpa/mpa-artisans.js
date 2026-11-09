@@ -13,17 +13,33 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 // Tout est coupé automatiquement si le téléphone demande « réduire les animations ».
 (function() {
   var st = document.createElement('style');
-  st.textContent = '@keyframes mpaEntree{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}' +
-    '.mpa-entree{animation:mpaEntree .45s ease-out both;animation-delay:var(--d,0s)}' +
+  st.textContent = '@keyframes mpaEntree{from{opacity:0;transform:translateY(-18px)}to{opacity:1;transform:none}}' +
+    '.mpa-entree{animation:mpaEntree .5s ease-out both;animation-delay:var(--d,0s)}' +
     '@keyframes mpaBrille{0%{background-position:200% 0}100%{background-position:-200% 0}}' +
     '.mpa-sq{height:62px;border-radius:14px;margin-bottom:8px;background:linear-gradient(90deg,#eef2f8 25%,#f8fafd 50%,#eef2f8 75%);background-size:200% 100%;animation:mpaBrille 1.4s linear infinite}' +
     '@media (prefers-reduced-motion:reduce){.mpa-entree,.mpa-sq{animation:none !important}}';
   document.head.appendChild(st);
 })();
 function mpaEntree(liste, pas) {
-  Array.prototype.forEach.call(liste || [], function(el, i) {
-    el.style.setProperty('--d', Math.min(i * (pas || 0.1), 0.5).toFixed(2) + 's'); // jamais plus d'une demi-seconde d'attente
-    el.classList.remove('mpa-entree'); void el.offsetWidth; el.classList.add('mpa-entree');
+  // On descend dans les gros blocs pour animer les éléments eux-mêmes (titres, lignes, cartes) : ils apparaissent l'un après l'autre,
+  // pas tout le bloc d'un coup. Seuls ceux visibles à l'écran sont animés, du haut vers le bas.
+  var feuilles = [];
+  (function descendre(els, prof) {
+    Array.prototype.forEach.call(els || [], function(el) {
+      if (!el || el.nodeType !== 1 || /^(SCRIPT|STYLE|LINK)$/.test(el.tagName)) return;
+      var cs = getComputedStyle(el);
+      if (cs.position === 'fixed' || cs.display === 'none') return;
+      var h = el.offsetHeight; if (h <= 0) return;
+      var enfants = Array.prototype.filter.call(el.children, function(c) { return c.offsetHeight > 0; });
+      if (prof < 3 && h > 150 && enfants.length >= 2) descendre(enfants, prof + 1); else feuilles.push(el);
+    });
+  })(liste, 0);
+  var n = 0, bas = window.innerHeight + 40;
+  feuilles.forEach(function(el) {
+    el.classList.remove('mpa-entree');
+    if (el.getBoundingClientRect().top > bas) return; // sous l'écran : inutile de l'animer
+    el.style.setProperty('--d', Math.min(n * (pas || 0.11), 1.3).toFixed(2) + 's'); n++;
+    void el.offsetWidth; el.classList.add('mpa-entree');
   });
 }
 // Au tout début de l'ouverture : les blocs de « Ma journée » descendent l'un après l'autre, et des cases grises tiennent la place des rendez-vous.
