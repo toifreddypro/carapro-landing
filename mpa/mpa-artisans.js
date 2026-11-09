@@ -22,11 +22,16 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 })();
 function mpaEntree(liste, pas) {
   Array.prototype.forEach.call(liste || [], function(el, i) {
-    el.style.setProperty('--d', (i * (pas || 0.1)).toFixed(2) + 's');
+    el.style.setProperty('--d', Math.min(i * (pas || 0.1), 0.5).toFixed(2) + 's'); // jamais plus d'une demi-seconde d'attente
     el.classList.remove('mpa-entree'); void el.offsetWidth; el.classList.add('mpa-entree');
   });
 }
 // Au tout début de l'ouverture : les blocs de « Ma journée » descendent l'un après l'autre, et des cases grises tiennent la place des rendez-vous.
+// À chaque changement d'onglet ou de sous-onglet : les blocs de la page ouverte descendent l'un après l'autre.
+function mpaCascadePanneau(panneau) {
+  if (!panneau) return;
+  mpaEntree(Array.prototype.filter.call(panneau.children, function(el) { return el.offsetHeight > 0; }), 0.08);
+}
 function mpaOuvertureAnimee() {
   var pj = document.getElementById('p-journee'); if (!pj) return;
   var p0 = document.getElementById('p0');
@@ -718,6 +723,16 @@ function switchTab(i) {
   if (bouton) { bouton.classList.add('active'); if (bouton.style.display === 'none') bouton.style.display = ''; } // un onglet masqué qu'on ouvre quand même (lien de MPA-AI…) réapparaît
   var actifs = (i === 0 || i === 2) ? ['p-journee', 'p0'] : [TAB_PANNEAUX[i]];
   document.querySelectorAll('#content > .pnl').forEach(function(p) { p.classList.toggle('active', actifs.indexOf(p.id) >= 0); });
+  // L'effet d'ouverture s'applique à tous les onglets : la barre de sous-onglets, puis les blocs de la page active, descendent l'un après l'autre.
+  var blocs = [];
+  actifs.forEach(function(id) {
+    var pn = document.getElementById(id); if (!pn) return;
+    Array.prototype.forEach.call(pn.children, function(el) {
+      if (/^conteneur-/.test(el.id)) { var act = el.querySelector(':scope > .bpnl.active'); if (act) blocs = blocs.concat(Array.prototype.slice.call(act.children)); }
+      else blocs.push(el);
+    });
+  });
+  mpaEntree(blocs.filter(function(el) { return el.offsetHeight > 0; }), 0.08);
   // La compta peut devenir périmée par une action faite depuis un autre onglet (ex : marquer une
   // intervention "Payée" depuis Ma journée) — on la rafraîchit systématiquement en y entrant,
   // plutôt que de compter sur chaque endroit qui pourrait la rendre périmée pour y penser.
@@ -915,6 +930,7 @@ function basculerCarte(entete) {
 function switchSousOnglet(idNav, idConteneur, i) {
   document.querySelectorAll('#' + idNav + ' .btab').forEach(function(b, idx) { b.classList.toggle('active', idx === i); });
   document.querySelectorAll('#' + idConteneur + ' > .bpnl').forEach(function(p, idx) { p.classList.toggle('active', idx === i); });
+  mpaCascadePanneau(document.querySelector('#' + idConteneur + ' > .bpnl.active'));
 }
 
 // ════════════════════════════════════════
