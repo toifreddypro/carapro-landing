@@ -87,7 +87,7 @@ var mpaChiffresRelancer = function() {};
   var RE_NUM = new RegExp(NUM, 'g');
   var EXCLU_TAGS = /^(SCRIPT|STYLE|TEXTAREA|INPUT|SELECT|OPTION|NOSCRIPT|SVG|CANVAS|BUTTON)$/i;
   var EXCLU_CLASSES = /(^|[\s_-])(cal|calendar|calendrier|planning|agenda|jour|day|date|heure|hour|time|slot|creneau|plan|pl-)([\s_-]|$)/i;
-  var fait = new WeakMap(), enCours = new WeakSet(), file = [], tourne = false, minuterie = null;
+  var fait = new WeakMap(), enCours = new WeakSet(), file = [], tourne = false;
 
   function visible(el) {
     if (!el.getClientRects().length) return false;
@@ -116,27 +116,31 @@ var mpaChiffresRelancer = function() {};
     }
     return nombres;
   }
+  function rendu(a, e) {
+    var n = 0;
+    return a.final.replace(RE_NUM, function(m) {
+      var j = a.jetons[n++]; if (!j) return m;
+      var lead = /^\s/.test(m) ? m.match(/^\s+/)[0] : '', trail = /\s$/.test(m) ? m.match(/\s+$/)[0] : '';
+      return lead + j.signe + (j.cible * e).toLocaleString('fr-FR', { minimumFractionDigits: j.dec, maximumFractionDigits: j.dec }) + trail;
+    });
+  }
   function pas(now) {
     var vivants = [];
     for (var i = 0; i < file.length; i++) {
       var a = file[i];
-      if (now < a.debut) { vivants.push(a); continue; }
-      var k = Math.min(1, (now - a.debut) / a.duree), e = 1 - Math.pow(1 - k, 3);
       if (!a.noeud.parentNode) { enCours.delete(a.noeud); continue; }
+      if (now < a.debut) { vivants.push(a); continue; } // attend son tour en restant à 0 (jamais le vrai chiffre avant)
+      var k = Math.min(1, (now - a.debut) / a.duree), e = 1 - Math.pow(1 - k, 3);
       if (k >= 1) { a.noeud.nodeValue = a.final; enCours.delete(a.noeud); fait.set(a.noeud, a.final); continue; }
-      var n = 0;
-      a.noeud.nodeValue = a.final.replace(RE_NUM, function(m) {
-        var j = a.jetons[n++]; if (!j) return m;
-        var lead = /^\s/.test(m) ? m.match(/^\s+/)[0] : '', trail = /\s$/.test(m) ? m.match(/\s+$/)[0] : '';
-        return lead + j.signe + (j.cible * e).toLocaleString('fr-FR', { minimumFractionDigits: j.dec, maximumFractionDigits: j.dec }) + trail;
-      });
+      a.noeud.nodeValue = rendu(a, e);
       vivants.push(a);
     }
     file = vivants;
     if (file.length) requestAnimationFrame(pas); else tourne = false;
   }
+  var recents = {}, numeroBalayage = 0;
   function lancer(noeud, nombres, rang) {
-    var final = noeud.nodeValue, jetons = [], utile = false;
+    var final = noeud.nodeValue, jetons = [], utile = false, now = performance.now();
     nombres.forEach(function(m) {
       var signe = /^\s*[\-−–]/.test(m) ? '-' : (/^\s*\+/.test(m) ? '+' : '');
       var propre = m.replace(/[+\-−–\s  ]/g, '').replace(',', '.'), cible = parseFloat(propre), mDec = propre.match(/\.(\d+)$/);
@@ -144,8 +148,16 @@ var mpaChiffresRelancer = function() {};
       jetons.push({ cible: isFinite(cible) ? cible : 0, dec: mDec ? mDec[1].length : 0, signe: signe });
     });
     if (!utile) { fait.set(noeud, final); return; }
+    var debut = now + 50 + Math.min(rang * 30, 450);
+    // Même nombre déjà lancé il y a un instant (les données se rafraîchissent) : on reprend la même course, sans repartir de 0.
+    var r = recents[final];
+    if (r && r.balayage !== numeroBalayage && now - r.debut < 3000) debut = r.debut; else recents[final] = { debut: debut, balayage: numeroBalayage };
+    var a = { noeud: noeud, final: final, jetons: jetons, debut: debut, duree: 1100 };
+    var k = Math.max(0, Math.min(1, (now - debut) / a.duree));
+    if (k >= 1) { fait.set(noeud, final); return; }
+    noeud.nodeValue = rendu(a, 1 - Math.pow(1 - k, 3)); // tout de suite à 0 (ou à l'avancement de la course en cours)
     enCours.add(noeud);
-    file.push({ noeud: noeud, final: final, jetons: jetons, debut: performance.now() + 120 + Math.min(rang * 40, 700), duree: 1100 });
+    file.push(a);
     if (!tourne) { tourne = true; requestAnimationFrame(pas); }
   }
   function balayer(racine) {
@@ -161,20 +173,20 @@ var mpaChiffresRelancer = function() {};
   function panneauxActifs() {
     return Array.prototype.slice.call(document.querySelectorAll('#content > .pnl.active'));
   }
-  function balayerActifs() { panneauxActifs().forEach(balayer); }
-  // Changement d'onglet / de sous-onglet : tout est rejoué (même les nombres déjà défilés).
+  function balayerActifs() { numeroBalayage++; panneauxActifs().forEach(balayer); }
+  // Changement d'onglet / de sous-onglet : tout est rejoué (même les nombres déjà défilés). Immédiat : les nombres passent à 0 AVANT le premier affichage.
   mpaChiffresRelancer = function() {
-    fait = new WeakMap();
-    clearTimeout(minuterie);
-    minuterie = setTimeout(balayerActifs, 60);
+    fait = new WeakMap(); recents = {};
+    balayerActifs();
   };
-  // Les vraies données arrivent après l'ouverture (chargement) : les nouveaux nombres défilent à leur tour.
+  // Les vraies données arrivent après l'ouverture : les nouveaux nombres sont mis à 0 aussitôt (avant l'affichage), puis défilent.
   function brancher() {
     var c = document.getElementById('content'); if (!c) return;
-    var attente = null;
-    new MutationObserver(function() { clearTimeout(attente); attente = setTimeout(balayerActifs, 160); })
-      .observe(c, { childList: true, subtree: true, characterData: true });
-    setTimeout(balayerActifs, 400);
+    new MutationObserver(function(liste) {
+      var neuf = liste.some(function(r) { return !(r.type === 'characterData' && (enCours.has(r.target) || fait.get(r.target) === r.target.nodeValue)); });
+      if (neuf) balayerActifs();
+    }).observe(c, { childList: true, subtree: true, characterData: true });
+    balayerActifs();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', brancher); else brancher();
 })();
