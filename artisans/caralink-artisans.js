@@ -167,21 +167,25 @@ var _secteursCache = [
 ];
 
 async function chargerSecteurs() {
-  try {
-    var res = await fetch(SUPABASE_URL + '/rest/v1/secteurs?select=*&order=ordre.asc', {
-      headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON },
-    });
-    var data = await res.json();
-    if (res.ok && Array.isArray(data) && data.length) _secteursCache = data;
-  } catch (e) { console.warn('Chargement des secteurs échoué, liste de repli utilisée.', e); }
-  // Grands secteurs (Beauté, BTP, Animaux…) : s'ils manquent, la recherche garde l'ancienne liste à plat (mode dégradé).
-  try {
-    var res2 = await fetch(SUPABASE_URL + '/rest/v1/secteurs_groupes?select=*&order=ordre.asc', {
-      headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON },
-    });
-    var data2 = await res2.json();
-    if (res2.ok && Array.isArray(data2) && data2.length) _groupesCache = data2;
-  } catch (e) { console.warn('Chargement des grands secteurs échoué, liste à plat utilisée.', e); }
+  // Les deux listes (métiers, grands secteurs) sont demandées en même temps, pas l'une après l'autre.
+  var entetes = { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON };
+  await Promise.all([
+    (async function() {
+      try {
+        var res = await fetch(SUPABASE_URL + '/rest/v1/secteurs?select=*&order=ordre.asc', { headers: entetes });
+        var data = await res.json();
+        if (res.ok && Array.isArray(data) && data.length) _secteursCache = data;
+      } catch (e) { console.warn('Chargement des secteurs échoué, liste de repli utilisée.', e); }
+    })(),
+    (async function() {
+      // Grands secteurs (Beauté, BTP, Animaux…) : s'ils manquent, la recherche garde l'ancienne liste à plat (mode dégradé).
+      try {
+        var res2 = await fetch(SUPABASE_URL + '/rest/v1/secteurs_groupes?select=*&order=ordre.asc', { headers: entetes });
+        var data2 = await res2.json();
+        if (res2.ok && Array.isArray(data2) && data2.length) _groupesCache = data2;
+      } catch (e) { console.warn('Chargement des grands secteurs échoué, liste à plat utilisée.', e); }
+    })()
+  ]);
 }
 
 // ── Deux niveaux : grand secteur (Beauté…) puis métier (Coiffeur…) ──
@@ -522,6 +526,41 @@ var _searchState = { secteur:'', groupe:'', commune:'', nom:'', tri:'', rge:fals
   document.head.appendChild(st);
 })();
 
+// ── Ouverture animée : les blocs descendent en fondu, des cartes grises tiennent la place pendant l'attente ──
+// Tout est coupé automatiquement si le téléphone demande « réduire les animations ».
+(function() {
+  var st = document.createElement('style');
+  st.textContent = '@keyframes atEntree{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}' +
+    '.at-entree{animation:atEntree .45s ease-out both;animation-delay:var(--d,0s)}' +
+    '@keyframes atBrille{0%{background-position:200% 0}100%{background-position:-200% 0}}' +
+    '.at-sq{height:150px;border-radius:16px;margin-bottom:12px;border:1px solid #e3eaf4;background:linear-gradient(90deg,#eef2f8 25%,#f8fafd 50%,#eef2f8 75%);background-size:200% 100%;animation:atBrille 1.4s linear infinite}' +
+    '@media (prefers-reduced-motion:reduce){.at-entree,.at-sq{animation:none !important}}';
+  document.head.appendChild(st);
+})();
+function atEntree(liste, pas) {
+  Array.prototype.forEach.call(liste || [], function(el, i) {
+    el.style.setProperty('--d', Math.min(i * (pas || 0.1), 0.5).toFixed(2) + 's'); // jamais plus d'une demi-seconde d'attente
+    el.classList.remove('at-entree'); void el.offsetWidth; el.classList.add('at-entree');
+  });
+}
+function atSquelettes(n) { var h = ''; for (var i = 0; i < (n || 3); i++) h += '<div class="at-sq"></div>'; return h; }
+// Fait défiler un nombre de 0 jusqu'à sa vraie valeur (le texte final reste exactement celui calculé).
+function atDefilerNombre(el, duree) {
+  if (!el) return;
+  try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) {}
+  var texteFinal = el.textContent, m = texteFinal.match(/\d+/);
+  if (!m) return;
+  var cible = parseInt(m[0], 10);
+  if (!isFinite(cible) || cible <= 0) return;
+  var t0 = performance.now(), d = duree || 700;
+  (function pas(now) {
+    var k = Math.min(1, (now - t0) / d), e = 1 - Math.pow(1 - k, 3);
+    if (k >= 1) { el.textContent = texteFinal; return; }
+    el.textContent = texteFinal.replace(m[0], String(Math.round(cible * e)));
+    requestAnimationFrame(pas);
+  })(t0);
+}
+
 function renderHero() {
   var hero = document.getElementById('hero');
   if (!hero) return;
@@ -722,7 +761,7 @@ function renderResults() {
         '<div class="results-header">' +
           '<span class="results-count" id="results-count">' + T('chargement') + '</span>' +
         '</div>' +
-        '<div id="artisans-list"><div class="loader">' + T('chargement') + '</div></div>' +
+        '<div id="artisans-list">' + atSquelettes(3) + '</div>' +
       '</div>' +
       '<div class="map-panel">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
@@ -942,7 +981,7 @@ async function chargerArtisans() {
   var zoneListe = document.getElementById('artisans-list');
   var zoneCount = document.getElementById('results-count');
   if (!zoneListe) return;
-  zoneListe.innerHTML = '<div class="loader">' + T('chargement') + '</div>';
+  zoneListe.innerHTML = atSquelettes(3);
 
   try {
     var params = new URLSearchParams();
@@ -988,6 +1027,8 @@ async function chargerArtisans() {
       ? cartesHtml.join('')
       : '<div class="etat-vide"><div class="etat-vide-titre">' + T('aucun_artisan_titre') + '</div>' + T('aucun_artisan_texte') + '</div>';
 
+    atEntree(zoneListe.children, 0.08);                 // les cartes descendent l'une après l'autre
+    if (artisans.length) atDefilerNombre(zoneCount, 700); // « 12 artisans » : le nombre défile jusqu'au vrai total
     artisans.forEach(function(a) { if (a.paiement_en_ligne !== false) chargerApercuCarte(a.id); });
     planifierCoeurs();
     demarrerPubAlternanceMobile();
@@ -1316,6 +1357,8 @@ async function ouvrirProfil(id) {
 
     div.innerHTML = buildProfilHTML(data);
     regrouperFicheTel();
+    var carteFiche = div.querySelector('.fiche-card');
+    if (carteFiche) atEntree(carteFiche.children, 0.07); // la fiche s'ouvre section par section
     _profilDataCourant = data;
     chargerApercuDispo(data.artisan.id);
 
@@ -2655,11 +2698,15 @@ function ouvrirModalLegal(type) {
 
 // ── Init ──
 document.addEventListener('DOMContentLoaded', async function() {
-  await chargerSecteurs();
-  renderNav();
-  renderHero();
-  renderResults();
+  // Avant : tout attendait la liste des métiers. Maintenant elle part en même temps que le haut de page et les témoignages.
+  var pSecteurs = chargerSecteurs();
   chargerTemoignagesArtisans();
+  renderNav();
+  atEntree([document.getElementById('nav')], 0);
+  await pSecteurs;
+  renderHero();
+  atEntree(Array.prototype.slice.call((document.getElementById('hero') || {}).children || []), 0.12);
+  renderResults();
   // Lien direct vers une fiche : https://caralink.app/artisans/?artisan=<identifiant> (ex. le bouton « Choisir un autre créneau »
   // de l'email de refus). L'identifiant vient de l'adresse : on n'accepte QUE la forme exacte d'un identifiant (rien d'autre n'est envoyé).
   var voulu = new URLSearchParams(location.search).get('artisan');

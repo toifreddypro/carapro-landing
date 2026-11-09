@@ -414,6 +414,7 @@
 
 <div id="racine">
   <div class="etat-page"><h1 data-i18n="cat_chargement">Chargement…</h1></div>
+  <div style="max-width:900px;margin:0 auto;padding:0 16px;"><div class="bq-sq" style="height:170px;"></div><div class="bq-sq"></div><div class="bq-sq"></div></div>
 </div>
 
 <button class="panier-flottant" id="btn-panier-flottant" onclick="ouvrirPanier()">
@@ -474,6 +475,25 @@
   </div>
 </div>
 
+<script>
+// ── Ouverture animée : les blocs descendent en fondu, des cases grises tiennent la place pendant l'attente ──
+// Tout est coupé automatiquement si le téléphone demande « réduire les animations ».
+(function() {
+  var st = document.createElement('style');
+  st.textContent = '@keyframes bqEntree{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}' +
+    '.bq-entree{animation:bqEntree .45s ease-out both;animation-delay:var(--d,0s)}' +
+    '@keyframes bqBrille{0%{background-position:200% 0}100%{background-position:-200% 0}}' +
+    '.bq-sq{height:110px;border-radius:16px;margin-bottom:12px;border:1px solid #e3eaf4;background:linear-gradient(90deg,#eef2f8 25%,#f8fafd 50%,#eef2f8 75%);background-size:200% 100%;animation:bqBrille 1.4s linear infinite}' +
+    '@media (prefers-reduced-motion:reduce){.bq-entree,.bq-sq{animation:none !important}}';
+  document.head.appendChild(st);
+})();
+function bqEntree(liste, pas) {
+  Array.prototype.forEach.call(liste || [], function(el, i) {
+    el.style.setProperty('--d', Math.min(i * (pas || 0.1), 0.5).toFixed(2) + 's'); // jamais plus d'une demi-seconde d'attente
+    el.classList.remove('bq-entree'); void el.offsetWidth; el.classList.add('bq-entree');
+  });
+}
+</script>
 <script>
 const SUPABASE_URL = 'https://uzgboxfxpxazhysusewv.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6Z2JveGZ4cHhhemh5c3VzZXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzI4NzUsImV4cCI6MjEwNDgwODg3NX0.zHWjsI4jH26I41R3oe8wDL4GazTWspxUdjQCe-fW7eQ';
@@ -1338,6 +1358,9 @@ function render() {
   planifierCoeurs();
   majBadgePanier();
   if (prods.length) { renderBarreFiltres(); rerenderGrillePrincipale(); }
+  // Ouverture animée : les blocs de la boutique descendent l'un après l'autre, puis les produits.
+  bqEntree(document.getElementById('racine').children, 0.1);
+  bqEntree((document.getElementById('grille-principale') || {}).children, 0.06);
   renderOnglets();
   initCarousel();
 }
