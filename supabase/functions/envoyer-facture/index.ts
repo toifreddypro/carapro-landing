@@ -146,11 +146,21 @@ Deno.serve(async (req: Request) => {
     const adresseArtisan = [artisan.adresse, [artisan.code_postal, artisan.commune].filter(Boolean).join(" ")].filter(Boolean).map(escHtml).join("<br>");
     const adresseClient = [client.adresse, client.adresse2, [client.code_postal, client.commune].filter(Boolean).join(" ")].filter(Boolean).map(escHtml).join("<br>");
 
+    // Offre Pro : logo, couleur de la boutique et petit mot en bas (réglages de l'artisan, relus ici côté serveur : on ne fait confiance à aucune donnée du navigateur).
+    const estProFact = artisan.plan === "pro" || artisan.plan === "pro_offert";
+    const reglagesFact = (artisan.mpa_ai_prefs && typeof artisan.mpa_ai_prefs === "object" && artisan.mpa_ai_prefs.facture && typeof artisan.mpa_ai_prefs.facture === "object") ? artisan.mpa_ai_prefs.facture : {};
+    const COULEURS_FACT: Record<string, string> = { terre: "#B5502F", bleu: "#2563A8", vert: "#2F7D4F", rose: "#B83280", violet: "#6B46C1", ocre: "#B7791F" };
+    const coulFact = !estProFact ? "#B5502F"
+      : (typeof artisan.boutique_accent_libre === "string" && /^#[0-9a-f]{6}$/i.test(artisan.boutique_accent_libre)) ? artisan.boutique_accent_libre
+      : (COULEURS_FACT[String(artisan.boutique_accent ?? "terre")] ?? "#B5502F");
+    const logoFact = (estProFact && typeof reglagesFact.logo === "string" && /^https:\/\/[a-z0-9.-]+\.supabase\.co\/storage\/[^\s"'<>]+$/i.test(reglagesFact.logo)) ? reglagesFact.logo : "";
+    const motFact = (estProFact && typeof reglagesFact.message === "string") ? reglagesFact.message.replace(/\s+/g, " ").trim().slice(0, 200) : "";
     const html = `<div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#1a2233;">
       <p>Bonjour ${escHtml(client.nom)},</p>
       <p>Veuillez trouver ci-dessous la facture n° <strong>${escHtml(facture.numero)}</strong> de <strong>${escHtml(artisan.nom_entreprise)}</strong>.</p>
       <div style="border:1px solid #e4e8ef;border-radius:10px;padding:20px;margin:16px 0;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:14px;"><strong style="font-size:17px;color:#B5502F;">Facture n° ${escHtml(facture.numero)}</strong></div>
+        ${logoFact ? `<div style="margin-bottom:12px;"><img src="${escHtml(logoFact)}" alt="" style="max-height:64px;max-width:200px;"></div>` : ""}
+        <div style="display:flex;justify-content:space-between;margin-bottom:14px;"><strong style="font-size:17px;color:${coulFact};">Facture n° ${escHtml(facture.numero)}</strong></div>
         <p style="margin:0 0 14px;font-size:13px;color:#6b7c96;">Émise le ${dateFR(dateFacture, true)}</p>
         <table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:13px;"><tr>
           <td style="vertical-align:top;width:50%;padding-right:10px;"><div style="font-size:11px;color:#6b7c96;text-transform:uppercase;">Émetteur</div><strong>${escHtml(artisan.nom_entreprise)}</strong><br>${artisan.siret ? "SIRET " + escHtml(artisan.siret) + "<br>" : ""}${adresseArtisan}${artisan.telephone ? "<br>Tél. " + escHtml(artisan.telephone) : ""}${artisan.email ? "<br>" + escHtml(artisan.email) : ""}</td>
@@ -160,9 +170,10 @@ Deno.serve(async (req: Request) => {
           <thead><tr style="background:#f4f6fa;"><th style="padding:7px 8px;text-align:left;">Date</th><th style="padding:7px 8px;text-align:left;">${colonne}</th><th style="padding:7px 8px;">Qté</th><th style="padding:7px 8px;text-align:right;">Prix unit.</th><th style="padding:7px 8px;text-align:right;">Montant</th></tr></thead>
           <tbody>${lignesHtml}</tbody>
         </table>
-        <p style="text-align:right;font-size:16px;margin:14px 0 0;"><strong>Total TTC : ${euros(total)}</strong></p>
+        <p style="text-align:right;font-size:16px;margin:14px 0 0;color:${coulFact};"><strong>Total TTC : ${euros(total)}</strong></p>
         ${tva}
         <p style="font-size:11px;color:#6b7c96;margin:10px 0 0;">Conditions de règlement : paiement sous ${delai} jours — échéance le ${dateFR(echeance, true)}. En cas de retard de paiement, indemnité forfaitaire de recouvrement de 40 € (art. L441-10 du Code de commerce), applicable aux relations entre professionnels.</p>
+        ${motFact ? `<p style="text-align:center;font-size:13px;font-weight:600;margin:18px 0 0;color:${coulFact};">${escHtml(motFact)}</p>` : ""}
       </div>
       <p style="font-size:12px;color:#6b7c96;">Pour toute question, répondez simplement à cet email : votre message sera adressé directement à ${escHtml(artisan.nom_entreprise)}.</p>
     </div>`;

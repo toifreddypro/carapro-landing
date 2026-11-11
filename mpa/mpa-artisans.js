@@ -4139,7 +4139,10 @@ function setVueMoisTrim(vue) {
   renderMatriceCompta();
 }
 
-function anneeComptaPrec() { _anneeCompta--; chargerCompta(); }
+function anneeComptaPrec() {
+  if (!estPro() && _anneeCompta <= new Date().getFullYear()) { proposerPassagePro('historique'); return; } // Essentiel : année en cours seulement
+  _anneeCompta--; chargerCompta();
+}
 function anneeComptaSuiv() { _anneeCompta++; chargerCompta(); }
 
 // ── Comptabilité : trois familles de chiffre d'affaires (Interventions, Ventes boutique, Livraisons) ──
@@ -4328,6 +4331,7 @@ async function renderRecapInterventions() {
 }
 
 async function chargerCompta() {
+  if (!estPro() && _anneeCompta < new Date().getFullYear()) _anneeCompta = new Date().getFullYear(); // ex-Pro revenu en Essentiel : retour à l'année en cours
   document.getElementById('compta-annee').textContent = _anneeCompta;
   try {
     _lignesCompta = await chargerLignesCA(_anneeCompta + '-01-01', (_anneeCompta + 1) + '-01-01');
@@ -4387,6 +4391,10 @@ function renderMatriceCompta() {
     return '<tr class="' + cls + '"><td>' + label + '</td>' + cells + '<td style="text-align:center;font-weight:800;' + (couleur ? 'color:' + couleur + ';' : '') + '">' + _eur0(tot) + '</td></tr>';
   }
   var html = '';
+  var verrouCompta = !estPro(); // Essentiel : le CA brut reste visible ; cotisations et net estimés = offre Pro
+  function ligneVerrou(label, cls) {
+    return '<tr class="' + cls + '" onclick="proposerPassagePro(\'compta\')" style="cursor:pointer;"><td>' + label + '</td><td colspan="' + (nbCol - 1) + '" style="text-align:center;color:var(--mu);font-weight:700;">🔒 Offre Pro</td></tr>';
+  }
   var totBrut = cols.map(function() { return 0; }), totCotis = cols.map(function() { return 0; });
   if (_erreurCompta) {
     html = '<tr><td colspan="' + nbCol + '" class="etat-vide-tbl">Le chiffre d\'affaires n\'a pas pu être chargé. Rechargez la page.</td></tr>';
@@ -4398,14 +4406,14 @@ function renderMatriceCompta() {
       brut.forEach(function(v, i) { totBrut[i] += v; totCotis[i] += cot[i]; });
       html += '<tr class="rec-fam"><td colspan="' + nbCol + '">' + _FAM_LIBELLE[f] + ' <span class="rec-taux">cotisations ' + formatPct(tauxCotisationsFamille(f)) + '</span></td></tr>';
       html += ligneTableau('CA brut', brut, 'cpv2-row-brut');
-      html += ligneTableau('Cotisations', cot, 'cpv2-row-cotis', 'var(--gold)');
-      html += ligneTableau('Net', net, 'cpv2-row-net', 'var(--ac)');
+      html += verrouCompta ? ligneVerrou('Cotisations', 'cpv2-row-cotis') : ligneTableau('Cotisations', cot, 'cpv2-row-cotis', 'var(--gold)');
+      html += verrouCompta ? ligneVerrou('Net', 'cpv2-row-net') : ligneTableau('Net', net, 'cpv2-row-net', 'var(--ac)');
     });
     var totNet = totBrut.map(function(v, i) { return v - totCotis[i]; });
     html += '<tr class="rec-fam rec-total"><td colspan="' + nbCol + '">Σ Total</td></tr>';
     html += ligneTableau('Total CA brut', totBrut, 'cpv2-row-brut');
-    html += ligneTableau('Total cotisations', totCotis, 'cpv2-row-cotis', 'var(--gold)');
-    html += ligneTableau('Total net', totNet, 'cpv2-row-net', 'var(--ac)');
+    html += verrouCompta ? ligneVerrou('Total cotisations', 'cpv2-row-cotis') : ligneTableau('Total cotisations', totCotis, 'cpv2-row-cotis', 'var(--gold)');
+    html += verrouCompta ? ligneVerrou('Total net', 'cpv2-row-net') : ligneTableau('Total net', totNet, 'cpv2-row-net', 'var(--ac)');
   }
   tbody.innerHTML = html;
 
@@ -4442,11 +4450,13 @@ function renderMatriceCompta() {
   var t = totauxFamilles(_lignesCompta, 'production', function(d) { return d.getFullYear() === annee; });
   var cotis = cotisationsTotales(t);
   document.getElementById('kpi-ca-brut').textContent = _fmtCA(t.total) + ' €';
-  document.getElementById('kpi-cotis').textContent = _fmtCA(cotis) + ' €';
-  document.getElementById('kpi-ca-net').textContent = _fmtCA(t.total - cotis) + ' €';
+  document.getElementById('kpi-cotis').textContent = verrouCompta ? '🔒 Pro' : _fmtCA(cotis) + ' €';
+  document.getElementById('kpi-ca-net').textContent = verrouCompta ? '🔒 Pro' : _fmtCA(t.total - cotis) + ' €';
+  ['kpi-cotis', 'kpi-ca-net'].forEach(function(id) { var k = document.getElementById(id); if (k && k.parentElement) { k.parentElement.style.cursor = verrouCompta ? 'pointer' : ''; k.parentElement.onclick = verrouCompta ? function() { proposerPassagePro('compta'); } : null; } });
 
   var note = document.getElementById('compta-note-cotis');
-  if (note) {
+  if (note && verrouCompta) note.innerHTML = '';
+  else if (note) {
     note.innerHTML = '💡 Cotisations estimées : ventes ' + formatPct(_artisan.cotisation_ventes_pct ?? TAUX_DEFAUT_VENTES) +
       ', interventions et livraisons ' + formatPct(_artisan.cotisation_sociale_pct ?? TAUX_DEFAUT_SERVICES) +
       ', <strong>plus ' + formatPct(_artisan.cfp_pct ?? TAUX_DEFAUT_CFP) + ' de contribution à la formation professionnelle</strong> (artisans). ' +
@@ -4628,7 +4638,9 @@ function renderComptaV2(parFam, cols, curIdx, isCurYear) {
   zone.innerHTML =
     '<div class="cx-per"><button onclick="choisirPeriodeComptaMobile(' + (idx - 1) + ')"' + (idx <= 0 ? ' disabled' : '') + ' aria-label="Avant">‹</button><span>' + lib + '</span><button onclick="choisirPeriodeComptaMobile(' + (idx + 1) + ')"' + (idx >= cols.length - 1 ? ' disabled' : '') + ' aria-label="Après">›</button></div>' +
     '<div class="cx-carte"><div class="cx-lib">💶 ' + (reel ? 'Encaissé' : 'Gagné') + '</div><div class="cx-gros">' + _eurM(totB) + '</div><div class="cx-sous">avant cotisations</div></div>' +
-    '<div class="cx-carte net"><div class="cx-lib">Il vous reste environ</div><div class="cx-gros">' + _eurM(totB - totC) + '</div><div class="cx-sous">après ' + _eurM(totC) + ' de cotisations estimées</div></div>' + lignes;
+    (estPro()
+      ? '<div class="cx-carte net"><div class="cx-lib">Il vous reste environ</div><div class="cx-gros">' + _eurM(totB - totC) + '</div><div class="cx-sous">après ' + _eurM(totC) + ' de cotisations estimées</div></div>'
+      : '<div class="cx-carte net" onclick="proposerPassagePro(\'compta\')" style="cursor:pointer;"><div class="cx-lib">Il vous reste environ</div><div class="cx-gros">🔒</div><div class="cx-sous">avec l\'offre Pro : ce qu\'il vous reste après vos cotisations</div></div>') + lignes;
   // 2) Tableau de bord : les 6 derniers mois en barres
   var zb = document.getElementById('cx-barres');
   if (zb) {
@@ -4669,13 +4681,15 @@ function renderComptaMobile(parFam, parClient, clients, cols, curIdx, isCurYear,
     totB += b; totC += c;
     h += '<div class="compta-mobile-fam">' + _FAM_LIBELLE[f] + '</div>' +
       '<div class="compta-mobile-client"><span>CA brut</span><span>' + _fmtCA(b) + ' €</span></div>' +
-      '<div class="compta-mobile-client" style="color:var(--gold);"><span>Cotisations</span><span>' + _fmtCA(c) + ' €</span></div>' +
-      '<div class="compta-mobile-client" style="color:var(--ac);"><span>Net</span><span>' + _fmtCA(b - c) + ' €</span></div>';
+      (pro ? '<div class="compta-mobile-client" style="color:var(--gold);"><span>Cotisations</span><span>' + _fmtCA(c) + ' €</span></div>' +
+      '<div class="compta-mobile-client" style="color:var(--ac);"><span>Net</span><span>' + _fmtCA(b - c) + ' €</span></div>'
+      : '<div class="compta-mobile-client" style="color:var(--mu);cursor:pointer;" onclick="proposerPassagePro(\'compta\')"><span>Cotisations et net</span><span>🔒 Pro</span></div>');
   });
   h += '<div class="compta-mobile-fam">Σ Total</div>' +
     '<div class="compta-mobile-total"><span>CA brut</span><span>' + _fmtCA(totB) + ' €</span></div>' +
-    '<div class="compta-mobile-total" style="color:var(--gold);"><span>Cotisations</span><span>' + _fmtCA(totC) + ' €</span></div>' +
-    '<div class="compta-mobile-total" style="color:var(--ac);"><span>Net</span><span>' + _fmtCA(totB - totC) + ' €</span></div>';
+    (pro ? '<div class="compta-mobile-total" style="color:var(--gold);"><span>Cotisations</span><span>' + _fmtCA(totC) + ' €</span></div>' +
+    '<div class="compta-mobile-total" style="color:var(--ac);"><span>Net</span><span>' + _fmtCA(totB - totC) + ' €</span></div>'
+    : '<div class="compta-mobile-total" style="color:var(--mu);cursor:pointer;" onclick="proposerPassagePro(\'compta\')"><span>Cotisations et net</span><span>🔒 Pro</span></div>');
   zoneListe.innerHTML = h;
 
   var zoneClients = document.getElementById('compta-client-mobile');
@@ -4799,6 +4813,7 @@ async function _genererFacture() {
 }
 
 async function chargerFactures() {
+  afficherFacturePerso();
   var { data, error } = await sb.from('mpa_artisans_factures')
     .select('*, mpa_artisans_clients(nom)')
     .eq('artisan_id', _artisan.id)
@@ -5067,6 +5082,86 @@ async function _facturerCommande(id, envoyer) {
   if (envoyer) envoyerFacture(facture.id); else imprimerFacture(facture.id);
 }
 
+// ── Factures à mon image (offre Pro) : logo, petit mot en bas, couleur de la boutique. Réglages rangés dans mpa_ai_prefs.facture (aucune colonne à créer). ──
+var COULEURS_FACTURE = { terre: '#B5502F', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
+function factureReglages() {
+  var p = (_artisan && _artisan.mpa_ai_prefs && typeof _artisan.mpa_ai_prefs === 'object') ? _artisan.mpa_ai_prefs : {};
+  var f = (p.facture && typeof p.facture === 'object') ? p.facture : {};
+  return { logo: typeof f.logo === 'string' && f.logo ? f.logo : null, message: typeof f.message === 'string' ? f.message : '' };
+}
+function couleurFacture() {
+  var libre = _artisan && _artisan.boutique_accent_libre;
+  if (typeof libre === 'string' && /^#[0-9a-f]{6}$/i.test(libre)) return libre;
+  return COULEURS_FACTURE[(_artisan && _artisan.boutique_accent) || 'terre'] || COULEURS_FACTURE.terre;
+}
+async function enregistrerReglagesFacture(maj) {
+  var prefs = Object.assign({}, (_artisan.mpa_ai_prefs && typeof _artisan.mpa_ai_prefs === 'object') ? _artisan.mpa_ai_prefs : {});
+  prefs.facture = Object.assign({}, factureReglages(), maj);
+  var r = await sb.from('artisans').update({ mpa_ai_prefs: prefs }).eq('id', _artisan.id).select('mpa_ai_prefs').single();
+  if (r.error) throw new Error(r.error.message);
+  _artisan.mpa_ai_prefs = r.data.mpa_ai_prefs;
+}
+function afficherFacturePerso() {
+  var cadre = document.getElementById('fact-perso-logo'); if (!cadre || !_artisan) return;
+  var f = factureReglages();
+  cadre.style.backgroundImage = f.logo ? 'url("' + f.logo + '")' : '';
+  cadre.textContent = f.logo ? '' : 'Votre logo';
+  var rb = document.getElementById('fact-perso-retirer'); if (rb) rb.style.display = f.logo ? '' : 'none';
+  var m = document.getElementById('fact-perso-message'); if (m && document.activeElement !== m) m.value = f.message || '';
+  var pastille = document.getElementById('fact-perso-pro'); if (pastille) pastille.style.display = estPro() ? 'none' : '';
+}
+function choisirLogoFacture() {
+  if (!exigerPro('facture_perso')) return;
+  var inp = document.getElementById('fact-logo-input'); inp.value = ''; inp.click();
+}
+async function uploaderLogoFacture() {
+  if (!verifierAccesEcriture() || !estPro()) return;
+  var inp = document.getElementById('fact-logo-input'), fichier = inp.files[0]; if (!fichier) return;
+  var url = URL.createObjectURL(fichier), img = new Image(), st = document.getElementById('fact-perso-statut');
+  img.onload = async function() {
+    try {
+      var r = Math.min(1, 400 / Math.max(img.naturalWidth, img.naturalHeight)), cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(img.naturalWidth * r)); cv.height = Math.max(1, Math.round(img.naturalHeight * r));
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      var blob = await new Promise(function(ok, ko) { cv.toBlob(function(b) { b ? ok(b) : ko(new Error('Image illisible.')); }, 'image/png'); });
+      var chemin = _artisan.user_id + '/logofacture_' + Date.now() + '.png';
+      var up = await sb.storage.from('artisans-photos').upload(chemin, blob, { contentType: 'image/png' });
+      if (up.error) throw new Error(up.error.message);
+      var { data: pub } = sb.storage.from('artisans-photos').getPublicUrl(chemin);
+      var ancien = factureReglages().logo;
+      await enregistrerReglagesFacture({ logo: pub.publicUrl });
+      supprimerAncienLogoFacture(ancien);
+      afficherFacturePerso();
+      if (st) st.textContent = '✓ Logo enregistré : il apparaît sur vos factures.';
+    } catch (e) { alert('Erreur : ' + e.message); }
+    finally { URL.revokeObjectURL(url); inp.value = ''; }
+  };
+  img.onerror = function() { URL.revokeObjectURL(url); inp.value = ''; alert('Cette image ne peut pas être lue. Utilisez une image JPG, PNG ou WebP.'); };
+  img.src = url;
+}
+function supprimerAncienLogoFacture(url) {
+  try {
+    var marque = '/artisans-photos/'; if (!url || url.indexOf(marque) < 0) return;
+    var chemin = decodeURIComponent(url.split(marque)[1]);
+    if (chemin.indexOf(_artisan.user_id + '/logofacture_') !== 0) return;
+    sb.storage.from('artisans-photos').remove([chemin]);
+  } catch (e) { /* sans importance */ }
+}
+async function retirerLogoFacture() {
+  if (!verifierAccesEcriture()) return;
+  try { var ancien = factureReglages().logo; await enregistrerReglagesFacture({ logo: null }); supprimerAncienLogoFacture(ancien); afficherFacturePerso(); }
+  catch (e) { alert('Erreur : ' + e.message); }
+}
+async function sauverMessageFacture() {
+  if (!exigerPro('facture_perso')) return;
+  if (!verifierAccesEcriture()) return;
+  var texte = (document.getElementById('fact-perso-message').value || '').replace(/\s+/g, ' ').trim(), st = document.getElementById('fact-perso-statut');
+  if (texte.length > 200) { alert('Le petit mot est limité à 200 caractères.'); return; }
+  if (/https?:|www\./i.test(texte)) { alert('Les liens ne sont pas autorisés dans ce texte.'); return; }
+  try { await enregistrerReglagesFacture({ message: texte }); if (st) st.textContent = '✓ Enregistré : ce petit mot apparaît en bas de vos factures.'; }
+  catch (e) { alert('Erreur : ' + e.message); }
+}
+
 async function imprimerFacture(factureId) {
   var { data: facture, error } = await sb.from('mpa_artisans_factures')
     .select('*, mpa_artisans_clients(*)').eq('id', factureId).single();
@@ -5119,10 +5214,15 @@ async function imprimerFacture(factureId) {
     if (ecartInt < -0.004) lignesHtml += '<tr><td></td><td>Remise / crédit cashback</td><td>1</td><td>' + ecartInt.toFixed(2) + '€</td><td>' + ecartInt.toFixed(2) + '€</td></tr>';
   }
 
+  // Offre Pro : logo (ou nom de l'entreprise), couleur de la boutique et petit mot en bas. Offre Essentiel : facture inchangée.
+  var persoF = estPro() ? factureReglages() : null, coulF = couleurFacture();
+  var enteteMarque = persoF
+    ? (persoF.logo ? '<img src="' + escHtml(persoF.logo) + '" alt="" style="max-height:64px;max-width:200px;object-fit:contain;">' : '<span style="color:' + coulF + ';">' + escHtml(a.nom_entreprise || '') + '</span>')
+    : 'MPA <span>Artisans</span>';
   document.getElementById('facture-print').innerHTML =
-    '<div class="fp-page">' +
+    '<div class="fp-page"' + (persoF ? ' style="--fp-c:' + coulF + ';"' : '') + '>' +
       '<div class="fp-header">' +
-        '<div class="fp-brand">MPA <span>Artisans</span></div>' +
+        '<div class="fp-brand">' + enteteMarque + '</div>' +
         '<div class="fp-meta">Facture n° ' + escHtml(facture.numero) + '<br>Le ' + dateFactureAff + '</div>' +
       '</div>' +
       '<div class="fp-parties">' +
@@ -5148,6 +5248,7 @@ async function imprimerFacture(factureId) {
       '<div class="fp-total-row"><span>Total TTC</span><span>' + facture.montant_total.toFixed(2) + '€</span></div>' +
       (a.tva_config && a.tva_config !== 'Non assujetti' ? '' : '<p style="font-size:11px;color:#6b7c96;">TVA non applicable, art. 293 B du CGI.</p>') +
       '<p style="font-size:11px;color:#6b7c96;">Conditions de règlement : paiement sous ' + delaiPaiement + ' jours — échéance le ' + dateEcheanceAff + '. En cas de retard de paiement, indemnité forfaitaire de recouvrement de 40€ (art. L441-10 du Code de commerce), applicable aux relations entre professionnels.</p>' +
+      (persoF && persoF.message ? '<p style="margin-top:24px;font-size:13px;text-align:center;color:' + coulF + ';font-weight:600;">' + escHtml(persoF.message) + '</p>' : '') +
       '<div class="fp-footer">' + escHtml(a.nom_entreprise||'') + (a.siret ? ' — SIRET ' + escHtml(a.siret) : '') + '</div>' +
     '</div>';
 
@@ -5407,7 +5508,7 @@ async function lancerStripeConnect(btn) {
   }
 }
 
-// ── Abonnement Stripe — essai 14 jours, 19,99€/mois ──
+// ── Abonnement Stripe — essai 30 jours, 24,99 €/mois ou 249 €/an ──
 // Masqué temporairement (28/09) : plus aucun encart, plus de compte à rebours, plus de bouton
 // "S'abonner". Le temps de construire le modèle "gratuit sous un seuil de CA, commission au-delà".
 // Pour revenir en arrière : remettre l'ancien corps de fonction (voir l'historique du fichier).
@@ -5499,6 +5600,14 @@ function proposerPassagePro(raison) {
     ? '👥 Vous avez atteint les ' + LIMITE_CLIENTS_ESSENTIEL + ' clients de l\'offre Essentiel. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : autant de clients que vous voulez, le catalogue illimité et Mes fournitures. Les clients qui vous contactent par CaraLink arrivent toujours dans votre fichier.' + texteEssai()
     : raison === 'devis_generaux'
     ? '📨 Vous avez utilisé votre réponse gratuite du mois aux demandes de devis. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : répondez à tous les projets qui vous correspondent, sans limite, avec le catalogue illimité et Mes fournitures.' + texteEssai()
+    : raison === 'facture_perso'
+    ? '🎨 Vos factures à votre image (votre logo, la couleur de votre boutique et un petit mot en bas, sur la facture imprimée comme sur celle envoyée par email) font partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
+    : raison === 'compta'
+    ? '💶 Le calcul de vos cotisations et de ce qu\'il vous reste fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Votre chiffre d\'affaires et l\'alerte du plafond micro-entreprise restent gratuits.' + texteEssai()
+    : raison === 'impot'
+    ? '🧾 L\'estimation de votre impôt sur le revenu fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. L\'alerte du plafond micro-entreprise reste gratuite.' + texteEssai()
+    : raison === 'historique'
+    ? '📚 L\'offre Essentiel montre l\'année en cours. Retrouver vos années passées fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Vos factures et justificatifs restent toujours accessibles.' + texteEssai()
     : raison === 'fonds'
     ? '🎨 Les fonds de boutique « Nature et beauté » et « Pro et chantier » font partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Les fonds unis (clair, océan, schiste, sombre) restent gratuits.' + texteEssai()
     : raison === 'carrousel'
@@ -5944,6 +6053,7 @@ async function calculerDashboardFiscal() {
       : '<div class="ir-ligne"><span>Revenu imposable (abattement 71 % ventes, 50 % services)</span><span>' + ir.imposable.toFixed(0) + ' €</span></div>' +
         '<div class="ir-ligne"><span>Estimation impôt sur le revenu</span><span>' + ir.impot.toFixed(0) + ' €</span></div>') +
     (regimeNonPrecise ? '<div style="font-size:10.5px;color:var(--mu);margin-top:6px;">Calcul au barème classique. Vous avez le versement libératoire ? Indiquez-le dans Mon profil › Paramètres fiscaux.</div>' : '');
+  if (!estPro()) document.getElementById('dash-ir-body').innerHTML = '<div style="cursor:pointer;padding:10px 0;color:var(--mu);font-weight:700;" onclick="proposerPassagePro(\'impot\')">🔒 L\'estimation de votre impôt fait partie de l\'offre Pro</div>';
   var sousTitreIR = document.getElementById('dash-ir-sub');
   if (sousTitreIR) sousTitreIR.textContent = ir.liberatoire ? 'Versement libératoire de l\'impôt sur le revenu' : 'Abattement forfaitaire : 71 % ventes, 50 % services';
   afficherCAMois();
