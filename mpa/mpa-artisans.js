@@ -5271,10 +5271,11 @@ async function imprimerFacture(factureId) {
         '<tbody>' + lignesHtml + '</tbody>' +
       '</table>' +
       '<div class="fp-total-row"><span>Total TTC</span><span>' + facture.montant_total.toFixed(2) + '€</span></div>' +
-      (a.tva_config && a.tva_config !== 'Non assujetti' ? '' : '<p style="font-size:11px;color:#6b7c96;">TVA non applicable, art. 293 B du CGI.</p>') +
-      '<p style="font-size:11px;color:#6b7c96;">Conditions de règlement : paiement sous ' + delaiPaiement + ' jours — échéance le ' + dateEcheanceAff + '. En cas de retard de paiement, indemnité forfaitaire de recouvrement de 40€ (art. L441-10 du Code de commerce), applicable aux relations entre professionnels.</p>' +
       (persoF && persoF.message ? '<p style="margin-top:24px;font-size:13px;text-align:center;color:' + coulF + ';font-weight:600;">' + escHtml(persoF.message) + '</p>' : '') +
-      '<div class="fp-footer">' + escHtml(a.nom_entreprise||'') + (a.siret ? ' — SIRET ' + escHtml(a.siret) : '') + '</div>' +
+      '<div class="fp-mentions">' +
+      (a.tva_config && a.tva_config !== 'Non assujetti' ? '' : '<p>TVA non applicable, art. 293 B du CGI.</p>') +
+      '<p>Conditions de règlement : paiement sous ' + delaiPaiement + ' jours — échéance le ' + dateEcheanceAff + '. En cas de retard de paiement, indemnité forfaitaire de recouvrement de 40€ (art. L441-10 du Code de commerce), applicable aux relations entre professionnels.</p>' +
+      '</div>' +
     '</div>';
 
   document.getElementById('facture-print').style.display = 'block';
@@ -7970,7 +7971,7 @@ function openChoisirProduitAVendre() {
   var horsVente = _catalogueCache.filter(function(c) { return c.en_vente === false; });
   var zone = document.getElementById('zone-choix-produit-vente');
   if (!horsVente.length) {
-    zone.innerHTML = '<p style="font-size:13px;color:var(--mu);padding:10px 0;">Tous vos produits sont déjà en vente. Créez-en un nouveau depuis <strong>Mon stock → Mes produits</strong>.</p>';
+    zone.innerHTML = '<p style="font-size:13px;color:var(--mu);padding:10px 0;">Tous vos produits sont déjà en vente. Créez-en un nouveau dans votre stock : bouton « Aller à mes produits » ci-dessus.</p>';
   } else {
     zone.innerHTML = horsVente.map(function(c) {
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--brd);">' +
@@ -8462,7 +8463,7 @@ function renderCommandes() {
     '</div></div>' };
   });
 
-  // Rangement par mois (la liste devient longue) : le mois en cours et le dernier mois avec commandes sont ouverts, les autres repliés.
+  // Rangement par mois (la liste devient longue) : tous les mois sont repliés au départ ; l'artisan ouvre celui qu'il veut (son choix est gardé).
   var groupes = [], parMois = {};
   cartes.forEach(function(k) {
     var mois = new Date(new Date(k.c.created_at).getTime() - 4 * 3600 * 1000).toISOString().slice(0, 7);
@@ -8470,9 +8471,7 @@ function renderCommandes() {
     parMois[mois].cartes.push(k);
   });
   if (!_moisCommandesOuverts) {
-    _moisCommandesOuverts = {};
-    _moisCommandesOuverts[new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 7)] = true;
-    if (groupes.length) _moisCommandesOuverts[groupes[0].mois] = true;
+    _moisCommandesOuverts = {}; // tous les mois repliés au départ : le nombre de commandes « à traiter » reste visible sur chaque ligne
   }
   var nouvellesTotal = _commandesCache.filter(function(c) { return c.statut === 'nouvelle'; }).length;
   zone.innerHTML = (nouvellesTotal ? '<div style="font-size:12.5px;font-weight:700;color:var(--ac);margin-bottom:10px;">🔔 ' + nouvellesTotal + ' commande' + (nouvellesTotal > 1 ? 's' : '') + ' à traiter</div>' : '') +
