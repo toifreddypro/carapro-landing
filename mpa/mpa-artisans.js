@@ -5407,7 +5407,7 @@ function renderEncartAbonnement() {
 var LIMITE_PRODUITS_ESSENTIEL = 6; // à garder identique à la limite écrite dans paywall-plan.sql
 var LIMITE_PHARES_GRATUIT = 1, LIMITE_PHARES_PRO = 4; // à garder identiques à phares-plan.sql
 function limitePhares() { return estPro() ? LIMITE_PHARES_PRO : LIMITE_PHARES_GRATUIT; }
-var PRIX_PRO_AFFICHE = '9,90 €/mois';
+var PRIX_PRO_AFFICHE = '24,99 €/mois';
 var _dernierMessagePro = 0;
 
 function estPro() {
@@ -5416,7 +5416,7 @@ function estPro() {
 
 // L'essai n'est offert qu'une fois (le serveur y veille) : on ne le mentionne que s'il reste possible.
 function texteEssai() {
-  return (_artisan && _artisan.stripe_subscription_id) ? '' : ' 14 jours d\'essai gratuit, sans carte.';
+  return (_artisan && _artisan.stripe_subscription_id) ? '' : ' 30 jours d\'essai gratuit, sans carte.';
 }
 
 function texteLimiteProduits() {
@@ -5494,8 +5494,9 @@ async function rafraichirPlan() {
   return data;
 }
 
-async function lancerAbonnement() {
-  var btn = document.getElementById('btn-abonnement');
+async function lancerAbonnement(periode) {
+  periode = periode === 'an' ? 'an' : 'mois'; // appelé sans rien (boutons de MPA-AI) = mensuel
+  var btn = document.getElementById(periode === 'an' ? 'btn-abonnement-an' : 'btn-abonnement');
   var libelle = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Redirection vers Stripe…'; }
   var redirige = false;
@@ -5504,7 +5505,7 @@ async function lancerAbonnement() {
     var res = await fetch(SUPABASE_URL + '/functions/v1/create-checkout-session-artisans', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
-      body: JSON.stringify({}), // les adresses de retour sont fixées côté serveur, jamais fournies par le navigateur
+      body: JSON.stringify({ periode: periode }), // seule la période est choisie ici : le prix et les adresses de retour sont fixés côté serveur
     });
     var data = await res.json();
     if (res.status === 409) {
@@ -5518,7 +5519,7 @@ async function lancerAbonnement() {
   } catch (e) {
     alert('Erreur : ' + e.message);
   } finally {
-    if (btn && !redirige) { btn.disabled = false; btn.textContent = libelle || 'Passer en Pro →'; }
+    if (btn && !redirige) { btn.disabled = false; btn.textContent = libelle || (periode === 'an' ? 'Passer en Pro : 249 €/an →' : 'Passer en Pro →'); }
   }
 }
 
@@ -5693,8 +5694,11 @@ function renderMonOffre() {
     corps = '<strong>' + nb + ' / ' + LIMITE_PRODUITS_ESSENTIEL + ' produits</strong> créés. ' +
       (_artisan.stripe_subscription_id
         ? 'Votre essai Pro est terminé. Reprenez l\'offre Pro (' + PRIX_PRO_AFFICHE + ') quand vous le souhaitez — la carte est demandée, sans nouvel essai.'
-        : 'Passez en Pro (' + PRIX_PRO_AFFICHE + ') : catalogue illimité, Mes fournitures avec scan QR code / code-barres. 14 jours d\'essai gratuit, sans carte.') +
-      '<div><button class="addb" id="btn-abonnement" onclick="lancerAbonnement()" style="margin-top:10px;">Passer en Pro →</button></div>';
+        : 'Passez en Pro (' + PRIX_PRO_AFFICHE + ') : catalogue illimité, Mes fournitures avec scan QR code / code-barres. 30 jours d\'essai gratuit, sans carte.') +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">' +
+        '<button class="addb" id="btn-abonnement" onclick="lancerAbonnement()">Passer en Pro →</button>' +
+        '<button class="addb" id="btn-abonnement-an" onclick="lancerAbonnement(\'an\')" style="background:#fff;color:inherit;border:1.5px solid #d1d5db;">249 €/an (2 mois offerts)</button>' +
+      '</div>';
   }
 
   zone.innerHTML = '<div class="dcard"><div class="dchdr"><div class="dctit">⭐ Mon offre</div>' + badge + '</div>' +

@@ -3,13 +3,17 @@
 // Propriété : TOI Freddy
 //
 // Crée une session de paiement Stripe pour passer un artisan en offre Pro
-// (9,90€/mois). L'artisan est redirigé vers Stripe Checkout, puis revient
-// sur MPA Artisans.
+// (24,99€/mois, ou 249€/an). L'artisan est redirigé vers Stripe Checkout, puis
+// revient sur MPA Artisans.
 //
 // Règles :
 //  - Un artisan déjà Pro (abonné ou Pro offert) ne peut pas s'abonner une
 //    seconde fois (sinon : double facturation).
-//  - L'essai gratuit de 14 jours, sans carte, n'est offert qu'UNE fois par
+//  - Le navigateur peut demander « mois » ou « an » (champ « periode ») ; toute
+//    autre valeur donne le mensuel. Le prix lui-même est toujours fixé ici.
+//  - Un code promotionnel peut être saisi sur la page Stripe (ex. la remise de
+//    lancement à 9,90 €, limitée à 50 utilisations, donnée à la main).
+//  - L'essai gratuit de 30 jours, sans carte, n'est offert qu'UNE fois par
 //    artisan. Dès qu'il a eu un abonnement (même en pause), la prochaine fois
 //    c'est un abonnement normal, avec carte, sans essai — sinon on pourrait
 //    enchaîner les essais gratuits à l'infini et ne jamais payer.
@@ -32,9 +36,12 @@ const corsHeaders = {
 };
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
-const PRICE_ID = "price_1UMoXDJPTOXXy1ykAdtiD56W"; // MPA Artisans Pro — 9,90€/mois
+// L'ancien prix (9,90€/mois, price_1UMoXDJPTOXXy1ykAdtiD56W) reste actif dans Stripe pour les abonnés déjà inscrits :
+// il n'est plus proposé à personne ici.
+const PRICE_MENSUEL = "price_1UaavdJPTOXXy1yk8Wz6hY3g"; // MPA Artisans Pro — 24,99€/mois
+const PRICE_ANNUEL = "price_1UaawnJPTOXXy1ykeE2sDqDd";  // MPA Artisans Pro — 249€/an
 const URL_RETOUR_MPA = "https://caralink.app/mpa/";
-const JOURS_ESSAI = 14;
+const JOURS_ESSAI = 30;
 const DUREE_SESSION_MS = 30 * 60 * 1000; // pendant ce délai, un nouveau clic renvoie la même session de paiement
 const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
 
@@ -110,11 +117,16 @@ Deno.serve(async (req: Request) => {
     // donc une session abandonnée (jamais menée au bout) ne consomme pas l'essai.
     const premiereFois = !artisan.stripe_subscription_id;
 
+    // Mensuel ou annuel : seul « an » donne l'annuel, tout le reste (y compris un corps vide) donne le mensuel.
+    const corps = await req.json().catch(() => ({}));
+    const annuel = corps?.periode === "an";
+
     const params: Record<string, string> = {
       customer: customerId!,
       mode: "subscription",
-      "line_items[0][price]": PRICE_ID,
+      "line_items[0][price]": annuel ? PRICE_ANNUEL : PRICE_MENSUEL,
       "line_items[0][quantity]": "1",
+      allow_promotion_codes: "true", // champ « code promotionnel » sur la page de paiement
       "subscription_data[metadata][artisan_id]": artisan.id,
       success_url: `${URL_RETOUR_MPA}?abonnement=succes`,
       cancel_url: `${URL_RETOUR_MPA}?abonnement=annule`,
@@ -128,7 +140,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Même artisan, même type d'offre, même créneau de 30 minutes : la MÊME session (jamais deux sessions à payer).
-    const session = await stripeCall("checkout/sessions", params, `checkout-pro_${artisan.id}_${premiereFois ? "essai" : "payant"}_${Math.floor(Date.now() / DUREE_SESSION_MS)}`);
+    const session = await stripeCall("checkout/sessions", params, `checkout-pro_${artisan.id}_${annuel ? "an" : "mois"}_${premiereFois ? "essai" : "payant"}_${Math.floor(Date.now() / DUREE_SESSION_MS)}`);
 
     return json({ url: session.url, essai: premiereFois });
 
