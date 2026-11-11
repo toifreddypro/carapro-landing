@@ -193,12 +193,15 @@ Deno.serve(async (req: Request) => {
       complementaires: complementaires.get(p.id) || [],
     }));
 
+    // Offre Essentiel : fonds « Unis » seulement et 1 seule image de bandeau. Les choix Pro restent enregistrés mais ne s'affichent plus (rien n'est perdu si l'artisan repasse Pro).
+    const proBoutique = artisan.plan === "pro" || artisan.plan === "pro_offert";
+    const FONDS_UNIS = ["clair", "ocean", "schiste", "sombre"];
     const codeOk = codePromoValide(artisan, artisan.plan) && artisan.code_promo_ventes !== false; // décoché « Sur mes ventes » : le code ne vaut que pour les interventions
     return json({
-      artisan: { id: artisan.id, nom_entreprise: artisan.nom_entreprise, secteur: artisan.secteur, commune: artisan.commune, photo_profil_url: artisan.photo_profil_url, verifie: artisan.verifie, code_promo: (codeOk && artisan.code_promo_visible !== false) ? artisan.code_promo : null, code_promo_pct: (codeOk && artisan.code_promo_visible !== false) ? Number(artisan.code_promo_pct) : null, code_promo_fin: (codeOk && artisan.code_promo_visible !== false) ? (artisan.code_promo_fin ?? null) : null, code_promo_actif: codeOk, boutique_banniere_url: artisan.boutique_banniere_url ?? null, boutique_banniere2_url: artisan.boutique_banniere2_url ?? null, boutique_banniere3_url: artisan.boutique_banniere3_url ?? null,
+      artisan: { id: artisan.id, nom_entreprise: artisan.nom_entreprise, secteur: artisan.secteur, commune: artisan.commune, photo_profil_url: artisan.photo_profil_url, verifie: artisan.verifie, code_promo: (codeOk && artisan.code_promo_visible !== false) ? artisan.code_promo : null, code_promo_pct: (codeOk && artisan.code_promo_visible !== false) ? Number(artisan.code_promo_pct) : null, code_promo_fin: (codeOk && artisan.code_promo_visible !== false) ? (artisan.code_promo_fin ?? null) : null, code_promo_actif: codeOk, boutique_banniere_url: artisan.boutique_banniere_url ?? null, boutique_banniere2_url: proBoutique ? (artisan.boutique_banniere2_url ?? null) : null, boutique_banniere3_url: proBoutique ? (artisan.boutique_banniere3_url ?? null) : null,
         boutique_marques: (Array.isArray(artisan.boutique_marques) ? artisan.boutique_marques : []).filter((u: any) => typeof u === "string" && /^https:\/\/[a-z0-9.-]+\.supabase\.co\/storage\//i.test(u)).slice(0, 4),
         boutique_marques_titre: (artisan.boutique_marques_titre ?? "").trim().slice(0, 40) || null,
-        boutique_message: (artisan.boutique_message ?? "").trim().slice(0, 300) || null, boutique_texte: (artisan.boutique_texte ?? "").trim() || null, boutique_accent: artisan.boutique_accent ?? null, boutique_fond: artisan.boutique_fond ?? null,
+        boutique_message: (artisan.boutique_message ?? "").trim().slice(0, 300) || null, boutique_texte: (artisan.boutique_texte ?? "").trim() || null, boutique_accent: artisan.boutique_accent ?? null, boutique_fond: (proBoutique || FONDS_UNIS.includes(artisan.boutique_fond)) ? (artisan.boutique_fond ?? null) : null,
         boutique_police: artisan.boutique_police ?? null, boutique_accroche: (artisan.boutique_accroche ?? "").trim() || null,
         boutique_annonce: (artisan.boutique_annonce ?? "").trim() || null, boutique_annonce_fin: artisan.boutique_annonce_fin ?? null,
         boutique_instagram: artisan.boutique_instagram ?? null, boutique_facebook: artisan.boutique_facebook ?? null, boutique_tiktok: artisan.boutique_tiktok ?? null, boutique_whatsapp: artisan.boutique_whatsapp ?? null,

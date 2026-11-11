@@ -5494,6 +5494,10 @@ function proposerPassagePro(raison) {
     ? '👥 Vous avez atteint les ' + LIMITE_CLIENTS_ESSENTIEL + ' clients de l\'offre Essentiel. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : autant de clients que vous voulez, le catalogue illimité et Mes fournitures. Les clients qui vous contactent par CaraLink arrivent toujours dans votre fichier.' + texteEssai()
     : raison === 'devis_generaux'
     ? '📨 Vous avez utilisé votre réponse gratuite du mois aux demandes de devis. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : répondez à tous les projets qui vous correspondent, sans limite, avec le catalogue illimité et Mes fournitures.' + texteEssai()
+    : raison === 'fonds'
+    ? '🎨 Les fonds de boutique « Nature et beauté » et « Pro et chantier » font partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Les fonds unis (clair, océan, schiste, sombre) restent gratuits.' + texteEssai()
+    : raison === 'carrousel'
+    ? '🖼️ L\'offre Essentiel permet 1 image en haut de votre boutique. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : 3 images qui défilent, le catalogue illimité et Mes fournitures.' + texteEssai()
     : raison === 'services'
     ? '🛠️ L\'offre Essentiel permet ' + LIMITE_SERVICES_ESSENTIEL + ' services sur votre fiche. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : autant de services que vous voulez, le catalogue illimité et Mes fournitures.' + texteEssai()
     : raison === 'phares'
@@ -7046,11 +7050,15 @@ function dessinerFondsBoutique() {
   z.innerHTML = FAMILLES_FONDS.map(function(f) {
     return '<div style="flex:1 1 100%;font-size:12px;font-weight:800;color:var(--mu);text-transform:uppercase;letter-spacing:.06em;margin-top:4px;">' + f[0] + '</div>' + f[1].map(function(k) {
       var sel = k === _fondChoisi, c = APERCU_FONDS[k];
-      return '<button type="button" onclick="choisirFondBoutique(\'' + k + '\')" aria-pressed="' + sel + '" style="padding:9px 16px;border-radius:9px;border:3px solid ' + (sel ? 'var(--ac)' : 'var(--brd)') + ';background:' + c[0] + ';color:' + c[1] + ';font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">' + NOMS_FONDS[k] + '</button>';
+      return '<button type="button" onclick="choisirFondBoutique(\'' + k + '\')" aria-pressed="' + sel + '" style="padding:9px 16px;border-radius:9px;border:3px solid ' + (sel ? 'var(--ac)' : 'var(--brd)') + ';background:' + c[0] + ';color:' + c[1] + ';font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">' + (!estPro() && FONDS_GRATUITS.indexOf(k) < 0 ? '🔒 ' : '') + NOMS_FONDS[k] + '</button>';
     }).join('');
   }).join('');
 }
-function choisirFondBoutique(k) { _fondChoisi = k; dessinerFondsBoutique(); majApercuLive(); }
+var FONDS_GRATUITS = ['clair', 'ocean', 'schiste', 'sombre']; // offre Essentiel : les fonds « Unis » ; tous les autres = offre Pro
+function choisirFondBoutique(k) {
+  if (!estPro() && FONDS_GRATUITS.indexOf(k) < 0) { proposerPassagePro('fonds'); return; }
+  _fondChoisi = k; dessinerFondsBoutique(); majApercuLive();
+}
 // ── Style de la boutique : police, disposition, cartes, couleur libre, accroche, annonce, réseaux ──
 var _policeChoisie = null, _cartesChoisies = null;
 var POLICES_BOUTIQUE = { '': ['Par défaut', 'Bricolage Grotesque'], classique: ['Classique', 'Playfair Display'], elegant: ['Élégante', 'Cormorant Garamond'], moderne: ['Moderne', 'Poppins'], manuscrit: ['Manuscrite', 'Caveat'], arrondi: ['Arrondie', 'Fredoka'] };
@@ -7240,7 +7248,10 @@ function banMode(mode) { if (_ban) { _ban.mode = mode; banRafraichir(); } }
 function banPos() { if (_ban) { _ban.py = +document.getElementById('ban-v').value; _ban.px = +document.getElementById('ban-h').value; banRafraichir(); } }
 var _banSlot = 1; // image 1, 2 ou 3 du carrousel de la boutique
 function banCol(n) { return n === 2 ? 'boutique_banniere2_url' : (n === 3 ? 'boutique_banniere3_url' : 'boutique_banniere_url'); }
-function choisirBanniere(n) { _banSlot = n; document.getElementById('banniere-input').click(); }
+function choisirBanniere(n) {
+  if (n > 1 && !estPro()) { proposerPassagePro('carrousel'); return; }
+  _banSlot = n; document.getElementById('banniere-input').click();
+}
 function ouvrirEditeurBanniere() {
   var input = document.getElementById('banniere-input'), fichier = input.files[0];
   if (!fichier) return;
