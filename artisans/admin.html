@@ -799,7 +799,7 @@ async function changerPlan(artisanId, nouveauPlan) {
   var nom = a ? a.nom_entreprise : 'cet artisan';
   var question = nouveauPlan === 'pro_offert'
     ? 'Offrir l\'offre Pro à « ' + nom + ' » ?\n\nElle lui donnera gratuitement : catalogue illimité, Mes fournitures avec scan, détection de planning chargé, suggestions d\'avis et bouton Retard.'
-    : 'Retirer le Pro offert à « ' + nom + ' » ?\n\nRien n\'est supprimé : ses produits et ses fournitures restent visibles. En revanche il ne pourra plus créer de fournitures ni dépasser 15 produits.';
+    : 'Retirer le Pro offert à « ' + nom + ' » ?\n\nRien n\'est supprimé : ses produits et ses fournitures restent visibles. En revanche il ne pourra plus créer de fournitures ni dépasser 6 produits.';
   if (!confirm(question)) { await chargerArtisans(); return; } // remet le menu sur sa valeur d'origine
   try { await appelerActionAdmin(artisanId, { plan: nouveauPlan }); }
   catch (e) { alert('Erreur : ' + e.message); }

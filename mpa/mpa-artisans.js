@@ -5404,7 +5404,7 @@ function renderEncartAbonnement() {
 // ce qui suit sert seulement à expliquer clairement à l'artisan ce qui se passe — avant, ou juste
 // après un refus de la base.
 // ═════════════════════════════════════════════════════════════════════════════
-var LIMITE_PRODUITS_ESSENTIEL = 9; // à garder identique à la limite écrite dans paywall-plan.sql
+var LIMITE_PRODUITS_ESSENTIEL = 6; // à garder identique à la limite écrite dans paywall-plan.sql
 var LIMITE_PHARES_GRATUIT = 1, LIMITE_PHARES_PRO = 4; // à garder identiques à phares-plan.sql
 function limitePhares() { return estPro() ? LIMITE_PHARES_PRO : LIMITE_PHARES_GRATUIT; }
 var PRIX_PRO_AFFICHE = '9,90 €/mois';
