@@ -3975,6 +3975,14 @@ async function sauverIntervention() {
     return;
   }
 
+  // Offre Essentiel : 15 interventions par mois ajoutées à la main. Seule une NOUVELLE intervention est comptée (modifier
+  // ne bloque jamais), et les réservations venues de CaraLink n'arrivent pas par ici : elles sont toujours acceptées.
+  if (!_interventionEnCours && !estPro()) {
+    var nbMois = await compterInterventionsDuMois(maj.date_intervention);
+    if (nbMois >= LIMITE_INTERVENTIONS_ESSENTIEL) { proposerPassagePro('interventions'); return; }
+    alerteEssentiel('interventions', nbMois + 1, LIMITE_INTERVENTIONS_ESSENTIEL, ' ce mois-ci');
+  }
+
   // Géocodage silencieux — si l'adresse a une correspondance, on la stocke ; sinon on enregistre quand même (jamais bloquant)
   if (adresse) {
     var pt = await geocoderAdresse(adresse, cp, commune);
@@ -5407,6 +5415,51 @@ function renderEncartAbonnement() {
 var LIMITE_PRODUITS_ESSENTIEL = 6; // à garder identique à la limite écrite dans paywall-plan.sql
 var LIMITE_PHARES_GRATUIT = 1, LIMITE_PHARES_PRO = 4; // à garder identiques à phares-plan.sql
 function limitePhares() { return estPro() ? LIMITE_PHARES_PRO : LIMITE_PHARES_GRATUIT; }
+
+// Limites de l'offre Essentiel posées par l'écran (pas par la base) : interventions du mois, clients, services.
+// Elles ne concernent QUE ce que l'artisan ajoute lui-même : les réservations et clients venus de CaraLink
+// (annuaire, devis) sont toujours acceptés, et les livraisons de la boutique ne comptent pas.
+var LIMITE_INTERVENTIONS_ESSENTIEL = 15, LIMITE_CLIENTS_ESSENTIEL = 15, LIMITE_SERVICES_ESSENTIEL = 5;
+var SEUIL_ALERTE_ESSENTIEL = 0.7; // à 70 % de la limite, MPA-AI prévient doucement
+var _alerteEssentielDite = false; // une seule alerte de ce genre par visite, pour ne pas harceler
+
+// Combien d'interventions l'artisan a-t-il dans le mois de cette date ? (annulées et livraisons de la boutique exclues)
+async function compterInterventionsDuMois(dateISO) {
+  var s = String(dateISO || '').slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(s)) return 0;
+  var a = parseInt(s.slice(0, 4), 10), m = parseInt(s.slice(5, 7), 10) + 1;
+  if (m === 13) { a++; m = 1; }
+  var debut = s + '-01', fin = a + '-' + (m < 10 ? '0' : '') + m + '-01';
+  var { data, error } = await sb.from('mpa_artisans_interventions').select('id, notes, statut')
+    .eq('artisan_id', _artisan.id).gte('date_intervention', debut).lt('date_intervention', fin);
+  if (error) { console.error('compterInterventionsDuMois:', error); return 0; } // en cas de doute on ne bloque jamais
+  return (data || []).filter(function(i) {
+    return i.statut !== 'annulee' && String(i.notes || '').indexOf('Livraison — ') !== 0;
+  }).length;
+}
+
+// Message discret à 70 % de la limite (jamais plus d'un par visite, jamais pour un artisan Pro).
+function alerteEssentiel(nom, n, max, suffixe) {
+  if (estPro() || _alerteEssentielDite || n < Math.ceil(max * SEUIL_ALERTE_ESSENTIEL) || n >= max) return;
+  _alerteEssentielDite = true;
+  mpaAiDire('Vous avez utilisé ' + n + ' de vos ' + max + ' ' + nom + (suffixe || '') + '. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + '), travaillez sans limite.' + texteEssai(), 'info', { label: 'Passer en Pro', action: 'lancerAbonnement()' });
+}
+
+function ligneCompteurEssentiel(nom, n, max, idSpan) {
+  var coul = n >= max ? '#dc2626' : (n >= Math.ceil(max * SEUIL_ALERTE_ESSENTIEL) ? '#d97706' : '#6b7c96');
+  return '<div style="display:flex;justify-content:space-between;gap:12px;padding:2px 0;"><span>' + nom + '</span>' +
+    '<strong' + (idSpan ? ' id="' + idSpan + '"' : '') + ' style="color:' + coul + ';">' + (n === null ? '…' : n) + ' / ' + max + '</strong></div>';
+}
+
+// Complète le compteur d'interventions du mois dans « Mon offre » (il demande un petit calcul, donc après l'affichage).
+async function majCompteurInterventionsEssentiel() {
+  var el = document.getElementById('cpt-interventions');
+  if (!el || estPro()) return;
+  var n = await compterInterventionsDuMois(jourGuadeloupe());
+  el.textContent = n + ' / ' + LIMITE_INTERVENTIONS_ESSENTIEL;
+  el.style.color = n >= LIMITE_INTERVENTIONS_ESSENTIEL ? '#dc2626' : (n >= Math.ceil(LIMITE_INTERVENTIONS_ESSENTIEL * SEUIL_ALERTE_ESSENTIEL) ? '#d97706' : '#6b7c96');
+  alerteEssentiel('interventions', n, LIMITE_INTERVENTIONS_ESSENTIEL, ' ce mois-ci');
+}
 var PRIX_PRO_AFFICHE = '24,99 €/mois';
 var _dernierMessagePro = 0;
 
@@ -5429,6 +5482,12 @@ function proposerPassagePro(raison) {
   _dernierMessagePro = maintenant;
   var message = raison === 'produits'
     ? texteLimiteProduits() + texteEssai()
+    : raison === 'interventions'
+    ? '📅 Vous avez atteint les ' + LIMITE_INTERVENTIONS_ESSENTIEL + ' interventions du mois de l\'offre Essentiel. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : autant d\'interventions que vous voulez, le catalogue illimité et Mes fournitures. Les demandes de vos clients venus de CaraLink restent toujours acceptées.' + texteEssai()
+    : raison === 'clients'
+    ? '👥 Vous avez atteint les ' + LIMITE_CLIENTS_ESSENTIEL + ' clients de l\'offre Essentiel. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : autant de clients que vous voulez, le catalogue illimité et Mes fournitures. Les clients qui vous contactent par CaraLink arrivent toujours dans votre fichier.' + texteEssai()
+    : raison === 'services'
+    ? '🛠️ L\'offre Essentiel permet ' + LIMITE_SERVICES_ESSENTIEL + ' services sur votre fiche. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : autant de services que vous voulez, le catalogue illimité et Mes fournitures.' + texteEssai()
     : raison === 'phares'
     ? '⭐ L\'offre Essentiel permet ' + LIMITE_PHARES_GRATUIT + ' produit phare. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + '), vous en mettez ' + LIMITE_PHARES_PRO + ' en avant sur votre fiche et votre boutique, avec le catalogue illimité et Mes fournitures. Pour changer de produit phare, retirez d\'abord l\'étoile de l\'actuel.' + texteEssai()
     : raison === 'detail_client'
@@ -5691,7 +5750,14 @@ function renderMonOffre() {
   } else {
     var nb = (typeof _catalogueCache !== 'undefined' && _catalogueCache) ? _catalogueCache.length : 0;
     badge = '<span style="' + styleBadge + 'background:var(--p2);color:var(--mu2);">Essentiel</span>';
-    corps = '<strong>' + nb + ' / ' + LIMITE_PRODUITS_ESSENTIEL + ' produits</strong> créés. ' +
+    var nbCl = (typeof _clientsCache !== 'undefined' && _clientsCache) ? _clientsCache.length : 0;
+    var nbSv = (typeof _servicesCache !== 'undefined' && _servicesCache) ? _servicesCache.length : 0;
+    corps = '<div style="margin-bottom:10px;">' +
+        ligneCompteurEssentiel('Produits dans la boutique', nb, LIMITE_PRODUITS_ESSENTIEL) +
+        ligneCompteurEssentiel('Interventions ce mois-ci', null, LIMITE_INTERVENTIONS_ESSENTIEL, 'cpt-interventions') +
+        ligneCompteurEssentiel('Clients', nbCl, LIMITE_CLIENTS_ESSENTIEL) +
+        ligneCompteurEssentiel('Services sur votre fiche', nbSv, LIMITE_SERVICES_ESSENTIEL) +
+      '</div>' +
       (_artisan.stripe_subscription_id
         ? 'Votre essai Pro est terminé. Reprenez l\'offre Pro (' + PRIX_PRO_AFFICHE + ') quand vous le souhaitez — la carte est demandée, sans nouvel essai.'
         : 'Passez en Pro (' + PRIX_PRO_AFFICHE + ') : catalogue illimité, Mes fournitures avec scan QR code / code-barres. 30 jours d\'essai gratuit, sans carte.') +
@@ -5703,6 +5769,13 @@ function renderMonOffre() {
 
   zone.innerHTML = '<div class="dcard"><div class="dchdr"><div class="dctit">⭐ Mon offre</div>' + badge + '</div>' +
     '<div class="dcbdy" style="padding:14px 16px;font-size:13px;line-height:1.6;color:var(--mu2);">' + corps + '</div></div>';
+
+  if (plan !== 'pro' && plan !== 'pro_offert') {
+    majCompteurInterventionsEssentiel(); // le compteur d'interventions demande un petit calcul : il se remplit juste après
+    alerteEssentiel('produits', nb, LIMITE_PRODUITS_ESSENTIEL, '');
+    alerteEssentiel('clients', nbCl, LIMITE_CLIENTS_ESSENTIEL, '');
+    alerteEssentiel('services', nbSv, LIMITE_SERVICES_ESSENTIEL, '');
+  }
 }
 
 // ── Rappel : interventions passées encore marquées "Planifiée" ──
@@ -6432,6 +6505,12 @@ async function sauverClient() {
   if (!verifierAccesEcriture()) return;
   var nom = document.getElementById('c-nom').value.trim();
   if (!nom) { alert('Le nom du client est obligatoire.'); return; }
+  // Offre Essentiel : 15 clients ajoutés à la main (les clients venus de CaraLink arrivent toujours, par un autre chemin).
+  var nbClients = (_clientsCache || []).length;
+  if (!estPro()) {
+    if (nbClients >= LIMITE_CLIENTS_ESSENTIEL) { proposerPassagePro('clients'); return; }
+    alerteEssentiel('clients', nbClients + 1, LIMITE_CLIENTS_ESSENTIEL, '');
+  }
   var nouveau = {
     artisan_id: _artisan.id,
     nom: nom,
@@ -9551,6 +9630,11 @@ async function sauverService() {
   if (_serviceEnCours) {
     res = await sb.from('artisans_services').update(maj).eq('id', _serviceEnCours).eq('artisan_id', _artisan.id);
   } else {
+    // Offre Essentiel : 5 services sur la fiche (un artisan qui en a déjà plus les garde, il ne peut seulement plus en ajouter).
+    if (!estPro()) {
+      if (_servicesCache.length >= LIMITE_SERVICES_ESSENTIEL) { proposerPassagePro('services'); return; }
+      alerteEssentiel('services', _servicesCache.length + 1, LIMITE_SERVICES_ESSENTIEL, '');
+    }
     maj.ordre = _servicesCache.length;
     res = await sb.from('artisans_services').insert(maj);
   }

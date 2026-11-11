@@ -1,17 +1,17 @@
-﻿<!--
+<!--
 ================================================================
-  CARAPRO â€” index.html
+  CARAPRO — index.html
   Plateforme de mise en relation clients / artisans
 ----------------------------------------------------------------
   Produit   : CaraLink Artisans
   Marque    : CaraLink Artisans
-  PropriÃ©tÃ© : TOI Freddy
-  Â© 2026 TOI Freddy / CaraLink Artisans â€” Tous droits rÃ©servÃ©s
+  Propriété : TOI Freddy
+  © 2026 TOI Freddy / CaraLink Artisans — Tous droits réservés
   Toute reproduction ou utilisation sans autorisation est interdite.
 ----------------------------------------------------------------
   Version : 1.3.0
-  CrÃ©Ã© le : 25/05/2025
-  ModifiÃ© : 25/05/2025
+  Créé le : 25/05/2025
+  Modifié : 25/05/2025
 ================================================================
 -->
 <!DOCTYPE html>
@@ -23,8 +23,8 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="icon" href="/favicon.ico">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CaraLink Artisans â€” Trouvez un artisan disponible</title>
-  <meta name="description" content="Trouvez un artisan de confiance prÃ¨s de chez vous â€” SIRET vÃ©rifiÃ©, avis authentiques, demande de devis gratuite.">
+  <title>CaraLink Artisans — Trouvez un artisan disponible</title>
+  <meta name="description" content="Trouvez un artisan de confiance près de chez vous — SIRET vérifié, avis authentiques, demande de devis gratuite.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:wght@500;600;700;800&family=Inter:wght@600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -38,7 +38,7 @@
       --mu2:#94a3b8;--inp:#060b14;--ok:#10b981;--gold:#f59e0b;
       --danger:#ef4444;--purple:#8b5cf6;
     }
-    /* â”€â”€ THÃˆME CLAIR */
+    /* ── THÈME CLAIR */
     body.theme-light{
       --bg    : #ffffff;
       --panel : #ffffff;
@@ -120,7 +120,7 @@
     .av-coral{background:rgba(239,68,68,.2);color:#f87171;}
     .av-green{background:rgba(16,185,129,.2);color:var(--ok);}
     .badge-trust{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;padding:3px 10px;border-radius:20px;background:rgba(0,212,170,.1);color:var(--ac2);border:none;}
-    /* Ã‰tiquettes en pastilles â€” mÃªme habillage que les Ã©tiquettes des vignettes formateur (plateforme.html) */
+    /* Étiquettes en pastilles — même habillage que les étiquettes des vignettes formateur (plateforme.html) */
     .badge-trust.bt-blue{background:rgba(13,110,253,.15);color:#60a5fa;}
     .badge-trust.bt-green{background:rgba(16,185,129,.12);color:#10b981;}
     .badge-trust.bt-purple{background:rgba(139,92,246,.15);color:#a78bfa;}
@@ -129,7 +129,7 @@
     body.theme-light .badge-trust.bt-green{background:rgba(5,150,105,.1);color:#059669;}
     body.theme-light .badge-trust.bt-purple{background:rgba(109,40,217,.12);color:#5b21b6;}
     body.theme-light .badge-trust.bt-amber{background:rgba(180,83,9,.12);color:#92400e;}
-    /* BADGE COMPATIBLE QUALIOPI â€” pastille tricolore franÃ§aise */
+    /* BADGE COMPATIBLE QUALIOPI — pastille tricolore française */
     .badge-qualiopi{background:#ffffff;border:1px solid #d1dbe8;font-family:'Outfit',sans-serif;font-size:10px;font-weight:800;letter-spacing:.2px;padding:3px 10px;white-space:nowrap;text-transform:uppercase;}
     .badge-qualiopi .bq-compatible{color:#ED2939;}
     .badge-qualiopi .bq-qualiopi{color:#002395;}
@@ -162,7 +162,7 @@
     .lang-btn{padding:3px 9px;border-radius:6px;border:1px solid var(--brd);background:transparent;color:var(--mu);font-size:11px;font-weight:600;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .2s;}
     .lang-btn.active{border-color:var(--ac2);background:rgba(0,212,170,.1);color:var(--ac2);}
     .nav-spacer{height:60px;}
-    /* HERO â€” bandeau pleine largeur, contenu centrÃ©, personnages en <img> via .hero-char (voir carapro.js) */
+    /* HERO — bandeau pleine largeur, contenu centré, personnages en <img> via .hero-char (voir carapro.js) */
     .hero-section{position:relative;padding:56px 32px 44px;display:flex;flex-direction:column;align-items:center;width:100%;background:var(--bg);border-bottom:1px solid var(--brd);overflow:hidden;}
     .hero-main{position:relative;z-index:1;width:100%;max-width:900px;min-width:0;text-align:center;display:flex;flex-direction:column;align-items:center;}
     .hero-char{position:absolute;bottom:0;z-index:0;height:520px;max-height:88%;width:auto;object-fit:contain;pointer-events:none;opacity:.92;}
@@ -171,12 +171,12 @@
     @media(max-width:1100px){.hero-char{display:none;}}
     .hero-visual{display:none;}
     .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:5px 16px;border-radius:100px;border:1px solid var(--ac-brd);background:var(--panel);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ac2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:24px;}
-    .hero-eyebrow::before{content:'â–¶';font-size:7px;opacity:.7;}
+    .hero-eyebrow::before{content:'▶';font-size:7px;opacity:.7;}
     .hero-title{font-family:'Bricolage Grotesque','Outfit',sans-serif;font-size:clamp(28px,5vw,50px);font-weight:800;line-height:1.12;margin-bottom:14px;max-width:760px;letter-spacing:-.5px;}
     .hero-title span{color:var(--ac);}
     .hero-sub{font-size:16px;color:var(--mu2);margin-bottom:8px;font-weight:400;}
     .hero-note{font-size:12px;color:var(--mu);font-family:'JetBrains Mono',monospace;margin-bottom:32px;}
-    /* HERO TAGLINE â€” dualitÃ© Trouvez / Soyez visible */
+    /* HERO TAGLINE — dualité Trouvez / Soyez visible */
     .hero-tagline{position:relative;z-index:1;font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:flex;align-items:center;justify-content:center;gap:28px;flex-wrap:wrap;margin:10px 0 26px;color:var(--tx);font-weight:700;font-size:clamp(15px,1.7vw,19px);letter-spacing:-.005em;line-height:1.4;}
     .hero-soustitre{position:relative;z-index:1;font-family:'Inter','Helvetica Neue',Arial,sans-serif;margin:10px 0 26px;color:var(--tx);font-weight:700;font-size:clamp(15px,1.7vw,19px);letter-spacing:-.005em;line-height:1.4;}
     .hero-tagline-part{white-space:nowrap;}
@@ -237,7 +237,7 @@
     .dispo-slot.available{background:rgba(0,212,170,.1);border-color:rgba(0,212,170,.3);color:var(--ac2);cursor:pointer;}
     .dispo-slot.available:hover{background:rgba(0,212,170,.25);border-color:var(--ac2);}
     .dispo-slot.unavailable{background:rgba(255,255,255,.02);color:var(--mu);opacity:.5;}
-    /* â”€â”€ Vignette artisan = mÃªme vignette que les formateurs (CaraLink Formation), en terracotta â”€â”€ */
+    /* ── Vignette artisan = même vignette que les formateurs (CaraLink Formation), en terracotta ── */
     .formateur-card{container-type:inline-size;}
     .card-avatar{width:56px;height:56px;border-radius:50%;flex-shrink:0;object-fit:cover;font-family:'Bricolage Grotesque','Outfit',sans-serif;font-size:17px;background:rgba(181,80,47,.12);color:#B5502F;}
     .card-bio{font-size:13px;color:var(--mu2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
@@ -250,7 +250,7 @@
     body.theme-light .badge-realtime{background:rgba(0,168,125,.1);color:#065f46;border-color:rgba(0,168,125,.25);}
     .badge-realtime .dot{width:8px;height:8px;border-radius:50%;background:#10b981;flex-shrink:0;}
 
-    /* Produits phares â€” vignette â”€â”€ 3 mini-photos, lien boutique, code promo */
+    /* Produits phares — vignette ── 3 mini-photos, lien boutique, code promo */
     .phares-bloc{margin-top:12px;padding-top:12px;border-top:1px solid var(--brd);}
     .phares-grille img{width:100%;aspect-ratio:1;object-fit:cover;}
     @media(max-width:480px){
@@ -264,7 +264,7 @@
     .phares-lien{font-size:12.5px;font-weight:700;color:var(--ac);text-decoration:none;}
     .phares-lien:hover{text-decoration:underline;}
     .phares-code-promo{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:3px 9px;border-radius:7px;background:rgba(181,80,47,.08);color:var(--ac);border:1px dashed var(--ac);}
-    /* CrÃ©neaux = plages horaires (dÃ©butâ€“fin) : empilÃ©es par dÃ©faut, en ligne dÃ¨s que la vignette est assez large. */
+    /* Créneaux = plages horaires (début–fin) : empilées par défaut, en ligne dès que la vignette est assez large. */
     .dispo-slot{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.25;font-size:11px;}
     .dispo-slot .h-sep{display:none;}
     @container (max-width:400px){
@@ -336,7 +336,7 @@
     .legend-dot.full{background:rgba(181,80,47,.4);}
     .legend-dot.half{background:rgba(245,158,11,.4);}
     .legend-dot.none{background:rgba(100,116,139,.25);}
-    /* Pastilles drapeaux â€” CSS pur, fiable sur tous OS (contrairement aux emoji) */
+    /* Pastilles drapeaux — CSS pur, fiable sur tous OS (contrairement aux emoji) */
     .flag-swatch{display:inline-block;width:16px;height:11px;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.12);flex-shrink:0;vertical-align:middle;}
     .flag-fr{background:linear-gradient(90deg,#002395 33.33%,#ffffff 33.33% 66.66%,#ED2939 66.66%);}
     .flag-es{background:linear-gradient(180deg,#AA151B 25%,#F1BF00 25% 75%,#AA151B 75%);}
@@ -458,15 +458,15 @@
     .footer-links a{font-size:12px;color:var(--mu);transition:color .2s;}
     .footer-links a:hover{color:var(--ac2);}
     .loader{display:flex;align-items:center;justify-content:center;padding:48px;color:var(--mu);font-size:14px;gap:10px;}
-    /* âš ï¸ CorrigÃ© le 25/08 : appliquÃ© sans condition, cette rÃ¨gle rendait
-       l'icÃ´ne calendrier quasi invisible en mode clair (icÃ´ne blanche sur
-       fond clair) â€” signalÃ© par Freddy en testant une vraie rÃ©servation de
-       mission. LimitÃ© au mode sombre dÃ©sormais, seul cas oÃ¹ l'inversion a
-       du sens (icÃ´ne normalement sombre, rendue blanche pour ressortir sur
+    /* ⚠️ Corrigé le 25/08 : appliqué sans condition, cette règle rendait
+       l'icône calendrier quasi invisible en mode clair (icône blanche sur
+       fond clair) — signalé par Freddy en testant une vraie réservation de
+       mission. Limité au mode sombre désormais, seul cas où l'inversion a
+       du sens (icône normalement sombre, rendue blanche pour ressortir sur
        fond sombre). */
     body.theme-dark input[type="date"].resa-input::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.4);cursor:pointer;}
     input[type="date"].resa-input::-webkit-calendar-picker-indicator{cursor:pointer;}
-    /* â”€â”€ Fix overflow Ã©cran noir au swipe â”€â”€ */
+    /* ── Fix overflow écran noir au swipe ── */
     html,body{overflow-x:hidden !important;max-width:100vw !important;}
 
     @media(max-width:900px){
@@ -510,7 +510,7 @@
       .card-rate strong{font-size:14px;}
     }
 
-    /* â”€â”€ FAQ â”€â”€ */
+    /* ── FAQ ── */
     .faq-fab{position:fixed;bottom:72px;right:28px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--ac2));border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(181,80,47,.45);z-index:1000;transition:transform .2s,box-shadow .2s;animation:fab-pulse 3s ease-in-out infinite;}
     .faq-fab:hover{transform:scale(1.1) translateY(-2px);box-shadow:0 8px 28px rgba(181,80,47,.6);}
     @keyframes fab-pulse{0%,100%{box-shadow:0 4px 20px rgba(181,80,47,.45);}50%{box-shadow:0 4px 28px rgba(0,212,170,.55);}}
@@ -555,7 +555,7 @@
     body.theme-light .faq-a{color:#4a5568;}
     body.theme-light .faq-step{color:#1a1f2e;}
 
-    /* â”€â”€ Micro-interactions â”€â”€ */
+    /* ── Micro-interactions ── */
     /* Skeleton screens */
     .skel{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.08) 50%,rgba(255,255,255,.04) 75%);background-size:200% 100%;animation:skel-pulse 1.4s ease-in-out infinite;border-radius:8px;}
     @keyframes skel-pulse{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
@@ -578,15 +578,15 @@
     .fade-in{animation:fadeIn .3s ease;}
     @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 
-/* â”€â”€ REFONTE VISUELLE 2.0 â”€â”€ */
+/* ── REFONTE VISUELLE 2.0 ── */
 /* ================================================================
-   LEARNLOGIC PLATEFORME â€” REFONTE VISUELLE COMMUNE
-   Palette  : #C2410C accent, cohÃ©rence avec erp.html
+   LEARNLOGIC PLATEFORME — REFONTE VISUELLE COMMUNE
+   Palette  : #C2410C accent, cohérence avec erp.html
    Cible    : plateforme.html, centre.html, agenda.html, admin.html
    Version  : 2.0.0
 ================================================================ */
 
-/* â”€â”€ VARIABLES DARK (dÃ©faut) â”€â”€ */
+/* ── VARIABLES DARK (défaut) ── */
 :root {
   --bg:    #0b0f18;
   --panel: #111827;
@@ -611,7 +611,7 @@
   --sh-h:   0 6px 20px rgba(0,0,0,.4);
 }
 
-/* â”€â”€ THÃˆME CLAIR â€” Annuaire blanc/bleu â”€â”€ */
+/* ── THÈME CLAIR — Annuaire blanc/bleu ── */
 body.theme-light {
   --bg:    #ffffff;
   --panel: #ffffff;
@@ -632,7 +632,7 @@ body.theme-light {
   --purple:#6d28d9;
 }
 
-/* â”€â”€ BOUTONS GLOBAUX â”€â”€ */
+/* ── BOUTONS GLOBAUX ── */
 .btn-primary {
   background: var(--ac) !important;
   color: #fff !important;
@@ -657,7 +657,7 @@ body.theme-light {
 }
 .btn-secondary:hover { border-color: var(--ac) !important; color: var(--ac2) !important; }
 
-/* â”€â”€ NAV / TOPBAR â”€â”€ */
+/* ── NAV / TOPBAR ── */
 .nav-wrap {
   background: rgba(11,15,24,.96) !important;
   border-bottom: 1px solid var(--brd) !important;
@@ -692,7 +692,7 @@ body.theme-light .nav-wrap {
 }
 .save-btn { color: #fff !important; }
 
-/* â”€â”€ CARDS â”€â”€ */
+/* ── CARDS ── */
 .formateur-card, .plan-card, .stat-card, .favori-card,
 .alerte-card, .abo-card, .other-plan, .table-box,
 .score-box, .trust-item, .profil-info-card,
@@ -721,7 +721,7 @@ body.theme-light .sidebar-item.active { background: var(--ac-dim) !important; co
 }
 body.theme-light .topbar { background: rgba(240,244,248,.97) !important; }
 
-/* â”€â”€ STAT CARDS â€” bordure top uniforme â”€â”€ */
+/* ── STAT CARDS — bordure top uniforme ── */
 .stat-card {
   border-top: 3px solid var(--ac) !important;
   border-radius: var(--r-card) !important;
@@ -745,7 +745,7 @@ body.theme-light .topbar { background: rgba(240,244,248,.97) !important; }
 .stat.gold .stat-val { color: var(--gold) !important; }
 .stat.danger .stat-val { color: var(--danger) !important; }
 
-/* â”€â”€ COULEURS ACCENT â€” remplacer #0d6efd / #00d4aa partout â”€â”€ */
+/* ── COULEURS ACCENT — remplacer #0d6efd / #00d4aa partout ── */
 .badge-green, .trust-item.verified,
 .dispo-slot.available, .slot-toggle.on, .day-slot.on,
 .jour-card.active, .resa-tab.active,
@@ -875,7 +875,7 @@ tr:hover td { background: rgba(255,255,255,.02) !important; }
 .faq-num { background: var(--ac) !important; }
 .faq-a { border-left-color: var(--ok) !important; background: rgba(16,185,129,.04) !important; }
 
-/* â”€â”€ LIGHT MODE overrides â”€â”€ */
+/* ── LIGHT MODE overrides ── */
 body.theme-light .nav-wrap { border-color: #d1dae6 !important; }
 body.theme-light .topbar { border-color: #d1dae6 !important; }
 body.theme-light .stat-card,
@@ -923,7 +923,7 @@ body.theme-light .detail-table tr.row-partial td { background: rgba(180,83,9,.04
 body.theme-light .detail-table tr.row-blocked td { background: rgba(220,38,38,.04) !important; }
 body.theme-light input, body.theme-light select, body.theme-light textarea { background: #f6f9fe !important; color: #13223c !important; border-color: #e3eaf4 !important; }
 
-/* â”€â”€ FINITIONS ANNUAIRE BLANC/BLEU â”€â”€ */
+/* ── FINITIONS ANNUAIRE BLANC/BLEU ── */
 .legal-modal-header h2, .faq-title { font-family:'Bricolage Grotesque','Outfit',sans-serif; }
 body.theme-light .nav-badge { background: var(--ac-dim) !important; color: var(--ac) !important; border-color: var(--ac-brd) !important; }
 body.theme-light .nav-wrap { box-shadow: 0 1px 0 var(--brd); }
@@ -934,7 +934,7 @@ body.theme-light .formateur-card, body.theme-light .map-panel { background:#fff 
 body.theme-light footer { background:#fbfcfe; }
 
   
-/* â”€â”€ Modales lÃ©gales â”€â”€ */
+/* ── Modales légales ── */
 .legal-modal-overlay{display:none;position:fixed;inset:0;z-index:99999;
   background:rgba(0,0,0,.85);backdrop-filter:blur(6px);
   align-items:center;justify-content:center;padding:20px;}
@@ -999,14 +999,14 @@ body.theme-light footer { background:#fbfcfe; }
 .fiche-appbar,.fiche-stars,.fiche-sous-tete,.fiche-titre{display:none;}
 .fiche-grille{display:none;}
 #menu-artisan{display:none;}
-/* ===== ANNUAIRE MOBILE Ã‰PURÃ‰ (tÃ©lÃ©phone uniquement ; l'ordinateur ne change pas) ===== */
+/* ===== ANNUAIRE MOBILE ÉPURÉ (téléphone uniquement ; l'ordinateur ne change pas) ===== */
 @media(max-width:768px){
-  /* En-tÃªte de page : on va droit Ã  la recherche */
+  /* En-tête de page : on va droit à la recherche */
   body .hero-eyebrow,body .hero-note,body .hero-soustitre{display:none !important;}
   body .hero-section{padding:20px 16px 8px !important;border-bottom:none !important;}
   body .hero-title{font-size:26px !important;line-height:1.15 !important;margin-bottom:8px !important;}
   body .hero-soustitre{font-size:16px !important;font-weight:600 !important;color:var(--mu2) !important;margin:0 0 18px !important;}
-  /* En-tÃªte compact : logo + drapeau, puis 2 boutons cÃ´te Ã  cÃ´te */
+  /* En-tête compact : logo + drapeau, puis 2 boutons côte à côte */
   body .nav-wrap{padding:8px 14px 10px !important;gap:8px !important;justify-content:space-between !important;border-bottom:1px solid var(--brd) !important;}
   body .nav-right{margin-left:auto !important;}
   body .nav-logo{flex:1 1 0 !important;min-width:0 !important;gap:8px !important;}
@@ -1040,7 +1040,7 @@ body.theme-light footer { background:#fbfcfe; }
   /* On laisse les explications au calme : seul le lien "Publier un projet" reste */
   body .aides-info{display:none !important;}
   body .hero-main > div:last-child:not(.filters-wrap):not(.search-bar){display:none !important;}
-  /* ===== Cadre arrondi faÃ§on appli : barre CaraLink + recherche + cartes ===== */
+  /* ===== Cadre arrondi façon appli : barre CaraLink + recherche + cartes ===== */
   body .hero-section{padding:12px 12px 0 !important;}
   body .hero-title{margin:6px 6px 14px !important;}
   body .devis-desktop{display:none !important;}
@@ -1055,7 +1055,7 @@ body.theme-light footer { background:#fbfcfe; }
   body.avant-recherche #main-results{display:none !important;}
   body #main-results .results-layout{padding:4px 14px 6px !important;}
 
-  /* ===== FICHE ARTISAN (tÃ©lÃ©phone) : mÃªme cadre arrondi que l'annuaire ===== */
+  /* ===== FICHE ARTISAN (téléphone) : même cadre arrondi que l'annuaire ===== */
   body .fiche-ov{align-items:flex-start !important;padding:12px !important;background:rgba(19,34,60,.45) !important;}
   body .fiche-card{display:flex !important;flex-direction:column !important;max-height:none !important;overflow:hidden !important;padding:0 0 18px !important;border-radius:26px !important;border:2px solid #e3eaf4;box-shadow:0 18px 40px rgba(19,34,60,.25);margin:0 auto 24px;}
   body .fiche-card > *{margin-left:16px !important;margin-right:16px !important;}
@@ -1085,7 +1085,7 @@ body.theme-light footer { background:#fbfcfe; }
   body .fiche-card .fiche-sec-titre{border-bottom:none !important;padding-bottom:0 !important;margin:0 0 8px !important;font-size:14px !important;font-weight:700 !important;letter-spacing:0 !important;text-transform:none !important;color:var(--mu) !important;}
   body .fiche-sec[data-sec="services_titre"] .fiche-sec-titre,body .fiche-sec[data-sec="fiche_realisations"] .fiche-sec-titre{display:none !important;}
   body .fiche-sec.fiche-vide{display:none !important;}
-  /* Ordre : services, crÃ©neaux, devis, photos, boutique, prÃ©sentation, avantages, avis */
+  /* Ordre : services, créneaux, devis, photos, boutique, présentation, avantages, avis */
   body .fiche-sec[data-sec="services_titre"]{order:2;}
   body .fiche-sec[data-sec="fiche_dispos"]{order:3;margin-bottom:12px !important;}
   body .fiche-card > .fiche-devis{order:4;}
@@ -1110,20 +1110,20 @@ body.theme-light footer { background:#fbfcfe; }
   body .svc-ligne strong{font-size:15px;font-weight:700;color:var(--ink);}
   body .svc-ligne > div:first-child > div{font-size:12px !important;line-height:1.3;}
   body .svc-prix{color:#C2410C !important;font-size:15px !important;font-weight:800 !important;margin-left:6px !important;}
-  /* CrÃ©neaux : une colonne par jour, comme avant */
+  /* Créneaux : une colonne par jour, comme avant */
   body .fiche-grille{display:grid !important;grid-template-columns:repeat(7,1fr);gap:4px;border-top:none !important;padding-top:0 !important;margin-bottom:10px;}
-  /* Devis juste sous les crÃ©neaux */
+  /* Devis juste sous les créneaux */
   body .fiche-devis{width:100% !important;margin-top:2px !important;margin-bottom:18px !important;padding:16px !important;border-radius:20px !important;font-size:18px !important;font-weight:800 !important;background:#C2410C !important;box-shadow:0 12px 28px rgba(194,65,12,.3);}
   /* Photos sans titre, puis boutique dans sa propre forme */
   body .fiche-sec[data-sec="fiche_realisations"] img{height:96px !important;border-radius:16px !important;}
   body .fiche-card > .fiche-sec[data-sec="fiche_boutique"]{margin-bottom:16px !important;}
   body .fiche-card .fiche-sec[data-sec="fiche_boutique"]{background:#f8fafd !important;border:2px solid #e3eaf4 !important;border-radius:22px !important;padding:16px !important;}
   body .fiche-sec[data-sec="fiche_boutique"] .fiche-sec-titre{color:#C2410C !important;font-weight:800 !important;font-size:15px !important;}
-  /* Â« Voir la boutique Â» : sans fond noir, sans contour */
+  /* « Voir la boutique » : sans fond noir, sans contour */
   body .fiche-card .btn-boutique-or{background:none !important;border:none !important;box-shadow:none !important;padding:10px 0 0 !important;justify-content:center;width:100%;}
   body .fiche-card .btn-or-txt{background:none !important;-webkit-text-fill-color:#C2410C !important;color:#C2410C !important;filter:none !important;animation:none !important;font-size:17px;font-weight:800;letter-spacing:0;}
   body .fiche-card .btn-boutique-or::before,body .fiche-card .btn-boutique-or::after{display:none !important;}
-  /* Liste : cachÃ©e tant qu'on n'a pas cherchÃ© */
+  /* Liste : cachée tant qu'on n'a pas cherché */
   body.avant-recherche .results-panel{display:none !important;}
   /* Liste */
   body .results-layout{padding:8px 16px 24px !important;}
@@ -1133,10 +1133,10 @@ body.theme-light footer { background:#fbfcfe; }
   body .card-top-row{align-items:center !important;gap:14px !important;}
   body .card-name{font-size:20px !important;font-weight:800 !important;letter-spacing:-.3px !important;margin-bottom:3px !important;}
   body .card-title{font-size:15px !important;font-weight:600 !important;margin-bottom:6px !important;color:var(--mu) !important;}
-  /* "Nouveau" : petit, bleu, italique ; les autres pastilles dorment jusqu'Ã  l'ouverture de la fiche */
+  /* "Nouveau" : petit, bleu, italique ; les autres pastilles dorment jusqu'à l'ouverture de la fiche */
   body .card-tags .badge-trust{background:transparent !important;padding:0 !important;font-size:13px !important;font-style:italic !important;font-weight:600 !important;color:#1266e3 !important;}
   body .card-tags .badge-trust.bt-purple,body .card-tags .badge-trust.bt-accent,body .card-tags .badge-trust.bt-more{display:none !important;}
-  /* Â« VÃ©rifiÃ© Â» : pastille verte, avant Â« Nouveau Â» ; RGE dort jusqu'Ã  l'ouverture de la fiche */
+  /* « Vérifié » : pastille verte, avant « Nouveau » ; RGE dort jusqu'à l'ouverture de la fiche */
   body .card-tags .badge-trust.bt-verifie{background:rgba(16,185,129,.12) !important;color:#059669 !important;font-style:normal !important;font-weight:700 !important;font-size:14px !important;padding:5px 12px !important;border-radius:30px !important;}
   body .card-tags .badge-trust.bt-green:not(.bt-verifie){display:none !important;}
   body .card-tags{display:flex !important;flex-direction:column !important;align-items:flex-start !important;gap:6px !important;}
@@ -1153,12 +1153,12 @@ body.theme-light footer { background:#fbfcfe; }
   /* Bouton d'aide : petit et discret */
   body .faq-fab{width:38px !important;height:38px !important;bottom:16px !important;right:12px !important;opacity:.5 !important;animation:none !important;box-shadow:none !important;background:rgba(181,80,47,.55) !important;}
   body .faq-fab svg{width:18px !important;height:18px !important;}
-  /* Bloc "Vous Ãªtes artisan ?" : on garde le texte, plus d'image */
+  /* Bloc "Vous êtes artisan ?" : on garde le texte, plus d'image */
   body .pub-alt-mobile img{display:none !important;}
   body .pub-alt-mobile{border-radius:22px !important;}
 }
 
-/* â”€â”€ Recherche d'un mÃ©tier (tÃ©lÃ©phone) : champ qui se filtre pendant la frappe â”€â”€ */
+/* ── Recherche d'un métier (téléphone) : champ qui se filtre pendant la frappe ── */
 .sect-combo{position:relative;}
 .sect-liste{position:fixed;z-index:1100;max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border:1px solid #e3e3e3;border-radius:18px;box-shadow:0 14px 40px rgba(15,23,42,.18);padding:6px;}
 .sect-item{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:12px;font-size:17px;font-weight:600;color:#13223c;cursor:pointer;}
@@ -1174,14 +1174,14 @@ body.theme-light footer { background:#fbfcfe; }
 .sect-ic{width:26px;text-align:center;font-size:19px;}
 .sect-vide{padding:16px;font-size:15px;color:#6b7c96;text-align:center;}
 
-/* Champs de recherche : rectangle jaune autour du texte qu'on Ã©crit */
+/* Champs de recherche : rectangle jaune autour du texte qu'on écrit */
 .search-field input:focus,.search-field input:focus-visible,#search-secteur-txt:focus{outline:2px solid #E69A00 !important;outline-offset:0 !important;}
 
-/* ===== ANNUAIRE ORDINATEUR Ã‰PURÃ‰ : mÃªme principe que le tÃ©lÃ©phone ===== */
+/* ===== ANNUAIRE ORDINATEUR ÉPURÉ : même principe que le téléphone ===== */
 @media(min-width:769px){
-  /* Aucun artisan tant qu'on n'a pas cherchÃ© */
+  /* Aucun artisan tant qu'on n'a pas cherché */
   body.avant-recherche #main-results{display:none !important;}
-  /* Cartes aÃ©rÃ©es : nom, mÃ©tier Â· commune, Â« Nouveau Â», VÃ©rifiÃ©, Ã©toiles, disponibilitÃ© â€” le dÃ©tail est dans la fiche */
+  /* Cartes aérées : nom, métier · commune, « Nouveau », Vérifié, étoiles, disponibilité — le détail est dans la fiche */
   .formateur-card{border-radius:22px !important;padding:22px 24px !important;gap:12px !important;border:2px solid #e3eaf4 !important;box-shadow:0 8px 26px rgba(19,34,60,.07) !important;margin-bottom:18px !important;}
   .card-avatar{width:64px !important;height:64px !important;font-size:22px !important;}
   .card-top-row{align-items:center !important;gap:16px !important;}
@@ -1199,12 +1199,12 @@ body.theme-light footer { background:#fbfcfe; }
   .card-dispo.none{display:none !important;}
   .card-stars{font-size:15px !important;font-weight:700 !important;}
   .card-stars .star-on,.card-stars .star-off{font-size:17px;}
-  /* Fiche : on ajoute les crÃ©neaux de la semaine */
+  /* Fiche : on ajoute les créneaux de la semaine */
   .fiche-grille{display:grid !important;grid-template-columns:repeat(7,1fr);gap:6px;border-top:none !important;padding-top:0 !important;margin-bottom:6px;}
   .fiche-card .dispo-day-label{font-size:11px !important;white-space:nowrap;}
   .fiche-card .dispo-slot{font-size:11px !important;font-weight:700 !important;}
   .fiche-card .dispo-slot.available{background:#fff !important;color:#13223C !important;border-color:#cfd9e8 !important;}
-  /* Fiche : les crÃ©neaux de la semaine juste aprÃ¨s les services (au lieu d'Ãªtre tout en bas) */
+  /* Fiche : les créneaux de la semaine juste après les services (au lieu d'être tout en bas) */
   .fiche-card{display:flex !important;flex-direction:column;}
   .fiche-card > .fiche-sec[data-sec="fiche_presentation"]{order:1;}
   .fiche-card > .fiche-sec[data-sec="fiche_avantages"]{order:2;}
@@ -1214,7 +1214,7 @@ body.theme-light footer { background:#fbfcfe; }
   .fiche-card > .fiche-sec[data-sec="fiche_boutique"]{order:6;}
   .fiche-card > .fiche-sec[data-sec="avis_titre"]{order:7;}
   .fiche-card > .fiche-devis{order:8;align-self:flex-start;}
-  /* Â« Voir la boutique Â» : bouton clair, sans fond noir ni paillettes */
+  /* « Voir la boutique » : bouton clair, sans fond noir ni paillettes */
   .fiche-card .btn-boutique-or{background:#fff !important;border:2px solid #e3eaf4 !important;box-shadow:none !important;padding:13px 22px !important;}
   .fiche-card .btn-boutique-or:hover{border-color:#C2410C !important;}
   .fiche-card .btn-or-txt{background:none !important;-webkit-text-fill-color:#C2410C !important;color:#C2410C !important;filter:none !important;animation:none !important;font-size:16px;font-weight:800;letter-spacing:0;}
@@ -1253,19 +1253,19 @@ body.theme-light footer { background:#fbfcfe; }
 
   <footer id="footer">
     <div class="footer-brand">CARA<span class="ac">LINK</span> <span style="font-size:14px;color:var(--mu2);margin-left:6px;font-weight:600;">Artisans</span> <span style="font-size:12px;color:var(--mu);margin-left:8px;font-weight:400;">by LearnLogic Studio</span></div>
-    <div class="footer-note">// Guadeloupe Â· Martinique Â· Guyane â€” 2026</div>
+    <div class="footer-note">// Guadeloupe · Martinique · Guyane — 2026</div>
     <div style="font-size:12px;color:var(--mu);font-family:'JetBrains Mono',monospace;">
-      <a href="#" onclick="ouvrirModalLegal('mentions');return false;" style="color:var(--mu2);text-decoration:none;margin:0 8px;">Mentions lÃ©gales</a>Â·
-      <a href="#" onclick="ouvrirModalLegal('cgu');return false;" style="color:var(--mu2);text-decoration:none;margin:0 8px;">CGU</a>Â·
-      <a href="#" onclick="ouvrirModalLegal('privacy');return false;" style="color:var(--mu2);text-decoration:none;margin:0 8px;">ConfidentialitÃ©</a>Â·
-      <a href="#" onclick="ouvrirModalLegal('cookies');return false;" style="color:var(--mu2);text-decoration:none;margin:0 8px;">Cookies</a>Â·
+      <a href="#" onclick="ouvrirModalLegal('mentions');return false;" style="color:var(--mu2);text-decoration:none;margin:0 8px;">Mentions légales</a>·
+      <a href="#" onclick="ouvrirModalLegal('cgu');return false;" style="color:var(--mu2);text-decoration:none;margin:0 8px;">CGU</a>·
+      <a href="#" onclick="ouvrirModalLegal('privacy');return false;" style="color:var(--mu2);text-decoration:none;margin:0 8px;">Confidentialité</a>·
+      <a href="#" onclick="ouvrirModalLegal('cookies');return false;" style="color:var(--mu2);text-decoration:none;margin:0 8px;">Cookies</a>·
       <a href="mailto:contact@learnlogicstudio.com" style="color:var(--mu2);text-decoration:none;margin:0 8px;">Contact</a>
     </div>
   </footer>
   <script src="/artisans/tr-artisans.js?v=20261111b"></script>
   <script src="/artisans/caralink-artisans.js?v=20261111b"></script>
 
-  <!-- â•â•â•â• FAQ BOUTON FLOTTANT â•â•â•â• -->
+  <!-- ════ FAQ BOUTON FLOTTANT ════ -->
   <button class="faq-fab" onclick="toggleFAQ()" title="Aide & FAQ">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20">
       <circle cx="12" cy="12" r="10"/>
@@ -1291,54 +1291,54 @@ body.theme-light footer { background:#fbfcfe; }
           <div class="faq-subtitle">CaraLink Artisans</div>
         </div>
       </div>
-      <button class="faq-close" onclick="toggleFAQ()">âœ•</button>
+      <button class="faq-close" onclick="toggleFAQ()">✕</button>
     </div>
 
     <div class="faq-search-wrap">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" class="faq-search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input class="faq-search" type="text" placeholder="Rechercher une questionâ€¦" oninput="filterFAQ(this.value)">
+      <input class="faq-search" type="text" placeholder="Rechercher une question…" oninput="filterFAQ(this.value)">
     </div>
 
     <div class="faq-body">
 
-      <!-- â”€â”€ ARTISANS â”€â”€ -->
+      <!-- ── ARTISANS ── -->
       <div class="faq-group" data-group="formateurs">
         <div class="faq-group-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           <span data-i18n="faq_group_artisans">Pour les artisans</span>
         </div>
 
-        <div class="faq-item" data-q="crÃ©er profil inscription artisan vitrine">
+        <div class="faq-item" data-q="créer profil inscription artisan vitrine">
           <div class="faq-q" onclick="toggleFAQItem(this)">
-            <span data-i18n="faq1_q">Comment crÃ©er mon profil artisan ?</span>
+            <span data-i18n="faq1_q">Comment créer mon profil artisan ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
           <div class="faq-a" data-i18n="faq1_a">
             <div class="faq-step"><span class="faq-num">1</span>Cliquez sur <strong>Devenir artisan</strong> en haut de la page</div>
-            <div class="faq-step"><span class="faq-num">2</span>Remplissez votre compte, votre activitÃ© (secteur, commune, tÃ©lÃ©phone) et votre prÃ©sentation</div>
-            <div class="faq-step"><span class="faq-num">3</span>Ajoutez votre SIRET et votre attestation d'assurance si vous les avez dÃ©jÃ </div>
-            <div class="faq-step"><span class="faq-num">4</span>Validez â€” votre profil est visible immÃ©diatement dans l'annuaire</div>
-            <div class="faq-tip">ðŸ’¡ Tout se fait en une seule page. Pas besoin de revenir plus tard si vous Ãªtes pressÃ©.</div>
+            <div class="faq-step"><span class="faq-num">2</span>Remplissez votre compte, votre activité (secteur, commune, téléphone) et votre présentation</div>
+            <div class="faq-step"><span class="faq-num">3</span>Ajoutez votre SIRET et votre attestation d'assurance si vous les avez déjà</div>
+            <div class="faq-step"><span class="faq-num">4</span>Validez — votre profil est visible immédiatement dans l'annuaire</div>
+            <div class="faq-tip">💡 Tout se fait en une seule page. Pas besoin de revenir plus tard si vous êtes pressé.</div>
           </div>
         </div>
 
-        <div class="faq-item" data-q="badge vÃ©rifiÃ© siret assurance rc pro dÃ©cennale">
+        <div class="faq-item" data-q="badge vérifié siret assurance rc pro décennale">
           <div class="faq-q" onclick="toggleFAQItem(this)">
-            <span data-i18n="faq2_q">Comment obtenir le badge "VÃ©rifiÃ©" ?</span>
+            <span data-i18n="faq2_q">Comment obtenir le badge "Vérifié" ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
           <div class="faq-a" data-i18n="faq2_a">
-            <p>Votre SIRET est vÃ©rifiÃ© automatiquement auprÃ¨s du registre officiel des entreprises : s'il est reconnu et actif, le badge Â« VÃ©rifiÃ© Â» est attribuÃ© immÃ©diatement. Vous pouvez aussi joindre votre attestation d'assurance (RC Pro ou dÃ©cennale) pour rassurer vos clients.</p>
-            <div class="faq-tip">ðŸ’¡ Vous pouvez ajouter ou complÃ©ter ces documents Ã  tout moment depuis votre profil, mÃªme aprÃ¨s votre inscription.</div>
+            <p>Votre SIRET est vérifié automatiquement auprès du registre officiel des entreprises : s'il est reconnu et actif, le badge « Vérifié » est attribué immédiatement. Vous pouvez aussi joindre votre attestation d'assurance (RC Pro ou décennale) pour rassurer vos clients.</p>
+            <div class="faq-tip">💡 Vous pouvez ajouter ou compléter ces documents à tout moment depuis votre profil, même après votre inscription.</div>
           </div>
         </div>
 
         <div class="faq-item" data-q="recevoir demande devis notification client">
           <div class="faq-q" onclick="toggleFAQItem(this)">
-            <span data-i18n="faq3_q">Comment je reÃ§ois les demandes de clients ?</span>
+            <span data-i18n="faq3_q">Comment je reçois les demandes de clients ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq3_a"><p>Une simple demande de renseignement arrive directement dans votre espace MPA Artisans et par email. Pour une visite ou une rÃ©servation, le client rÃ¨gle d'abord les frais en ligne : vous ne voyez sa demande qu'aprÃ¨s le paiement.</p><p style="margin-top:8px;">Vous recevez son nom, son tÃ©lÃ©phone, sa commune, sa description et ses photos. Un client peut aussi poster une demande gÃ©nÃ©rale, visible par les artisans de son secteur : ses coordonnÃ©es apparaissent quand vous cliquez sur Â« Prendre en charge Â».</p><div class="faq-tip">ðŸ’¡ Si vous refusez ou ne pouvez pas venir, le client est remboursÃ© automatiquement.</div></div>
+          <div class="faq-a" data-i18n="faq3_a"><p>Une simple demande de renseignement arrive directement dans votre espace MPA Artisans et par email. Pour une visite ou une réservation, le client règle d'abord les frais en ligne : vous ne voyez sa demande qu'après le paiement.</p><p style="margin-top:8px;">Vous recevez son nom, son téléphone, sa commune, sa description et ses photos. Un client peut aussi poster une demande générale, visible par les artisans de son secteur : ses coordonnées apparaissent quand vous cliquez sur « Prendre en charge ».</p><div class="faq-tip">💡 Si vous refusez ou ne pouvez pas venir, le client est remboursé automatiquement.</div></div>
         </div>
 
         <div class="faq-item" data-q="ajouter services tarifs photos chantier vitrine">
@@ -1347,25 +1347,25 @@ body.theme-light footer { background:#fbfcfe; }
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
           <div class="faq-a" data-i18n="faq4_a">
-            <p>Oui, c'est ce qui compose votre vitrine, visible par tous les clients qui consultent votre profil â€” vos services avec un tarif indicatif, et des photos de vos rÃ©alisations.</p>
-            <div class="faq-tip">ðŸ’¡ Un profil complet, avec de vraies photos, inspire davantage confiance qu'un profil minimal.</div>
+            <p>Oui, c'est ce qui compose votre vitrine, visible par tous les clients qui consultent votre profil — vos services avec un tarif indicatif, et des photos de vos réalisations.</p>
+            <div class="faq-tip">💡 Un profil complet, avec de vraies photos, inspire davantage confiance qu'un profil minimal.</div>
           </div>
         </div>
 
-        <div class="faq-item" data-q="paiement frais commission pro abonnement 7 200 coÃ»t prix artisan">
+        <div class="faq-item" data-q="paiement frais commission pro abonnement 7 200 coût prix artisan">
           <div class="faq-q" onclick="toggleFAQItem(this)">
-            <span data-i18n="faq14_q">Combien Ã§a coÃ»te aux artisans ?</span>
+            <span data-i18n="faq14_q">Combien ça coûte aux artisans ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq14_a"><p>L'inscription et l'offre <strong>Essentiel</strong> sont gratuites : fiche dans l'annuaire, planning, boutique (6 produits), paiements en ligne, comptabilitÃ©. L'offre <strong>Pro</strong> coÃ»te 24,99 â‚¬ par mois, avec 30 jours d'essai sans carte.</p><p style="margin-top:8px;">CaraLink prend <strong>7 %</strong> des paiements encaissÃ©s en ligne <strong>uniquement sur la part au-delÃ  de 200 â‚¬ par mois</strong> (pas sur les 200 premiers euros), sur les clients venus par CaraLink. Exemple : 300 â‚¬ encaissÃ©s dans le mois, 7 % de 100 â‚¬ = 7 â‚¬. En dessous de 200 â‚¬, rien. Les frais du service de paiement Stripe sont Ã  votre charge.</p><div class="faq-tip">ðŸ’¡ Les clients que vous ajoutez vous-mÃªme Ã  la main dans MPA Artisans ne sont jamais commissionnÃ©s.</div></div>
+          <div class="faq-a" data-i18n="faq14_a"><p>L'inscription et l'offre <strong>Essentiel</strong> sont gratuites : fiche dans l'annuaire, planning, boutique (6 produits), paiements en ligne, comptabilité. L'offre <strong>Pro</strong> coûte 24,99 € par mois, avec 30 jours d'essai sans carte.</p><p style="margin-top:8px;">CaraLink prend <strong>7 %</strong> des paiements encaissés en ligne <strong>uniquement sur la part au-delà de 200 € par mois</strong> (pas sur les 200 premiers euros), sur les clients venus par CaraLink. Exemple : 300 € encaissés dans le mois, 7 % de 100 € = 7 €. En dessous de 200 €, rien. Les frais du service de paiement Stripe sont à votre charge.</p><div class="faq-tip">💡 Les clients que vous ajoutez vous-même à la main dans MPA Artisans ne sont jamais commissionnés.</div></div>
         </div>
 
-        <div class="faq-item" data-q="paiement en ligne stripe activer obligatoire novembre rÃ©servation annuaire">
+        <div class="faq-item" data-q="paiement en ligne stripe activer obligatoire novembre réservation annuaire">
           <div class="faq-q" onclick="toggleFAQItem(this)">
             <span data-i18n="faq15_q">Pourquoi activer les paiements en ligne ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq15_a"><p>Pour recevoir des rÃ©servations. Le client paie Ã  la rÃ©servation : vous savez qu'il viendra, et l'argent arrive directement sur votre compte Stripe.</p><p style="margin-top:8px;"><strong>Ã€ partir du 1er novembre 2026</strong>, il faut avoir activÃ© les paiements en ligne pour recevoir des rÃ©servations et apparaÃ®tre dans l'annuaire. Vous activez cela depuis MPA Artisans, et MPA-AI vous guide pas Ã  pas.</p><div class="faq-tip">ðŸ’¡ Stripe vous demande quelques informations d'identitÃ© et un compte bancaire pour vous verser l'argent.</div></div>
+          <div class="faq-a" data-i18n="faq15_a"><p>Pour recevoir des réservations. Le client paie à la réservation : vous savez qu'il viendra, et l'argent arrive directement sur votre compte Stripe.</p><p style="margin-top:8px;"><strong>À partir du 1er novembre 2026</strong>, il faut avoir activé les paiements en ligne pour recevoir des réservations et apparaître dans l'annuaire. Vous activez cela depuis MPA Artisans, et MPA-AI vous guide pas à pas.</p><div class="faq-tip">💡 Stripe vous demande quelques informations d'identité et un compte bancaire pour vous verser l'argent.</div></div>
         </div>
 
         <div class="faq-item" data-q="partager fiche lien qr code whatsapp facebook">
@@ -1373,7 +1373,7 @@ body.theme-light footer { background:#fbfcfe; }
             <span data-i18n="faq16_q">Comment partager ma fiche (lien, QR code) ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq16_a"><p>Dans MPA Artisans, ouvrez <strong>Mon profil</strong> puis <strong>Partager ma fiche</strong> : vous obtenez un lien, un message prÃªt Ã  envoyer (WhatsApp, Facebook, email) et un QR code Ã  imprimer. Sur la fiche publique, un bouton <strong>Partager</strong> fait la mÃªme chose.</p><div class="faq-tip">ðŸ’¡ Les clients qui arrivent par votre lien passent par CaraLink : ils comptent comme clients CaraLink pour la commission.</div></div>
+          <div class="faq-a" data-i18n="faq16_a"><p>Dans MPA Artisans, ouvrez <strong>Mon profil</strong> puis <strong>Partager ma fiche</strong> : vous obtenez un lien, un message prêt à envoyer (WhatsApp, Facebook, email) et un QR code à imprimer. Sur la fiche publique, un bouton <strong>Partager</strong> fait la même chose.</p><div class="faq-tip">💡 Les clients qui arrivent par votre lien passent par CaraLink : ils comptent comme clients CaraLink pour la commission.</div></div>
         </div>
 
         <div class="faq-item" data-q="boutique vendre produits catalogue panier commande stock">
@@ -1381,36 +1381,36 @@ body.theme-light footer { background:#fbfcfe; }
             <span data-i18n="faq17_q">Puis-je vendre mes produits en ligne ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq17_a"><p>Oui. Dans MPA Artisans, crÃ©ez vos produits dans <strong>Mon stock</strong>, puis mettez-les en vente. Vos clients ont une boutique avec un panier et paient par carte. Il faut avoir activÃ© les paiements en ligne. Vous suivez les commandes, la livraison et les remboursements depuis MPA.</p><div class="faq-tip">ðŸ’¡ Sur la boutique, CaraLink retient sa commission (au-delÃ  de 200 â‚¬ par mois) plus 1,9 % + 0,25 â‚¬ de frais de paiement par commande.</div></div>
+          <div class="faq-a" data-i18n="faq17_a"><p>Oui. Dans MPA Artisans, créez vos produits dans <strong>Mon stock</strong>, puis mettez-les en vente. Vos clients ont une boutique avec un panier et paient par carte. Il faut avoir activé les paiements en ligne. Vous suivez les commandes, la livraison et les remboursements depuis MPA.</p><div class="faq-tip">💡 Sur la boutique, CaraLink retient sa commission (au-delà de 200 € par mois) plus 1,9 % + 0,25 € de frais de paiement par commande.</div></div>
         </div>
 
-        <div class="faq-item" data-q="demander paiement aprÃ¨s visite facture devis montant lien">
+        <div class="faq-item" data-q="demander paiement après visite facture devis montant lien">
           <div class="faq-q" onclick="toggleFAQItem(this)">
-            <span data-i18n="faq18_q">Comment me faire payer aprÃ¨s une visite ?</span>
+            <span data-i18n="faq18_q">Comment me faire payer après une visite ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq18_a"><p>Dans MPA Artisans, ouvrez l'intervention et cliquez sur <strong>Demander un paiement</strong>. Saisissez le montant de votre devis ou de votre facture : le client reÃ§oit un lien de paiement par email, valable 14 jours. Vous pouvez aussi copier le lien et l'envoyer par SMS ou WhatsApp.</p><div class="faq-tip">ðŸ’¡ Si le client a dÃ©jÃ  payÃ© des frais en ligne, il en est informÃ©. Le paiement va directement sur votre compte Stripe.</div></div>
+          <div class="faq-a" data-i18n="faq18_a"><p>Dans MPA Artisans, ouvrez l'intervention et cliquez sur <strong>Demander un paiement</strong>. Saisissez le montant de votre devis ou de votre facture : le client reçoit un lien de paiement par email, valable 14 jours. Vous pouvez aussi copier le lien et l'envoyer par SMS ou WhatsApp.</p><div class="faq-tip">💡 Si le client a déjà payé des frais en ligne, il en est informé. Le paiement va directement sur votre compte Stripe.</div></div>
         </div>
 
-<div class="faq-item" data-q="versement virement dÃ©lai stripe argent premier paiement jours">
+<div class="faq-item" data-q="versement virement délai stripe argent premier paiement jours">
           <div class="faq-q" onclick="toggleFAQItem(this)">
             <span data-i18n="faq19_q">Combien de temps avant de recevoir l'argent d'un paiement ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq19_a"><p>Le <strong>tout premier versement</strong> d'un nouveau compte prend en gÃ©nÃ©ral <strong>7 Ã  14 jours</strong> aprÃ¨s le premier paiement, le temps de la vÃ©rification par Stripe. Ensuite, comptez environ <strong>2 jours ouvrÃ©s</strong> aprÃ¨s chaque paiement.</p></div>
+          <div class="faq-a" data-i18n="faq19_a"><p>Le <strong>tout premier versement</strong> d'un nouveau compte prend en général <strong>7 à 14 jours</strong> après le premier paiement, le temps de la vérification par Stripe. Ensuite, comptez environ <strong>2 jours ouvrés</strong> après chaque paiement.</p></div>
         </div>
 
-<div class="faq-item" id="faq-commission" data-q="commission impayÃ©e main propre 7% 5% 200 franchise prÃ©lÃ¨vement suspension calcul">
+<div class="faq-item" id="faq-commission" data-q="commission impayée main propre 7% 5% 200 franchise prélèvement suspension calcul">
           <div class="faq-q" onclick="toggleFAQItem(this)">
-            <span data-i18n="faq20_q">Pourquoi une commission alors que mon client m'a payÃ© en main propre ?</span>
+            <span data-i18n="faq20_q">Pourquoi une commission alors que mon client m'a payé en main propre ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq20_a"><p>Les clients que CaraLink vous apporte (demande de devis, projet publiÃ©, annuaire) sont commissionnÃ©s <strong>mÃªme si le paiement se fait hors de CaraLink</strong>. Les <strong>200 premiers euros de chaque mois sont gratuits</strong> ; au-dessus, la commission est de <strong>7 %</strong> (<strong>5 %</strong> avec l'offre Pro) sur la part qui dÃ©passe. Les clients que vous ajoutez vous-mÃªme ne sont <strong>jamais</strong> commissionnÃ©s.</p><p><strong>Exemple :</strong> 450 â‚¬ de prestations dans le mois : (450 âˆ’ 200) Ã— 7 % = <strong>17,50 â‚¬</strong>. Gagner plus reste toujours plus rentable. Ce qui a dÃ©jÃ  Ã©tÃ© payÃ© en ligne est commissionnÃ© au paiement et dÃ©duit : jamais deux fois.</p><p>La commission est prÃ©levÃ©e <strong>une fois par mois</strong>, le mois suivant, sur votre carte enregistrÃ©e. Le dÃ©tail du calcul est dans MPA Artisans (bandeau rouge ou Â« Ma comptabilitÃ© Â»).</p><div class="faq-tip">âš ï¸ Si le prÃ©lÃ¨vement Ã©choue : rappel Ã  7 jours, dernier rappel Ã  14 jours, puis <strong>suspension de votre fiche de l'annuaire Ã  30 jours</strong>. Rien n'est supprimÃ© : tout revient automatiquement dÃ¨s que vous avez rÃ©glÃ© (mettez Ã  jour votre carte).</div></div>
+          <div class="faq-a" data-i18n="faq20_a"><p>Les clients que CaraLink vous apporte (demande de devis, projet publié, annuaire) sont commissionnés <strong>même si le paiement se fait hors de CaraLink</strong>. Les <strong>200 premiers euros de chaque mois sont gratuits</strong> ; au-dessus, la commission est de <strong>7 %</strong> (<strong>5 %</strong> avec l'offre Pro) sur la part qui dépasse. Les clients que vous ajoutez vous-même ne sont <strong>jamais</strong> commissionnés.</p><p><strong>Exemple :</strong> 450 € de prestations dans le mois : (450 − 200) × 7 % = <strong>17,50 €</strong>. Gagner plus reste toujours plus rentable. Ce qui a déjà été payé en ligne est commissionné au paiement et déduit : jamais deux fois.</p><p>La commission est prélevée <strong>une fois par mois</strong>, le mois suivant, sur votre carte enregistrée. Le détail du calcul est dans MPA Artisans (bandeau rouge ou « Ma comptabilité »).</p><div class="faq-tip">⚠️ Si le prélèvement échoue : rappel à 7 jours, dernier rappel à 14 jours, puis <strong>suspension de votre fiche de l'annuaire à 30 jours</strong>. Rien n'est supprimé : tout revient automatiquement dès que vous avez réglé (mettez à jour votre carte).</div></div>
         </div>
 
       </div>
 
-      <!-- â”€â”€ CLIENTS â”€â”€ -->
+      <!-- ── CLIENTS ── -->
       <div class="faq-group" data-group="centres">
         <div class="faq-group-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -1423,107 +1423,107 @@ body.theme-light footer { background:#fbfcfe; }
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
           <div class="faq-a" data-i18n="faq5_a">
-            <div class="faq-step"><span class="faq-num">1</span>Utilisez la barre de recherche â€” indiquez un secteur (plomberie, jardinageâ€¦) et votre lieu</div>
-            <div class="faq-step"><span class="faq-num">2</span>Parcourez les profils, avec le badge "VÃ©rifiÃ©" bien visible s'il est prÃ©sent</div>
+            <div class="faq-step"><span class="faq-num">1</span>Utilisez la barre de recherche — indiquez un secteur (plomberie, jardinage…) et votre lieu</div>
+            <div class="faq-step"><span class="faq-num">2</span>Parcourez les profils, avec le badge "Vérifié" bien visible s'il est présent</div>
             <div class="faq-step"><span class="faq-num">3</span>Cliquez sur un profil pour voir ses services, ses tarifs et ses avis</div>
-            <div class="faq-tip">ðŸ’¡ La carte interactive vous montre oÃ¹ se trouvent les artisans autour de vous.</div>
+            <div class="faq-tip">💡 La carte interactive vous montre où se trouvent les artisans autour de vous.</div>
           </div>
         </div>
 
         <div class="faq-item" data-q="demander devis contacter artisan gratuit">
           <div class="faq-q" onclick="toggleFAQItem(this)">
-            <span data-i18n="faq6_q">Comment demander un devis ou rÃ©server ?</span>
+            <span data-i18n="faq6_q">Comment demander un devis ou réserver ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq6_a"><div class="faq-step"><span class="faq-num">1</span>Sur le profil d'un artisan, cliquez sur <strong>Demander un devis</strong></div><div class="faq-step"><span class="faq-num">2</span>Choisissez : un simple renseignement, un rendez-vous sur place, ou une rÃ©servation directe si vous connaissez dÃ©jÃ  l'artisan</div><div class="faq-step"><span class="faq-num">3</span>Indiquez votre nom, votre tÃ©lÃ©phone, votre email, votre commune et votre besoin (vous pouvez joindre des photos)</div><div class="faq-step"><span class="faq-num">4</span>Si l'artisan demande des frais de dÃ©placement ou de rÃ©servation, vous les rÃ©glez en ligne par carte avant l'envoi</div><div class="faq-tip">ðŸ’¡ Aucun compte Ã  crÃ©er. Un simple renseignement est gratuit.</div></div>
+          <div class="faq-a" data-i18n="faq6_a"><div class="faq-step"><span class="faq-num">1</span>Sur le profil d'un artisan, cliquez sur <strong>Demander un devis</strong></div><div class="faq-step"><span class="faq-num">2</span>Choisissez : un simple renseignement, un rendez-vous sur place, ou une réservation directe si vous connaissez déjà l'artisan</div><div class="faq-step"><span class="faq-num">3</span>Indiquez votre nom, votre téléphone, votre email, votre commune et votre besoin (vous pouvez joindre des photos)</div><div class="faq-step"><span class="faq-num">4</span>Si l'artisan demande des frais de déplacement ou de réservation, vous les réglez en ligne par carte avant l'envoi</div><div class="faq-tip">💡 Aucun compte à créer. Un simple renseignement est gratuit.</div></div>
         </div>
 
-        <div class="faq-item" data-q="badge vÃ©rifiÃ© confiance sÃ©curitÃ© signification">
+        <div class="faq-item" data-q="badge vérifié confiance sécurité signification">
           <div class="faq-q" onclick="toggleFAQItem(this)">
-            <span data-i18n="faq7_q">Que garantit le badge "VÃ©rifiÃ©" ?</span>
+            <span data-i18n="faq7_q">Que garantit le badge "Vérifié" ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
           <div class="faq-a" data-i18n="faq7_a">
-            <p>Un artisan vÃ©rifiÃ© a un SIRET actif reconnu par le registre officiel des entreprises. Le badge ne constitue pas une garantie sur son assurance : n'hÃ©sitez pas Ã  la lui demander.</p>
-            <div class="faq-tip">ðŸ’¡ Un artisan non encore vÃ©rifiÃ© n'est pas nÃ©cessairement suspect â€” il peut simplement Ãªtre en cours de constitution de son dossier.</div>
+            <p>Un artisan vérifié a un SIRET actif reconnu par le registre officiel des entreprises. Le badge ne constitue pas une garantie sur son assurance : n'hésitez pas à la lui demander.</p>
+            <div class="faq-tip">💡 Un artisan non encore vérifié n'est pas nécessairement suspect — il peut simplement être en cours de constitution de son dossier.</div>
           </div>
         </div>
 
-        <div class="faq-item" data-q="frais dÃ©placement rÃ©servation annuler annulation remboursement rembourser prix">
+        <div class="faq-item" data-q="frais déplacement réservation annuler annulation remboursement rembourser prix">
           <div class="faq-q" onclick="toggleFAQItem(this)">
-            <span data-i18n="faq13_q">Combien coÃ»te une visite ou une rÃ©servation, et puis-je annuler ?</span>
+            <span data-i18n="faq13_q">Combien coûte une visite ou une réservation, et puis-je annuler ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq13_a"><p>Chaque artisan fixe ses frais de dÃ©placement (pour une visite) ou de rÃ©servation. Le montant est affichÃ© sur sa fiche et avant le paiement. Vous payez en ligne par carte, directement Ã  l'artisan.</p><p style="margin-top:8px;">L'artisan indique une durÃ©e d'<strong>annulation gratuite</strong> (souvent 24 h avant le rendez-vous) : si vous annulez dans ce dÃ©lai, vous Ãªtes remboursÃ© en entier. Si l'artisan refuse, annule ou ne rÃ©pond pas sous 48 h, vous Ãªtes remboursÃ© automatiquement, sans rien faire. Pour annuler, utilisez le lien reÃ§u par email.</p><div class="faq-tip">ðŸ’¡ Le remboursement apparaÃ®t sur votre carte en quelques jours.</div></div>
+          <div class="faq-a" data-i18n="faq13_a"><p>Chaque artisan fixe ses frais de déplacement (pour une visite) ou de réservation. Le montant est affiché sur sa fiche et avant le paiement. Vous payez en ligne par carte, directement à l'artisan.</p><p style="margin-top:8px;">L'artisan indique une durée d'<strong>annulation gratuite</strong> (souvent 24 h avant le rendez-vous) : si vous annulez dans ce délai, vous êtes remboursé en entier. Si l'artisan refuse, annule ou ne répond pas sous 48 h, vous êtes remboursé automatiquement, sans rien faire. Pour annuler, utilisez le lien reçu par email.</p><div class="faq-tip">💡 Le remboursement apparaît sur votre carte en quelques jours.</div></div>
         </div>
 
       </div>
 
-      <!-- â”€â”€ LA PLATEFORME â”€â”€ -->
+      <!-- ── LA PLATEFORME ── -->
       <div class="faq-group" data-group="abonnements">
         <div class="faq-group-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
           <span data-i18n="faq_group_plateforme">La plateforme</span>
         </div>
 
-        <div class="faq-item" data-q="gratuit prix coÃ»t annuaire devis">
+        <div class="faq-item" data-q="gratuit prix coût annuaire devis">
           <div class="faq-q" onclick="toggleFAQItem(this)">
             <span data-i18n="faq8_q">C'est vraiment gratuit ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq8_a"><p><strong>Pour les clients :</strong> oui. Consulter l'annuaire, chercher un artisan et demander un renseignement ou un devis sont gratuits. Certains artisans demandent des frais de dÃ©placement ou de rÃ©servation pour une visite ou un crÃ©neau : le montant est affichÃ© avant de payer.</p><p style="margin-top:8px;"><strong>Pour les artisans :</strong> l'inscription est gratuite. L'offre Pro coÃ»te 24,99 â‚¬ par mois. CaraLink prend une commission de 7 % seulement au-delÃ  de 200 â‚¬ encaissÃ©s en ligne par mois.</p><div class="faq-tip">ðŸ’¡ Aucune carte bancaire n'est demandÃ©e Ã  l'inscription.</div></div>
+          <div class="faq-a" data-i18n="faq8_a"><p><strong>Pour les clients :</strong> oui. Consulter l'annuaire, chercher un artisan et demander un renseignement ou un devis sont gratuits. Certains artisans demandent des frais de déplacement ou de réservation pour une visite ou un créneau : le montant est affiché avant de payer.</p><p style="margin-top:8px;"><strong>Pour les artisans :</strong> l'inscription est gratuite. L'offre Pro coûte 24,99 € par mois. CaraLink prend une commission de 7 % seulement au-delà de 200 € encaissés en ligne par mois.</p><div class="faq-tip">💡 Aucune carte bancaire n'est demandée à l'inscription.</div></div>
         </div>
 
-        <div class="faq-item" data-q="rÃ©servation crÃ©neau calendrier disponibilitÃ©">
+        <div class="faq-item" data-q="réservation créneau calendrier disponibilité">
           <div class="faq-q" onclick="toggleFAQItem(this)">
-            <span data-i18n="faq9_q">Peut-on rÃ©server un crÃ©neau directement en ligne ?</span>
+            <span data-i18n="faq9_q">Peut-on réserver un créneau directement en ligne ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq9_a"><p>Oui, chez les artisans qui ont renseignÃ© leurs disponibilitÃ©s : vous choisissez un crÃ©neau calculÃ© selon les trajets de l'artisan. L'artisan le confirme sous 48 h, sinon vos frais sont remboursÃ©s automatiquement.</p><p style="margin-top:8px;">Chez les autres, vous faites une demande de devis ou de rendez-vous sur place, et l'artisan vous rÃ©pond.</p></div>
+          <div class="faq-a" data-i18n="faq9_a"><p>Oui, chez les artisans qui ont renseigné leurs disponibilités : vous choisissez un créneau calculé selon les trajets de l'artisan. L'artisan le confirme sous 48 h, sinon vos frais sont remboursés automatiquement.</p><p style="margin-top:8px;">Chez les autres, vous faites une demande de devis ou de rendez-vous sur place, et l'artisan vous répond.</p></div>
         </div>
 
       </div>
 
-      <!-- â”€â”€ COMPTE & SÃ‰CURITÃ‰ â”€â”€ -->
+      <!-- ── COMPTE & SÉCURITÉ ── -->
       <div class="faq-group" data-group="compte">
         <div class="faq-group-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          <span data-i18n="faq_group_compte">Compte & SÃ©curitÃ©</span>
+          <span data-i18n="faq_group_compte">Compte & Sécurité</span>
         </div>
 
-        <div class="faq-item" data-q="donnÃ©es confidentielles RGPD privÃ©es sÃ©curitÃ©">
+        <div class="faq-item" data-q="données confidentielles RGPD privées sécurité">
           <div class="faq-q" onclick="toggleFAQItem(this)">
-            <span data-i18n="faq10_q">Mes donnÃ©es sont-elles confidentielles ?</span>
+            <span data-i18n="faq10_q">Mes données sont-elles confidentielles ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div class="faq-a" data-i18n="faq10_a"><p>Oui. Vos donnÃ©es sont hÃ©bergÃ©es sur une infrastructure sÃ©curisÃ©e, avec des rÃ¨gles d'accÃ¨s strictes.</p><p style="margin-top:8px;">Votre tÃ©lÃ©phone et votre email ne sont jamais affichÃ©s publiquement : ils sont transmis seulement Ã  l'artisan concernÃ© par votre demande.</p><p style="margin-top:8px;">Les photos que vous joignez sont stockÃ©es dans un espace privÃ© : seul cet artisan peut les voir, et uniquement pour Ã©valuer le travail.</p><div class="faq-tip">ðŸ’¡ CaraLink Artisans ne vend jamais vos donnÃ©es Ã  des tiers.</div></div>
+          <div class="faq-a" data-i18n="faq10_a"><p>Oui. Vos données sont hébergées sur une infrastructure sécurisée, avec des règles d'accès strictes.</p><p style="margin-top:8px;">Votre téléphone et votre email ne sont jamais affichés publiquement : ils sont transmis seulement à l'artisan concerné par votre demande.</p><p style="margin-top:8px;">Les photos que vous joignez sont stockées dans un espace privé : seul cet artisan peut les voir, et uniquement pour évaluer le travail.</p><div class="faq-tip">💡 CaraLink Artisans ne vend jamais vos données à des tiers.</div></div>
         </div>
 
-        <div class="faq-item" data-q="mot de passe oubliÃ© rÃ©initialiser connexion email">
+        <div class="faq-item" data-q="mot de passe oublié réinitialiser connexion email">
           <div class="faq-q" onclick="toggleFAQItem(this)">
-            <span data-i18n="faq11_q">J'ai oubliÃ© mon mot de passe, que faire ?</span>
+            <span data-i18n="faq11_q">J'ai oublié mon mot de passe, que faire ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
           <div class="faq-a" data-i18n="faq11_a">
-            <div class="faq-step"><span class="faq-num">1</span>Sur la page de connexion, cliquez sur <strong>Mot de passe oubliÃ©</strong></div>
+            <div class="faq-step"><span class="faq-num">1</span>Sur la page de connexion, cliquez sur <strong>Mot de passe oublié</strong></div>
             <div class="faq-step"><span class="faq-num">2</span>Entrez votre email</div>
-            <div class="faq-step"><span class="faq-num">3</span>Consultez votre boÃ®te mail et cliquez sur le lien de rÃ©initialisation</div>
-            <div class="faq-tip">ðŸ’¡ VÃ©rifiez vos spams si vous ne recevez pas l'email dans les 2 minutes.</div>
+            <div class="faq-step"><span class="faq-num">3</span>Consultez votre boîte mail et cliquez sur le lien de réinitialisation</div>
+            <div class="faq-tip">💡 Vérifiez vos spams si vous ne recevez pas l'email dans les 2 minutes.</div>
           </div>
         </div>
 
-        <div class="faq-item" data-q="contact support aide bug problÃ¨me signaler">
+        <div class="faq-item" data-q="contact support aide bug problème signaler">
           <div class="faq-q" onclick="toggleFAQItem(this)">
             <span data-i18n="faq12_q">Comment contacter le support ?</span>
             <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
           <div class="faq-a">
-            <p data-i18n="faq12_a_p1">Contactez-nous Ã  <a href="mailto:contact@learnlogicstudio.com" style="color:var(--ac);">contact@learnlogicstudio.com</a> â€” nous rÃ©pondons sous 24h ouvrÃ©es.</p>
+            <p data-i18n="faq12_a_p1">Contactez-nous à <a href="mailto:contact@learnlogicstudio.com" style="color:var(--ac);">contact@learnlogicstudio.com</a> — nous répondons sous 24h ouvrées.</p>
             <div style="margin-top:12px;">
-              <button onclick="ouvrirBugPlateforme()" style="display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:9px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);color:#ef4444;font-family:Outfit,sans-serif;font-size:13px;font-weight:700;cursor:pointer;"><span data-i18n="faq12_btn_bug">ðŸ› Signaler un bug</span></button>
+              <button onclick="ouvrirBugPlateforme()" style="display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:9px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);color:#ef4444;font-family:Outfit,sans-serif;font-size:13px;font-weight:700;cursor:pointer;"><span data-i18n="faq12_btn_bug">🐛 Signaler un bug</span></button>
             </div>
             <p style="margin-top:8px;" data-i18n="faq12_a_p2">Pour toute autre demande : <a href="mailto:contact@learnlogicstudio.com" style="color:var(--ac2);">contact@learnlogicstudio.com</a></p>
-            <div class="faq-tip" data-i18n="faq12_tip">ðŸ’¡ DÃ©crivez le problÃ¨me avec le plus de dÃ©tails possibles (page, action effectuÃ©e, message d'erreur).</div>
+            <div class="faq-tip" data-i18n="faq12_tip">💡 Décrivez le problème avec le plus de détails possibles (page, action effectuée, message d'erreur).</div>
           </div>
         </div>
 
@@ -1533,7 +1533,7 @@ body.theme-light footer { background:#fbfcfe; }
 
     <div class="faq-footer">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="12" r="10"/></svg>
-      CaraLink Artisans Â· SIRET 832 640 858 000 29
+      CaraLink Artisans · SIRET 832 640 858 000 29
     </div>
   </div>
 
@@ -1549,17 +1549,17 @@ body.theme-light footer { background:#fbfcfe; }
         if (s) { s.value = ''; filterFAQ(''); }
       }
     }
-    // Lien direct vers une question (ex. https://caralink.app/artisans/#faq-commission, depuis le bandeau Â« commission impayÃ©e Â» de MPA)
+    // Lien direct vers une question (ex. https://caralink.app/artisans/#faq-commission, depuis le bandeau « commission impayée » de MPA)
     window.addEventListener('load', function() {
       if (location.hash !== '#faq-commission') return;
       setTimeout(function() {
         var it = document.getElementById('faq-commission');
         if (!it) return;
         var panel = document.getElementById('faq-panel');
-        if (panel && !panel.classList.contains('open')) toggleFAQ();   // la FAQ est un panneau latÃ©ral : on l'ouvre
+        if (panel && !panel.classList.contains('open')) toggleFAQ();   // la FAQ est un panneau latéral : on l'ouvre
         document.querySelectorAll('.faq-item.open').forEach(function(i){ i.classList.remove('open'); });
         it.classList.add('open');
-        setTimeout(function() { it.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 450);   // aprÃ¨s l'animation d'ouverture du panneau
+        setTimeout(function() { it.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 450);   // après l'animation d'ouverture du panneau
       }, 400);
     });
     function toggleFAQItem(el) {
@@ -1600,21 +1600,21 @@ body.theme-light footer { background:#fbfcfe; }
     div.onclick = function(e) { if (e.target === div) div.style.display = 'none'; };
     div.innerHTML =
       '<div style="background:var(--panel);border:1px solid var(--b2);border-radius:16px;padding:28px;width:100%;max-width:480px;position:relative;" onclick="event.stopPropagation()">' +
-        '<button onclick="document.getElementById(\'modal-bug-plateforme\').style.display=\'none\'" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.08);border:1px solid var(--brd);border-radius:6px;color:var(--mu2);font-size:16px;width:28px;height:28px;cursor:pointer;">âœ•</button>' +
-        '<div style="font-size:18px;font-weight:700;margin-bottom:6px;">ðŸ› Signaler un bug</div>' +
-        '<div style="font-size:13px;color:var(--mu2);margin-bottom:16px;">DÃ©crivez le problÃ¨me rencontrÃ©. Nous vous rÃ©pondrons rapidement.</div>' +
+        '<button onclick="document.getElementById(\'modal-bug-plateforme\').style.display=\'none\'" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.08);border:1px solid var(--brd);border-radius:6px;color:var(--mu2);font-size:16px;width:28px;height:28px;cursor:pointer;">✕</button>' +
+        '<div style="font-size:18px;font-weight:700;margin-bottom:6px;">🐛 Signaler un bug</div>' +
+        '<div style="font-size:13px;color:var(--mu2);margin-bottom:16px;">Décrivez le problème rencontré. Nous vous répondrons rapidement.</div>' +
         '<div style="margin-bottom:12px;">' +
-          '<label style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:5px;">Page concernÃ©e</label>' +
+          '<label style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:5px;">Page concernée</label>' +
           '<input id="bug-plat-page" value="plateforme.html" style="width:100%;background:var(--inp);border:1px solid var(--brd);border-radius:10px;color:var(--tx);font-family:Outfit,sans-serif;font-size:13px;padding:9px 14px;outline:none;box-sizing:border-box;"/>' +
         '</div>' +
         '<div style="margin-bottom:16px;">' +
           '<label style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:5px;">Description du bug</label>' +
-          '<textarea id="bug-plat-desc" rows="4" placeholder="DÃ©crivez ce qui ne fonctionne pas, les Ã©tapes pour reproduire le bug..." style="background:var(--inp);border:1px solid var(--brd);border-radius:10px;color:var(--tx);font-family:Outfit,sans-serif;font-size:13px;padding:9px 14px;outline:none;width:100%;resize:vertical;box-sizing:border-box;"></textarea>' +
+          '<textarea id="bug-plat-desc" rows="4" placeholder="Décrivez ce qui ne fonctionne pas, les étapes pour reproduire le bug..." style="background:var(--inp);border:1px solid var(--brd);border-radius:10px;color:var(--tx);font-family:Outfit,sans-serif;font-size:13px;padding:9px 14px;outline:none;width:100%;resize:vertical;box-sizing:border-box;"></textarea>' +
         '</div>' +
         '<div id="bug-plat-msg" style="display:none;margin-bottom:12px;font-size:13px;"></div>' +
         '<div style="display:flex;gap:10px;justify-content:flex-end;">' +
           '<button onclick="document.getElementById(\'modal-bug-plateforme\').style.display=\'none\'" style="padding:9px 18px;border-radius:8px;border:1px solid var(--brd);background:rgba(255,255,255,.05);color:var(--mu2);font-size:13px;cursor:pointer;font-family:Outfit,sans-serif;">Annuler</button>' +
-          '<button onclick="envoyerBugPlateforme()" style="padding:9px 18px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--danger),#b91c1c);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;">ðŸ› Envoyer</button>' +
+          '<button onclick="envoyerBugPlateforme()" style="padding:9px 18px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--danger),#b91c1c);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;">🐛 Envoyer</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(div);
@@ -1624,7 +1624,7 @@ body.theme-light footer { background:#fbfcfe; }
     var page = document.getElementById('bug-plat-page')?.value?.trim();
     var desc = document.getElementById('bug-plat-desc')?.value?.trim();
     var msg  = document.getElementById('bug-plat-msg');
-    if (!desc) { if(msg){msg.textContent='Veuillez dÃ©crire le bug.';msg.style.color='var(--danger)';msg.style.display='block';} return; }
+    if (!desc) { if(msg){msg.textContent='Veuillez décrire le bug.';msg.style.color='var(--danger)';msg.style.display='block';} return; }
     try {
       var session = (await getSB().auth.getSession()).data?.session;
       var userEmail = session?.user?.email || 'Anonyme (plateforme)';
@@ -1633,7 +1633,7 @@ body.theme-light footer { background:#fbfcfe; }
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (session?.access_token || SUPABASE_ANON_KEY) },
         body: JSON.stringify({ page: page || 'plateforme.html', description: desc, userEmail: userEmail })
       });
-      if (msg) { msg.textContent = 'âœ… Bug signalÃ© ! Merci, nous allons corriger Ã§a rapidement.'; msg.style.color = 'var(--ac2)'; msg.style.display = 'block'; }
+      if (msg) { msg.textContent = '✅ Bug signalé ! Merci, nous allons corriger ça rapidement.'; msg.style.color = 'var(--ac2)'; msg.style.display = 'block'; }
       setTimeout(function(){ document.getElementById('modal-bug-plateforme').style.display = 'none'; }, 2000);
     } catch(e) {
       if (msg) { msg.textContent = 'Erreur : ' + e.message; msg.style.color = 'var(--danger)'; msg.style.display = 'block'; }
@@ -1641,17 +1641,17 @@ body.theme-light footer { background:#fbfcfe; }
   }
   </script>
 
-<!-- Modale lÃ©gale -->
+<!-- Modale légale -->
 <div class="legal-modal-overlay" id="modal-legal" onclick="if(event.target===this)closeLegal()">
   <div class="legal-modal">
     <div class="legal-modal-header">
-      <h2>Informations lÃ©gales</h2>
+      <h2>Informations légales</h2>
       <button class="legal-modal-close" onclick="closeLegal()">&#x2715;</button>
     </div>
     <div class="legal-modal-tabs">
-      <button class="legal-tab active" onclick="showLegalTab('mentions')">Mentions lÃ©gales</button>
+      <button class="legal-tab active" onclick="showLegalTab('mentions')">Mentions légales</button>
       <button class="legal-tab" onclick="showLegalTab('cgu')">CGU</button>
-      <button class="legal-tab" onclick="showLegalTab('privacy')">ConfidentialitÃ©</button>
+      <button class="legal-tab" onclick="showLegalTab('privacy')">Confidentialité</button>
       <button class="legal-tab" onclick="showLegalTab('cookies')">Cookies</button>
     </div>
     <div class="legal-modal-body" id="legal-modal-body"></div>
