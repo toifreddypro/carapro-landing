@@ -4134,7 +4134,10 @@ function setVueMoisTrim(vue) {
   renderMatriceCompta();
 }
 
-function anneeComptaPrec() { _anneeCompta--; chargerCompta(); }
+function anneeComptaPrec() {
+  if (!estPro() && _anneeCompta <= new Date().getFullYear()) { proposerPassagePro('historique'); return; } // Essentiel : année en cours seulement
+  _anneeCompta--; chargerCompta();
+}
 function anneeComptaSuiv() { _anneeCompta++; chargerCompta(); }
 
 // ── Comptabilité : trois familles de chiffre d'affaires (Interventions, Ventes boutique, Livraisons) ──
@@ -4323,6 +4326,7 @@ async function renderRecapInterventions() {
 }
 
 async function chargerCompta() {
+  if (!estPro() && _anneeCompta < new Date().getFullYear()) _anneeCompta = new Date().getFullYear(); // ex-Pro revenu en Essentiel : retour à l'année en cours
   document.getElementById('compta-annee').textContent = _anneeCompta;
   try {
     _lignesCompta = await chargerLignesCA(_anneeCompta + '-01-01', (_anneeCompta + 1) + '-01-01');
@@ -4382,6 +4386,10 @@ function renderMatriceCompta() {
     return '<tr class="' + cls + '"><td>' + label + '</td>' + cells + '<td style="text-align:center;font-weight:800;' + (couleur ? 'color:' + couleur + ';' : '') + '">' + _eur0(tot) + '</td></tr>';
   }
   var html = '';
+  var verrouCompta = !estPro(); // Essentiel : le CA brut reste visible ; cotisations et net estimés = offre Pro
+  function ligneVerrou(label, cls) {
+    return '<tr class="' + cls + '" onclick="proposerPassagePro(\'compta\')" style="cursor:pointer;"><td>' + label + '</td><td colspan="' + (nbCol - 1) + '" style="text-align:center;color:var(--mu);font-weight:700;">🔒 Offre Pro</td></tr>';
+  }
   var totBrut = cols.map(function() { return 0; }), totCotis = cols.map(function() { return 0; });
   if (_erreurCompta) {
     html = '<tr><td colspan="' + nbCol + '" class="etat-vide-tbl">Le chiffre d\'affaires n\'a pas pu être chargé. Rechargez la page.</td></tr>';
@@ -4393,14 +4401,14 @@ function renderMatriceCompta() {
       brut.forEach(function(v, i) { totBrut[i] += v; totCotis[i] += cot[i]; });
       html += '<tr class="rec-fam"><td colspan="' + nbCol + '">' + _FAM_LIBELLE[f] + ' <span class="rec-taux">cotisations ' + formatPct(tauxCotisationsFamille(f)) + '</span></td></tr>';
       html += ligneTableau('CA brut', brut, 'cpv2-row-brut');
-      html += ligneTableau('Cotisations', cot, 'cpv2-row-cotis', 'var(--gold)');
-      html += ligneTableau('Net', net, 'cpv2-row-net', 'var(--ac)');
+      html += verrouCompta ? ligneVerrou('Cotisations', 'cpv2-row-cotis') : ligneTableau('Cotisations', cot, 'cpv2-row-cotis', 'var(--gold)');
+      html += verrouCompta ? ligneVerrou('Net', 'cpv2-row-net') : ligneTableau('Net', net, 'cpv2-row-net', 'var(--ac)');
     });
     var totNet = totBrut.map(function(v, i) { return v - totCotis[i]; });
     html += '<tr class="rec-fam rec-total"><td colspan="' + nbCol + '">Σ Total</td></tr>';
     html += ligneTableau('Total CA brut', totBrut, 'cpv2-row-brut');
-    html += ligneTableau('Total cotisations', totCotis, 'cpv2-row-cotis', 'var(--gold)');
-    html += ligneTableau('Total net', totNet, 'cpv2-row-net', 'var(--ac)');
+    html += verrouCompta ? ligneVerrou('Total cotisations', 'cpv2-row-cotis') : ligneTableau('Total cotisations', totCotis, 'cpv2-row-cotis', 'var(--gold)');
+    html += verrouCompta ? ligneVerrou('Total net', 'cpv2-row-net') : ligneTableau('Total net', totNet, 'cpv2-row-net', 'var(--ac)');
   }
   tbody.innerHTML = html;
 
@@ -4437,11 +4445,13 @@ function renderMatriceCompta() {
   var t = totauxFamilles(_lignesCompta, 'production', function(d) { return d.getFullYear() === annee; });
   var cotis = cotisationsTotales(t);
   document.getElementById('kpi-ca-brut').textContent = _fmtCA(t.total) + ' €';
-  document.getElementById('kpi-cotis').textContent = _fmtCA(cotis) + ' €';
-  document.getElementById('kpi-ca-net').textContent = _fmtCA(t.total - cotis) + ' €';
+  document.getElementById('kpi-cotis').textContent = verrouCompta ? '🔒 Pro' : _fmtCA(cotis) + ' €';
+  document.getElementById('kpi-ca-net').textContent = verrouCompta ? '🔒 Pro' : _fmtCA(t.total - cotis) + ' €';
+  ['kpi-cotis', 'kpi-ca-net'].forEach(function(id) { var k = document.getElementById(id); if (k && k.parentElement) { k.parentElement.style.cursor = verrouCompta ? 'pointer' : ''; k.parentElement.onclick = verrouCompta ? function() { proposerPassagePro('compta'); } : null; } });
 
   var note = document.getElementById('compta-note-cotis');
-  if (note) {
+  if (note && verrouCompta) note.innerHTML = '';
+  else if (note) {
     note.innerHTML = '💡 Cotisations estimées : ventes ' + formatPct(_artisan.cotisation_ventes_pct ?? TAUX_DEFAUT_VENTES) +
       ', interventions et livraisons ' + formatPct(_artisan.cotisation_sociale_pct ?? TAUX_DEFAUT_SERVICES) +
       ', <strong>plus ' + formatPct(_artisan.cfp_pct ?? TAUX_DEFAUT_CFP) + ' de contribution à la formation professionnelle</strong> (artisans). ' +
@@ -4623,7 +4633,9 @@ function renderComptaV2(parFam, cols, curIdx, isCurYear) {
   zone.innerHTML =
     '<div class="cx-per"><button onclick="choisirPeriodeComptaMobile(' + (idx - 1) + ')"' + (idx <= 0 ? ' disabled' : '') + ' aria-label="Avant">‹</button><span>' + lib + '</span><button onclick="choisirPeriodeComptaMobile(' + (idx + 1) + ')"' + (idx >= cols.length - 1 ? ' disabled' : '') + ' aria-label="Après">›</button></div>' +
     '<div class="cx-carte"><div class="cx-lib">💶 ' + (reel ? 'Encaissé' : 'Gagné') + '</div><div class="cx-gros">' + _eurM(totB) + '</div><div class="cx-sous">avant cotisations</div></div>' +
-    '<div class="cx-carte net"><div class="cx-lib">Il vous reste environ</div><div class="cx-gros">' + _eurM(totB - totC) + '</div><div class="cx-sous">après ' + _eurM(totC) + ' de cotisations estimées</div></div>' + lignes;
+    (estPro()
+      ? '<div class="cx-carte net"><div class="cx-lib">Il vous reste environ</div><div class="cx-gros">' + _eurM(totB - totC) + '</div><div class="cx-sous">après ' + _eurM(totC) + ' de cotisations estimées</div></div>'
+      : '<div class="cx-carte net" onclick="proposerPassagePro(\'compta\')" style="cursor:pointer;"><div class="cx-lib">Il vous reste environ</div><div class="cx-gros">🔒</div><div class="cx-sous">avec l\'offre Pro : ce qu\'il vous reste après vos cotisations</div></div>') + lignes;
   // 2) Tableau de bord : les 6 derniers mois en barres
   var zb = document.getElementById('cx-barres');
   if (zb) {
@@ -4664,13 +4676,15 @@ function renderComptaMobile(parFam, parClient, clients, cols, curIdx, isCurYear,
     totB += b; totC += c;
     h += '<div class="compta-mobile-fam">' + _FAM_LIBELLE[f] + '</div>' +
       '<div class="compta-mobile-client"><span>CA brut</span><span>' + _fmtCA(b) + ' €</span></div>' +
-      '<div class="compta-mobile-client" style="color:var(--gold);"><span>Cotisations</span><span>' + _fmtCA(c) + ' €</span></div>' +
-      '<div class="compta-mobile-client" style="color:var(--ac);"><span>Net</span><span>' + _fmtCA(b - c) + ' €</span></div>';
+      (pro ? '<div class="compta-mobile-client" style="color:var(--gold);"><span>Cotisations</span><span>' + _fmtCA(c) + ' €</span></div>' +
+      '<div class="compta-mobile-client" style="color:var(--ac);"><span>Net</span><span>' + _fmtCA(b - c) + ' €</span></div>'
+      : '<div class="compta-mobile-client" style="color:var(--mu);cursor:pointer;" onclick="proposerPassagePro(\'compta\')"><span>Cotisations et net</span><span>🔒 Pro</span></div>');
   });
   h += '<div class="compta-mobile-fam">Σ Total</div>' +
     '<div class="compta-mobile-total"><span>CA brut</span><span>' + _fmtCA(totB) + ' €</span></div>' +
-    '<div class="compta-mobile-total" style="color:var(--gold);"><span>Cotisations</span><span>' + _fmtCA(totC) + ' €</span></div>' +
-    '<div class="compta-mobile-total" style="color:var(--ac);"><span>Net</span><span>' + _fmtCA(totB - totC) + ' €</span></div>';
+    (pro ? '<div class="compta-mobile-total" style="color:var(--gold);"><span>Cotisations</span><span>' + _fmtCA(totC) + ' €</span></div>' +
+    '<div class="compta-mobile-total" style="color:var(--ac);"><span>Net</span><span>' + _fmtCA(totB - totC) + ' €</span></div>'
+    : '<div class="compta-mobile-total" style="color:var(--mu);cursor:pointer;" onclick="proposerPassagePro(\'compta\')"><span>Cotisations et net</span><span>🔒 Pro</span></div>');
   zoneListe.innerHTML = h;
 
   var zoneClients = document.getElementById('compta-client-mobile');
@@ -5494,6 +5508,12 @@ function proposerPassagePro(raison) {
     ? '👥 Vous avez atteint les ' + LIMITE_CLIENTS_ESSENTIEL + ' clients de l\'offre Essentiel. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : autant de clients que vous voulez, le catalogue illimité et Mes fournitures. Les clients qui vous contactent par CaraLink arrivent toujours dans votre fichier.' + texteEssai()
     : raison === 'devis_generaux'
     ? '📨 Vous avez utilisé votre réponse gratuite du mois aux demandes de devis. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : répondez à tous les projets qui vous correspondent, sans limite, avec le catalogue illimité et Mes fournitures.' + texteEssai()
+    : raison === 'compta'
+    ? '💶 Le calcul de vos cotisations et de ce qu\'il vous reste fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Votre chiffre d\'affaires et l\'alerte du plafond micro-entreprise restent gratuits.' + texteEssai()
+    : raison === 'impot'
+    ? '🧾 L\'estimation de votre impôt sur le revenu fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. L\'alerte du plafond micro-entreprise reste gratuite.' + texteEssai()
+    : raison === 'historique'
+    ? '📚 L\'offre Essentiel montre l\'année en cours. Retrouver vos années passées fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Vos factures et justificatifs restent toujours accessibles.' + texteEssai()
     : raison === 'fonds'
     ? '🎨 Les fonds de boutique « Nature et beauté » et « Pro et chantier » font partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Les fonds unis (clair, océan, schiste, sombre) restent gratuits.' + texteEssai()
     : raison === 'carrousel'
@@ -5939,6 +5959,7 @@ async function calculerDashboardFiscal() {
       : '<div class="ir-ligne"><span>Revenu imposable (abattement 71 % ventes, 50 % services)</span><span>' + ir.imposable.toFixed(0) + ' €</span></div>' +
         '<div class="ir-ligne"><span>Estimation impôt sur le revenu</span><span>' + ir.impot.toFixed(0) + ' €</span></div>') +
     (regimeNonPrecise ? '<div style="font-size:10.5px;color:var(--mu);margin-top:6px;">Calcul au barème classique. Vous avez le versement libératoire ? Indiquez-le dans Mon profil › Paramètres fiscaux.</div>' : '');
+  if (!estPro()) document.getElementById('dash-ir-body').innerHTML = '<div style="cursor:pointer;padding:10px 0;color:var(--mu);font-weight:700;" onclick="proposerPassagePro(\'impot\')">🔒 L\'estimation de votre impôt fait partie de l\'offre Pro</div>';
   var sousTitreIR = document.getElementById('dash-ir-sub');
   if (sousTitreIR) sousTitreIR.textContent = ir.liberatoire ? 'Versement libératoire de l\'impôt sur le revenu' : 'Abattement forfaitaire : 71 % ventes, 50 % services';
   afficherCAMois();
