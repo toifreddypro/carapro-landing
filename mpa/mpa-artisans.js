@@ -4349,6 +4349,30 @@ function choisirPeriodeComptaMobile(idx) {
   renderMatriceCompta();
 }
 
+// ── Export pour le comptable (offre Pro) : un fichier Excel (CSV) de toutes les lignes de l'année affichée, dates et montants à la française. ──
+function exporterCompta() {
+  if (!exigerPro('export_compta')) return;
+  if (_erreurCompta || !_lignesCompta || !_lignesCompta.length) { alert('Aucune donnée à exporter pour ' + _anneeCompta + '.'); return; }
+  var annee = _anneeCompta;
+  function jj(d) { return d ? ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear() : ''; }
+  function champ(v) {
+    var t = String(v == null ? '' : v).replace(/\r?\n/g, ' ');
+    if (/^[=+\-@\t]/.test(t)) t = "'" + t; // un tableur ne doit jamais prendre un texte pour une formule
+    return '"' + t.replace(/"/g, '""') + '"';
+  }
+  var noms = { interventions: 'Intervention', ventes: 'Vente boutique', livraisons: 'Livraison' };
+  var lignes = _lignesCompta.filter(function(l) {
+    return (l.dProd && l.dProd.getFullYear() === annee) || (l.dReel && l.dReel.getFullYear() === annee);
+  }).sort(function(a, b) { return ((a.dProd || a.dReel) - (b.dProd || b.dReel)); });
+  if (!lignes.length) { alert('Aucune donnée à exporter pour ' + annee + '.'); return; }
+  var csv = [['Date', 'Date d\'encaissement', 'Type', 'Libellé', 'Client', 'Montant (€)']].concat(lignes.map(function(l) {
+    return [jj(l.dProd), jj(l.dReel), noms[l.fam] || l.fam, l.libelle || '', l.client || '', (Number(l.montant) || 0).toFixed(2).replace('.', ',')];
+  })).map(function(r) { return r.map(champ).join(';'); }).join('\r\n');
+  var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'comptabilite-' + annee + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(a.href); }, 2000);
+}
 var _FAM_LIBELLE = { interventions: '🔧 Interventions', ventes: '🛍️ Ventes boutique', livraisons: '🚚 Livraisons' };
 // Montants du tableau de bord : sans décimale quand c'est un compte rond, avec centimes sinon (un 0,60 € ne doit pas disparaître).
 function _fmtCA(v) { return Math.abs(v - Math.round(v)) < 0.005 ? String(Math.round(v)) : v.toFixed(2).replace('.', ','); }
@@ -4452,6 +4476,7 @@ function renderMatriceCompta() {
   document.getElementById('kpi-ca-brut').textContent = _fmtCA(t.total) + ' €';
   document.getElementById('kpi-cotis').textContent = verrouCompta ? '🔒 Pro' : _fmtCA(cotis) + ' €';
   document.getElementById('kpi-ca-net').textContent = verrouCompta ? '🔒 Pro' : _fmtCA(t.total - cotis) + ' €';
+  var pastExp = document.getElementById('export-compta-pro'); if (pastExp) pastExp.style.display = verrouCompta ? '' : 'none';
   ['kpi-cotis', 'kpi-ca-net'].forEach(function(id) { var k = document.getElementById(id); if (k && k.parentElement) { k.parentElement.style.cursor = verrouCompta ? 'pointer' : ''; k.parentElement.onclick = verrouCompta ? function() { proposerPassagePro('compta'); } : null; } });
 
   var note = document.getElementById('compta-note-cotis');
@@ -5600,6 +5625,8 @@ function proposerPassagePro(raison) {
     ? '👥 Vous avez atteint les ' + LIMITE_CLIENTS_ESSENTIEL + ' clients de l\'offre Essentiel. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : autant de clients que vous voulez, le catalogue illimité et Mes fournitures. Les clients qui vous contactent par CaraLink arrivent toujours dans votre fichier.' + texteEssai()
     : raison === 'devis_generaux'
     ? '📨 Vous avez utilisé votre réponse gratuite du mois aux demandes de devis. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : répondez à tous les projets qui vous correspondent, sans limite, avec le catalogue illimité et Mes fournitures.' + texteEssai()
+    : raison === 'export_compta'
+    ? '📥 L\'export de votre année dans un fichier Excel, prêt à donner à votre comptable, fait partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures. Votre comptabilité reste toujours visible à l\'écran.' + texteEssai()
     : raison === 'facture_perso'
     ? '🎨 Vos factures à votre image (votre logo, la couleur de votre boutique et un petit mot en bas, sur la facture imprimée comme sur celle envoyée par email) font partie de l\'offre Pro (' + PRIX_PRO_AFFICHE + '), avec le catalogue illimité et Mes fournitures.' + texteEssai()
     : raison === 'compta'
