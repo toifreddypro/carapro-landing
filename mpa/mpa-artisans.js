@@ -2019,6 +2019,12 @@ async function envoyerReponseProjet(id) {
     var data = await res.json().catch(function() { return {}; });
     if (!res.ok || !data.success) {
       if (data && (data.code === 'complet' || data.code === 'deja' || data.code === 'ferme')) await chargerProjetsRecus();
+      if (data && data.code === 'limite_essentiel') {
+        if (btn) { btn.disabled = false; btn.textContent = 'Envoyer ma réponse'; }
+        if (err) { err.textContent = data.error; err.style.display = ''; }
+        proposerPassagePro('devis_generaux');
+        return;
+      }
       throw new Error((data && data.error) || ('Erreur serveur (' + res.status + ')'));
     }
     await chargerProjetsRecus();
@@ -5486,6 +5492,8 @@ function proposerPassagePro(raison) {
     ? '📅 Vous avez atteint les ' + LIMITE_INTERVENTIONS_ESSENTIEL + ' interventions du mois de l\'offre Essentiel. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : autant d\'interventions que vous voulez, le catalogue illimité et Mes fournitures. Les demandes de vos clients venus de CaraLink restent toujours acceptées.' + texteEssai()
     : raison === 'clients'
     ? '👥 Vous avez atteint les ' + LIMITE_CLIENTS_ESSENTIEL + ' clients de l\'offre Essentiel. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : autant de clients que vous voulez, le catalogue illimité et Mes fournitures. Les clients qui vous contactent par CaraLink arrivent toujours dans votre fichier.' + texteEssai()
+    : raison === 'devis_generaux'
+    ? '📨 Vous avez utilisé votre réponse gratuite du mois aux demandes de devis. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : répondez à tous les projets qui vous correspondent, sans limite, avec le catalogue illimité et Mes fournitures.' + texteEssai()
     : raison === 'services'
     ? '🛠️ L\'offre Essentiel permet ' + LIMITE_SERVICES_ESSENTIEL + ' services sur votre fiche. Avec l\'offre Pro (' + PRIX_PRO_AFFICHE + ') : autant de services que vous voulez, le catalogue illimité et Mes fournitures.' + texteEssai()
     : raison === 'phares'

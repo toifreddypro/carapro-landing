@@ -83,7 +83,7 @@ Deno.serve(async (req: Request) => {
     if (errAuth || !user) return json({ error: "Connectez-vous à votre espace artisan.", code: "connexion_requise" }, 401);
     if (!user.email_confirmed_at) return json({ error: "Confirmez d'abord votre adresse email : le lien vous a été envoyé à l'inscription.", code: "email_non_confirme" }, 403);
 
-    const { data: artisan, error: errArt } = await sb.from("artisans").select("id, nom_entreprise, actif").eq("user_id", user.id).maybeSingle();
+    const { data: artisan, error: errArt } = await sb.from("artisans").select("id, nom_entreprise, actif, plan").eq("user_id", user.id).maybeSingle();
     if (errArt) throw errArt;
     if (!artisan) return json({ error: "Seuls les artisans peuvent répondre à un projet.", code: "pas_artisan" }, 403);
     if (artisan.actif === false) return json({ error: "Votre profil n'est pas actif.", code: "inactif" }, 403);
@@ -117,6 +117,24 @@ Deno.serve(async (req: Request) => {
       const { data: autorise } = await sb.rpc("limiter_appel", { p_cle: `repondre-projet:${artisan.id}`, p_max: 30, p_fenetre_s: 3600 });
       if (autorise === false) return json({ error: "Trop de réponses envoyées. Réessayez dans un moment." }, 429);
     } catch (e) { console.error("[repondre-projet] limiter_appel :", e); }
+
+    // ── Offre Essentiel : 1 réponse gratuite par mois (mois calendaire, heure de la Guadeloupe, UTC-4) ──
+    // Seules les réponses réellement enregistrées comptent ; les Pro et Pro offert n'ont aucune limite.
+    const estPro = artisan.plan === "pro" || artisan.plan === "pro_offert";
+    if (!estPro) {
+      try {
+        const g = new Date(Date.now() - 4 * 3600 * 1000);
+        const debutMois = new Date(Date.UTC(g.getUTCFullYear(), g.getUTCMonth(), 1, 4, 0, 0)).toISOString();
+        const { data: dejaCePro } = await sb.from("projets_reponses").select("id").eq("artisan_id", artisan.id).eq("projet_id", projet_id).limit(1);
+        if (!dejaCePro || dejaCePro.length === 0) {
+          const { count, error: errCompte } = await sb.from("projets_reponses").select("id", { count: "exact", head: true }).eq("artisan_id", artisan.id).gte("created_at", debutMois);
+          if (errCompte) throw errCompte;
+          if ((count ?? 0) >= 1) {
+            return json({ error: "Vous avez utilisé votre réponse gratuite du mois. Avec l'offre Pro (24,99 €/mois) : répondez à tous les projets que vous voulez.", code: "limite_essentiel" }, 403);
+          }
+        }
+      } catch (e) { console.error("[repondre-projet] comptage Essentiel :", e); }
+    }
 
     // ── Enregistrement : droits, plafond de 6 et verrou dans la base ──
     const { data: r, error: errRep } = await sb.rpc("inserer_reponse_projet", { p_projet: projet_id, p_artisan: artisan.id, p_message: texte, p_prix: prix });
