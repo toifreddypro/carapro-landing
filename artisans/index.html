@@ -1136,6 +1136,10 @@ body.theme-light footer { background:#fbfcfe; }
   /* "Nouveau" : petit, bleu, italique ; les autres pastilles dorment jusqu'à l'ouverture de la fiche */
   body .card-tags .badge-trust{background:transparent !important;padding:0 !important;font-size:13px !important;font-style:italic !important;font-weight:600 !important;color:#1266e3 !important;}
   body .card-tags .badge-trust.bt-purple,body .card-tags .badge-trust.bt-accent,body .card-tags .badge-trust.bt-more{display:none !important;}
+  /* « Vérifié » : pastille verte, avant « Nouveau » ; RGE dort jusqu'à l'ouverture de la fiche */
+  body .card-tags .badge-trust.bt-verifie{background:rgba(16,185,129,.12) !important;color:#059669 !important;font-style:normal !important;font-weight:700 !important;font-size:14px !important;padding:5px 12px !important;border-radius:30px !important;}
+  body .card-tags .badge-trust.bt-green:not(.bt-verifie){display:none !important;}
+  body .card-tags{display:flex !important;flex-direction:column !important;align-items:flex-start !important;gap:6px !important;}
   body .card-bio,body .formateur-card .dispo-grid,body [id^="avantages-carte-"],body [id^="phares-carte-"],body .formateur-card > div[style*="margin:2px 0 6px"]{display:none !important;}
   body .card-meta{display:flex !important;flex-direction:column !important;align-items:flex-start !important;gap:8px !important;}
   body .card-meta .card-badges{order:-1 !important;}
@@ -1185,6 +1189,9 @@ body.theme-light footer { background:#fbfcfe; }
   .card-title{font-size:15px !important;font-weight:600 !important;margin-bottom:6px !important;color:var(--mu) !important;}
   .card-tags .badge-trust{background:transparent !important;padding:0 !important;font-size:13.5px !important;font-style:italic !important;font-weight:600 !important;color:#1266e3 !important;}
   .card-tags .badge-trust.bt-purple,.card-tags .badge-trust.bt-accent,.card-tags .badge-trust.bt-more{display:none !important;}
+  .card-tags .badge-trust.bt-verifie{background:rgba(16,185,129,.12) !important;color:#059669 !important;font-style:normal !important;font-weight:700 !important;font-size:14px !important;padding:4px 12px !important;border-radius:30px !important;}
+  .card-tags .badge-trust.bt-green:not(.bt-verifie){display:none !important;}
+  .card-tags{align-items:center !important;}
   .card-bio,.formateur-card .dispo-grid,[id^="avantages-carte-"],[id^="phares-carte-"],.formateur-card > div[style*="margin:2px 0 6px"]{display:none !important;}
   .card-meta{display:flex !important;flex-direction:column !important;align-items:flex-start !important;gap:10px !important;}
   .card-meta .card-badges{order:-1 !important;}
