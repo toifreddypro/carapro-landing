@@ -161,7 +161,7 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
 
     <label id="label-cgu" style="display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:var(--mu,#666);margin-bottom:16px;cursor:pointer;">
       <input type="checkbox" id="f-cgu" style="margin-top:3px;flex-shrink:0;width:auto;">
-      <span>J'ai lu et j'accepte les <a href="https://caralink.app/artisans/?legal=cgu" target="_blank" rel="noopener">conditions d'utilisation</a>, dont les conditions applicables aux artisans (commission, frais de paiement, règle des clients venus de l'annuaire), et la <a href="https://caralink.app/artisans/?legal=privacy" target="_blank" rel="noopener">politique de confidentialité</a>.</span>
+      <span>J'ai lu et j'accepte les <a href="https://caralink.app/artisans/?legal=cgu" target="_blank" rel="noopener">conditions d'utilisation</a>, dont les conditions applicables aux artisans (commission, frais de paiement, règle des clients venus de l'annuaire), et la <a href="https://caralink.app/artisans/?legal=privacy" target="_blank" rel="noopener">politique de confidentialité</a>. Je m'engage à jouer le jeu du partenariat avec CaraLink.</span>
     </label>
 
     <div id="turnstile-form" style="margin-bottom:16px;"></div>
@@ -314,7 +314,7 @@ async function creerCompte() {
       options: {
         emailRedirectTo: 'https://caralink.app/artisans/inscription.html',
         // Preuve de l'acceptation des conditions : date et version, conservées dans le compte.
-        data: { cgu_acceptees_le: new Date().toISOString(), cgu_version: '2026-10-14' },
+        data: { cgu_acceptees_le: new Date().toISOString(), cgu_version: '2026-11-12' },
       },
     });
     if (r.error) throw new Error(r.error.message === 'User already registered' ? 'Un compte existe déjà avec cet email.' : r.error.message);
