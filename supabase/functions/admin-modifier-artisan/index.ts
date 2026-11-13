@@ -4,7 +4,7 @@
 //
 // Permet à l'admin (toifreddypro@gmail.com uniquement, vérifié côté
 // serveur) de modifier le statut d'abonnement, le plan ou le badge vérifié
-// d'un artisan — jamais d'écriture directe depuis le client, même
+// d'un artisan, ou son MÉTIER (donc son grand secteur) — jamais d'écriture directe depuis le client, même
 // pour l'admin, comme pour la suppression de compte.
 //
 // PLAN : seuls "gratuit" et "pro_offert" se choisissent à la main. "pro" correspond
@@ -12,7 +12,7 @@
 // ne touche pas au plan d'un artisan qui a un abonnement Pro actif : on l'annule
 // d'abord dans Stripe, sinon il continuerait de payer pour rien.
 //
-// POST { artisan_id, abonnement_statut? , verifie? , plan? }
+// POST { artisan_id, abonnement_statut? , verifie? , plan? , secteur? }  (secteur = code d'un métier de la table « secteurs »)
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -64,9 +64,21 @@ Deno.serve(async (req: Request) => {
       }
       maj.plan = body.plan;
     }
+    if (body?.secteur !== undefined) {
+      const code = String(body.secteur).trim();
+      if (!code || code.length > 80) return json({ error: "Métier invalide." }, 400);
+      maj.secteur = code;
+    }
     if (Object.keys(maj).length === 0) return json({ error: "Rien à modifier." }, 400);
 
     const sbAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // Le métier doit exister dans la table « secteurs » (sinon l'artisan disparaîtrait des recherches).
+    if (maj.secteur !== undefined) {
+      const { data: metier, error: errMetier } = await sbAdmin.from("secteurs").select("code").eq("code", maj.secteur as string).maybeSingle();
+      if (errMetier) throw errMetier;
+      if (!metier) return json({ error: "Ce métier n'existe pas dans la liste des secteurs." }, 400);
+    }
 
     if (maj.plan !== undefined) {
       const { data: actuel, error: errLecture } = await sbAdmin.from("artisans").select("plan").eq("id", artisanId).maybeSingle();

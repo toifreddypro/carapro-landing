@@ -731,12 +731,13 @@ async function chargerArtisans() {
   document.getElementById('zone-artisans').innerHTML =
     '<div class="dcard">' +
       '<div class="dchdr"><span>Tous les artisans (' + artisans.length + ')</span>' +
+        '<input id="filtre-artisans" type="search" value="' + escHtml(_filtreArtisans) + '" placeholder="🔍 Chercher un artisan, un métier, une commune…" oninput="filtrerArtisans()" style="' + STYLE_CHAMP_SECT + 'width:290px;font-weight:400;">' +
         '<span style="font-size:12px;font-weight:600;color:var(--mu2);">' + nbEssentiel + ' Essentiel · ' + nbOffert + ' Pro offert · ' + nbPro + ' Pro abonné' + (nbPro > 1 ? 's' : '') + '</span></div>' +
       '<div class="dcbdy"><table class="dtbl">' +
         '<thead><tr><th>Entreprise</th><th>Secteur</th><th>Commune</th><th>Vérifié</th><th>Offre</th><th>Inscrit le</th><th></th></tr></thead>' +
         '<tbody>' + artisans.map(renderLigneArtisan).join('') + '</tbody>' +
-      '</table></div>' +
-      '<div class="note">💡 Cliquez sur le badge "Vérifié" pour le modifier, ou choisissez l\'offre d\'un artisan (Essentiel / Pro offert). Un Pro abonné vient de Stripe : il se change dans Stripe, pas ici. Chaque modification passe par une fonction serveur sécurisée, jamais par une écriture directe.</div>' +
+      '</table><datalist id="dl-metiers">' + _secteursListe.map(function(s) { return '<option value="' + escHtml(etiquetteMetierAdmin(s)) + '"></option>'; }).join('') + '</datalist></div>' +
+      '<div class="note">💡 Pour changer le métier (et donc le grand secteur) d\'un artisan, cliquez « ✏️ Changer » dans sa ligne puis tapez le métier. Cliquez sur le badge "Vérifié" pour le modifier, ou choisissez l\'offre d\'un artisan (Essentiel / Pro offert). Un Pro abonné vient de Stripe : il se change dans Stripe, pas ici. Chaque modification passe par une fonction serveur sécurisée, jamais par une écriture directe.</div>' +
     '</div>';
 }
 
@@ -765,9 +766,9 @@ function renderLigneArtisan(a) {
     ? '<span class="badge-ok" style="cursor:pointer;" title="Cliquer pour retirer la vérification" onclick="toggleVerifie(' + attrJs(a.id) + ', false)">Vérifié</span>'
     : '<span class="badge-attente" style="cursor:pointer;" title="Cliquer pour marquer comme vérifié" onclick="toggleVerifie(' + attrJs(a.id) + ', true)">' + (a.verification_statut === 'en_attente' ? 'En attente' : 'Non vérifié') + '</span>';
 
-  return '<tr>' +
+  return '<tr data-nom="' + escHtml([a.nom_entreprise, a.commune, nomSecteur(a.secteur), nomGrandSecteur(a.secteur), a.email].join(' ')) + '"' + (ligneMasquee(a) ? ' style="display:none;"' : '') + '>' +
     '<td><strong>' + escHtml(a.nom_entreprise) + '</strong></td>' +
-    '<td>' + escHtml(nomSecteur(a.secteur)) + '</td>' +
+    '<td id="cell-sect-' + escHtml(a.id) + '">' + celluleSecteurArtisan(a) + '</td>' +
     '<td>' + escHtml(a.commune) + '</td>' +
     '<td>' + badgeVerifie + '</td>' +
     '<td>' + renderCelluleOffre(a) + '</td>' +
@@ -775,6 +776,67 @@ function renderLigneArtisan(a) {
     // Seul l'identifiant (généré par la base) passe dans l'attribut : le nom est relu dans _artisansCache.
     '<td><button class="btn-del" onclick="supprimerCompte(' + attrJs(a.id) + ')">Supprimer</button></td>' +
   '</tr>';
+}
+
+// ── Recherche dans la liste des artisans + changement de métier (donc de grand secteur) ──
+var _filtreArtisans = '';
+function nomGrandSecteur(code) {
+  var s = _secteursListe.find(function(x) { return x.code === code; });
+  var g = s && _groupesListe.find(function(x) { return x.code === s.groupe; });
+  return g ? g.label_fr : '';
+}
+function etiquetteMetierAdmin(s) {
+  var g = _groupesListe.find(function(x) { return x.code === s.groupe; });
+  return (g ? (g.icon || '') + ' ' + g.label_fr + ' › ' : '') + s.label_fr;
+}
+function ligneMasquee(a) {
+  var q = slugify(_filtreArtisans);
+  if (!q) return false;
+  return slugify([a.nom_entreprise, a.commune, nomSecteur(a.secteur), nomGrandSecteur(a.secteur), a.email].join(' ')).indexOf(q) === -1;
+}
+function filtrerArtisans() {
+  _filtreArtisans = document.getElementById('filtre-artisans').value;
+  var q = slugify(_filtreArtisans);
+  document.querySelectorAll('#zone-artisans .dtbl tbody tr').forEach(function(tr) {
+    tr.style.display = !q || slugify(tr.getAttribute('data-nom')).indexOf(q) !== -1 ? '' : 'none';
+  });
+}
+function celluleSecteurArtisan(a) {
+  var g = nomGrandSecteur(a.secteur);
+  return '<div>' + escHtml(nomSecteur(a.secteur)) + '</div>' +
+    (g ? '<div style="font-size:10.5px;color:var(--mu);">' + escHtml(g) + '</div>' : '') +
+    '<button onclick="ouvrirChangerSecteur(' + attrJs(a.id) + ')" style="margin-top:3px;padding:2px 8px;border-radius:6px;border:1px solid var(--brd);background:transparent;color:var(--mu2);font-size:11px;cursor:pointer;">✏️ Changer</button>';
+}
+function ouvrirChangerSecteur(id) {
+  var cell = document.getElementById('cell-sect-' + id);
+  if (!cell) return;
+  cell.innerHTML = '<input id="inp-sect-' + escHtml(id) + '" list="dl-metiers" placeholder="Tapez un métier…" autocomplete="off" style="' + STYLE_CHAMP_SECT + 'width:210px;">' +
+    '<div style="margin-top:4px;"><button onclick="validerChangerSecteur(' + attrJs(id) + ')" style="padding:3px 9px;border-radius:6px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:11px;font-weight:700;cursor:pointer;margin-right:5px;">Enregistrer</button>' +
+    '<button onclick="annulerChangerSecteur(' + attrJs(id) + ')" style="padding:3px 9px;border-radius:6px;border:1px solid var(--brd);background:transparent;color:var(--mu2);font-size:11px;cursor:pointer;">Annuler</button></div>';
+  var inp = document.getElementById('inp-sect-' + id);
+  if (inp) inp.focus();
+}
+function annulerChangerSecteur(id) {
+  var a = _artisansCache.find(function(x) { return x.id === id; });
+  var cell = document.getElementById('cell-sect-' + id);
+  if (a && cell) cell.innerHTML = celluleSecteurArtisan(a);
+}
+async function validerChangerSecteur(id) {
+  var a = _artisansCache.find(function(x) { return x.id === id; });
+  var inp = document.getElementById('inp-sect-' + id);
+  if (!a || !inp) return;
+  var saisi = slugify(inp.value);
+  if (!saisi) { alert('Tapez un métier, puis choisissez-le dans la liste.'); return; }
+  var exact = _secteursListe.filter(function(s) { return slugify(etiquetteMetierAdmin(s)) === saisi || slugify(s.label_fr) === saisi; });
+  var partiel = _secteursListe.filter(function(s) { return slugify(etiquetteMetierAdmin(s)).indexOf(saisi) !== -1; });
+  var choix = exact.length === 1 ? exact[0] : (partiel.length === 1 ? partiel[0] : null);
+  if (!choix) { alert(partiel.length > 1 ? 'Plusieurs métiers correspondent : choisissez-en un dans la liste qui s\'affiche quand vous tapez.' : 'Ce métier n\'existe pas encore. Ajoutez-le d\'abord dans l\'onglet « Secteurs et métiers ».'); return; }
+  if (choix.code === a.secteur) { annulerChangerSecteur(id); return; }
+  if (!confirm('Mettre « ' + a.nom_entreprise + ' » dans « ' + etiquetteMetierAdmin(choix) + ' » ?')) return;
+  try {
+    await appelerActionAdmin(id, { secteur: choix.code });
+    await chargerArtisans();
+  } catch (e) { alert('Erreur : ' + e.message); }
 }
 
 async function appelerActionAdmin(artisanId, champs) {
