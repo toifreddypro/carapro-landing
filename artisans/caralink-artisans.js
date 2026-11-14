@@ -2010,7 +2010,8 @@ async function verifierDispoReelle(artisanId, dateDebut) {
       '<div style="font-size:10.5px;color:var(--mu,#999);text-align:center;margin-top:10px;">' + T('dispo_disclaimer') + '</div>' +
       (auMoinsUnCreneau ? '' : '<div style="font-size:11.5px;color:var(--mu,#999);text-align:center;margin-top:8px;">' + T('dispo_rien_periode') + '</div>') +
       '<div style="text-align:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--line,#eee);">' +
-        '<a href="#" onclick="ouvrirModalSurMesure();return false;" style="font-size:12px;color:var(--mu2,#777);">' + T('dispo_sur_mesure_q') + ' <strong style="color:var(--ac,#B5502F);">' + T('dispo_sur_mesure_lien') + '</strong></a>' +
+        '<style>@keyframes sm-pulse{0%,100%{opacity:1;background:rgba(181,80,47,.14);}50%{opacity:.45;background:rgba(181,80,47,0);}}.sm-clignote{display:inline-block;padding:2px 8px;border-radius:6px;animation:sm-pulse 1.4s ease-in-out infinite;}@media (prefers-reduced-motion:reduce){.sm-clignote{animation:none;background:rgba(181,80,47,.14);}}</style>' +
+        '<a href="#" onclick="ouvrirModalSurMesure();return false;" style="font-size:12px;color:var(--mu2,#777);">' + T('dispo_sur_mesure_q') + ' <strong class="sm-clignote" style="color:var(--ac,#B5502F);">' + T('dispo_sur_mesure_lien') + '</strong></a>' +
       '</div>';
   } catch (e) {
     resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">Erreur de connexion, réessayez.</div>';
