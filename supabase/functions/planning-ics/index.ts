@@ -113,6 +113,15 @@ Deno.serve(async (req: Request) => {
       .gte("date_intervention", bornes(-JOURS_AVANT)).lte("date_intervention", bornes(JOURS_APRES))
       .order("date_intervention", { ascending: true });
     if (error) { console.error("[planning-ics] lecture interventions", error.message); return refus(500); }
+    // Interventions à plusieurs prestations (table facultative) : « Pose gel + Nail art » dans le calendrier. Jamais bloquant.
+    const nomsPrestations: Record<string, string[]> = {};
+    try {
+      const ids = (interventions || []).map((x: any) => x.id);
+      if (ids.length) {
+        const { data: dl, error: errDl } = await sb.from("mpa_artisans_interventions_lignes").select("intervention_id, libelle, ordre").in("intervention_id", ids).order("ordre", { ascending: true });
+        if (!errDl) for (const x of (dl || []) as any[]) (nomsPrestations[x.intervention_id] = nomsPrestations[x.intervention_id] || []).push(String(x.libelle));
+      }
+    } catch (_) { /* on garde le service de l'intervention */ }
 
     const maintenant = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
     const lignes: string[] = [
@@ -122,7 +131,7 @@ Deno.serve(async (req: Request) => {
     ];
     for (const i of (interventions || []) as any[]) {
       const h = horaires(i);
-      const service = i.artisans_services?.nom_service || "Intervention";
+      const service = (nomsPrestations[i.id]?.length > 1 ? nomsPrestations[i.id].join(" + ") : null) || i.artisans_services?.nom_service || "Intervention";
       const client = i.mpa_artisans_clients?.nom || "";
       const lieu = [i.adresse, [i.code_postal, i.commune].filter(Boolean).join(" ")].filter(Boolean).join(", ");
       const description = [LIBELLE_STATUT[i.statut] ? "Statut : " + LIBELLE_STATUT[i.statut] : "", i.notes || ""].filter(Boolean).join("\n");

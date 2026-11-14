@@ -128,7 +128,12 @@ Deno.serve(async (req: Request) => {
     const aRembourse = montantRembourse > 0 || remboursementEchoue;
 
     const client = (inter as any).mpa_artisans_clients;
-    const service = (inter as any).artisans_services;
+    let service = (inter as any).artisans_services;
+    // Plusieurs prestations (table facultative) : toutes sont citées dans l'e-mail d'annulation. Jamais bloquant.
+    try {
+      const { data: dl, error: errDl } = await sb.from("mpa_artisans_interventions_lignes").select("libelle, ordre").eq("intervention_id", inter.id).order("ordre", { ascending: true });
+      if (!errDl && dl && dl.length > 1) service = { nom_service: dl.map((x: any) => String(x.libelle)).join(" + ") };
+    } catch (_) { /* on garde le service de l'intervention */ }
     let clientPrevenu = false;
     if (client?.email) {
       const heure = inter.heure_debut ? String(inter.heure_debut).slice(0, 5) : (inter.creneau === "matin" ? "le matin" : (inter.creneau === "apres_midi" || inter.creneau === "apres-midi") ? "l'après-midi" : "");

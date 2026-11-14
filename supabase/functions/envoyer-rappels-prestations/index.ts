@@ -173,11 +173,21 @@ Deno.serve(async (req: Request) => {
       .eq("rappel_envoye", false);
     if (error) throw error;
 
+    // Interventions à plusieurs prestations (table facultative) : toutes sont citées dans le rappel. Jamais bloquant.
+    const nomsPrestations: Record<string, string[]> = {};
+    try {
+      const ids = (interventions || []).map((x: any) => x.id);
+      if (ids.length) {
+        const { data: dl, error: errDl } = await sb.from("mpa_artisans_interventions_lignes").select("intervention_id, libelle, ordre").in("intervention_id", ids).order("ordre", { ascending: true });
+        if (!errDl) for (const x of (dl || []) as any[]) (nomsPrestations[x.intervention_id] = nomsPrestations[x.intervention_id] || []).push(String(x.libelle));
+      }
+    } catch (_) { /* on garde le service de l'intervention */ }
+
     const resultats = [];
     for (const inter of interventions || []) {
       const client = (inter as any).mpa_artisans_clients;
       const artisan = (inter as any).artisans;
-      const service = (inter as any).artisans_services;
+      const service = nomsPrestations[inter.id]?.length > 1 ? { nom_service: nomsPrestations[inter.id].join(" + ") } : (inter as any).artisans_services;
 
       if (!client?.email) {
         resultats.push({ intervention_id: inter.id, statut: "sans_email" });
