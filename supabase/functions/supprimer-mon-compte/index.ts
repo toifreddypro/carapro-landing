@@ -12,8 +12,11 @@
 //     laisse jamais quelqu'un facturé sans compte) ;
 //  3. la base supprime TOUT en une seule transaction (fonction SQL, voir securite-suppression-compte.sql) : tout ou
 //     rien, avec une archive comptable ;
-//  4. SEULEMENT ensuite : suppression du client Stripe, du compte de paiement et des fichiers (photos, pièces
-//     justificatives). Un échec de ce ménage est journalisé, il n'annule jamais la suppression.
+//  4. SEULEMENT ensuite : suppression du client Stripe, du compte de paiement, des fichiers (photos, pièces
+//     justificatives) et de l'IDENTIFIANT DE CONNEXION (l'adresse e-mail), pour que la personne puisse se réinscrire
+//     et que son e-mail disparaisse vraiment (RGPD). Exception : si elle a aussi un compte client (table
+//     comptes_clients), sa connexion est conservée, sinon on lui retirerait son compte de client.
+//     Un échec de ce ménage est journalisé, il n'annule jamais la suppression.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -98,6 +101,24 @@ async function supprimerFichiers(sbAdmin: any, userId: string): Promise<string[]
   return avertissements;
 }
 
+// Supprime l'identifiant de connexion (Supabase Authentication) : sans cela, l'adresse e-mail reste enregistrée et la personne ne peut
+// plus se réinscrire (« Un compte existe déjà avec cet email »). Gardé si la personne est AUSSI cliente de CaraLink (comptes_clients).
+// Jamais bloquant : la base est déjà nettoyée à ce stade, un échec est seulement signalé dans les journaux.
+async function supprimerConnexion(sbAdmin: any, userId: string, email?: string | null): Promise<string[]> {
+  if ((email ?? "").toLowerCase() === "toifreddypro@gmail.com") { console.log("[supprimer-mon-compte] Connexion de l'administrateur conservée."); return []; } // jamais enfermé dehors
+  try {
+    const { data: compteClient, error: errC } = await sbAdmin.from("comptes_clients").select("user_id").eq("user_id", userId).maybeSingle();
+    if (errC) throw errC;
+    if (compteClient) { console.log("[supprimer-mon-compte] Connexion conservée : la personne a aussi un compte client."); return []; }
+    const { error: errU } = await sbAdmin.auth.admin.deleteUser(userId);
+    if (errU) throw errU;
+    return [];
+  } catch (e) {
+    console.error("[supprimer-mon-compte] Identifiant de connexion non supprimé :", e);
+    return [`Identifiant de connexion ${userId} non supprimé : à supprimer à la main dans Supabase, Authentication.`];
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
@@ -140,6 +161,7 @@ Deno.serve(async (req: Request) => {
     const avertissements = [
       ...(await nettoyerStripe(artisan.stripe_customer_id ?? null, artisan.stripe_connect_account_id ?? null)),
       ...(await supprimerFichiers(sbAdmin, user.id)),
+      ...(await supprimerConnexion(sbAdmin, user.id, user.email)), // en dernier : les fichiers sont rangés sous l'identifiant de la personne
     ];
     if (avertissements.length) console.error("[supprimer-mon-compte] Ménage incomplet (à traiter à la main) :", avertissements.join(" | "));
 

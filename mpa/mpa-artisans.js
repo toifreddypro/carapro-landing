@@ -3938,7 +3938,7 @@ async function confirmerSuppressionCompte() {
     var data = await res.json();
     if (data.error) throw new Error(data.error);
     alert('Votre compte a bien été supprimé. Merci d\'avoir utilisé MPA Artisans.');
-    await sb.auth.signOut();
+    try { await sb.auth.signOut(); } catch (e2) { /* l'identifiant de connexion est maintenant supprimé : la déconnexion peut échouer sans gravité */ }
     window.location.href = 'https://caralink.app/artisans/';
   } catch (e) {
     err.textContent = 'Erreur : ' + e.message;
@@ -5801,6 +5801,19 @@ function majOffreBandeau() {
   else if (plan === 'pro') { texte = _artisan.abonnement_statut === 'essai' ? 'Pro (essai)' : 'Pro'; couleur = '#0f9d78'; }
   else { texte = 'Essentiel'; couleur = 'var(--mu2)'; }
   z.innerHTML = ' - <strong style="color:' + couleur + ';">' + texte + '</strong>';
+  // Petit bouton « Passer en Pro » dans le haut de l'écran (ordinateur et téléphone) : seulement pour l'offre Essentiel.
+  var bp = document.getElementById('btn-topbar-pro');
+  if (bp) bp.style.display = (plan === 'gratuit') ? '' : 'none';
+}
+
+// Bouton du haut « Passer en Pro » : ouvre Ma fiche, tout en haut sur la carte « Mon offre » (où se trouvent les boutons de paiement).
+function allerAMonOffre() {
+  switchTab(1); // Ma fiche
+  if (typeof switchSousOnglet === 'function') switchSousOnglet('nav-profil', 'conteneur-profil', 0);
+  setTimeout(function() { // après l'effet d'ouverture de la page
+    var z = document.getElementById('zone-mon-offre');
+    if (z && z.scrollIntoView) z.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 350);
 }
 
 // ── Badge RGE : l'artisan déclare (attestation + date de fin de validité), l'administrateur valide à la main ──

@@ -7,8 +7,10 @@
 //
 // Déroulement : session admin vérifiée côté serveur → abonnement Stripe résilié (si la résiliation échoue, on
 // s'arrête, rien n'est supprimé) → suppression de TOUT en une seule transaction (fonction SQL, droits réservés au
-// serveur) → ensuite seulement, ménage chez Stripe et dans le stockage. Les éventuels restes sont renvoyés dans
-// « avertissements », à traiter à la main.
+// serveur) → ensuite seulement, ménage chez Stripe et dans le stockage, puis suppression de l'IDENTIFIANT DE CONNEXION
+// (l'adresse e-mail) pour que la personne puisse se réinscrire. La connexion est conservée si la personne a aussi un
+// compte client (comptes_clients), et c'est TOUJOURS le cas de celle de l'administrateur (jamais de verrouillage).
+// Les éventuels restes sont renvoyés dans « avertissements », à traiter à la main.
 // ════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -81,6 +83,25 @@ async function supprimerFichiers(sbAdmin: any, userId: string): Promise<string[]
   return avertissements;
 }
 
+// Supprime l'identifiant de connexion (Supabase Authentication) : sans cela, l'adresse e-mail reste enregistrée et la personne ne peut
+// plus se réinscrire (« Un compte existe déjà avec cet email »). Gardé si la personne est AUSSI cliente de CaraLink (comptes_clients),
+// et toujours gardé s'il s'agit de la connexion de l'administrateur qui supprime (il ne doit jamais se retrouver enfermé dehors).
+// Jamais bloquant : la base est déjà nettoyée à ce stade, un échec est seulement signalé dans « avertissements ».
+async function supprimerConnexion(sbAdmin: any, userId: string, adminUserId: string): Promise<string[]> {
+  if (userId === adminUserId) { console.log("[admin-supprimer-artisan] Connexion de l'administrateur conservée."); return []; }
+  try {
+    const { data: compteClient, error: errC } = await sbAdmin.from("comptes_clients").select("user_id").eq("user_id", userId).maybeSingle();
+    if (errC) throw errC;
+    if (compteClient) { console.log("[admin-supprimer-artisan] Connexion conservée : la personne a aussi un compte client."); return []; }
+    const { error: errU } = await sbAdmin.auth.admin.deleteUser(userId);
+    if (errU) throw errU;
+    return [];
+  } catch (e) {
+    console.error("[admin-supprimer-artisan] Identifiant de connexion non supprimé :", e);
+    return [`Identifiant de connexion ${userId} non supprimé : à supprimer à la main dans Supabase, Authentication.`];
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
@@ -117,9 +138,11 @@ Deno.serve(async (req: Request) => {
     const { data, error } = await sbAdmin.rpc("supprimer_compte_artisan", { p_user_id: userId, p_admin_user_id: userData.user.id });
     if (error) throw error;
 
-    const avertissements = artisan
-      ? [...(await nettoyerStripe(artisan.stripe_customer_id ?? null, artisan.stripe_connect_account_id ?? null)), ...(await supprimerFichiers(sbAdmin, userId))]
-      : await supprimerFichiers(sbAdmin, userId);
+    const avertissements = [
+      ...(artisan ? await nettoyerStripe(artisan.stripe_customer_id ?? null, artisan.stripe_connect_account_id ?? null) : []),
+      ...(await supprimerFichiers(sbAdmin, userId)),
+      ...(await supprimerConnexion(sbAdmin, userId, userData.user.id)), // en dernier : les fichiers sont rangés sous l'identifiant de la personne
+    ];
     if (avertissements.length) console.error("[admin-supprimer-artisan] Ménage incomplet (à traiter à la main) :", avertissements.join(" | "));
 
     return json({ ...(data ?? {}), avertissements });
