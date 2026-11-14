@@ -282,7 +282,7 @@ Deno.serve(async (req: Request) => {
     if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Requête invalide." }, 400);
 
     const { client_nom, client_telephone, client_email, contact_prefere, secteur, description_besoin, commune, artisan_id, photos,
-            date_intervention, heure_debut, heure_fin, adresse, code_postal, latitude, longitude, service_id, hors_horaires, type_intervention } = body;
+            date_intervention, heure_debut, heure_fin, adresse, code_postal, latitude, longitude, service_id, service_ids, hors_horaires, type_intervention } = body;
 
     // ── Types : un champ texte doit être du texte (sinon : 400 propre, jamais une panne 500) ──
     for (const v of [client_nom, client_telephone, client_email, contact_prefere, secteur, description_besoin, commune, adresse, type_intervention, date_intervention, heure_debut, heure_fin, artisan_id, service_id]) {
@@ -323,8 +323,18 @@ Deno.serve(async (req: Request) => {
     // désormais comme « projet » depuis un compte client (fonction publier-projet). Sans cette ligne, quelqu'un pourrait contourner la
     // page et envoyer l'ancienne demande ouverte, avec son téléphone visible des artisans.
     if (!artisanId) return json({ error: "Pour publier un projet à plusieurs artisans, connectez-vous à votre compte client.", code: "connexion_requise" }, 403);
-    const serviceId = (service_id ?? "").trim() || null;
-    if (serviceId && !REGEX_UUID.test(serviceId)) return json({ error: "Service invalide." }, 400);
+    // Plusieurs prestations sur une même réservation (14/11/2026) : « service_ids » (4 au maximum, sans doublon). L'ancien champ « service_id »
+    // reste accepté tel quel : il devient la liste d'un seul service. La 1re prestation reste le « service_id » de la demande.
+    if (service_ids != null && !Array.isArray(service_ids)) return json({ error: "Requête invalide." }, 400);
+    const listeBrute: unknown[] = Array.isArray(service_ids) && service_ids.length ? service_ids : ((service_id ?? "").trim() ? [service_id] : []);
+    if (listeBrute.length > 4) return json({ error: "4 prestations au maximum par réservation." }, 400);
+    const serviceIds: string[] = [];
+    for (const v of listeBrute) {
+      if (typeof v !== "string" || !REGEX_UUID.test(v.trim())) return json({ error: "Service invalide." }, 400);
+      const u = v.trim().toLowerCase();
+      if (!serviceIds.includes(u)) serviceIds.push(u);
+    }
+    const serviceId = serviceIds[0] ?? null;
     const dateIntervention = (date_intervention ?? "").trim() || null;
     if (dateIntervention && !dateValide(dateIntervention)) return json({ error: "Date invalide." }, 400);
     const heureDebut = (heure_debut ?? "").trim() || null;
@@ -341,6 +351,7 @@ Deno.serve(async (req: Request) => {
 
     // ── L'artisan visé et le service doivent exister (et le service lui appartenir) ──
     let artisanVise: any = null;
+    const nomsServices: Record<string, string> = {};
     let prixServiceTotal: number | null = null; // prix total connu du service (forfait, ou tarif horaire × durée) : plafond des frais de réservation
     if (artisanId) {
       // Tolérance : si une colonne facultative n'existe pas encore (devis-visite.sql, devis-visite-reglage.sql pas lancés), on
@@ -356,15 +367,21 @@ Deno.serve(async (req: Request) => {
       if (errArt) throw errArt;
       if (!a) return json({ error: "Artisan introuvable." }, 404);
       artisanVise = a;
-      if (serviceId) {
-        const { data: svc, error: errSvc } = await sb.from("artisans_services").select("id, prix_indicatif, unite, duree_estimee_min").eq("id", serviceId).eq("artisan_id", artisanId).maybeSingle();
+      if (serviceIds.length) {
+        const { data: svcs, error: errSvc } = await sb.from("artisans_services").select("id, nom_service, prix_indicatif, unite, duree_estimee_min").in("id", serviceIds).eq("artisan_id", artisanId);
         if (errSvc) throw errSvc;
-        if (!svc) return json({ error: "Service invalide." }, 400);
-        // Même règle que le prix automatique de MPA : forfait/sans unité → le tarif ; à l'heure → tarif × durée ; autre unité → prix inconnu (pas de plafond).
-        const pu = Number(svc.prix_indicatif), unite = String(svc.unite ?? "").trim().toLowerCase(), duree = Number(svc.duree_estimee_min);
-        if (Number.isFinite(pu) && pu > 0) {
-          if (!unite || unite.includes("forfait")) prixServiceTotal = pu;
-          else if (/^(h|heure|heures)$/.test(unite) && Number.isFinite(duree) && duree > 0) prixServiceTotal = Math.round(pu * duree / 60 * 100) / 100;
+        if (!svcs || svcs.length !== serviceIds.length) return json({ error: "Service invalide." }, 400);
+        // Même règle que le prix automatique de MPA : forfait/sans unité → le tarif ; à l'heure → tarif × durée ; autre unité → prix inconnu.
+        // Plusieurs prestations : on additionne les prix CONNUS (jamais plus que le vrai total : le plafond reste prudent).
+        for (const svc of svcs as any[]) {
+          nomsServices[svc.id] = String(svc.nom_service ?? "");
+          const pu = Number(svc.prix_indicatif), unite = String(svc.unite ?? "").trim().toLowerCase(), duree = Number(svc.duree_estimee_min);
+          let p: number | null = null;
+          if (Number.isFinite(pu) && pu > 0) {
+            if (!unite || unite.includes("forfait")) p = pu;
+            else if (/^(h|heure|heures)$/.test(unite) && Number.isFinite(duree) && duree > 0) p = Math.round(pu * duree / 60 * 100) / 100;
+          }
+          if (p !== null) prixServiceTotal = Math.round(((prixServiceTotal ?? 0) + p) * 100) / 100;
         }
       }
     }
@@ -462,21 +479,31 @@ Deno.serve(async (req: Request) => {
 
     const token = estUneProposionDeCreneau ? crypto.randomUUID() : null;
 
+    // Plusieurs prestations : l'artisan les voit en tête de la demande, puis dans les notes de l'intervention.
+    const descriptionFinale = (serviceIds.length > 1 && estUneProposionDeCreneau)
+      ? `Prestations demandées : ${serviceIds.map((id) => nomsServices[id] || "Prestation").join(" + ")}.\n${description}`
+      : description;
     const lignesDemande: Record<string, unknown> = {
       client_nom: nom, client_telephone: tel, client_email: email || null, contact_prefere: contactChoisi,
-      secteur: secteurCode, description_besoin: description, commune: communeNom, type_intervention: typeIntervention,
+      secteur: secteurCode, description_besoin: descriptionFinale, commune: communeNom, type_intervention: typeIntervention,
       ...(fraisVisite !== null ? { frais_deplacement: fraisVisite } : {}),
       statut: estUneProposionDeCreneau ? "creneau_propose" : (artisanId ? "directe" : "ouverte"),
       ...(estUneProposionDeCreneau ? {
         token, date_intervention: dateIntervention, heure_debut: heureDebut, heure_fin: heureFin,
         adresse: adresseTxt, code_postal: cp, latitude: lat, longitude: lon,
         service_id: serviceId, hors_horaires: !!hors_horaires,
+        ...(serviceIds.length > 1 ? { service_ids: serviceIds } : {}),
       } : {}),
     };
     let { data: demande, error } = await sb.from("demandes_devis").insert(lignesDemande).select().single();
     // Tolérance : colonne des frais absente de la table (SQL pas lancé) → on enregistre la demande sans, jamais une panne.
     if (error && (error as any).code === "42703" && "frais_deplacement" in lignesDemande) {
       delete lignesDemande.frais_deplacement;
+      ({ data: demande, error } = await sb.from("demandes_devis").insert(lignesDemande).select().single());
+    }
+    // Colonne des prestations multiples absente (lot16-reservation-multi.sql pas lancé) : la demande part avec la 1re prestation seulement.
+    if (error && (error as any).code === "42703" && "service_ids" in lignesDemande) {
+      delete lignesDemande.service_ids;
       ({ data: demande, error } = await sb.from("demandes_devis").insert(lignesDemande).select().single());
     }
     if (error) throw error;
@@ -535,7 +562,7 @@ Deno.serve(async (req: Request) => {
           const { data: userData } = await sb.auth.admin.getUserById(artisanVise.user_id);
           if (userData?.user?.email) {
             const dateAff = new Date(dateIntervention!).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
-            const emailHtml = emailHtmlCreneau(nom, tel, email || null, contactChoisi, communeNom, adresseTxt, description, dateAff, heureDebut!, heureFin || "?", nbPhotos, token as string, !!hors_horaires, typeIntervention, fraisVisite);
+            const emailHtml = emailHtmlCreneau(nom, tel, email || null, contactChoisi, communeNom, adresseTxt, descriptionFinale, dateAff, heureDebut!, heureFin || "?", nbPhotos, token as string, !!hors_horaires, typeIntervention, fraisVisite);
             await envoyerEmail(userData.user.email, `${hors_horaires ? "⚠️ Demande hors horaires — " : ""}Proposition de créneau — ${nom} le ${dateAff}`, emailHtml);
           }
         }

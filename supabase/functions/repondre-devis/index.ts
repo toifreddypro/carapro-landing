@@ -247,6 +247,29 @@ Deno.serve(async (req: Request) => {
         statut: "planifiee",
       }).select("id").single();
       if (errInter) throw errInter;
+      // Réservation à plusieurs prestations : les lignes sont rangées tout de suite (aux prix du catalogue de l'artisan ; vide si le service n'a pas
+      // de prix fixe). Jamais bloquant : sans cela, l'intervention existe quand même, avec la liste des prestations dans ses notes.
+      try {
+        const ids: string[] = Array.isArray(demande.service_ids) ? demande.service_ids.filter((x: unknown) => typeof x === "string") : [];
+        if (ids.length > 1) {
+          const { data: svcs } = await sb.from("artisans_services").select("id, nom_service, prix_indicatif, unite, duree_estimee_min").in("id", ids).eq("artisan_id", artisanId);
+          const parId = new Map((svcs || []).map((x: any) => [x.id, x]));
+          const lignes = ids.filter((id) => parId.has(id)).map((id, k) => {
+            const sv: any = parId.get(id);
+            const pu = Number(sv.prix_indicatif), unite = String(sv.unite ?? "").trim().toLowerCase(), duree = Number(sv.duree_estimee_min);
+            let prix: number | null = null;
+            if (Number.isFinite(pu) && pu > 0) {
+              if (!unite || unite.includes("forfait")) prix = pu;
+              else if (/^(h|heure|heures)$/.test(unite) && Number.isFinite(duree) && duree > 0) prix = Math.round(pu * duree / 60 * 100) / 100;
+            }
+            return { intervention_id: interCreee.id, artisan_id: artisanId, service_id: id, libelle: String(sv.nom_service ?? "Prestation"), prix, ordre: k };
+          });
+          if (lignes.length > 1) {
+            const { error: errLg } = await sb.from("mpa_artisans_interventions_lignes").insert(lignes);
+            if (errLg) console.error("[repondre-devis] Prestations multiples non enregistrées :", errLg);
+          }
+        }
+      } catch (e) { console.error("[repondre-devis] Prestations multiples :", e); }
       try { await sb.from("paiements_prestations").update({ intervention_id: interCreee.id, updated_at: new Date().toISOString() }).eq("demande_id", demande.id); }
       catch (e) { console.error("[repondre-devis] Lien paiement/intervention non enregistré :", e); }
     } catch (e) {

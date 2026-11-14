@@ -1829,6 +1829,9 @@ function ouvrirVerifDispo(artisanId, pourVisite) {
   var zone = document.getElementById('dispo-zone-' + artisanId);
   if (!zone || !_profilDataCourant) return;
   var services = _profilDataCourant.services || [];
+  window._dispoOptionsServices = services.map(function(s) {
+    return '<option value="' + (s.id || '') + '" data-duree="' + (s.duree_estimee_min || 60) + '">' + escHtml(s.nom_service) + '</option>';
+  }).join('');
   var options = services.map(function(s) {
     return '<option value="' + (s.id || '') + '" data-duree="' + (s.duree_estimee_min || 60) + '">' + escHtml(s.nom_service) + '</option>';
   }).join('');
@@ -1836,7 +1839,8 @@ function ouvrirVerifDispo(artisanId, pourVisite) {
     '<div style="border:1px solid var(--line,#eee);border-radius:10px;padding:14px;">' +
       (pourVisite ? '<div style="font-size:13px;font-weight:700;color:#1e40af;margin-bottom:8px;">' + T('type_visite') + '</div>' : '') +
       '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:10px;">' + T('dispo_intro') + '</div>' +
-      (options ? '<select id="dispo-service" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' + options + '</select>' : '') +
+      (options ? '<div id="dispo-services"><select id="dispo-service" onchange="surChangementPrestationsDispo()" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' + options + '</select></div>' +
+        (services.length > 1 ? '<a id="dispo-ajout-presta" href="#" onclick="ajouterPrestationDispo();return false;" style="display:inline-block;font-size:12.5px;font-weight:700;color:var(--ac,#B5502F);margin:-2px 0 10px;">' + T('dispo_ajout_presta') + '</a>' : '') : '') +
       '<div id="dispo-compte" style="font-size:12.5px;color:var(--mu2,#777);margin-bottom:8px;"></div>' +
       '<input id="dispo-adresse" type="text" placeholder="' + T('ph_adresse_interv') + '" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' +
       '<div style="display:flex;gap:8px;margin-bottom:8px;">' +
@@ -1851,6 +1855,46 @@ function ouvrirVerifDispo(artisanId, pourVisite) {
       '<div id="dispo-resultat" style="margin-top:10px;"></div>' +
     '</div>';
   prefillDispoDepuisCompte();
+}
+
+// ── Plusieurs prestations sur une même réservation (14/11/2026) — 4 au maximum. La 1re reste « dispo-service » ; les autres sont « dispo-service-sup ».
+var PRESTATIONS_MAX = 4;
+function selectsPrestationsDispo() {
+  return Array.prototype.slice.call(document.querySelectorAll('#dispo-services select'));
+}
+function ajouterPrestationDispo() {
+  var zone = document.getElementById('dispo-services'); if (!zone) return;
+  if (selectsPrestationsDispo().length >= PRESTATIONS_MAX) { alert(T('dispo_prestations_max')); return; }
+  var ligne = document.createElement('div');
+  ligne.className = 'dispo-ligne-sup';
+  ligne.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:8px;';
+  ligne.innerHTML = '<select class="dispo-service-sup" onchange="surChangementPrestationsDispo()" style="flex:1;min-width:0;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);box-sizing:border-box;">' + (window._dispoOptionsServices || '') + '</select>' +
+    '<button type="button" onclick="retirerPrestationDispo(this)" title="' + T('dispo_retirer_presta') + '" aria-label="' + T('dispo_retirer_presta') + '" style="flex:none;width:34px;height:34px;border-radius:8px;border:1px solid var(--line,#ddd);background:#fff;color:#dc2626;font-size:16px;cursor:pointer;">✕</button>';
+  zone.appendChild(ligne);
+  var plein = selectsPrestationsDispo().length >= PRESTATIONS_MAX, lien = document.getElementById('dispo-ajout-presta');
+  if (lien) lien.style.display = plein ? 'none' : 'inline-block';
+  surChangementPrestationsDispo();
+}
+function retirerPrestationDispo(bouton) {
+  var ligne = bouton.parentNode; if (ligne && ligne.parentNode) ligne.parentNode.removeChild(ligne);
+  var lien = document.getElementById('dispo-ajout-presta'); if (lien) lien.style.display = 'inline-block';
+  surChangementPrestationsDispo();
+}
+// Les créneaux affichés dépendaient des anciennes prestations : on les efface, la cliente relance la recherche (jamais un créneau trop court).
+function surChangementPrestationsDispo() {
+  window._dispoContexte = null;
+  var res = document.getElementById('dispo-resultat');
+  if (res && res.innerHTML.trim()) res.innerHTML = '<div style="font-size:12.5px;color:var(--mu2,#777);">' + T('dispo_changer_presta') + '</div>';
+}
+// Prestations choisies (sans doublon, 4 au maximum) : ids dans l'ordre, et durée totale.
+function prestationsChoisiesDispo() {
+  var ids = [], duree = 0;
+  selectsPrestationsDispo().forEach(function(sel) {
+    var id = sel.value; if (!id || id === 'undefined' || id === 'null' || ids.indexOf(id) !== -1) return;
+    ids.push(id);
+    duree += parseInt(sel.selectedOptions[0].getAttribute('data-duree'), 10) || 60;
+  });
+  return { ids: ids.slice(0, PRESTATIONS_MAX), duree: duree };
 }
 
 // ── Compte client : préremplit la demande d'intervention (adresse, nom, téléphone, email) quand le client est connecté ──
@@ -1896,13 +1940,13 @@ document.addEventListener('visibilitychange', function() { if (!document.hidden 
 
 async function verifierDispoReelle(artisanId, dateDebut) {
   var resultat = document.getElementById('dispo-resultat');
-  var adresse, cp, commune, dureeMin, serviceId, contact = null;
+  var adresse, cp, commune, dureeMin, serviceId, serviceIds = [], contact = null;
 
   if (dateDebut && window._dispoContexte) {
     contact = window._dispoContexte.contact || null;
     // Navigation semaine suivante/précédente : on réutilise le contexte déjà validé
     adresse = window._dispoContexte.adresse; cp = window._dispoContexte.cp; commune = window._dispoContexte.commune;
-    dureeMin = window._dispoContexte.duree; serviceId = window._dispoContexte.serviceId;
+    dureeMin = window._dispoContexte.duree; serviceId = window._dispoContexte.serviceId; serviceIds = window._dispoContexte.serviceIds || [];
   } else {
     adresse = document.getElementById('dispo-adresse').value.trim();
     cp = document.getElementById('dispo-cp').value.trim();
@@ -1916,9 +1960,10 @@ async function verifierDispoReelle(artisanId, dateDebut) {
     if (!cEmail && (montantPaiementEnLigne('visite', artisanId) > 0 || montantPaiementEnLigne('reservation', artisanId) > 0)) { resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">' + T('err_email_paiement') + '</div>'; return; }
     contact = { nom: cNom, tel: cTel, email: cEmail };
     var selService = document.getElementById('dispo-service');
-    dureeMin = selService ? parseInt(selService.selectedOptions[0].getAttribute('data-duree'), 10) : 60;
-    serviceId = selService ? selService.value : null;
-    if (!serviceId || serviceId === 'undefined' || serviceId === 'null') serviceId = null;
+    var choix = prestationsChoisiesDispo();
+    dureeMin = selService ? (choix.duree || 60) : 60; // durées additionnées quand il y a plusieurs prestations
+    serviceIds = choix.ids;
+    serviceId = serviceIds.length ? serviceIds[0] : null;
   }
 
   resultat.innerHTML = '<div style="font-size:12.5px;color:var(--mu,#999);">' + T('dispo_calcul_cours') + '</div>';
@@ -1932,7 +1977,7 @@ async function verifierDispoReelle(artisanId, dateDebut) {
     if (data.error) { resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">' + escHtml(data.error) + '</div>'; return; }
 
     window._dispoContexte = {
-      artisanId: artisanId, adresse: adresse, cp: cp, commune: commune, serviceId: serviceId, duree: dureeMin, contact: contact,
+      artisanId: artisanId, adresse: adresse, cp: cp, commune: commune, serviceId: serviceId, serviceIds: serviceIds, duree: dureeMin, contact: contact,
       secteur: (_profilDataCourant && _profilDataCourant.artisan.secteur) || 'autre',
       latitude: data.latitude, longitude: data.longitude, dateDebutFenetre: data.date_debut_fenetre,
     };
@@ -2083,7 +2128,7 @@ async function envoyerCreneauDevis() {
         commune: ctx.commune, description_besoin: message, secteur: ctx.secteur, photos: _devisPhotos,
         artisan_id: ctx.artisanId, type_intervention: _typeInterventionChoisi,
         date_intervention: ctx.date, heure_debut: ctx.heureDebut, heure_fin: ctx.heureFin,
-        adresse: ctx.adresse, code_postal: ctx.cp, service_id: ctx.serviceId,
+        adresse: ctx.adresse, code_postal: ctx.cp, service_id: ctx.serviceId, service_ids: ctx.serviceIds || [],
         latitude: ctx.latitude, longitude: ctx.longitude,
       }),
     });
@@ -2161,7 +2206,7 @@ async function envoyerSurMesureDevis() {
         commune: ctx.commune, description_besoin: message, secteur: ctx.secteur, photos: _devisPhotos,
         artisan_id: ctx.artisanId, type_intervention: _typeInterventionChoisi,
         date_intervention: dateVal, heure_debut: heureVal, heure_fin: heureFin,
-        adresse: ctx.adresse, code_postal: ctx.cp, service_id: ctx.serviceId,
+        adresse: ctx.adresse, code_postal: ctx.cp, service_id: ctx.serviceId, service_ids: ctx.serviceIds || [],
         latitude: ctx.latitude, longitude: ctx.longitude,
         hors_horaires: true,
       }),
@@ -2252,13 +2297,18 @@ function visitePropose(artisanId) {
 function prixTotalServiceChoisi() {
   var ctx = window._dispoContexte, services = (_profilDataCourant && _profilDataCourant.services) || [];
   if (!ctx || !ctx.serviceId) return null;
-  var sv = services.find(function(x) { return x.id === ctx.serviceId; });
-  if (!sv) return null;
-  var pu = Number(sv.prix_indicatif), unite = String(sv.unite || '').trim().toLowerCase(), duree = Number(sv.duree_estimee_min);
-  if (!(pu > 0)) return null;
-  if (!unite || unite.indexOf('forfait') >= 0) return pu;
-  if (/^(h|heure|heures)$/.test(unite) && duree > 0) return Math.round(pu * duree / 60 * 100) / 100;
-  return null;
+  var ids = (ctx.serviceIds && ctx.serviceIds.length) ? ctx.serviceIds : [ctx.serviceId];
+  var total = null; // somme des prix CONNUS (comme le serveur) : un service sans prix fixe ne compte pas, le plafond reste donc prudent
+  ids.forEach(function(id) {
+    var sv = services.find(function(x) { return x.id === id; });
+    if (!sv) return;
+    var pu = Number(sv.prix_indicatif), unite = String(sv.unite || '').trim().toLowerCase(), duree = Number(sv.duree_estimee_min), p = null;
+    if (!(pu > 0)) return;
+    if (!unite || unite.indexOf('forfait') >= 0) p = pu;
+    else if (/^(h|heure|heures)$/.test(unite) && duree > 0) p = Math.round(pu * duree / 60 * 100) / 100;
+    if (p !== null) total = Math.round(((total || 0) + p) * 100) / 100;
+  });
+  return total;
 }
 function artisanPaiementsActifs(artisanId) {
   var a = _profilDataCourant && _profilDataCourant.artisan;

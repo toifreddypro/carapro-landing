@@ -144,7 +144,8 @@ Deno.serve(async (req: Request) => {
         if (det && det.length > 1 && Math.abs(det.reduce((t, x) => t + x.prix, 0) - (Number(l.prix) || 0)) < 0.011) {
           det.forEach((x, k) => lignes.push({ date, libelle: x.libelle + (k === 0 && l.notes ? " — " + l.notes : ""), qte: 1, pu: x.prix }));
         } else {
-          lignes.push({ date, libelle: (l.artisans_services?.nom_service || "Prestation") + (l.notes ? " — " + l.notes : ""), qte: 1, pu: Number(l.prix) || 0 });
+          const nomService = (det && det.length > 1) ? det.map((x) => x.libelle).join(" + ") : (l.artisans_services?.nom_service || "Prestation");
+          lignes.push({ date, libelle: nomService + (l.notes ? " — " + l.notes : ""), qte: 1, pu: Number(l.prix) || 0 });
         }
       }
     }

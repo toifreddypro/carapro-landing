@@ -1744,6 +1744,13 @@ function demanderPrixPuis(i, suite) {
   var sug = suggestionPrixService(i.service_id, i.duree_min || (i.heure_debut && i.heure_fin ? heureVersMin(String(i.heure_fin).slice(0, 5)) - heureVersMin(String(i.heure_debut).slice(0, 5)) : 0));
   document.getElementById('px-prix').value = sug.valeur != null ? String(sug.valeur).replace('.', ',') : '';
   document.getElementById('px-aide').textContent = sug.texte;
+  // Plusieurs prestations (réservation de la cliente) : le prix proposé est la SOMME des prestations, si elles ont toutes un prix.
+  var lgPx = _lignesParInterv[i.id];
+  if (lgPx && lgPx.length > 1 && lgPx.every(function(x) { return x.prix != null && !isNaN(Number(x.prix)); })) {
+    var sommePx = Math.round(lgPx.reduce(function(t, x) { return t + Number(x.prix); }, 0) * 100) / 100;
+    document.getElementById('px-prix').value = String(sommePx).replace('.', ',');
+    document.getElementById('px-aide').textContent = 'Total des prestations : ' + lgPx.map(function(x) { return x.libelle + ' ' + eurosMPA(x.prix); }).join(' + ') + '. Modifiez-le si besoin.';
+  }
   document.getElementById('px-erreur').style.display = 'none';
   document.getElementById('px-valider').disabled = false;
   ouvrirModale('modal-prix');
@@ -5379,6 +5386,7 @@ async function imprimerFacture(factureId) {
         return '<tr><td>' + dateAff + '</td><td>' + escHtml(x.libelle) + (k === 0 && l.notes ? ' — ' + escHtml(l.notes) : '') + '</td><td>1</td><td>' + m.toFixed(2) + '€</td><td>' + m.toFixed(2) + '€</td></tr>';
       }).join('');
     }
+    if (det && det.length > 1) service = det.map(function(x) { return x.libelle; }).join(' + '); // prix modifié après coup : une seule ligne, avec toutes les prestations
     return '<tr><td>' + dateAff + '</td><td>' + escHtml(service) + (l.notes ? ' — ' + escHtml(l.notes) : '') + '</td><td>1</td><td>' + montant.toFixed(2) + '€</td><td>' + montant.toFixed(2) + '€</td></tr>';
   }).join('');
   var libelleColonne = 'Prestation';
