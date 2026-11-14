@@ -128,12 +128,25 @@ Deno.serve(async (req: Request) => {
       }
     } else {
       const { data: li } = await sbAdmin.from("mpa_artisans_interventions")
-        .select("date_intervention, prix, notes, artisans_services(nom_service)").eq("facture_id", facture.id).eq("artisan_id", artisan.id).order("date_intervention", { ascending: true });
-      lignes = (li || []).map((l: any) => ({
-        date: dateFR(new Date(String(l.date_intervention) + "T12:00:00Z")),
-        libelle: (l.artisans_services?.nom_service || "Prestation") + (l.notes ? " — " + l.notes : ""),
-        qte: 1, pu: Number(l.prix) || 0,
-      }));
+        .select("id, date_intervention, prix, notes, artisans_services(nom_service)").eq("facture_id", facture.id).eq("artisan_id", artisan.id).order("date_intervention", { ascending: true });
+      // Interventions à plusieurs prestations (table facultative) : une ligne par prestation, si la somme tombe juste sur le prix de l'intervention.
+      const detail: Record<string, { libelle: string; prix: number }[]> = {};
+      const idsInter = (li || []).map((l: any) => l.id);
+      if (idsInter.length) {
+        const { data: dl, error: errDl } = await sbAdmin.from("mpa_artisans_interventions_lignes")
+          .select("intervention_id, libelle, prix, ordre").in("intervention_id", idsInter).eq("artisan_id", artisan.id).order("ordre", { ascending: true });
+        if (!errDl) for (const x of (dl || []) as any[]) (detail[x.intervention_id] = detail[x.intervention_id] || []).push({ libelle: x.libelle, prix: Number(x.prix) || 0 });
+      }
+      lignes = [];
+      for (const l of (li || []) as any[]) {
+        const date = dateFR(new Date(String(l.date_intervention) + "T12:00:00Z"));
+        const det = detail[l.id];
+        if (det && det.length > 1 && Math.abs(det.reduce((t, x) => t + x.prix, 0) - (Number(l.prix) || 0)) < 0.011) {
+          det.forEach((x, k) => lignes.push({ date, libelle: x.libelle + (k === 0 && l.notes ? " — " + l.notes : ""), qte: 1, pu: x.prix }));
+        } else {
+          lignes.push({ date, libelle: (l.artisans_services?.nom_service || "Prestation") + (l.notes ? " — " + l.notes : ""), qte: 1, pu: Number(l.prix) || 0 });
+        }
+      }
     }
 
     const delai = Number(client.delai_paiement) || 30;

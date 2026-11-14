@@ -1388,7 +1388,7 @@ async function chargerInterventions() {
   var data = res.data, error = res.error;
 
   if (error) { console.error(error); _interventionsCache = []; }
-  else { _interventionsCache = data || []; }
+  else { _interventionsCache = data || []; try { await chargerLignesInterventions(_interventionsCache.map(function(x) { return x.id; })); } catch (e) { _lignesParInterv = {}; } }
 
   // Journées bloquées qui touchent ce mois (pour les afficher dans le calendrier).
   var ind = await pIndMois;
@@ -1738,7 +1738,7 @@ var _suitePrix = null, _intervPrix = null;
 function demanderPrixPuis(i, suite) {
   _suitePrix = suite; _intervPrix = i;
   var client = i.mpa_artisans_clients && i.mpa_artisans_clients.nom ? i.mpa_artisans_clients.nom : 'Client';
-  var service = i.artisans_services && i.artisans_services.nom_service ? ' — ' + i.artisans_services.nom_service : '';
+  var service = nomsServicesIntervention(i) ? ' — ' + nomsServicesIntervention(i) : (i.artisans_services && i.artisans_services.nom_service ? ' — ' + i.artisans_services.nom_service : '');
   var dateAff = new Date(i.date_intervention + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   document.getElementById('px-resume').textContent = client + service + ' — ' + dateAff;
   var sug = suggestionPrixService(i.service_id, i.duree_min || (i.heure_debut && i.heure_fin ? heureVersMin(String(i.heure_fin).slice(0, 5)) - heureVersMin(String(i.heure_debut).slice(0, 5)) : 0));
@@ -2986,6 +2986,7 @@ function majPrixSuggere() {
     champ.value = '';
     champ.dataset.auto = '0';
   }
+  majTotalIntervention();
 }
 
 function surDureeChangee() {
@@ -3161,6 +3162,140 @@ async function remplirSelectsIntervention() {
     _servicesCache.map(function(s) { return '<option value="' + s.id + '">' + escHtml(s.nom_service) + '</option>'; }).join('');
 }
 
+// ════════════════════════════════════════
+//  PLUSIEURS PRESTATIONS SUR UNE INTERVENTION (14/11/2026)
+//  La 1re prestation reste dans service_id / prix de l'intervention (le prix = le TOTAL), donc le chiffre d'affaires, la commission et les
+//  limites ne voient aucune différence. Dès qu'il y a 2 prestations ou plus, TOUTES sont rangées dans mpa_artisans_interventions_lignes
+//  (SQL lot15-prestations-multiples.sql). Sans cette table, le bouton « + Ajouter une prestation » reste masqué : rien ne casse.
+// ════════════════════════════════════════
+var _lignesSup = [];          // prestations en plus de la première : { service_id, prix, auto }
+var _lignesDispo = null;      // true / false : la table des lignes existe-t-elle ?
+var _lignesVerrou = false;    // intervention déjà facturée : les prestations ne se modifient plus
+var _lignesParInterv = {};    // id d'intervention → [{ service_id, libelle, prix, ordre }] (2 lignes ou plus seulement)
+
+function tableLignesAbsente(err) { return !!err && (err.code === '42P01' || err.code === 'PGRST205' || /does not exist|schema cache/i.test(String(err.message || ''))); }
+
+async function verifierLignesDispo() {
+  if (_lignesDispo !== null) return _lignesDispo;
+  var r = await sb.from('mpa_artisans_interventions_lignes').select('id').limit(1);
+  _lignesDispo = !r.error;
+  return _lignesDispo;
+}
+
+// Pour l'affichage (planning, récap) : une seule requête pour toutes les interventions du mois.
+async function chargerLignesInterventions(ids) {
+  _lignesParInterv = {};
+  if (!ids || !ids.length) return;
+  var r = await sb.from('mpa_artisans_interventions_lignes').select('intervention_id, service_id, libelle, prix, ordre').in('intervention_id', ids).order('ordre', { ascending: true });
+  if (r.error) { if (tableLignesAbsente(r.error)) _lignesDispo = false; return; }
+  _lignesDispo = true;
+  (r.data || []).forEach(function(l) { (_lignesParInterv[l.intervention_id] = _lignesParInterv[l.intervention_id] || []).push(l); });
+}
+
+// « Pose gel + Nail art » quand l'intervention a plusieurs prestations, sinon null (on garde l'affichage habituel).
+function nomsServicesIntervention(i) {
+  var l = i && _lignesParInterv[i.id];
+  return l && l.length > 1 ? l.map(function(x) { return x.libelle; }).join(' + ') : null;
+}
+
+function nomServiceParId(id) {
+  var sv = _servicesCache.find(function(x) { return x.id === id; });
+  return sv ? sv.nom_service : '';
+}
+
+function renderLignesSup() {
+  var zone = document.getElementById('mi-lignes-sup'); if (!zone) return;
+  var opts = '<option value="">— Choisir —</option>' + _servicesCache.map(function(s) { return '<option value="' + s.id + '">' + escHtml(s.nom_service) + '</option>'; }).join('');
+  var style = 'padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:\'Outfit\',sans-serif;font-size:13px;';
+  zone.innerHTML = _lignesSup.map(function(l, k) {
+    return '<div class="mi-ligne-sup" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">' +
+      '<select aria-label="Prestation ' + (k + 2) + '" onchange="surServiceLigneSup(' + k + ', this.value)" style="flex:2;min-width:0;' + style + '"' + (_lignesVerrou ? ' disabled' : '') + '>' + opts.replace('value="' + l.service_id + '"', 'value="' + l.service_id + '" selected') + '</select>' +
+      '<input aria-label="Prix de la prestation ' + (k + 2) + ' (€)" type="number" step="0.01" placeholder="Prix €" value="' + (l.prix === '' || l.prix == null ? '' : l.prix) + '" oninput="surPrixLigneSup(' + k + ', this.value)" style="flex:1;min-width:0;width:80px;' + style + '"' + (_lignesVerrou ? ' disabled' : '') + '/>' +
+      (_lignesVerrou ? '' : '<button type="button" onclick="retirerLignePrestation(' + k + ')" title="Retirer cette prestation" aria-label="Retirer cette prestation" style="flex:none;width:34px;height:34px;border-radius:8px;border:1px solid var(--b2);background:#fff;color:var(--danger);font-size:16px;cursor:pointer;">✕</button>') +
+    '</div>';
+  }).join('');
+  majTotalIntervention();
+}
+
+function ajouterLignePrestation() {
+  if (_lignesVerrou) return;
+  _lignesSup.push({ service_id: '', prix: '', auto: false });
+  renderLignesSup();
+}
+function retirerLignePrestation(k) {
+  if (_lignesVerrou) return;
+  _lignesSup.splice(k, 1);
+  renderLignesSup();
+}
+function surServiceLigneSup(k, serviceId) {
+  var l = _lignesSup[k]; if (!l) return;
+  l.service_id = serviceId;
+  var sug = suggestionPrixService(serviceId, 0);
+  if (sug.valeur != null && (l.prix === '' || l.auto)) { l.prix = sug.valeur; l.auto = true; }
+  renderLignesSup();
+}
+function surPrixLigneSup(k, valeur) {
+  var l = _lignesSup[k]; if (!l) return;
+  l.prix = valeur; l.auto = false;
+  majTotalIntervention();
+}
+
+// Total = prix de la 1re prestation + celles en plus. Le champ « Prix » du haut devient « Prix de cette prestation » dès qu'il y en a plusieurs.
+function totalInterventionForm() {
+  var p1 = parseFloat(document.getElementById('mi-prix').value);
+  var vals = [p1].concat(_lignesSup.map(function(l) { return parseFloat(l.prix); })).filter(function(v) { return !isNaN(v); });
+  return vals.length ? Math.round(vals.reduce(function(t, v) { return t + v; }, 0) * 100) / 100 : null;
+}
+function majTotalIntervention() {
+  var multi = _lignesSup.length > 0;
+  var lblS = document.getElementById('mi-lbl-service'), lblP = document.getElementById('mi-lbl-prix');
+  if (lblS) lblS.textContent = multi ? 'Prestation 1' : 'Service';
+  if (lblP) lblP.textContent = multi ? 'Prix de la prestation 1 (€)' : 'Prix (€)';
+  var zone = document.getElementById('mi-lignes-zone'), tot = document.getElementById('mi-total'), btn = document.getElementById('mi-btn-ajout-presta');
+  if (zone) zone.style.display = (_lignesDispo && !estLivraisonFormulaire()) ? 'block' : 'none';
+  if (btn) btn.style.display = _lignesVerrou ? 'none' : '';
+  if (tot) {
+    var t = totalInterventionForm();
+    tot.style.display = multi && t != null ? 'block' : 'none';
+    tot.textContent = '🧾 Total : ' + (t == null ? '—' : eurosMPA(t));
+  }
+}
+// Une livraison de commande n'a pas de service à multiplier : le bloc reste caché.
+function estLivraisonFormulaire() { var s = document.getElementById('mi-service'); return !!(s && s.disabled && !_lignesVerrou); }
+
+// Charge les prestations d'une intervention qu'on ouvre : la 1re va dans les champs du haut, les autres en lignes en dessous.
+async function chargerLignesPourFormulaire(i) {
+  _lignesSup = []; _lignesVerrou = false;
+  await verifierLignesDispo();
+  if (_lignesDispo && i) {
+    var r = await sb.from('mpa_artisans_interventions_lignes').select('service_id, libelle, prix, ordre').eq('intervention_id', i.id).order('ordre', { ascending: true });
+    var l = (!r.error && r.data) || [];
+    if (l.length > 1) {
+      document.getElementById('mi-service').value = l[0].service_id || '';
+      document.getElementById('mi-prix').value = l[0].prix == null ? '' : l[0].prix;
+      document.getElementById('mi-prix').dataset.auto = '0';
+      var hp = document.getElementById('mi-prix-hint'); if (hp) hp.textContent = '';
+      _lignesSup = l.slice(1).map(function(x) { return { service_id: x.service_id || '', prix: x.prix == null ? '' : x.prix, auto: false }; });
+      if (i.facture_id) { _lignesVerrou = true; document.getElementById('mi-service').disabled = true; document.getElementById('mi-prix').disabled = true; }
+    }
+  }
+  renderLignesSup();
+}
+
+// Écrit les lignes APRÈS l'enregistrement de l'intervention : on remplace tout (suppression puis ajout). Retourne un message d'erreur ou ''.
+async function enregistrerLignesIntervention(interventionId, premiere) {
+  if (!_lignesDispo) return '';
+  var d = await sb.from('mpa_artisans_interventions_lignes').delete().eq('intervention_id', interventionId).eq('artisan_id', _artisan.id);
+  if (d.error) return d.error.message;
+  if (!_lignesSup.length) return '';
+  var toutes = [premiere].concat(_lignesSup.map(function(l) { return { service_id: l.service_id, prix: parseFloat(l.prix) }; }));
+  var rows = toutes.map(function(l, k) {
+    return { intervention_id: interventionId, artisan_id: _artisan.id, service_id: l.service_id || null, libelle: nomServiceParId(l.service_id) || 'Prestation', prix: isNaN(l.prix) ? 0 : l.prix, ordre: k };
+  });
+  var ins = await sb.from('mpa_artisans_interventions_lignes').insert(rows);
+  return ins.error ? ins.error.message : '';
+}
+
 async function ouvrirNouvelleIntervention(dateStr, creneau) {
   var enRetard = await trouverPrestationAnnuaireEnRetard();
   if (enRetard) {
@@ -3197,6 +3332,7 @@ async function ouvrirNouvelleIntervention(dateStr, creneau) {
   document.getElementById('mi-prix').value = '';
   document.getElementById('mi-prix').dataset.auto = '0';
   var hintN = document.getElementById('mi-prix-hint'); if (hintN) hintN.textContent = '';
+  await chargerLignesPourFormulaire(null);
   document.getElementById('mi-notes').value = '';
   document.getElementById('mi-statut').value = 'planifiee';
   masquerOptionPayee(false);
@@ -3225,6 +3361,7 @@ function estLivraisonIntervention(i) {
   return !!i && (/^Livraison\b/i.test(i.notes || '') || (typeof _commandesCache !== 'undefined' && (_commandesCache || []).some(function(c) { return c.intervention_id === i.id; })));
 }
 function libelleServiceIntervention(i, brut) {
+  var multi = nomsServicesIntervention(i); if (multi) return multi;
   var nom = i.artisans_services && i.artisans_services.nom_service;
   if (nom) return nom;
   if (!estLivraisonIntervention(i)) return '(sans service)';
@@ -3295,6 +3432,7 @@ async function ouvrirIntervention(id) {
   document.getElementById('mi-date-paiement').value = i.date_paiement || '';
   toggleDatePaiement();
   majVerrouLivraisonIntervention(_commandeLiee, false);
+  await chargerLignesPourFormulaire(i);
   document.getElementById('mi-delete-wrap').style.display = 'block';
   document.getElementById('mi-impossible-wrap').style.display = ['planifiee', 'en_cours'].indexOf(i.statut || 'planifiee') !== -1 ? 'block' : 'none';
   renderZoneAvisIntervention(i);
@@ -3980,6 +4118,17 @@ async function sauverIntervention() {
     date_paiement: document.getElementById('mi-statut').value === 'payee' ? (document.getElementById('mi-date-paiement').value || null) : null,
   };
   if (!maj.date_intervention) { alert('La date est obligatoire.'); return; }
+  // Plusieurs prestations : le prix de l'intervention devient le TOTAL, et le service de l'intervention reste celui de la 1re prestation.
+  var premierePresta = { service_id: maj.service_id, prix: parseFloat(document.getElementById('mi-prix').value) };
+  if (_lignesSup.length) {
+    if (!maj.service_id) { alert('Choisissez le service de la première prestation (ou retirez les prestations en plus).'); return; }
+    if (_lignesSup.some(function(l) { return !l.service_id; })) { alert('Choisissez un service pour chaque prestation ajoutée (ou retirez la ligne vide avec la croix).'); return; }
+    if (['terminee', 'payee'].indexOf(maj.statut) !== -1 && (isNaN(premierePresta.prix) || _lignesSup.some(function(l) { return isNaN(parseFloat(l.prix)); }))) {
+      alert('Indiquez le prix de chaque prestation avant de passer l\'intervention en « ' + (maj.statut === 'payee' ? 'Payée' : 'Terminée') + ' ». Si l\'une est offerte, saisissez 0.'); return;
+    }
+    maj.prix = totalInterventionForm();
+  }
+  if (_lignesVerrou) { delete maj.prix; delete maj.service_id; } // déjà facturée : le prix et les prestations ne bougent plus
   if (['terminee', 'payee'].indexOf(maj.statut) !== -1 && maj.prix == null) {
     alert('Indiquez le prix de l\'intervention avant de la passer en « ' + (maj.statut === 'payee' ? 'Payée' : 'Terminée') + ' » : il compte dans votre chiffre d\'affaires et sert à votre facture.\n\nSi c\'est gratuit (garantie, geste commercial), saisissez 0.');
     document.getElementById('mi-prix').focus();
@@ -4022,6 +4171,10 @@ async function sauverIntervention() {
       return;
     }
     alert('Erreur : ' + res.error.message); return;
+  }
+  if (res.data && !_lignesVerrou) {
+    var errLignes = await enregistrerLignesIntervention(res.data.id, premierePresta);
+    if (errLignes) alert('L\'intervention est enregistrée, mais les prestations n\'ont pas pu l\'être : ' + errLignes + '\n\nOuvrez l\'intervention et recommencez.');
   }
   fermerModale('modal-intervention');
   await chargerInterventions();
@@ -4318,7 +4471,7 @@ async function renderRecapInterventions() {
   var fait = lignes.filter(function(i) { return i.statut === 'terminee' || i.statut === 'payee'; });
   var total = fait.reduce(function(s, i) { return s + (Number(i.prix) || 0); }, 0);
   zone.innerHTML = titre + '<div style="max-height:280px;overflow-y:auto;border:1px solid var(--brd);border-radius:10px;padding:0 12px;">' + lignes.map(function(i) {
-    var nom = (i.artisans_services && i.artisans_services.nom_service) || (estLivraisonIntervention(i) ? 'Livraison' : 'Intervention');
+    var nom = nomsServicesIntervention(i) || (i.artisans_services && i.artisans_services.nom_service) || (estLivraisonIntervention(i) ? 'Livraison' : 'Intervention');
     var date = new Date(i.date_intervention + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
     var badge = rembourse[i.id] ? ' <span style="font-size:11px;font-weight:700;color:#b45309;background:rgba(245,158,11,.12);padding:2px 7px;border-radius:6px;">↩️ remboursée ' + eurosMPA(rembourse[i.id]) + '</span>' : '';
     if (i.statut === 'payee') badge += ' <span style="font-size:11px;color:var(--mu);">' + (enLigne[i.id] ? '💳 en ligne' : '💵 main propre') + '</span>';
@@ -5195,6 +5348,17 @@ async function imprimerFacture(factureId) {
   var { data: lignes } = await sb.from('mpa_artisans_interventions')
     .select('*, artisans_services(nom_service)').eq('facture_id', factureId).order('date_intervention', { ascending: true });
 
+  // Interventions à plusieurs prestations : une ligne par prestation. Si la somme des lignes ne tombe pas juste sur le prix de l'intervention
+  // (prix modifié après coup), on retombe sur UNE ligne au prix de l'intervention : la facture ne se contredit jamais.
+  var detailLignes = {};
+  try {
+    var idsLg = (lignes || []).map(function(l) { return l.id; });
+    if (idsLg.length) {
+      var rLg = await sb.from('mpa_artisans_interventions_lignes').select('intervention_id, libelle, prix, ordre').in('intervention_id', idsLg).order('ordre', { ascending: true });
+      if (!rLg.error) (rLg.data || []).forEach(function(x) { (detailLignes[x.intervention_id] = detailLignes[x.intervention_id] || []).push(x); });
+    }
+  } catch (e) { detailLignes = {}; }
+
   var a = _artisan;
   var c = facture.mpa_artisans_clients;
   var dateFactureAff = new Date(facture.date_facture).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
@@ -5208,6 +5372,13 @@ async function imprimerFacture(factureId) {
     var service = libelleServiceIntervention(l, true);
     var dateAff = new Date(l.date_intervention).toLocaleDateString('fr-FR', { day:'numeric', month:'short', year:'numeric' });
     var montant = l.prix || 0;
+    var det = detailLignes[l.id];
+    if (det && det.length > 1 && Math.abs(det.reduce(function(t, x) { return t + (Number(x.prix) || 0); }, 0) - Number(montant)) < 0.011) {
+      return det.map(function(x, k) {
+        var m = Number(x.prix) || 0;
+        return '<tr><td>' + dateAff + '</td><td>' + escHtml(x.libelle) + (k === 0 && l.notes ? ' — ' + escHtml(l.notes) : '') + '</td><td>1</td><td>' + m.toFixed(2) + '€</td><td>' + m.toFixed(2) + '€</td></tr>';
+      }).join('');
+    }
     return '<tr><td>' + dateAff + '</td><td>' + escHtml(service) + (l.notes ? ' — ' + escHtml(l.notes) : '') + '</td><td>1</td><td>' + montant.toFixed(2) + '€</td><td>' + montant.toFixed(2) + '€</td></tr>';
   }).join('');
   var libelleColonne = 'Prestation';
