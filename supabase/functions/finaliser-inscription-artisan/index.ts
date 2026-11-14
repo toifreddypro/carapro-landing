@@ -127,10 +127,10 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Requête invalide." }, 400);
 
-    const { nom_entreprise, secteur, commune, telephone, bio, rayon_intervention_km, siret, document_path, turnstile_token } = body;
+    const { nom_entreprise, secteur, commune, telephone, bio, rayon_intervention_km, siret, document_path, turnstile_token, mode_lieu, adresse, code_postal } = body;
 
     // ── Types : un champ texte doit être du texte, jamais un objet ou une liste (400 propre, jamais une panne) ──
-    for (const v of [nom_entreprise, secteur, commune, telephone, bio, siret, document_path, turnstile_token]) {
+    for (const v of [nom_entreprise, secteur, commune, telephone, bio, siret, document_path, turnstile_token, mode_lieu, adresse, code_postal]) {
       if (v != null && typeof v !== "string") return json({ error: "Requête invalide." }, 400);
     }
     if (rayon_intervention_km != null && typeof rayon_intervention_km !== "number" && typeof rayon_intervention_km !== "string") return json({ error: "Requête invalide." }, 400);
@@ -153,6 +153,13 @@ Deno.serve(async (req: Request) => {
       if (!Number.isInteger(n) || n < RAYON_MIN || n > RAYON_MAX) return json({ error: `Rayon d'intervention invalide (de ${RAYON_MIN} à ${RAYON_MAX} km).` }, 400);
       rayon = n;
     }
+
+    // Où l'artisan reçoit ses clients : chez lui (adresse obligatoire) ou chez eux. Jamais de valeur inconnue.
+    const lieu = ["domicile", "salon", "les_deux"].includes(String(mode_lieu)) ? String(mode_lieu) : "domicile";
+    const adresseTxt = String(adresse ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
+    const cpTxt = String(code_postal ?? "").trim();
+    if (lieu !== "domicile" && adresseTxt.length < 3) return json({ error: "Indiquez votre adresse : vos clients en ont besoin pour venir à vous." }, 400);
+    if (cpTxt && !/^\d{5}$/.test(cpTxt)) return json({ error: "Le code postal doit comporter 5 chiffres." }, 400);
 
     // SIRET : 14 chiffres (les espaces saisis sont tolérés). Sinon, refusé : il ne partira jamais vers l'API de l'État.
     const siretPropre = (siret ?? "").replace(/\s/g, "");
@@ -203,7 +210,9 @@ Deno.serve(async (req: Request) => {
     }
 
     const pointCommune = await geocoderCommune(communeNom);
+    const champsLieu: Record<string, unknown> = lieu === "domicile" ? {} : { mode_lieu: lieu, adresse: adresseTxt, code_postal: cpTxt || null };
     const { data: artisan, error } = await sbAdmin.from("artisans").insert({
+      ...champsLieu,
       user_id: userId, email: userData.user.email ?? null, // l'email du compte de connexion : les notifications (commandes, prélèvement…) partent de là
       nom_entreprise: nom, secteur: secteurCode, commune: communeNom, telephone: tel,
       bio: bioTxt || null, rayon_intervention_km: rayon,

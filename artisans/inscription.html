@@ -119,6 +119,23 @@ nav{display:flex;align-items:center;padding:22px 48px;max-width:900px;margin:0 a
         <input type="text" id="f-commune" placeholder="Ex : Sainte-Anne">
       </div>
       <div class="field">
+        <label>Où recevez-vous vos clients ?</label>
+        <label style="display:flex;gap:8px;align-items:flex-start;font-size:14px;cursor:pointer;margin:6px 0 4px;font-weight:400;"><input type="radio" name="f-lieu" value="domicile" checked onchange="majChampAdresse()" style="margin-top:3px;width:auto;"><span>Je me déplace chez mes clients</span></label>
+        <label style="display:flex;gap:8px;align-items:flex-start;font-size:14px;cursor:pointer;margin:0 0 4px;font-weight:400;"><input type="radio" name="f-lieu" value="salon" onchange="majChampAdresse()" style="margin-top:3px;width:auto;"><span>Mes clients viennent chez moi (salon, atelier, cabinet, garage…)</span></label>
+        <label style="display:flex;gap:8px;align-items:flex-start;font-size:14px;cursor:pointer;font-weight:400;"><input type="radio" name="f-lieu" value="les_deux" onchange="majChampAdresse()" style="margin-top:3px;width:auto;"><span>Les deux : le client choisit</span></label>
+      </div>
+      <div id="bloc-adresse-lieu" style="display:none;">
+        <div class="field">
+          <label for="f-adresse">Votre adresse</label>
+          <input type="text" id="f-adresse" placeholder="Ex : 12 rue des Flamboyants" maxlength="200">
+          <div style="font-size:12px;color:var(--mu,#666);margin-top:4px;line-height:1.4;">Vos clients la reçoivent une fois le rendez-vous confirmé. Elle n'est pas affichée publiquement.</div>
+        </div>
+        <div class="field">
+          <label for="f-cp">Code postal</label>
+          <input type="text" id="f-cp" placeholder="97100" maxlength="5" inputmode="numeric">
+        </div>
+      </div>
+      <div class="field">
         <label for="f-telephone">Téléphone</label>
         <input type="tel" id="f-telephone" placeholder="0690 00 00 00">
       </div>
@@ -190,12 +207,31 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 var _idWidgetForm = null;
 var _turnstilePret = false;
 var _sessionConfirmee = null;
-function onTurnstileReady() {
+// Le contrôle n'est demandé qu'à la dernière étape (création du profil), là où le serveur le vérifie vraiment ;
+// l'étape « email + mot de passe » n'en a plus besoin, ce qui évite de le demander deux fois.
+function afficherTurnstile() {
+  if (_idWidgetForm != null || typeof turnstile === 'undefined' || !_sessionConfirmee) return;
   _idWidgetForm = turnstile.render('#turnstile-form', { sitekey: '0x4AAAAAAE0Iymsul7mZRXTA' });
-  _turnstilePret = true;
 }
+function onTurnstileReady() { _turnstilePret = true; afficherTurnstile(); }
 
 var _fichierChoisi = null;
+
+function lieuChoisi() { var r = document.querySelector('input[name="f-lieu"]:checked'); return r ? r.value : 'domicile'; }
+function majChampAdresse() { document.getElementById('bloc-adresse-lieu').style.display = lieuChoisi() === 'domicile' ? 'none' : 'block'; }
+
+// Messages d'erreur de la connexion, en français simple (Supabase les renvoie en anglais).
+function messageAuthFrancais(m) {
+  m = String(m || '');
+  if (/already registered|already been registered/i.test(m)) return 'Un compte existe déjà avec cet email.';
+  if (/rate limit|too many|security purposes|after \d+ seconds/i.test(m)) return 'Trop de tentatives pour le moment. Patientez quelques minutes puis réessayez.';
+  if (/password/i.test(m) && /(weak|short|least|characters|contain)/i.test(m)) return 'Ce mot de passe est trop simple. Choisissez-en un d\'au moins 8 caractères, avec des lettres et des chiffres.';
+  if (/invalid.*email|email.*invalid|unable to validate email/i.test(m)) return 'Cette adresse email ne semble pas correcte. Vérifiez-la.';
+  if (/signups? (not allowed|are disabled)/i.test(m)) return 'Les inscriptions sont momentanément fermées. Réessayez plus tard.';
+  if (/network|failed to fetch|load failed/i.test(m)) return 'Problème de connexion internet. Vérifiez votre réseau puis réessayez.';
+  if (/[a-z]{3,} [a-z]{3,}/i.test(m) && !/[éèàùêçô]/i.test(m) && /^[\x00-\x7F]+$/.test(m) && /(error|failed|invalid|not |cannot|unable|expired)/i.test(m)) return 'Une erreur est survenue. Réessayez dans un instant ; si cela continue, écrivez-nous.';
+  return m;
+}
 
 function basculerMotDePasse(id, btn) {
   var champ = document.getElementById(id);
@@ -302,9 +338,6 @@ async function creerCompte() {
   if (!email || !password) { afficherErreur('Merci de saisir votre email et un mot de passe.'); return; }
   if (password.length < 8) { afficherErreur('Le mot de passe doit comporter au moins 8 caractères.'); return; }
   if (!document.getElementById('f-cgu').checked) { afficherErreur("Merci d'accepter les conditions d'utilisation pour créer votre compte."); return; }
-  if (_fichierRge && !rgeDate) { afficherErreur('Indiquez la date de fin de validité de votre attestation RGE.'); return; }
-  var turnstileToken = (typeof turnstile !== 'undefined' && _idWidgetForm != null) ? turnstile.getResponse(_idWidgetForm) : null;
-  if (!turnstileToken) { afficherErreur('Merci de valider la vérification anti-robot.'); return; }
 
   var btn = document.getElementById('btn-submit');
   btn.disabled = true; btn.textContent = 'Création en cours…';
@@ -317,7 +350,7 @@ async function creerCompte() {
         data: { cgu_acceptees_le: new Date().toISOString(), cgu_version: '2026-11-12' },
       },
     });
-    if (r.error) throw new Error(r.error.message === 'User already registered' ? 'Un compte existe déjà avec cet email.' : r.error.message);
+    if (r.error) throw new Error(messageAuthFrancais(r.error.message));
     // Supabase masque les doublons : un compte déjà existant renvoie un utilisateur sans identité.
     if (r.data && r.data.user && Array.isArray(r.data.user.identities) && r.data.user.identities.length === 0) throw new Error('Un compte existe déjà avec cet email.');
 
@@ -358,7 +391,7 @@ function passerEtape2(session) {
   document.getElementById('titre-page').textContent = 'Présentez votre activité';
   document.getElementById('intro-page').textContent = 'Dernière étape : ce que verront les clients dans l\'annuaire.';
   document.getElementById('btn-submit').textContent = 'Créer mon profil';
-  try { if (typeof turnstile !== 'undefined' && _idWidgetForm != null) turnstile.reset(_idWidgetForm); } catch (e) {}
+  if (_turnstilePret) afficherTurnstile(); else { try { if (_idWidgetForm != null) turnstile.reset(_idWidgetForm); } catch (e) {} }
   window.scrollTo({ top: 0 });
 }
 
@@ -387,8 +420,12 @@ async function creerProfil() {
   var rgeDate = document.getElementById('f-rge-date').value;
   document.getElementById('msg-err').classList.remove('show');
 
+  var lieu = lieuChoisi(), adresse = (document.getElementById('f-adresse').value || '').trim(), cp = (document.getElementById('f-cp').value || '').trim();
+  if (lieu !== 'domicile' && !adresse) { afficherErreur('Indiquez votre adresse : vos clients en ont besoin pour venir à vous.'); return; }
+  if (cp && !/^\d{5}$/.test(cp)) { afficherErreur('Le code postal doit comporter 5 chiffres.'); return; }
   if (!nom || !secteur || !commune || !telephone) { afficherErreur(!secteur && nom ? 'Merci de choisir votre secteur puis votre métier.' : 'Merci de remplir tous les champs obligatoires.'); return; }
   if (siret && !/^\d{14}$/.test(siret)) { afficherErreur('Le SIRET doit comporter exactement 14 chiffres.'); return; }
+  if (_fichierRge && !rgeDate) { afficherErreur('Indiquez la date de fin de validité de votre attestation RGE.'); return; }
   var turnstileToken = (typeof turnstile !== 'undefined' && _idWidgetForm != null) ? turnstile.getResponse(_idWidgetForm) : null;
   if (!turnstileToken) { afficherErreur('Merci de valider la vérification anti-robot.'); return; }
 
@@ -420,6 +457,7 @@ async function creerProfil() {
         bio: bio || null, rayon_intervention_km: rayon, siret: siret || null, document_path: documentPath,
         rge_document_path: rgePath, rge_date_declaree: rgePath ? rgeDate : null,
         turnstile_token: turnstileToken,
+        mode_lieu: lieu, adresse: lieu !== 'domicile' ? adresse : null, code_postal: lieu !== 'domicile' && cp ? cp : null,
       }),
     });
     var data = await res.json();
