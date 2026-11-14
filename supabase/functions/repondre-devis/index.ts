@@ -207,17 +207,24 @@ Deno.serve(async (req: Request) => {
     //    (plus simple et plus sûr que de deviner un doublon existant — l'artisan pourra fusionner à la main si besoin)
     let clientId: string | null = null;
     try {
-      const { data: client, error: errClient } = await sb.from("mpa_artisans_clients").insert({
+      const ligneClient: Record<string, unknown> = {
         artisan_id: artisanId,
         nom: demande.client_nom,
         email: demande.client_email || null,
+        telephone: demande.client_telephone || null, // colonne facultative (lot19-salon.sql) : retirée plus bas si elle n'existe pas encore
         adresse: demande.adresse,
         code_postal: demande.code_postal,
         commune: demande.commune,
         delai_paiement: 30,
         origine: "annuaire", // ce client vient de la demande de devis publique — sert au calcul du seuil de CA prestations
-      }).select().single();
+      };
+      let { data: client, error: errClient } = await sb.from("mpa_artisans_clients").insert(ligneClient).select().single();
+      if (errClient && (errClient as any).code === "42703" && "telephone" in ligneClient) {
+        delete ligneClient.telephone;
+        ({ data: client, error: errClient } = await sb.from("mpa_artisans_clients").insert(ligneClient).select().single());
+      }
       if (errClient) throw errClient;
+      if (!client) throw new Error("client non créé");
       clientId = client.id;
 
       // 2) Intervention créée directement dans le planning
@@ -287,9 +294,19 @@ Deno.serve(async (req: Request) => {
         const visiteHtml = demande.type_intervention === "visite"
           ? `<p style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:10px 14px;border-radius:8px;">🚗 Visite d'estimation sur place${paiementConf ? ` — frais de déplacement de <strong>${escHtml(Number(paiementConf.montant).toFixed(2).replace(".", ","))} €</strong> déjà réglés en ligne` : (fraisConfirmes > 0 ? ` — frais de déplacement : <strong>${escHtml(fraisConfirmes.toFixed(2).replace(".", ","))} €</strong>, à régler à l'artisan lors de sa visite` : " (sans frais de déplacement)")}. Le devis définitif des travaux vous sera remis par l'artisan après sa visite.</p>`
           : "";
+        // Rendez-vous chez l'artisan (salon, atelier) : l'adresse est celle de l'artisan, le client en a besoin pour venir.
+        let lieuHtml = "";
+        try {
+          const { data: adr } = await sb.from("artisans").select("adresse, code_postal, commune").eq("id", artisanId).maybeSingle();
+          const norm = (x: unknown) => String(x ?? "").trim().toLowerCase();
+          if (adr && norm(adr.adresse) && norm(adr.adresse) === norm(demande.adresse) && norm(adr.commune) === norm(demande.commune)) {
+            lieuHtml = `<p style="background:#f6f9fe;border:1px solid #dbe5f5;padding:10px 14px;border-radius:8px;">📍 <strong>Adresse du rendez-vous :</strong> ${escHtml([adr.adresse, [adr.code_postal, adr.commune].filter(Boolean).join(" ")].filter(Boolean).join(", "))}</p>`;
+          }
+        } catch (_) { /* sans l'adresse, l'e-mail part quand même */ }
         const html = `<div style="font-family:sans-serif;max-width:480px;">
           <h2 style="color:#16a34a;">✅ Rendez-vous confirmé</h2>
           <p>Votre intervention du <strong>${escHtml(dateAff)} à ${escHtml(heure)}</strong> est confirmée${artisanInfos?.nom_entreprise ? ` avec <strong>${escHtml(artisanInfos.nom_entreprise)}</strong>` : ""}.</p>
+          ${lieuHtml}
           ${visiteHtml}${paiementConf && demande.type_intervention !== "visite" ? `<p style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:8px;">💶 Vos frais de réservation de <strong>${escHtml(Number(paiementConf.montant).toFixed(2).replace(".", ","))} €</strong> sont réglés. Ces frais sont déduits du prix final de l’intervention.</p>` : ""}${paiementConf ? `<p style="text-align:center;margin:18px 0;"><a href="https://caralink.app/artisans/annuler-reservation.html?token=${encodeURIComponent(paiementConf.token)}" style="display:inline-block;background:#f1f5f9;color:#475569;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700;">Annuler mon rendez-vous</a></p>` : ""}${message ? `<p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${escHtml(message)}</p>` : ""}
           ${artisanInfos?.telephone ? `<p style="font-size:12.5px;color:#6b7c96;">En cas d'empêchement, vous pouvez contacter directement l'artisan au <a href="tel:${escHtml(telHref(artisanInfos.telephone))}">${escHtml(artisanInfos.telephone)}</a>.</p>` : ""}
           <p style="font-size:12px;color:#6b7c96;">À bientôt !</p>

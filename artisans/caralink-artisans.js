@@ -1822,6 +1822,16 @@ async function chargerApercuDispo(artisanId) {
   }
 }
 
+// Avant que le formulaire existe : « salon » seulement si l'artisan reçoit uniquement chez lui ; « les_deux » démarre sur « chez l'artisan ».
+function lieuChoisiDepart(artisanId) { var m = modeLieuArtisan(artisanId); return (m === 'salon' || m === 'les_deux') ? 'salon' : 'domicile'; }
+function lieuDispoHTML(artisanId) {
+  var m = modeLieuArtisan(artisanId), a = (_profilDataCourant && _profilDataCourant.artisan) || {};
+  if (m === 'salon') return '<div style="font-size:12.5px;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;padding:10px 12px;line-height:1.45;margin-bottom:8px;">' + T('dispo_lieu_info_1') + '<strong>' + escHtml(a.nom_entreprise || '') + '</strong>' + (a.commune ? ' (' + escHtml(a.commune) + ')' : '') + T('dispo_lieu_info_2') + '</div>';
+  if (m === 'les_deux') return '<div style="margin-bottom:8px;"><div style="font-size:12px;font-weight:700;color:var(--mu2,#555);margin-bottom:6px;">' + T('dispo_lieu_titre') + '</div>' +
+    '<label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer;margin-bottom:4px;"><input type="radio" name="dispo-lieu" value="salon" checked onchange="basculerLieuDispo(' + jsAttr(artisanId) + ')"> ' + T('dispo_lieu_chez_artisan') + '</label>' +
+    '<label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer;"><input type="radio" name="dispo-lieu" value="domicile" onchange="basculerLieuDispo(' + jsAttr(artisanId) + ')"> ' + T('dispo_lieu_chez_moi') + '</label></div>';
+  return '';
+}
 function ouvrirVerifDispo(artisanId, pourVisite) {
   // « pourVisite » : vient du choix « Rendez-vous sur place » (lié à CET artisan, ne s'applique pas à une autre fiche).
   // Sinon (bouton « Voir les disponibilités ») : le client repart de zéro et la question « première intervention ? » lui sera posée.
@@ -1842,11 +1852,13 @@ function ouvrirVerifDispo(artisanId, pourVisite) {
       (options ? '<div id="dispo-services"><select id="dispo-service" onchange="surChangementPrestationsDispo()" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' + options + '</select></div>' +
         (services.length > 1 ? '<a id="dispo-ajout-presta" href="#" onclick="ajouterPrestationDispo();return false;" style="display:inline-block;font-size:12.5px;font-weight:700;color:var(--ac,#B5502F);margin:-2px 0 10px;">' + T('dispo_ajout_presta') + '</a>' : '') : '') +
       '<div id="dispo-compte" style="font-size:12.5px;color:var(--mu2,#777);margin-bottom:8px;"></div>' +
+      lieuDispoHTML(artisanId) +
+      '<div id="dispo-bloc-adresse" style="display:' + (lieuChoisiDepart(artisanId) === 'salon' ? 'none' : 'block') + ';">' +
       '<input id="dispo-adresse" type="text" placeholder="' + T('ph_adresse_interv') + '" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' +
       '<div style="display:flex;gap:8px;margin-bottom:8px;">' +
         '<input id="dispo-cp" type="text" placeholder="' + T('ph_cp') + '" style="flex:1;min-width:0;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);box-sizing:border-box;">' +
         '<input id="dispo-commune" type="text" placeholder="' + T('ph_commune') + '" style="flex:2;min-width:0;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);box-sizing:border-box;">' +
-      '</div>' +
+      '</div></div>' +
       '<div style="font-size:12px;font-weight:700;color:var(--mu2,#555);margin:6px 0 6px;">' + T('contact_titre') + '</div>' +
       '<input id="dispo-nom" type="text" autocomplete="name" placeholder="' + T('ph_nom') + '" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' +
       '<input id="dispo-tel" type="tel" autocomplete="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' +
@@ -1855,6 +1867,26 @@ function ouvrirVerifDispo(artisanId, pourVisite) {
       '<div id="dispo-resultat" style="margin-top:10px;"></div>' +
     '</div>';
   prefillDispoDepuisCompte();
+}
+
+// ── Où se passe le rendez-vous : chez l'artisan (salon, atelier) ou chez le client (15/11/2026) ──
+function modeLieuArtisan(artisanId) {
+  var a = _profilDataCourant && _profilDataCourant.artisan;
+  if (!a || (artisanId && a.id !== artisanId)) return 'domicile';
+  return a.mode_lieu === 'salon' || a.mode_lieu === 'les_deux' ? a.mode_lieu : 'domicile';
+}
+function lieuChoisiDispo(artisanId) {
+  var m = modeLieuArtisan(artisanId);
+  if (m === 'salon') return 'salon';
+  if (m === 'les_deux') { var r = document.querySelector('input[name="dispo-lieu"]:checked'); return r && r.value === 'domicile' ? 'domicile' : 'salon'; }
+  return 'domicile';
+}
+// Le client change « chez l'artisan / chez moi » : l'adresse apparaît ou disparaît, et les créneaux déjà affichés sont effacés.
+function basculerLieuDispo(artisanId) {
+  var bloc = document.getElementById('dispo-bloc-adresse');
+  if (bloc) bloc.style.display = lieuChoisiDispo(artisanId) === 'salon' ? 'none' : 'block';
+  window._dispoContexte = null;
+  var res = document.getElementById('dispo-resultat'); if (res) res.innerHTML = '';
 }
 
 // ── Plusieurs prestations sur une même réservation (14/11/2026) — 4 au maximum. La 1re reste « dispo-service » ; les autres sont « dispo-service-sup ».
@@ -1940,17 +1972,23 @@ document.addEventListener('visibilitychange', function() { if (!document.hidden 
 
 async function verifierDispoReelle(artisanId, dateDebut) {
   var resultat = document.getElementById('dispo-resultat');
-  var adresse, cp, commune, dureeMin, serviceId, serviceIds = [], contact = null;
+  var adresse, cp, commune, dureeMin, serviceId, serviceIds = [], contact = null, lieu = 'domicile';
 
   if (dateDebut && window._dispoContexte) {
     contact = window._dispoContexte.contact || null;
     // Navigation semaine suivante/précédente : on réutilise le contexte déjà validé
     adresse = window._dispoContexte.adresse; cp = window._dispoContexte.cp; commune = window._dispoContexte.commune;
-    dureeMin = window._dispoContexte.duree; serviceId = window._dispoContexte.serviceId; serviceIds = window._dispoContexte.serviceIds || [];
+    dureeMin = window._dispoContexte.duree; serviceId = window._dispoContexte.serviceId; serviceIds = window._dispoContexte.serviceIds || []; lieu = window._dispoContexte.lieu || 'domicile';
   } else {
-    adresse = document.getElementById('dispo-adresse').value.trim();
-    cp = document.getElementById('dispo-cp').value.trim();
-    commune = document.getElementById('dispo-commune').value.trim();
+    lieu = lieuChoisiDispo(artisanId);
+    if (lieu === 'salon') { // chez l'artisan : pas d'adresse à donner (le serveur utilise celle de l'artisan)
+      var art0 = (_profilDataCourant && _profilDataCourant.artisan) || {};
+      adresse = 'Chez ' + (art0.nom_entreprise || 'l\'artisan'); cp = ''; commune = art0.commune || '';
+    } else {
+      adresse = document.getElementById('dispo-adresse').value.trim();
+      cp = document.getElementById('dispo-cp').value.trim();
+      commune = document.getElementById('dispo-commune').value.trim();
+    }
     var cNom = document.getElementById('dispo-nom').value.trim();
     var cTel = document.getElementById('dispo-tel').value.trim();
     var cEmail = document.getElementById('dispo-email').value.trim();
@@ -1971,13 +2009,13 @@ async function verifierDispoReelle(artisanId, dateDebut) {
     var res = await fetch(SUPABASE_URL + '/functions/v1/verifier-disponibilite-artisan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
-      body: JSON.stringify({ mode: 'creneaux', artisan_id: artisanId, adresse: adresse, code_postal: cp, commune: commune, duree_min: dureeMin, date_debut: dateDebut || undefined }),
+      body: JSON.stringify({ mode: 'creneaux', artisan_id: artisanId, adresse: adresse, code_postal: cp, commune: commune, duree_min: dureeMin, lieu: lieu, date_debut: dateDebut || undefined }),
     });
     var data = await res.json();
     if (data.error) { resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">' + escHtml(data.error) + '</div>'; return; }
 
     window._dispoContexte = {
-      artisanId: artisanId, adresse: adresse, cp: cp, commune: commune, serviceId: serviceId, serviceIds: serviceIds, duree: dureeMin, contact: contact,
+      artisanId: artisanId, adresse: adresse, cp: cp, commune: commune, serviceId: serviceId, serviceIds: serviceIds, lieu: lieu, duree: dureeMin, contact: contact,
       secteur: (_profilDataCourant && _profilDataCourant.artisan.secteur) || 'autre',
       latitude: data.latitude, longitude: data.longitude, dateDebutFenetre: data.date_debut_fenetre,
     };
@@ -2129,7 +2167,7 @@ async function envoyerCreneauDevis() {
         commune: ctx.commune, description_besoin: message, secteur: ctx.secteur, photos: _devisPhotos,
         artisan_id: ctx.artisanId, type_intervention: _typeInterventionChoisi,
         date_intervention: ctx.date, heure_debut: ctx.heureDebut, heure_fin: ctx.heureFin,
-        adresse: ctx.adresse, code_postal: ctx.cp, service_id: ctx.serviceId, service_ids: ctx.serviceIds || [],
+        adresse: ctx.adresse, code_postal: ctx.cp, service_id: ctx.serviceId, service_ids: ctx.serviceIds || [], lieu: ctx.lieu || 'domicile',
         latitude: ctx.latitude, longitude: ctx.longitude,
       }),
     });
@@ -2207,7 +2245,7 @@ async function envoyerSurMesureDevis() {
         commune: ctx.commune, description_besoin: message, secteur: ctx.secteur, photos: _devisPhotos,
         artisan_id: ctx.artisanId, type_intervention: _typeInterventionChoisi,
         date_intervention: dateVal, heure_debut: heureVal, heure_fin: heureFin,
-        adresse: ctx.adresse, code_postal: ctx.cp, service_id: ctx.serviceId, service_ids: ctx.serviceIds || [],
+        adresse: ctx.adresse, code_postal: ctx.cp, service_id: ctx.serviceId, service_ids: ctx.serviceIds || [], lieu: ctx.lieu || 'domicile',
         latitude: ctx.latitude, longitude: ctx.longitude,
         hors_horaires: true,
       }),
@@ -2289,6 +2327,7 @@ function fraisDeplacementContexte(artisanId) {
 function visitePropose(artisanId) {
   var a = _profilDataCourant && _profilDataCourant.artisan;
   if (!a || (artisanId && a.id !== artisanId)) return true;
+  if (a.mode_lieu === 'salon') return false; // l'artisan reçoit chez lui : pas de visite d'estimation, réservation directe
   return a.proposer_visite !== false;
 }
 
@@ -2423,7 +2462,7 @@ function premiereInterventionHTML() {
   var ctx = window._dispoContexte;
   window._typeInterventionFrais = fraisDeplacementContexte(ctx && ctx.artisanId);
   // L'artisan a indiqué qu'il ne propose pas de visite d'estimation : aucune question, c'est une réservation directe.
-  if (!visitePropose(ctx && ctx.artisanId)) { _typeInterventionChoisi = 'reservation'; return reservationInfoHTML() ? '<div style="margin-bottom:10px;">' + reservationInfoHTML() + '</div>' : ''; }
+  if (!visitePropose(ctx && ctx.artisanId) || (ctx && ctx.lieu === 'salon')) { _typeInterventionChoisi = 'reservation'; return reservationInfoHTML() ? '<div style="margin-bottom:10px;">' + reservationInfoHTML() + '</div>' : ''; }
   // Le client vient de choisir « Rendez-vous sur place » pour CET artisan : la réponse est déjà donnée, on affiche seulement le rappel.
   if (window._visiteDemandee && ctx && window._visiteDemandee === ctx.artisanId) {
     _typeInterventionChoisi = 'visite';

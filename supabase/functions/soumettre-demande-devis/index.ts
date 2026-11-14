@@ -282,7 +282,7 @@ Deno.serve(async (req: Request) => {
     if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Requête invalide." }, 400);
 
     const { client_nom, client_telephone, client_email, contact_prefere, secteur, description_besoin, commune, artisan_id, photos,
-            date_intervention, heure_debut, heure_fin, adresse, code_postal, latitude, longitude, service_id, service_ids, hors_horaires, type_intervention } = body;
+            date_intervention, heure_debut, heure_fin, adresse, code_postal, latitude, longitude, service_id, service_ids, hors_horaires, type_intervention, lieu } = body;
 
     // ── Types : un champ texte doit être du texte (sinon : 400 propre, jamais une panne 500) ──
     for (const v of [client_nom, client_telephone, client_email, contact_prefere, secteur, description_besoin, commune, adresse, type_intervention, date_intervention, heure_debut, heure_fin, artisan_id, service_id]) {
@@ -295,9 +295,9 @@ Deno.serve(async (req: Request) => {
     const email = (client_email ?? "").trim();
     const secteurCode = (secteur ?? "").trim();
     const description = (description_besoin ?? "").trim();
-    const communeNom = (commune ?? "").trim();
-    const adresseTxt = (adresse ?? "").trim();
-    const cp = code_postal == null || code_postal === "" ? null : String(code_postal).trim();
+    let communeNom = (commune ?? "").trim();
+    let adresseTxt = (adresse ?? "").trim();
+    let cp = code_postal == null || code_postal === "" ? null : String(code_postal).trim();
 
     if (!nom || !tel || !secteurCode || !description || !communeNom) {
       return json({ error: "Champs obligatoires manquants." }, 400);
@@ -315,7 +315,7 @@ Deno.serve(async (req: Request) => {
     if ((contactChoisi === "email" && !email) || (email && (email.length > 200 || !REGEX_EMAIL.test(email)))) {
       return json({ error: "Adresse email invalide." }, 400);
     }
-    const typeIntervention = (type_intervention ?? "").trim() || null;
+    let typeIntervention = (type_intervention ?? "").trim() || null;
     if (typeIntervention && !TYPES_INTERVENTION_VALIDES.includes(typeIntervention)) return json({ error: "Type de demande invalide." }, 400);
     const artisanId = (artisan_id ?? "").trim() || null;
     if (artisanId && !REGEX_UUID.test(artisanId)) return json({ error: "Artisan introuvable." }, 404);
@@ -383,6 +383,25 @@ Deno.serve(async (req: Request) => {
           }
           if (p !== null) prixServiceTotal = Math.round(((prixServiceTotal ?? 0) + p) * 100) / 100;
         }
+      }
+    }
+
+    // ── Où se passe le rendez-vous ? (colonne facultative « mode_lieu » : sans elle, l'artisan se déplace comme avant.) ──
+    // « salon » : le client vient chez l'artisan. L'adresse du rendez-vous est TOUJOURS celle de l'artisan lue ici, jamais celle envoyée par la page.
+    // « les_deux » : le client choisit (lieu = "salon"). Dans un salon il n'y a pas de visite d'estimation : un nouveau client réserve directement.
+    {
+      let modeLieu = "domicile", adrArt: any = null;
+      const rl = await sb.from("artisans").select("mode_lieu, adresse, code_postal, commune").eq("id", artisanId).maybeSingle();
+      if (!rl.error && rl.data) { adrArt = rl.data; if (typeof (rl.data as any).mode_lieu === "string") modeLieu = (rl.data as any).mode_lieu; }
+      const salonChoisi = modeLieu === "salon" || (modeLieu === "les_deux" && lieu === "salon");
+      if (salonChoisi) {
+        if (!adrArt || !String(adrArt.adresse ?? "").trim() || !String(adrArt.commune ?? "").trim()) {
+          return json({ error: "Cet artisan n'a pas encore indiqué l'adresse où il reçoit. Essayez un autre moment ou envoyez-lui un renseignement." }, 409);
+        }
+        adresseTxt = String(adrArt.adresse).trim();
+        cp = adrArt.code_postal ? String(adrArt.code_postal).trim() : null;
+        communeNom = String(adrArt.commune).trim();
+        if (typeIntervention === "visite") typeIntervention = "reservation";
       }
     }
 

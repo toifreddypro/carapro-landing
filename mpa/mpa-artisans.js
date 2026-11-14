@@ -2941,7 +2941,17 @@ async function geocoderInterventionCourante() {
   return await geocoderAdresse(adresse, cp, commune);
 }
 
+// Chez l'artisan (mode « salon ») : le rendez-vous a lieu chez lui, aucune adresse client ni trajet. « les deux » garde l'adresse visible.
+function modeSalonMPA() { return !!_artisan && _artisan.mode_lieu === 'salon'; }
+function majAffichageLieuIntervention() {
+  var salon = modeSalonMPA();
+  var bloc = document.getElementById('mi-bloc-adresse'), note = document.getElementById('mi-note-salon'), zoneCr = document.getElementById('mi-creneaux-zone');
+  if (bloc) bloc.style.display = salon ? 'none' : '';
+  if (note) note.style.display = salon ? 'block' : 'none';
+  if (zoneCr && zoneCr.parentNode) zoneCr.parentNode.style.display = salon ? 'none' : '';
+}
 function preRemplirAdresseIntervention() {
+  if (modeSalonMPA()) return;
   var clientId = document.getElementById('mi-client').value;
   var c = _clientsCache.find(function(x) { return x.id === clientId; });
   if (c) {
@@ -3024,6 +3034,7 @@ var MARGE_SECURITE_MIN = 10; // tampon de sécurité ajouté après chaque traje
 async function calculerCreneaux() {
   var zone = document.getElementById('mi-creneaux-zone');
   if (!zone) return;
+  if (modeSalonMPA()) return; // chez l'artisan : pas de trajet à calculer
   var monToken = ++_calculCreneauxToken; // évite qu'une réponse tardive écrase un calcul plus récent
 
   var dateStr = document.getElementById('mi-date').value;
@@ -3097,6 +3108,7 @@ const SEUIL_JOURNEE_CHARGEE = 3;
 const FENETRE_DERNIERE_MINUTE_JOURS = 3;
 
 async function verifierTensionJournee(dateStr, communeNouvelle, idAExclure) {
+  if (modeSalonMPA()) return; // pas de trajets chez soi
   if (!estPro()) return; // réservé à l'offre Pro (simple message d'information, jamais bloquant)
   if (!communeNouvelle) return; // rien à comparer sans commune
 
@@ -3139,6 +3151,7 @@ async function verifierTensionJournee(dateStr, communeNouvelle, idAExclure) {
 }
 
 async function verifierFaisabiliteJour(dateStr, idAModifier) {
+  if (modeSalonMPA()) return;
   var duJour = _interventionsCache.filter(function(i) {
     return i.date_intervention === dateStr && i.statut !== 'annulee' && i.heure_debut && i.heure_fin && i.latitude != null;
   }).sort(function(a, b) { return a.heure_debut.localeCompare(b.heure_debut); });
@@ -3340,6 +3353,7 @@ async function ouvrirNouvelleIntervention(dateStr, creneau) {
   document.getElementById('mi-prix').dataset.auto = '0';
   var hintN = document.getElementById('mi-prix-hint'); if (hintN) hintN.textContent = '';
   await chargerLignesPourFormulaire(null);
+  majAffichageLieuIntervention();
   document.getElementById('mi-notes').value = '';
   document.getElementById('mi-statut').value = 'planifiee';
   masquerOptionPayee(false);
@@ -3440,6 +3454,7 @@ async function ouvrirIntervention(id) {
   toggleDatePaiement();
   majVerrouLivraisonIntervention(_commandeLiee, false);
   await chargerLignesPourFormulaire(i);
+  majAffichageLieuIntervention();
   document.getElementById('mi-delete-wrap').style.display = 'block';
   document.getElementById('mi-impossible-wrap').style.display = ['planifiee', 'en_cours'].indexOf(i.statut || 'planifiee') !== -1 ? 'block' : 'none';
   renderZoneAvisIntervention(i);
@@ -4107,6 +4122,7 @@ async function sauverIntervention() {
   var adresse = document.getElementById('mi-adr').value.trim() || null;
   var cp = document.getElementById('mi-cp').value.trim() || null;
   var commune = document.getElementById('mi-com').value.trim() || null;
+  if (modeSalonMPA()) { adresse = _artisan.adresse || null; cp = _artisan.code_postal || null; commune = _artisan.commune || null; } // chez l'artisan : l'adresse du rendez-vous est la sienne
 
   var maj = {
     artisan_id: _artisan.id,
@@ -4151,7 +4167,9 @@ async function sauverIntervention() {
   }
 
   // Géocodage silencieux — si l'adresse a une correspondance, on la stocke ; sinon on enregistre quand même (jamais bloquant)
-  if (adresse) {
+  if (modeSalonMPA()) {
+    if (_artisan.latitude != null && _artisan.longitude != null) { maj.latitude = _artisan.latitude; maj.longitude = _artisan.longitude; }
+  } else if (adresse) {
     var pt = await geocoderAdresse(adresse, cp, commune);
     if (pt) { maj.latitude = pt.lat; maj.longitude = pt.lon; }
   }
@@ -6447,6 +6465,11 @@ async function openModifierFiche() {
   document.getElementById('m-cp').value = a.code_postal || '';
   document.getElementById('m-com').value = a.commune || '';
   document.getElementById('m-rayon').value = a.rayon_intervention_km || 15;
+  var blocLieu = document.getElementById('m-lieu-wrap');
+  if (blocLieu) { // masqué tant que la colonne n'existe pas (lot19-salon.sql pas lancé)
+    blocLieu.style.display = ('mode_lieu' in a) ? '' : 'none';
+    var rLieu = document.querySelector('input[name="m-lieu"][value="' + (a.mode_lieu || 'domicile') + '"]'); if (rLieu) rLieu.checked = true;
+  }
   document.getElementById('m-distance').checked = !!a.travaille_a_distance;
   var champFrais = document.getElementById('m-frais'); // (absent si la page HTML en mémoire est plus ancienne que ce code)
   if (champFrais) champFrais.value = (a.frais_deplacement != null && a.frais_deplacement !== '') ? String(a.frais_deplacement).replace('.', ',') : '';
@@ -6689,6 +6712,12 @@ async function sauverFiche() {
   }
   var champAnnul = document.getElementById('m-annul-heures');
   if (champAnnul && 'annulation_gratuite_heures' in _artisan) maj.annulation_gratuite_heures = parseInt(champAnnul.value, 10) || 0;
+  // Où l'artisan reçoit : chez le client (défaut), chez lui, ou les deux. Chez lui, l'adresse est indispensable : elle est envoyée au client à la confirmation.
+  var rLieuCoche = document.querySelector('input[name="m-lieu"]:checked');
+  if (rLieuCoche && 'mode_lieu' in _artisan) {
+    if (rLieuCoche.value !== 'domicile' && (!maj.adresse || !maj.commune)) { alert('Pour recevoir vos clients chez vous, indiquez d\'abord votre adresse et votre commune dans cette fiche : elles sont envoyées au client quand son rendez-vous est confirmé.'); return; }
+    maj.mode_lieu = rLieuCoche.value;
+  }
   // Géocodage de l'adresse pro — sert de point de départ pour le calcul des trajets (Smart Dispatch)
   // Sans adresse, on retombe sur la commune : la position suit toujours un changement de commune (elle sert aussi à recevoir les projets de clients proches).
   if (maj.adresse || maj.commune) {
@@ -6740,18 +6769,19 @@ function renderClients(liste) {
   if (zm) zm.innerHTML = liste.length ? liste.map(carteClientMobile).join('') : '<div class="etat-vide-tbl">Aucun client habituel pour l\'instant.</div>';
   if (!liste.length) {
     rafraichirFicheMobile();
-    tbody.innerHTML = '<tr><td colspan="6" class="etat-vide-tbl">Aucun client habituel pour l\'instant.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="etat-vide-tbl">Aucun client habituel pour l\'instant.</td></tr>';
     return;
   }
   tbody.innerHTML = liste.map(function(c) {
     return '<tr>' +
       '<td><strong>' + escHtml(c.nom) + '</strong></td>' +
+      '<td>' + (c.telephone ? escHtml(c.telephone) : '<span style="color:var(--mu);">—</span>') + '</td>' +
       '<td>' + (c.email ? escHtml(c.email) : '<span style="color:var(--mu);">—</span>') + '</td>' +
       '<td>' + escHtml(c.adresse||'—') + '</td>' +
       '<td>' + escHtml(c.code_postal||'—') + '</td>' +
       '<td>' + escHtml(c.commune||'—') + '</td>' +
       '<td>' + (c.delai_paiement||30) + ' j</td>' +
-      '<td><button class="icbtn danger" onclick="supprimerClient(\'' + c.id + '\')" title="Supprimer">🗑</button></td>' +
+      '<td><button class="icbtn" onclick="ouvrirModifierClient(\'' + c.id + '\')" title="Modifier">✏️</button> <button class="icbtn danger" onclick="supprimerClient(\'' + c.id + '\')" title="Supprimer">🗑</button></td>' +
     '</tr>';
   }).join('');
   rafraichirFicheMobile();
@@ -6823,8 +6853,8 @@ function carteClientMobile(c) {
   var coul = pal[som % pal.length];
   var ligne = function(l, v) { return v ? '<div class="cl-lg"><span>' + l + '</span><span>' + escHtml(String(v)) + '</span></div>' : ''; };
   var plein = '<div class="pc-plein"><div class="cl-det"><div class="sv-tete" style="display:flex;align-items:center;gap:14px;margin-bottom:6px;"><div class="cv-av" style="background:' + coul + '">' + escHtml(ini) + '</div><div class="sv-nom" style="font-size:20px;font-weight:800;">' + escHtml(nom) + '</div></div>' +
-    ligne('E-mail', c.email) + ligne('Adresse', c.adresse) + ligne('Code postal', c.code_postal) + ligne('Commune', c.commune) + ligne('Paiement sous', (c.delai_paiement || 30) + ' jours') +
-    '<div class="sv-btns" style="display:flex;margin-top:20px;"><button class="sv-ret" style="flex:1;padding:14px;border-radius:14px;border:2px solid var(--ac);background:#fff;color:var(--ac);font-family:\'Outfit\',sans-serif;font-size:15.5px;font-weight:800;" onclick="fermerFicheMobile();supprimerClient(\'' + c.id + '\')">Retirer ce client</button></div></div></div>';
+    ligne('Téléphone', c.telephone) + ligne('E-mail', c.email) + ligne('Notes', c.notes) + ligne('Adresse', c.adresse) + ligne('Code postal', c.code_postal) + ligne('Commune', c.commune) + ligne('Paiement sous', (c.delai_paiement || 30) + ' jours') +
+    '<div class="sv-btns" style="display:flex;gap:10px;margin-top:20px;"><button class="sv-ret" style="flex:1;padding:14px;border-radius:14px;border:2px solid var(--ac);background:var(--ac);color:#fff;font-family:\'Outfit\',sans-serif;font-size:15.5px;font-weight:800;" onclick="fermerFicheMobile();ouvrirModifierClient(\'' + c.id + '\')">Modifier</button><button class="sv-ret" style="flex:1;padding:14px;border-radius:14px;border:2px solid var(--ac);background:#fff;color:var(--ac);font-family:\'Outfit\',sans-serif;font-size:15.5px;font-weight:800;" onclick="fermerFicheMobile();supprimerClient(\'' + c.id + '\')">Retirer ce client</button></div></div></div>';
   return '<div class="pc-wrap" data-fid="cl-' + c.id + '"><div class="pc-ligne" onclick="ouvrirFicheMobile(this)"><div class="cv-av" style="background:' + coul + '">' + escHtml(ini) + '</div>' +
     '<div class="pl-txt"><div class="pl-nom">' + escHtml(nom) + '</div><div class="pl-sous">' + escHtml(c.commune || 'Commune non renseignée') + '</div></div><div class="pl-chev">›</div></div>' + plein + '</div>';
 }
@@ -6837,8 +6867,30 @@ function filtrerClients() {
   }));
 }
 
+var _clientEnCours = null; // id du client en cours de modification (null = nouveau client)
+function remplirFormClient(c) {
+  document.getElementById('c-nom').value = c ? (c.nom || '') : '';
+  document.getElementById('c-tel').value = c ? (c.telephone || '') : '';
+  document.getElementById('c-email').value = c ? (c.email || '') : '';
+  document.getElementById('c-adr').value = c ? (c.adresse || '') : '';
+  document.getElementById('c-cp').value = c ? (c.code_postal || '') : '';
+  document.getElementById('c-com').value = c ? (c.commune || '') : '';
+  document.getElementById('c-notes').value = c ? (c.notes || '') : '';
+  document.getElementById('c-delai').value = c ? (c.delai_paiement || 30) : 30;
+  if (document.getElementById('c-pas-avis')) document.getElementById('c-pas-avis').checked = !!(c && c.ne_pas_demander_avis);
+  document.getElementById('modal-client-titre').textContent = c ? 'Modifier le client' : 'Ajouter un client habituel';
+  document.getElementById('btn-sauver-client').textContent = c ? 'Enregistrer' : 'Ajouter';
+}
+function ouvrirModifierClient(id) {
+  var c = (_clientsCache || []).find(function(x) { return x.id === id; });
+  if (!c) return;
+  _clientEnCours = id;
+  remplirFormClient(c);
+  ouvrirModale('modal-client');
+}
 function openAjouterClient() {
-  document.getElementById('c-nom').value = '';
+  _clientEnCours = null;
+  remplirFormClient(null);
   document.getElementById('c-email').value = '';
   document.getElementById('c-adr').value = '';
   document.getElementById('c-cp').value = '';
@@ -6852,15 +6904,17 @@ async function sauverClient() {
   if (!verifierAccesEcriture()) return;
   var nom = document.getElementById('c-nom').value.trim();
   if (!nom) { alert('Le nom du client est obligatoire.'); return; }
-  // Offre Essentiel : 15 clients ajoutés à la main (les clients venus de CaraLink arrivent toujours, par un autre chemin).
+  // Offre Essentiel : 15 clients ajoutés à la main (les clients venus de CaraLink arrivent toujours, par un autre chemin). Modifier un client n'est jamais limité.
   var nbClients = (_clientsCache || []).length;
-  if (!estPro()) {
+  if (!estPro() && !_clientEnCours) {
     if (nbClients >= LIMITE_CLIENTS_ESSENTIEL) { proposerPassagePro('clients'); return; }
     alerteEssentiel('clients', nbClients + 1, LIMITE_CLIENTS_ESSENTIEL, '');
   }
   var nouveau = {
     artisan_id: _artisan.id,
     nom: nom,
+    telephone: document.getElementById('c-tel').value.trim() || null,
+    notes: document.getElementById('c-notes').value.trim() || null,
     email: document.getElementById('c-email').value.trim() || null,
     adresse: document.getElementById('c-adr').value.trim() || null,
     code_postal: document.getElementById('c-cp').value.trim() || null,
@@ -6868,8 +6922,18 @@ async function sauverClient() {
     delai_paiement: parseInt(document.getElementById('c-delai').value, 10) || 30,
     ne_pas_demander_avis: !!(document.getElementById('c-pas-avis') && document.getElementById('c-pas-avis').checked),
   };
-  var { error } = await sb.from('mpa_artisans_clients').insert(nouveau);
+  var ecrire = function(ligne) {
+    if (_clientEnCours) { var maj2 = Object.assign({}, ligne); delete maj2.artisan_id; return sb.from('mpa_artisans_clients').update(maj2).eq('id', _clientEnCours).eq('artisan_id', _artisan.id); }
+    return sb.from('mpa_artisans_clients').insert(ligne);
+  };
+  var { error } = await ecrire(nouveau);
+  if (error && error.code === '42703') { // colonnes téléphone / notes absentes (lot19-salon.sql pas lancé) : on enregistre le reste
+    var sans = Object.assign({}, nouveau); delete sans.telephone; delete sans.notes;
+    ({ error } = await ecrire(sans));
+    if (!error && (nouveau.telephone || nouveau.notes)) alert('Client enregistré, mais pas son téléphone ni ses notes : ils seront disponibles dès que la mise à jour de la base (lot 19) sera faite.');
+  }
   if (error) { alert('Erreur : ' + error.message); return; }
+  _clientEnCours = null;
   fermerModale('modal-client');
   await chargerClients();
 }

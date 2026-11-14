@@ -71,6 +71,8 @@ function json(payload: unknown, status = 200): Response {
 }
 
 const MARGE_SECURITE_MIN = 10;
+const TRAJET_DEFAUT_MIN = 20; // intervention déjà au planning SANS adresse (saisie à la main) : trajet estimé, au lieu de supprimer tous les créneaux autour
+const NB_CRENEAUX_JOUR_SALON = 6; // en salon, créneaux plus nombreux (au rythme de la durée de la prestation), répartis sur toute la journée
 const HORIZON_JOURS = 14; // pour le mode aperçu
 const SEMAINE_JOURS = 7;  // jours affichés sur la vignette d'artisan
 const FENETRE_JOURS = 5;  // nombre de colonnes affichées d'un coup en mode créneaux
@@ -91,6 +93,13 @@ function minVersHeure(min: number): string {
 }
 function arrondirQuart(min: number): number {
   return Math.ceil(min / 15) * 15;
+}
+// Garde au plus n créneaux, répartis sur toute la journée (matin ET après-midi), dans l'ordre.
+function echantillonner(liste: string[], n: number): string[] {
+  if (liste.length <= n) return liste;
+  const out: string[] = [];
+  for (let i = 0; i < n; i++) out.push(liste[Math.round(i * (liste.length - 1) / (n - 1))]);
+  return out.filter((v, k) => out.indexOf(v) === k);
 }
 function dateISO(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -385,10 +394,17 @@ Deno.serve(async (req: Request) => {
     // affichage en grille façon Doctolib) — date_debut permet de paginer vers l'avant.
     if (mode === "creneaux") {
       const { adresse, code_postal, commune } = body;
-      if (!adresse) return json({ error: "Adresse manquante." }, 400);
-      if (typeof adresse !== "string" || adresse.length > ADRESSE_MAX) return json({ error: "Adresse invalide." }, 400);
-      if (code_postal != null && (typeof code_postal !== "string" || code_postal.length > CODE_POSTAL_MAX)) return json({ error: "Code postal invalide." }, 400);
-      if (commune != null && (typeof commune !== "string" || commune.length > COMMUNE_MAX)) return json({ error: "Commune invalide." }, 400);
+      // Où l'artisan reçoit-il ? (colonne facultative « mode_lieu » : sans elle, ou si le SQL n'est pas lancé, l'artisan se déplace comme avant.)
+      // « salon » : le client vient chez l'artisan, aucune adresse ni trajet. « les_deux » : le client choisit (body.lieu). Décidé ICI, jamais par la page.
+      let modeLieu = "domicile";
+      { const r = await sb.from("artisans").select("mode_lieu").eq("id", artisan_id).maybeSingle(); if (!r.error && r.data && typeof (r.data as any).mode_lieu === "string") modeLieu = (r.data as any).mode_lieu; }
+      const salon = modeLieu === "salon" || (modeLieu === "les_deux" && body.lieu === "salon");
+      if (!salon) {
+        if (!adresse) return json({ error: "Adresse manquante." }, 400);
+        if (typeof adresse !== "string" || adresse.length > ADRESSE_MAX) return json({ error: "Adresse invalide." }, 400);
+        if (code_postal != null && (typeof code_postal !== "string" || code_postal.length > CODE_POSTAL_MAX)) return json({ error: "Code postal invalide." }, 400);
+        if (commune != null && (typeof commune !== "string" || commune.length > COMMUNE_MAX)) return json({ error: "Commune invalide." }, 400);
+      }
       const duree = Math.min(DUREE_MAX, Math.max(DUREE_MIN, parseInt(body.duree_min, 10) || 60));
       if (body.date_debut != null && body.date_debut !== "" && (typeof body.date_debut !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(body.date_debut) || Number.isNaN(new Date(body.date_debut + "T00:00:00Z").getTime()))) return json({ error: "date_debut invalide (format AAAA-MM-JJ)." }, 400);
 
@@ -398,8 +414,8 @@ Deno.serve(async (req: Request) => {
       if (dateDebutFenetre < aujourdhui) dateDebutFenetre = new Date(aujourdhui);
       if (dateDebutFenetre > dateMaxAutorisee) dateDebutFenetre = dateMaxAutorisee;
 
-      const pt = await geocoderAdresse(adresse, code_postal, commune);
-      if (!pt) return json({ error: "Adresse introuvable — vérifiez l'orthographe." }, 422);
+      const pt = salon ? null : await geocoderAdresse(adresse, code_postal, commune);
+      if (!salon && !pt) return json({ error: "Adresse introuvable — vérifiez l'orthographe." }, 422);
 
       const joursDispo: any[] = [];
 
@@ -420,6 +436,21 @@ Deno.serve(async (req: Request) => {
           for (const bloc of blocsJour) {
             const debutBloc = heureVersMin(bloc.heure_debut);
             const finBloc = heureVersMin(bloc.heure_fin);
+            // En salon : pas de trajet. Les créneaux sont les fenêtres libres du planning, au rythme de la durée de la prestation.
+            if (salon) {
+              const pris = interDuJour.map((x: any) => [heureVersMin(x.heure_debut), heureVersMin(x.heure_fin)])
+                .filter((x: number[]) => x[0] < finBloc && x[1] > debutBloc).sort((a: number[], b: number[]) => a[0] - b[0]);
+              pris.push([finBloc, finBloc]);
+              const pas = Math.max(30, arrondirQuart(duree));
+              let curseur = debutBloc;
+              for (const [d, f] of pris) {
+                let debutMin = arrondirQuart(curseur);
+                if (jourStr === jourGP && debutMin < minPlancherAujourdhui) debutMin = arrondirQuart(minPlancherAujourdhui);
+                for (; debutMin + duree <= d; debutMin += pas) creneauxJour.push(minVersHeure(debutMin));
+                curseur = Math.max(curseur, f);
+              }
+              continue;
+            }
             const interDansBloc = interDuJour.filter((x: any) =>
               heureVersMin(x.heure_debut) >= debutBloc && heureVersMin(x.heure_fin) <= finBloc);
 
@@ -435,10 +466,12 @@ Deno.serve(async (req: Request) => {
 
               let travelIn = 0;
               if (!prev.estAncre) {
-                if (prev.lat == null) continue;
-                const t = await tempsTrajetMinutes(prev.lat, prev.lon, pt.lat, pt.lon);
-                if (t == null) continue;
-                travelIn = t;
+                if (prev.lat == null) travelIn = TRAJET_DEFAUT_MIN;
+                else {
+                  const t = await tempsTrajetMinutes(prev.lat, prev.lon, pt!.lat, pt!.lon);
+                  if (t == null) continue;
+                  travelIn = t;
+                }
               }
 
               let debutMin = arrondirQuart(prev.finMin + travelIn + (prev.estAncre ? 0 : MARGE_SECURITE_MIN));
@@ -446,9 +479,12 @@ Deno.serve(async (req: Request) => {
               const finDispoBloc = next ? next.debutMin : finBloc;
 
               if (next) {
-                if (next.lat == null) continue;
-                const travelOut = await tempsTrajetMinutes(pt.lat, pt.lon, next.lat, next.lon);
-                if (travelOut == null) continue;
+                let travelOut = TRAJET_DEFAUT_MIN;
+                if (next.lat != null) {
+                  const t2 = await tempsTrajetMinutes(pt!.lat, pt!.lon, next.lat, next.lon);
+                  if (t2 == null) continue;
+                  travelOut = t2;
+                }
                 if (debutMin + duree + travelOut + MARGE_SECURITE_MIN > finDispoBloc) continue;
               } else {
                 if (debutMin + duree > finDispoBloc) continue;
@@ -465,13 +501,13 @@ Deno.serve(async (req: Request) => {
           jour_label: JOURS_NOMS[joursemaine],
           jour_num: jour.getDate(),
           mois_label: MOIS_NOMS[jour.getMonth()],
-          creneaux: creneauxJour.slice(0, 4),
+          creneaux: salon ? echantillonner(creneauxJour, NB_CRENEAUX_JOUR_SALON) : creneauxJour.slice(0, 4),
           fermeture: typeJourBloque(jourStr), // null si le jour n'est pas bloqué ; sinon vacances | fermeture | inventaire | formation | autre
         });
       }
 
       return json({
-        adresse_geocodee: true, latitude: pt.lat, longitude: pt.lon,
+        adresse_geocodee: !salon, latitude: pt ? pt.lat : null, longitude: pt ? pt.lon : null, lieu: salon ? "salon" : "domicile",
         date_debut_fenetre: dateISO(dateDebutFenetre),
         peut_reculer: dateISO(dateDebutFenetre) > dateISO(aujourdhui),
         peut_avancer: dateISO(dateDebutFenetre) < dateISO(dateMaxAutorisee),
