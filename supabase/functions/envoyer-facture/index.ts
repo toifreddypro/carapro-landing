@@ -114,7 +114,7 @@ Deno.serve(async (req: Request) => {
 
     // Lignes de la facture : interventions facturées, ou articles de la commande de la boutique.
     const total = Number(facture.montant_total) || 0;
-    let lignes: { date: string; libelle: string; qte: number; pu: number }[] = [];
+    let lignes: { date: string; libelle: string; qte: number; pu: number; unite?: string }[] = [];
     if (facture.commande_id) {
       const { data: cmd } = await sbAdmin.from("commandes_catalogue").select("*").eq("id", facture.commande_id).eq("artisan_id", artisan.id).maybeSingle();
       if (cmd) {
@@ -130,19 +130,19 @@ Deno.serve(async (req: Request) => {
       const { data: li } = await sbAdmin.from("mpa_artisans_interventions")
         .select("id, date_intervention, prix, notes, artisans_services(nom_service)").eq("facture_id", facture.id).eq("artisan_id", artisan.id).order("date_intervention", { ascending: true });
       // Interventions à plusieurs prestations (table facultative) : une ligne par prestation, si la somme tombe juste sur le prix de l'intervention.
-      const detail: Record<string, { libelle: string; prix: number }[]> = {};
+      const detail: Record<string, { libelle: string; prix: number; qte: number; pu: number; unite: string }[]> = {};
       const idsInter = (li || []).map((l: any) => l.id);
       if (idsInter.length) {
         const { data: dl, error: errDl } = await sbAdmin.from("mpa_artisans_interventions_lignes")
-          .select("intervention_id, libelle, prix, ordre").in("intervention_id", idsInter).eq("artisan_id", artisan.id).order("ordre", { ascending: true });
-        if (!errDl) for (const x of (dl || []) as any[]) (detail[x.intervention_id] = detail[x.intervention_id] || []).push({ libelle: x.libelle, prix: Number(x.prix) || 0 });
+          .select("*").in("intervention_id", idsInter).eq("artisan_id", artisan.id).order("ordre", { ascending: true });
+        if (!errDl) for (const x of (dl || []) as any[]) (detail[x.intervention_id] = detail[x.intervention_id] || []).push({ libelle: x.libelle, prix: Number(x.prix) || 0, qte: Number(x.quantite) > 0 ? Number(x.quantite) : 1, pu: x.prix_unitaire != null ? Number(x.prix_unitaire) : (Number(x.prix) || 0), unite: x.unite ? String(x.unite) : "" });
       }
       lignes = [];
       for (const l of (li || []) as any[]) {
         const date = dateFR(new Date(String(l.date_intervention) + "T12:00:00Z"));
         const det = detail[l.id];
-        if (det && det.length > 1 && Math.abs(det.reduce((t, x) => t + x.prix, 0) - (Number(l.prix) || 0)) < 0.011) {
-          det.forEach((x, k) => lignes.push({ date, libelle: x.libelle + (k === 0 && l.notes ? " — " + l.notes : ""), qte: 1, pu: x.prix }));
+        if (det && (det.length > 1 || det[0].qte !== 1) && Math.abs(det.reduce((t, x) => t + x.prix, 0) - (Number(l.prix) || 0)) < 0.011) {
+          det.forEach((x, k) => lignes.push({ date, libelle: x.libelle + (k === 0 && l.notes ? " — " + l.notes : ""), qte: x.qte, pu: x.qte === 1 ? x.prix : x.pu, unite: x.unite }));
         } else {
           const nomService = (det && det.length > 1) ? det.map((x) => x.libelle).join(" + ") : (l.artisans_services?.nom_service || "Prestation");
           lignes.push({ date, libelle: nomService + (l.notes ? " — " + l.notes : ""), qte: 1, pu: Number(l.prix) || 0 });
@@ -156,7 +156,7 @@ Deno.serve(async (req: Request) => {
     const colonne = facture.commande_id ? "Désignation" : "Prestation";
     const tva = (artisan.tva_config && artisan.tva_config !== "Non assujetti") ? "" : `<p style="font-size:11px;color:#6b7c96;margin:10px 0 0;">TVA non applicable, art. 293 B du CGI.</p>`;
     const lignesHtml = lignes.map((l) =>
-      `<tr><td style="padding:7px 8px;border-bottom:1px solid #e4e8ef;">${escHtml(l.date)}</td><td style="padding:7px 8px;border-bottom:1px solid #e4e8ef;">${escHtml(l.libelle)}</td><td style="padding:7px 8px;border-bottom:1px solid #e4e8ef;text-align:center;">${l.qte}</td><td style="padding:7px 8px;border-bottom:1px solid #e4e8ef;text-align:right;">${euros(l.pu)}</td><td style="padding:7px 8px;border-bottom:1px solid #e4e8ef;text-align:right;">${euros(l.pu * l.qte)}</td></tr>`).join("");
+      `<tr><td style="padding:7px 8px;border-bottom:1px solid #e4e8ef;">${escHtml(l.date)}</td><td style="padding:7px 8px;border-bottom:1px solid #e4e8ef;">${escHtml(l.libelle)}</td><td style="padding:7px 8px;border-bottom:1px solid #e4e8ef;text-align:center;">${String(l.qte).replace(".", ",")}${l.unite ? " " + escHtml(l.unite) : ""}</td><td style="padding:7px 8px;border-bottom:1px solid #e4e8ef;text-align:right;">${euros(l.pu)}</td><td style="padding:7px 8px;border-bottom:1px solid #e4e8ef;text-align:right;">${euros(l.pu * l.qte)}</td></tr>`).join("");
     const adresseArtisan = [artisan.adresse, [artisan.code_postal, artisan.commune].filter(Boolean).join(" ")].filter(Boolean).map(escHtml).join("<br>");
     const adresseClient = [client.adresse, client.adresse2, [client.code_postal, client.commune].filter(Boolean).join(" ")].filter(Boolean).map(escHtml).join("<br>");
 

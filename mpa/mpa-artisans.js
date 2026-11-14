@@ -2964,13 +2964,15 @@ function preRemplirAdresseIntervention() {
 
 // Tarif indicatif du service → prix proposé pour l'intervention. Forfait ou sans unité : tel quel ; à l'heure : × la durée ;
 // autre unité (m², jour…) : aucun calcul (on ne connaît pas la quantité), le tarif est seulement rappelé.
-function suggestionPrixService(serviceId, dureeMin) {
+function suggestionPrixService(serviceId, dureeMin, unitaire) {
   var sv = _servicesCache.find(function(x) { return x.id === serviceId; });
   if (!sv || !(Number(sv.prix_indicatif) > 0)) return { valeur: null, texte: '' };
   var pu = Number(sv.prix_indicatif), unite = String(sv.unite || '').trim().toLowerCase();
   var rappel = 'Tarif indicatif de ce service : ' + eurosMPA(pu) + (sv.unite ? ' / ' + sv.unite : '') + '.';
   if (!unite || unite.indexOf('forfait') >= 0) return { valeur: pu, texte: rappel + ' Prix proposé : modifiez-le si besoin.' };
   if (/^(h|heure|heures)$/.test(unite) && dureeMin > 0) { var v = Math.round(pu * dureeMin / 60 * 100) / 100; return { valeur: v, texte: rappel + ' Prix proposé pour ' + dureeMin + ' min : ' + eurosMPA(v) + ' — modifiez-le si besoin.' }; }
+  // Autre unité (m², jour, pièce…) : dans la fiche d'intervention le prix proposé est PAR unité, l'artisan indique la quantité.
+  if (unitaire) return { valeur: pu, texte: rappel + ' Indiquez la quantité ci-dessous.' };
   return { valeur: null, texte: rappel + ' Indiquez le prix total de l\'intervention.' };
 }
 
@@ -2991,7 +2993,7 @@ function majPrixSuggere() {
   var serviceId = document.getElementById('mi-service').value;
   var s = _servicesCache.find(function(x) { return x.id === serviceId; });
   var duree = parseInt(document.getElementById('mi-duree').value, 10) || (s && s.duree_estimee_min) || 0;
-  var sug = suggestionPrixService(serviceId, duree);
+  var sug = suggestionPrixService(serviceId, duree, _lignesDispo === true);
   var hint = document.getElementById('mi-prix-hint'); if (hint) hint.textContent = sug.texte;
   var vide = champ.value === '';
   var suitEncore = champ.dataset.auto === '1' && Number(champ.value) === Number(champ.dataset.autoVal);
@@ -3188,12 +3190,14 @@ async function remplirSelectsIntervention() {
 //  limites ne voient aucune différence. Dès qu'il y a 2 prestations ou plus, TOUTES sont rangées dans mpa_artisans_interventions_lignes
 //  (SQL lot15-prestations-multiples.sql). Sans cette table, le bouton « + Ajouter une prestation » reste masqué : rien ne casse.
 // ════════════════════════════════════════
-var _lignesSup = [];          // prestations en plus de la première : { service_id, prix, auto }
+var _lignesSup = [];          // prestations en plus de la première : { service_id, prix (unitaire), qte, auto }
 var _lignesDispo = null;      // true / false : la table des lignes existe-t-elle ?
 var _lignesVerrou = false;    // intervention déjà facturée : les prestations ne se modifient plus
-var _lignesParInterv = {};    // id d'intervention → [{ service_id, libelle, prix, ordre }] (2 lignes ou plus seulement)
+var _lignesParInterv = {};    // id d'intervention → [{ service_id, libelle, prix, ordre }] (lignes enregistrées)
 
 function tableLignesAbsente(err) { return !!err && (err.code === '42P01' || err.code === 'PGRST205' || /does not exist|schema cache/i.test(String(err.message || ''))); }
+function arrondi2(n) { return Math.round(n * 100) / 100; }
+function texteQte(q) { return (Number(q) % 1 ? String(Number(q)).replace('.', ',') : String(Number(q))); }
 
 async function verifierLignesDispo() {
   if (_lignesDispo !== null) return _lignesDispo;
@@ -3223,14 +3227,40 @@ function nomServiceParId(id) {
   return sv ? sv.nom_service : '';
 }
 
+// Un service vendu « à la quantité » (m², jour, pièce, mètre…) : le prix est PAR unité et l'artisan indique la quantité. Le forfait et l'heure (calculée
+// avec la durée) restent comme avant. Retourne le libellé de l'unité, ou '' (aussi tant que la table des lignes n'existe pas : rien ne peut s'y ranger).
+function uniteQuantifiable(serviceId) {
+  if (!_lignesDispo) return '';
+  var sv = _servicesCache.find(function(x) { return x.id === serviceId; });
+  var u = String((sv && sv.unite) || '').trim(), bas = u.toLowerCase();
+  if (!u || bas.indexOf('forfait') >= 0 || /^(h|heure|heures)$/.test(bas)) return '';
+  return u;
+}
+
+// Toutes les prestations du formulaire (la 1re + celles en plus) avec quantité, prix unitaire et total de la ligne.
+function lignesFormulaire() {
+  var s1 = document.getElementById('mi-service').value, u1 = uniteQuantifiable(s1);
+  var q1 = parseFloat((document.getElementById('mi-qte') || {}).value);
+  var lignes = [{ service_id: s1, unite: u1, qte: (u1 && q1 > 0) ? q1 : 1, pu: parseFloat(document.getElementById('mi-prix').value) }];
+  _lignesSup.forEach(function(l) {
+    var u = uniteQuantifiable(l.service_id), q = parseFloat(l.qte);
+    lignes.push({ service_id: l.service_id, unite: u, qte: (u && q > 0) ? q : 1, pu: parseFloat(l.prix) });
+  });
+  lignes.forEach(function(l) { l.total = isNaN(l.pu) ? NaN : arrondi2(l.pu * l.qte); });
+  return lignes;
+}
+function lignesAEnregistrer() { return _lignesSup.length > 0 || lignesFormulaire().some(function(l) { return l.qte !== 1; }); }
+
 function renderLignesSup() {
   var zone = document.getElementById('mi-lignes-sup'); if (!zone) return;
   var opts = '<option value="">— Choisir —</option>' + _servicesCache.map(function(s) { return '<option value="' + s.id + '">' + escHtml(s.nom_service) + '</option>'; }).join('');
-  var style = 'padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:\'Outfit\',sans-serif;font-size:13px;';
+  var style = 'padding:9px 10px;border-radius:8px;border:1px solid var(--b2);font-family:\'Outfit\',sans-serif;font-size:13px;';
   zone.innerHTML = _lignesSup.map(function(l, k) {
-    return '<div class="mi-ligne-sup" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">' +
+    var u = uniteQuantifiable(l.service_id);
+    return '<div class="mi-ligne-sup" style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">' +
       '<select aria-label="Prestation ' + (k + 2) + '" onchange="surServiceLigneSup(' + k + ', this.value)" style="flex:2;min-width:0;' + style + '"' + (_lignesVerrou ? ' disabled' : '') + '>' + opts.replace('value="' + l.service_id + '"', 'value="' + l.service_id + '" selected') + '</select>' +
-      '<input aria-label="Prix de la prestation ' + (k + 2) + ' (€)" type="number" step="0.01" placeholder="Prix €" value="' + (l.prix === '' || l.prix == null ? '' : l.prix) + '" oninput="surPrixLigneSup(' + k + ', this.value)" style="flex:1;min-width:0;width:80px;' + style + '"' + (_lignesVerrou ? ' disabled' : '') + '/>' +
+      (u ? '<input aria-label="Quantité (' + escHtml(u) + ')" type="number" min="0" step="0.01" placeholder="Qté ' + escHtml(u) + '" value="' + (l.qte === '' || l.qte == null ? '' : l.qte) + '" oninput="surQteLigneSup(' + k + ', this.value)" style="flex:1;min-width:0;width:70px;' + style + '"' + (_lignesVerrou ? ' disabled' : '') + '/>' : '') +
+      '<input aria-label="Prix' + (u ? ' par ' + escHtml(u) : ' de la prestation ' + (k + 2)) + ' (€)" type="number" step="0.01" placeholder="' + (u ? 'Prix/' + escHtml(u) : 'Prix €') + '" value="' + (l.prix === '' || l.prix == null ? '' : l.prix) + '" oninput="surPrixLigneSup(' + k + ', this.value)" style="flex:1;min-width:0;width:80px;' + style + '"' + (_lignesVerrou ? ' disabled' : '') + '/>' +
       (_lignesVerrou ? '' : '<button type="button" onclick="retirerLignePrestation(' + k + ')" title="Retirer cette prestation" aria-label="Retirer cette prestation" style="flex:none;width:34px;height:34px;border-radius:8px;border:1px solid var(--b2);background:#fff;color:var(--danger);font-size:16px;cursor:pointer;">✕</button>') +
     '</div>';
   }).join('');
@@ -3239,7 +3269,7 @@ function renderLignesSup() {
 
 function ajouterLignePrestation() {
   if (_lignesVerrou) return;
-  _lignesSup.push({ service_id: '', prix: '', auto: false });
+  _lignesSup.push({ service_id: '', prix: '', qte: '1', auto: false });
   renderLignesSup();
 }
 function retirerLignePrestation(k) {
@@ -3249,8 +3279,8 @@ function retirerLignePrestation(k) {
 }
 function surServiceLigneSup(k, serviceId) {
   var l = _lignesSup[k]; if (!l) return;
-  l.service_id = serviceId;
-  var sug = suggestionPrixService(serviceId, 0);
+  l.service_id = serviceId; l.qte = '1';
+  var sug = suggestionPrixService(serviceId, 0, _lignesDispo === true);
   if (sug.valeur != null && (l.prix === '' || l.auto)) { l.prix = sug.valeur; l.auto = true; }
   renderLignesSup();
 }
@@ -3259,25 +3289,33 @@ function surPrixLigneSup(k, valeur) {
   l.prix = valeur; l.auto = false;
   majTotalIntervention();
 }
+function surQteLigneSup(k, valeur) {
+  var l = _lignesSup[k]; if (!l) return;
+  l.qte = valeur;
+  majTotalIntervention();
+}
 
-// Total = prix de la 1re prestation + celles en plus. Le champ « Prix » du haut devient « Prix de cette prestation » dès qu'il y en a plusieurs.
+// Total = somme des lignes (quantité × prix unitaire). Le champ « Prix » du haut est le prix de la 1re prestation (par unité s'il y a une quantité).
 function totalInterventionForm() {
-  var p1 = parseFloat(document.getElementById('mi-prix').value);
-  var vals = [p1].concat(_lignesSup.map(function(l) { return parseFloat(l.prix); })).filter(function(v) { return !isNaN(v); });
-  return vals.length ? Math.round(vals.reduce(function(t, v) { return t + v; }, 0) * 100) / 100 : null;
+  var vals = lignesFormulaire().map(function(l) { return l.total; }).filter(function(v) { return !isNaN(v); });
+  return vals.length ? arrondi2(vals.reduce(function(t, v) { return t + v; }, 0)) : null;
 }
 function majTotalIntervention() {
   var multi = _lignesSup.length > 0;
-  var lblS = document.getElementById('mi-lbl-service'), lblP = document.getElementById('mi-lbl-prix');
+  var s1 = document.getElementById('mi-service'), u1 = s1 ? uniteQuantifiable(s1.value) : '';
+  var lblS = document.getElementById('mi-lbl-service'), lblP = document.getElementById('mi-lbl-prix'), lblQ = document.getElementById('mi-lbl-qte'), wq = document.getElementById('mi-qte-wrap');
   if (lblS) lblS.textContent = multi ? 'Prestation 1' : 'Service';
-  if (lblP) lblP.textContent = multi ? 'Prix de la prestation 1 (€)' : 'Prix (€)';
+  if (lblP) lblP.textContent = (u1 ? 'Prix par ' + u1 : (multi ? 'Prix de la prestation 1' : 'Prix')) + (u1 && multi ? ' — prestation 1' : '') + ' (€)';
+  if (lblQ) lblQ.textContent = 'Quantité (' + u1 + ')';
+  if (wq) wq.style.display = u1 ? '' : 'none';
   var zone = document.getElementById('mi-lignes-zone'), tot = document.getElementById('mi-total'), btn = document.getElementById('mi-btn-ajout-presta');
   if (zone) zone.style.display = (_lignesDispo && !estLivraisonFormulaire()) ? 'block' : 'none';
   if (btn) btn.style.display = _lignesVerrou ? 'none' : '';
   if (tot) {
-    var t = totalInterventionForm();
-    tot.style.display = multi && t != null ? 'block' : 'none';
-    tot.textContent = '🧾 Total : ' + (t == null ? '—' : eurosMPA(t));
+    var lg = lignesFormulaire(), t = totalInterventionForm();
+    var qteSeule = !multi && lg[0].qte !== 1;
+    tot.style.display = (multi || qteSeule) && t != null ? 'block' : 'none';
+    tot.textContent = qteSeule ? '🧾 ' + texteQte(lg[0].qte) + ' ' + lg[0].unite + ' × ' + eurosMPA(lg[0].pu) + ' = ' + eurosMPA(t) : '🧾 Total : ' + (t == null ? '—' : eurosMPA(t));
   }
 }
 // Une livraison de commande n'a pas de service à multiplier : le bloc reste caché.
@@ -3286,33 +3324,40 @@ function estLivraisonFormulaire() { var s = document.getElementById('mi-service'
 // Charge les prestations d'une intervention qu'on ouvre : la 1re va dans les champs du haut, les autres en lignes en dessous.
 async function chargerLignesPourFormulaire(i) {
   _lignesSup = []; _lignesVerrou = false;
+  var champQte = document.getElementById('mi-qte'); if (champQte) champQte.value = '1';
   await verifierLignesDispo();
   if (_lignesDispo && i) {
-    var r = await sb.from('mpa_artisans_interventions_lignes').select('service_id, libelle, prix, ordre').eq('intervention_id', i.id).order('ordre', { ascending: true });
+    var r = await sb.from('mpa_artisans_interventions_lignes').select('*').eq('intervention_id', i.id).order('ordre', { ascending: true });
     var l = (!r.error && r.data) || [];
-    if (l.length > 1) {
+    var pu = function(x) { return x.prix_unitaire != null ? x.prix_unitaire : (x.prix == null ? '' : x.prix); };
+    if (l.length > 1 || (l.length === 1 && Number(l[0].quantite || 1) !== 1)) {
       document.getElementById('mi-service').value = l[0].service_id || '';
-      document.getElementById('mi-prix').value = l[0].prix == null ? '' : l[0].prix;
+      document.getElementById('mi-prix').value = pu(l[0]);
       document.getElementById('mi-prix').dataset.auto = '0';
+      if (champQte) champQte.value = String(l[0].quantite || 1);
       var hp = document.getElementById('mi-prix-hint'); if (hp) hp.textContent = '';
-      _lignesSup = l.slice(1).map(function(x) { return { service_id: x.service_id || '', prix: x.prix == null ? '' : x.prix, auto: false }; });
-      if (i.facture_id) { _lignesVerrou = true; document.getElementById('mi-service').disabled = true; document.getElementById('mi-prix').disabled = true; }
+      _lignesSup = l.slice(1).map(function(x) { return { service_id: x.service_id || '', prix: pu(x), qte: String(x.quantite || 1), auto: false }; });
+      if (i.facture_id) { _lignesVerrou = true; document.getElementById('mi-service').disabled = true; document.getElementById('mi-prix').disabled = true; if (champQte) champQte.disabled = true; }
     }
   }
   renderLignesSup();
 }
 
 // Écrit les lignes APRÈS l'enregistrement de l'intervention : on remplace tout (suppression puis ajout). Retourne un message d'erreur ou ''.
-async function enregistrerLignesIntervention(interventionId, premiere) {
+// Des lignes ne sont rangées que s'il y a plusieurs prestations OU une quantité différente de 1 ; sinon l'intervention reste « simple », comme avant.
+async function enregistrerLignesIntervention(interventionId) {
   if (!_lignesDispo) return '';
   var d = await sb.from('mpa_artisans_interventions_lignes').delete().eq('intervention_id', interventionId).eq('artisan_id', _artisan.id);
   if (d.error) return d.error.message;
-  if (!_lignesSup.length) return '';
-  var toutes = [premiere].concat(_lignesSup.map(function(l) { return { service_id: l.service_id, prix: parseFloat(l.prix) }; }));
-  var rows = toutes.map(function(l, k) {
-    return { intervention_id: interventionId, artisan_id: _artisan.id, service_id: l.service_id || null, libelle: nomServiceParId(l.service_id) || 'Prestation', prix: isNaN(l.prix) ? 0 : l.prix, ordre: k };
+  if (!lignesAEnregistrer()) return '';
+  var rows = lignesFormulaire().map(function(l, k) {
+    return { intervention_id: interventionId, artisan_id: _artisan.id, service_id: l.service_id || null, libelle: nomServiceParId(l.service_id) || 'Prestation',
+      prix: isNaN(l.total) ? null : l.total, quantite: l.qte, prix_unitaire: isNaN(l.pu) ? null : l.pu, unite: l.unite || null, ordre: k };
   });
   var ins = await sb.from('mpa_artisans_interventions_lignes').insert(rows);
+  if (ins.error && ins.error.code === '42703') { // colonnes de quantité absentes (lot20-quantite.sql pas lancé) : le total reste juste, sans le détail
+    ins = await sb.from('mpa_artisans_interventions_lignes').insert(rows.map(function(x) { var y = Object.assign({}, x); delete y.quantite; delete y.prix_unitaire; delete y.unite; return y; }));
+  }
   return ins.error ? ins.error.message : '';
 }
 
@@ -4141,12 +4186,12 @@ async function sauverIntervention() {
     date_paiement: document.getElementById('mi-statut').value === 'payee' ? (document.getElementById('mi-date-paiement').value || null) : null,
   };
   if (!maj.date_intervention) { alert('La date est obligatoire.'); return; }
-  // Plusieurs prestations : le prix de l'intervention devient le TOTAL, et le service de l'intervention reste celui de la 1re prestation.
-  var premierePresta = { service_id: maj.service_id, prix: parseFloat(document.getElementById('mi-prix').value) };
-  if (_lignesSup.length) {
-    if (!maj.service_id) { alert('Choisissez le service de la première prestation (ou retirez les prestations en plus).'); return; }
+  // Plusieurs prestations ou une quantité : le prix de l'intervention devient le TOTAL, et le service de l'intervention reste celui de la 1re prestation.
+  var formL = lignesFormulaire();
+  if (lignesAEnregistrer()) {
+    if (_lignesSup.length && !maj.service_id) { alert('Choisissez le service de la première prestation (ou retirez les prestations en plus).'); return; }
     if (_lignesSup.some(function(l) { return !l.service_id; })) { alert('Choisissez un service pour chaque prestation ajoutée (ou retirez la ligne vide avec la croix).'); return; }
-    if (['terminee', 'payee'].indexOf(maj.statut) !== -1 && (isNaN(premierePresta.prix) || _lignesSup.some(function(l) { return isNaN(parseFloat(l.prix)); }))) {
+    if (['terminee', 'payee'].indexOf(maj.statut) !== -1 && formL.some(function(l) { return isNaN(l.total); })) {
       alert('Indiquez le prix de chaque prestation avant de passer l\'intervention en « ' + (maj.statut === 'payee' ? 'Payée' : 'Terminée') + ' ». Si l\'une est offerte, saisissez 0.'); return;
     }
     maj.prix = totalInterventionForm();
@@ -4198,7 +4243,7 @@ async function sauverIntervention() {
     alert('Erreur : ' + res.error.message); return;
   }
   if (res.data && !_lignesVerrou) {
-    var errLignes = await enregistrerLignesIntervention(res.data.id, premierePresta);
+    var errLignes = await enregistrerLignesIntervention(res.data.id);
     if (errLignes) alert('L\'intervention est enregistrée, mais les prestations n\'ont pas pu l\'être : ' + errLignes + '\n\nOuvrez l\'intervention et recommencez.');
   }
   fermerModale('modal-intervention');
@@ -5379,7 +5424,7 @@ async function imprimerFacture(factureId) {
   try {
     var idsLg = (lignes || []).map(function(l) { return l.id; });
     if (idsLg.length) {
-      var rLg = await sb.from('mpa_artisans_interventions_lignes').select('intervention_id, libelle, prix, ordre').in('intervention_id', idsLg).order('ordre', { ascending: true });
+      var rLg = await sb.from('mpa_artisans_interventions_lignes').select('*').in('intervention_id', idsLg).order('ordre', { ascending: true });
       if (!rLg.error) (rLg.data || []).forEach(function(x) { (detailLignes[x.intervention_id] = detailLignes[x.intervention_id] || []).push(x); });
     }
   } catch (e) { detailLignes = {}; }
@@ -5398,10 +5443,10 @@ async function imprimerFacture(factureId) {
     var dateAff = new Date(l.date_intervention).toLocaleDateString('fr-FR', { day:'numeric', month:'short', year:'numeric' });
     var montant = l.prix || 0;
     var det = detailLignes[l.id];
-    if (det && det.length > 1 && Math.abs(det.reduce(function(t, x) { return t + (Number(x.prix) || 0); }, 0) - Number(montant)) < 0.011) {
+    if (det && (det.length > 1 || Number(det[0].quantite || 1) !== 1) && Math.abs(det.reduce(function(t, x) { return t + (Number(x.prix) || 0); }, 0) - Number(montant)) < 0.011) {
       return det.map(function(x, k) {
-        var m = Number(x.prix) || 0;
-        return '<tr><td>' + dateAff + '</td><td>' + escHtml(x.libelle) + (k === 0 && l.notes ? ' — ' + escHtml(l.notes) : '') + '</td><td>1</td><td>' + m.toFixed(2) + '€</td><td>' + m.toFixed(2) + '€</td></tr>';
+        var m = Number(x.prix) || 0, q = Number(x.quantite || 1) || 1, puL = x.prix_unitaire != null ? Number(x.prix_unitaire) : m / q;
+        return '<tr><td>' + dateAff + '</td><td>' + escHtml(x.libelle) + (k === 0 && l.notes ? ' — ' + escHtml(l.notes) : '') + '</td><td>' + texteQte(q) + (x.unite ? ' ' + escHtml(x.unite) : '') + '</td><td>' + puL.toFixed(2) + '€</td><td>' + m.toFixed(2) + '€</td></tr>';
       }).join('');
     }
     if (det && det.length > 1) service = det.map(function(x) { return x.libelle; }).join(' + '); // prix modifié après coup : une seule ligne, avec toutes les prestations

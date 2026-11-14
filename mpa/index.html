@@ -3128,6 +3128,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-field"><label for="mi-service" id="mi-lbl-service">Service</label>
 <select id="mi-service" onchange="preRemplirDureeIntervention()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;"></select>
 </div>
+<div class="modal-field" id="mi-qte-wrap" style="display:none;"><label for="mi-qte" id="mi-lbl-qte">Quantité</label><input id="mi-qte" type="number" min="0" step="0.01" value="1" oninput="majTotalIntervention()"/></div>
 <div class="modal-row" style="display:flex;gap:10px;">
 <div class="modal-field" style="flex:1;">
 <label for="mi-duree">Durée estimée (min)</label>
@@ -3358,6 +3359,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261115a"></script>
+<script src="/mpa/mpa-artisans.js?v=20261115b"></script>
 </body>
 </html>
