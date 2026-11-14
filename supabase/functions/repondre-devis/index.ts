@@ -303,9 +303,20 @@ Deno.serve(async (req: Request) => {
             lieuHtml = `<p style="background:#f6f9fe;border:1px solid #dbe5f5;padding:10px 14px;border-radius:8px;">📍 <strong>Adresse du rendez-vous :</strong> ${escHtml([adr.adresse, [adr.code_postal, adr.commune].filter(Boolean).join(" ")].filter(Boolean).join(", "))}</p>`;
           }
         } catch (_) { /* sans l'adresse, l'e-mail part quand même */ }
+        // Ce qui a été réservé (une ou plusieurs prestations), dans l'ordre choisi par le client. Jamais bloquant.
+        let prestasHtml = "";
+        try {
+          const idsConf: string[] = Array.isArray(demande.service_ids) && demande.service_ids.length ? demande.service_ids.filter((x: unknown) => typeof x === "string") : (demande.service_id ? [demande.service_id] : []);
+          if (idsConf.length) {
+            const { data: svConf } = await sb.from("artisans_services").select("id, nom_service").in("id", idsConf).eq("artisan_id", artisanId);
+            const nomsConf = idsConf.map((id) => (svConf || []).find((x: any) => x.id === id)?.nom_service).filter(Boolean);
+            if (nomsConf.length) prestasHtml = `<p>🛠️ <strong>${nomsConf.length > 1 ? "Prestations" : "Prestation"} :</strong> ${nomsConf.map((n) => escHtml(String(n))).join(" + ")}</p>`;
+          }
+        } catch (_) { /* sans le détail, l'e-mail part quand même */ }
         const html = `<div style="font-family:sans-serif;max-width:480px;">
           <h2 style="color:#16a34a;">✅ Rendez-vous confirmé</h2>
           <p>Votre intervention du <strong>${escHtml(dateAff)} à ${escHtml(heure)}</strong> est confirmée${artisanInfos?.nom_entreprise ? ` avec <strong>${escHtml(artisanInfos.nom_entreprise)}</strong>` : ""}.</p>
+          ${prestasHtml}
           ${lieuHtml}
           ${visiteHtml}${paiementConf && demande.type_intervention !== "visite" ? `<p style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:8px;">💶 Vos frais de réservation de <strong>${escHtml(Number(paiementConf.montant).toFixed(2).replace(".", ","))} €</strong> sont réglés. Ces frais sont déduits du prix final de l’intervention.</p>` : ""}${paiementConf ? `<p style="text-align:center;margin:18px 0;"><a href="https://caralink.app/artisans/annuler-reservation.html?token=${encodeURIComponent(paiementConf.token)}" style="display:inline-block;background:#f1f5f9;color:#475569;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700;">Annuler mon rendez-vous</a></p>` : ""}${message ? `<p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${escHtml(message)}</p>` : ""}
           ${artisanInfos?.telephone ? `<p style="font-size:12.5px;color:#6b7c96;">En cas d'empêchement, vous pouvez contacter directement l'artisan au <a href="tel:${escHtml(telHref(artisanInfos.telephone))}">${escHtml(artisanInfos.telephone)}</a>.</p>` : ""}

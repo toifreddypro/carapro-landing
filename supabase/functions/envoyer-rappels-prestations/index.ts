@@ -167,7 +167,7 @@ Deno.serve(async (req: Request) => {
     const dateCible = body.date_iso || demainISO();
 
     const { data: interventions, error } = await sb.from("mpa_artisans_interventions")
-      .select("id, date_intervention, creneau, heure_debut, artisan_id, artisans(nom_entreprise, telephone), mpa_artisans_clients(nom, email), artisans_services(nom_service)")
+      .select("id, date_intervention, creneau, heure_debut, artisan_id, adresse, code_postal, commune, artisans(nom_entreprise, telephone, adresse, code_postal, commune), mpa_artisans_clients(nom, email), artisans_services(nom_service)")
       .eq("date_intervention", dateCible)
       .eq("statut", "planifiee")
       .eq("rappel_envoye", false);
@@ -201,10 +201,16 @@ Deno.serve(async (req: Request) => {
       if (errReclame) { console.error("[envoyer-rappels-prestations] Réclamation impossible :", errReclame.message); resultats.push({ intervention_id: inter.id, statut: "erreur" }); continue; }
       if (!reclame || reclame.length === 0) { resultats.push({ intervention_id: inter.id, statut: "deja_envoye" }); continue; }
 
+      // Rendez-vous chez l'artisan (salon, atelier) : l'adresse est rappelée, le client en a besoin pour venir.
+      const normA = (x: unknown) => String(x ?? "").trim().toLowerCase();
+      const chezArtisan = !!(artisan?.adresse && normA(artisan.adresse) === normA((inter as any).adresse) && normA(artisan.commune) === normA((inter as any).commune));
+      const lieuRappel = chezArtisan
+        ? `<p style="background:#f6f9fe;border:1px solid #dbe5f5;padding:10px 14px;border-radius:8px;">📍 <strong>Adresse :</strong> ${escHtml([artisan.adresse, [artisan.code_postal, artisan.commune].filter(Boolean).join(" ")].filter(Boolean).join(", "))}</p>` : "";
       const html = `<div style="font-family:sans-serif;max-width:480px;">
         <h2 style="color:#B5502F;">Rappel — rendez-vous demain</h2>
         <p>Bonjour ${escHtml(client.nom || "")},</p>
         <p>Petit rappel : <strong>${escHtml(artisan?.nom_entreprise || "votre artisan")}</strong> a rendez-vous avec vous demain${service?.nom_service ? " pour : " + escHtml(service.nom_service) : ""}${heure ? " — " + escHtml(heure) : ""}.</p>
+        ${lieuRappel}
         ${artisan?.telephone ? `<p>Une question ou besoin de reporter ? Contactez directement l'artisan au ${escHtml(artisan.telephone)}.</p>` : ""}
       </div>`;
 
