@@ -114,8 +114,20 @@ function baseJour(aujourdhuiClient: unknown): Date {
   return new Date();
 }
 
+// Tolérant : l'API Adresse a parfois un raté (lenteur, 429/5xx). On réessaie une fois, puis on se replie
+// sur la commune seule (position approximative, suffisante pour estimer un trajet) plutôt que de bloquer le client.
 async function geocoderAdresse(adresse: string, cp: string, commune: string) {
-  const q = [adresse, cp, commune].filter(Boolean).join(" ");
+  const complet = [adresse, cp, commune].filter(Boolean).join(" ");
+  let pt = await geocoderUneFois(complet);
+  if (!pt && complet) { await new Promise((r) => setTimeout(r, 400)); pt = await geocoderUneFois(complet); }
+  if (!pt) {
+    const sansRue = [cp, commune].filter(Boolean).join(" ");
+    if (sansRue && sansRue !== complet) pt = await geocoderUneFois(sansRue);
+  }
+  return pt;
+}
+
+async function geocoderUneFois(q: string) {
   if (!q) return null;
   try {
     const res = await fetch("https://api-adresse.data.gouv.fr/search/?limit=1&q=" + encodeURIComponent(q), { signal: AbortSignal.timeout(5000) });
