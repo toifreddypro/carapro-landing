@@ -1452,6 +1452,43 @@ async function basculerCoeur(ev, id) {
   } catch (e) { alert(T('cpt_err_generique')); }
 }
 
+// ── « Prévenir cet artisan » (Lot 24) : le client dit à un artisan pas encore réservable qu'il aimerait réserver chez lui ──
+function ouvrirInteret(id) {
+  var ancien = document.getElementById('interet-fond'); if (ancien) ancien.remove();
+  var f = document.createElement('div'); f.id = 'interet-fond'; f.className = 'interet-fond';
+  f.innerHTML = '<div class="interet-boite" role="dialog" aria-modal="true" aria-labelledby="interet-t">' +
+    '<h3 id="interet-t">' + escHtml(T('interet_titre')) + '</h3><p>' + escHtml(T('interet_aide')) + '</p>' +
+    '<input id="interet-prenom" type="text" maxlength="40" autocomplete="given-name" placeholder="' + escHtml(T('interet_prenom')) + '" aria-label="' + escHtml(T('interet_prenom')) + '">' +
+    '<textarea id="interet-msg" rows="2" maxlength="300" placeholder="' + escHtml(T('interet_msg')) + '" aria-label="' + escHtml(T('interet_msg')) + '"></textarea>' +
+    '<div class="i-msg" id="interet-etat" role="status"></div>' +
+    '<div class="i-act"><button type="button" onclick="document.getElementById(\'interet-fond\').remove()">' + escHtml(T('interet_annuler')) + '</button>' +
+    '<button type="button" class="i-ok" id="interet-envoi" onclick="envoyerInteret(' + jsAttr(id) + ')">' + escHtml(T('interet_envoyer')) + '</button></div></div>';
+  f.addEventListener('click', function(ev) { if (ev.target === f) f.remove(); });
+  document.body.appendChild(f);
+  var champ = document.getElementById('interet-prenom'); if (champ) champ.focus();
+}
+async function envoyerInteret(id) {
+  var etat = document.getElementById('interet-etat'), btn = document.getElementById('interet-envoi');
+  var prenom = (document.getElementById('interet-prenom').value || '').trim();
+  var msg = (document.getElementById('interet-msg').value || '').trim();
+  if (!prenom) { etat.style.color = '#dc2626'; etat.textContent = T('interet_err_prenom'); return; }
+  btn.disabled = true; etat.style.color = '#5d6b82'; etat.textContent = '…';
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/prevenir-artisan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
+      body: JSON.stringify({ artisan_id: id, prenom: prenom, message: msg || undefined }),
+    });
+    var d = await res.json().catch(function() { return {}; });
+    if (res.ok && d.ok) {
+      etat.style.color = '#0f9d78'; etat.textContent = d.deja ? T('interet_deja') : T('interet_merci');
+      setTimeout(function() { var f = document.getElementById('interet-fond'); if (f) f.remove(); }, 1800);
+      return;
+    }
+    etat.style.color = '#dc2626'; etat.textContent = d.error || T('cpt_err_generique'); btn.disabled = false;
+  } catch (e) { etat.style.color = '#dc2626'; etat.textContent = T('cpt_err_generique'); btn.disabled = false; }
+}
+
 function renderArtisanCard(a) {
   _artisansCartes[a.id] = a;
   var ini = initiales(a.nom_entreprise);
@@ -1460,14 +1497,22 @@ function renderArtisanCard(a) {
     : '<div class="avatar card-avatar">' + ini + '</div>';
   var noteAff = a.note_moyenne != null ? Number(a.note_moyenne) : 0;
   var nb = a.nb_avis || 0;
-  var grise = a.paiement_en_ligne === false; // Stripe pas finalisé : visible mais non réservable
+  var grise = a.paiement_en_ligne === false; // Stripe pas finalisé : visible, en couleurs, mais pas réservable — le client peut le prévenir
   if (grise && !document.getElementById('style-carte-grisee')) {
     var stg = document.createElement('style'); stg.id = 'style-carte-grisee';
-    stg.textContent = '.formateur-card.carte-grisee{cursor:default;}.formateur-card.carte-grisee .card-top-row,.formateur-card.carte-grisee .card-bio,.formateur-card.carte-grisee .card-meta{opacity:.5;filter:grayscale(1);}' +
-      '.carte-grisee-note{margin-top:10px;padding:9px 12px;border-radius:10px;background:#f3f4f6;border:1px solid #d9dce1;color:#4b5563;font-size:12.5px;line-height:1.5;}.carte-grisee-note b{color:#374151;}';
+    stg.textContent = '.formateur-card.carte-grisee{cursor:default;}' +
+      '.carte-grisee-note{margin-top:10px;padding:10px 12px;border-radius:12px;background:#eef4ff;border:1px solid #cfe0fb;color:#1f3b63;font-size:12.5px;line-height:1.5;}.carte-grisee-note b{color:#13223c;}' +
+      '.carte-grisee-note button{display:block;width:100%;margin-top:9px;min-height:44px;border:0;border-radius:12px;background:#1565e8;color:#fff;font:inherit;font-weight:700;font-size:14px;cursor:pointer;}' +
+      '.interet-fond{position:fixed;inset:0;background:rgba(19,34,60,.55);z-index:99999;display:flex;align-items:flex-end;justify-content:center;padding:12px;}' +
+      '.interet-boite{background:#fff;border-radius:18px;max-width:420px;width:100%;padding:18px;box-sizing:border-box;color:#13223c;font-family:inherit;}' +
+      '.interet-boite h3{margin:0 0 6px;font-size:17px;}.interet-boite p{margin:0 0 12px;font-size:13.5px;color:#5d6b82;}' +
+      '.interet-boite input,.interet-boite textarea{width:100%;box-sizing:border-box;border:1px solid #d9e1ee;border-radius:10px;padding:10px 12px;font:inherit;font-size:15px;margin-bottom:10px;}' +
+      '.interet-boite .i-act{display:flex;gap:8px;}.interet-boite .i-act button{flex:1;min-height:46px;border-radius:12px;border:1px solid #d9e1ee;background:#fff;color:#13223c;font:inherit;font-weight:600;cursor:pointer;}.interet-boite .i-act button.i-ok{background:#1565e8;border-color:#1565e8;color:#fff;}' +
+      '.interet-boite .i-msg{font-size:13.5px;margin:0 0 10px;min-height:18px;}';
     document.head.appendChild(stg);
   }
-  var noteGrisee = grise ? '<div class="carte-grisee-note"><b>' + escHtml(T('carte_grisee_titre')) + '</b><br>' + escHtml(T('carte_grisee_texte')) + '</div>' : '';
+  var noteGrisee = grise ? '<div class="carte-grisee-note"><b>' + escHtml(T('carte_grisee_titre')) + '</b><br>' + escHtml(T('carte_grisee_texte')) +
+    '<button type="button" onclick="ouvrirInteret(' + jsAttr(a.id) + ')">' + escHtml(T('interet_bouton')) + '</button></div>' : '';
   return '<div class="formateur-card' + (grise ? ' carte-grisee' : '') + '" style="position:relative;"' + (grise ? ' aria-disabled="true"' : ' onclick="ouvrirProfil(' + jsAttr(a.id) + ')"') + '>' + (grise ? '' : coeurHtml(a.id, false)) +
     '<div class="card-top-row">' + photo +
       '<div class="card-info">' +

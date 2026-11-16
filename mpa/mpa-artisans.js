@@ -8231,9 +8231,20 @@ function rappelerPaiementsBoutique(occasion) {
 // Réservations payées en ligne (15/10/2026) : sans paiements en ligne actifs, un artisan ne peut plus recevoir de réservation ni apparaître
 // dans l'annuaire, après une période de grâce. MPA-AI le rappelle, une fois par session, avec la date limite.
 var FIN_PERIODE_GRACE_PAIEMENTS = '2026-11-01';
-function rappelerStripeReservations() {
+async function rappelerStripeReservations() {
   if (!_artisan || paiementsEnLigneActifs() || _rappelsPaiements['reservations']) return;
   _rappelsPaiements['reservations'] = true;
+  // Lot 24 : des clients ont touché « Prévenir cet artisan » sur sa fiche — le chiffre le plus parlant pour activer les paiements.
+  var nbInteret = 0;
+  try {
+    var depuis30 = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+    var rI = await sb.from('artisans_interets').select('id', { count: 'exact', head: true }).eq('artisan_id', _artisan.id).gte('created_at', depuis30);
+    if (!rI.error && rI.count) nbInteret = rI.count;
+  } catch (e) { /* jamais bloquant : sans le chiffre, le rappel habituel s'affiche */ }
+  if (nbInteret > 0) {
+    mpaAiDire('👀 <strong>' + nbInteret + ' personne' + (nbInteret > 1 ? 's ont' : ' a') + ' voulu vous réserver</strong> ces 30 derniers jours, mais ne le peuvent pas encore : vos paiements en ligne ne sont pas activés. Cela prend environ 5 minutes.', 'important', { label: (_artisan.stripe_connect_statut === 'en_cours' ? 'Terminer l\'activation →' : 'Activer mes réservations →'), action: 'lancerStripeConnect(null)' });
+    return;
+  }
   var aujourdhui = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
   var enCours = _artisan.stripe_connect_statut === 'en_cours';
   var action = { label: enCours ? 'Terminer l\'activation →' : 'Activer mes paiements →', action: 'lancerStripeConnect(null)' };
