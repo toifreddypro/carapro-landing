@@ -129,25 +129,23 @@ async function geocoderAdresse(adresse: string, cp: string, commune: string) {
 
 async function geocoderUneFois(q: string) {
   if (!q) return null;
-  try {
-    const res = await fetch("https://api-adresse.data.gouv.fr/search/?limit=1&q=" + encodeURIComponent(q), { signal: AbortSignal.timeout(5000) });
-    const texte = await res.text();
-    if (!res.ok) {
-      console.error("[geocoderAdresse] API Adresse a répondu " + res.status + " pour \"" + q + "\" — corps : " + texte.slice(0, 300));
-      return null;
-    }
-    let data: any;
-    try { data = JSON.parse(texte); } catch {
-      console.error("[geocoderAdresse] Réponse non-JSON de l'API Adresse pour \"" + q + "\" — corps : " + texte.slice(0, 300));
-      return null;
-    }
-    const feature = data?.features?.[0];
-    if (feature?.geometry?.coordinates) {
-      const [lon, lat] = feature.geometry.coordinates;
-      return { lat, lon };
-    }
-    console.warn("[geocoderAdresse] Aucun résultat pour \"" + q + "\".");
-  } catch (e) { console.error("[geocoderAdresse] Erreur réseau pour \"" + q + "\" :", e); }
+  // Deux services publics, même format de réponse : l'API Adresse (BAN), puis la Géoplateforme IGN en secours.
+  const services = [
+    "https://api-adresse.data.gouv.fr/search/?limit=1&q=",
+    "https://data.geopf.fr/geocodage/search?limit=1&q=",
+  ];
+  for (const base of services) {
+    try {
+      const res = await fetch(base + encodeURIComponent(q), { signal: AbortSignal.timeout(5000), headers: { "Accept": "application/json", "User-Agent": "CaraLink/1.0 (caralink.app)" } });
+      const texte = await res.text();
+      if (!res.ok) { console.error("[geocoderAdresse] " + base + " a répondu " + res.status + " pour \"" + q + "\" — corps : " + texte.slice(0, 300)); continue; }
+      let data: any;
+      try { data = JSON.parse(texte); } catch { console.error("[geocoderAdresse] Réponse non-JSON de " + base + " pour \"" + q + "\" — corps : " + texte.slice(0, 300)); continue; }
+      const c = data?.features?.[0]?.geometry?.coordinates;
+      if (Array.isArray(c) && c.length >= 2) return { lat: c[1], lon: c[0] };
+      console.warn("[geocoderAdresse] Aucun résultat de " + base + " pour \"" + q + "\".");
+    } catch (e) { console.error("[geocoderAdresse] Erreur réseau " + base + " pour \"" + q + "\" :", e); }
+  }
   return null;
 }
 
