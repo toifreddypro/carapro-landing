@@ -1891,6 +1891,14 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="fcbdy" id="zone-indispo" style="padding:16px;">Chargement…</div>
 <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Congés, jour férié, absence ponctuelle... ces dates n'apparaîtront jamais comme disponibles, même si elles tombent sur un jour habituellement travaillé.</div>
 </div>
+<div class="fcard">
+<div class="fchdr">
+<div class="fctit">🎓 Mes sessions (coaching, ateliers)</div>
+<button class="sbtn sm" type="button" onclick="ouvrirFormSession()">+ Nouvelle session</button>
+</div>
+<div class="fcbdy" id="zone-sessions" style="padding:16px;">Chargement…</div>
+<div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Une session accueille plusieurs personnes en même temps, avec un nombre de places. Vos clients réservent leur place depuis votre fiche CaraLink ; le paiement se fait directement avec vous.</div>
+</div>
 </div>
 </div>
 </div><div class="bpnl" id="bp1">
@@ -3359,6 +3367,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261116a"></script>
+<script src="/mpa/mpa-artisans.js?v=20261116b"></script>
 </body>
 </html>

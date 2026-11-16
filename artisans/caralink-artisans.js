@@ -1378,7 +1378,7 @@ function colonneJourCarte(j) {
         : '<div class="dispo-slot unavailable">—</div>')
     : j.plages.map(function(p) {
         return '<div class="dispo-slot ' + (p.libre ? 'available' : 'unavailable') + '"' + (p.libre ? '' : ' title="' + escHtml(T('dispo_complet')) + '"') + '>' +
-          '<span class="h-deb">' + p.debut + '</span><span class="h-sep">–</span><span class="h-fin">' + p.fin + '</span></div>';
+          (p.fixe ? '<span class="h-deb">' + p.debut + '</span>' : '<span class="h-deb">' + p.debut + '</span><span class="h-sep">–</span><span class="h-fin">' + p.fin + '</span>') + '</div>'; // p.fixe : l'artisan donne ses heures précises (8:00 · 10:00…)
       }).join('');
   return '<div class="dispo-day"><div class="dispo-day-label">' + escHtml(dateCourteCarte(j.date)) + '</div>' + slots + '</div>';
 }
@@ -1452,6 +1452,74 @@ async function basculerCoeur(ev, id) {
   } catch (e) { alert(T('cpt_err_generique')); }
 }
 
+// ── Sessions avec places (Lot 25) : coaching, atelier… plusieurs personnes à la même heure ──
+var _sessionsFiche = {};
+function dateHeureSessionPub(d, h) {
+  var j = new Date(d + 'T12:00:00Z').toLocaleDateString(localeCarte(), { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  var p = String(h).split(':');
+  return j + ' · ' + parseInt(p[0], 10) + ' h' + (p[1] === '00' ? '' : ' ' + p[1]);
+}
+function placesSessionTxt(n) { return n <= 0 ? T('sess_complet') : (n === 1 ? T('sess_une_place') : n + ' ' + T('sess_places')); }
+function prixSessionTxt(p) { return p > 0 ? p.toFixed(2).replace('.', ',') + ' € ' + T('sess_par_pers') : T('sess_gratuit'); }
+function sessionsCarteHtml(liste) {
+  var x = liste[0];
+  return '<div class="session-carte">🎓 <b>' + escHtml(x.titre) + '</b><br>' + escHtml(dateHeureSessionPub(x.date, x.heure)) + ' · ' + escHtml(placesSessionTxt(x.places_restantes)) +
+    (liste.length > 1 ? '<br>+ ' + (liste.length - 1) + ' ' + escHtml(T('sess_et_autres')) : '') + '</div>';
+}
+function sessionsFicheHtml(liste, artisanId) {
+  if (!liste || !liste.length) return '';
+  liste.forEach(function(x) { _sessionsFiche[x.id] = x; });
+  return '<div class="sessions-fiche"><h4>🎓 ' + escHtml(T('sess_titre')) + '</h4>' + liste.map(function(x) {
+    var complet = x.places_restantes <= 0;
+    return '<div class="session-fiche"><div class="s-t">' + escHtml(x.titre) + '</div>' +
+      '<div class="s-i">📅 ' + escHtml(dateHeureSessionPub(x.date, x.heure)) + ' · ' + x.duree_min + ' min<br>📍 ' + escHtml(x.lieu) + '<br>💶 ' + escHtml(prixSessionTxt(x.prix)) + '<br>👥 ' + escHtml(placesSessionTxt(x.places_restantes)) +
+      (x.description ? '<br>' + escHtml(x.description) : '') + '</div>' +
+      '<button type="button"' + (complet ? ' disabled' : ' onclick="ouvrirReservationSession(' + jsAttr(x.id) + ',' + jsAttr(artisanId) + ')"') + '>' + escHtml(complet ? T('sess_complet') : T('sess_reserver')) + '</button></div>';
+  }).join('') + '</div>';
+}
+function ouvrirReservationSession(sid, artisanId) {
+  var x = _sessionsFiche[sid]; if (!x) return;
+  var ancien = document.getElementById('interet-fond'); if (ancien) ancien.remove();
+  var max = Math.min(5, x.places_restantes), opts = '';
+  for (var n = 1; n <= max; n++) opts += '<option value="' + n + '">' + n + '</option>';
+  var f = document.createElement('div'); f.id = 'interet-fond'; f.className = 'interet-fond';
+  f.innerHTML = '<div class="interet-boite" role="dialog" aria-modal="true" aria-labelledby="sess-t">' +
+    '<h3 id="sess-t">' + escHtml(x.titre) + '</h3>' +
+    '<p>📅 ' + escHtml(dateHeureSessionPub(x.date, x.heure)) + '<br>📍 ' + escHtml(x.lieu) + '<br>💶 ' + escHtml(prixSessionTxt(x.prix)) + (x.prix > 0 ? '<br>' + escHtml(T('sess_paiement')) : '') + '</p>' +
+    (max > 1 ? '<label style="font-size:13px;display:block;margin-bottom:4px;">' + escHtml(T('sess_nb')) + '</label><select id="sess-nb" style="width:100%;box-sizing:border-box;border:1px solid #d9e1ee;border-radius:10px;padding:10px 12px;font:inherit;font-size:15px;margin-bottom:10px;">' + opts + '</select>' : '') +
+    '<input id="sess-nom" type="text" maxlength="60" autocomplete="name" placeholder="' + escHtml(T('sess_nom')) + '" aria-label="' + escHtml(T('sess_nom')) + '">' +
+    '<input id="sess-tel" type="tel" maxlength="20" autocomplete="tel" inputmode="tel" placeholder="' + escHtml(T('sess_tel')) + '" aria-label="' + escHtml(T('sess_tel')) + '">' +
+    '<input id="sess-email" type="email" maxlength="120" autocomplete="email" inputmode="email" placeholder="' + escHtml(T('sess_email')) + '" aria-label="' + escHtml(T('sess_email')) + '">' +
+    '<div class="i-msg" id="interet-etat" role="status"></div>' +
+    '<div class="i-act"><button type="button" onclick="document.getElementById(\'interet-fond\').remove()">' + escHtml(T('interet_annuler')) + '</button>' +
+    '<button type="button" class="i-ok" id="interet-envoi" onclick="envoyerReservationSession(' + jsAttr(sid) + ',' + jsAttr(artisanId) + ')">' + escHtml(T('sess_confirmer')) + '</button></div></div>';
+  f.addEventListener('click', function(ev) { if (ev.target === f) f.remove(); });
+  document.body.appendChild(f);
+  var c = document.getElementById('sess-nom'); if (c) c.focus();
+}
+async function envoyerReservationSession(sid, artisanId) {
+  var etat = document.getElementById('interet-etat'), btn = document.getElementById('interet-envoi');
+  var nom = (document.getElementById('sess-nom').value || '').trim(), tel = (document.getElementById('sess-tel').value || '').trim();
+  var mail = (document.getElementById('sess-email').value || '').trim(), sel = document.getElementById('sess-nb');
+  if (!nom || !tel) { etat.style.color = '#dc2626'; etat.textContent = T('sess_err_champs'); return; }
+  btn.disabled = true; etat.style.color = '#5d6b82'; etat.textContent = '…';
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/reserver-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_ANON },
+      body: JSON.stringify({ session_id: sid, nom: nom, telephone: tel, email: mail || undefined, nb_places: sel ? parseInt(sel.value, 10) : 1 }),
+    });
+    var d = await res.json().catch(function() { return {}; });
+    if (res.ok && d.ok) {
+      etat.style.color = '#0f9d78'; etat.textContent = mail ? T('sess_merci_mail') : T('sess_merci');
+      setTimeout(function() { var f = document.getElementById('interet-fond'); if (f) f.remove(); chargerApercuDispo(artisanId); }, 2200);
+      return;
+    }
+    etat.style.color = '#dc2626'; etat.textContent = d.error || T('cpt_err_generique'); btn.disabled = false;
+    if (d.code === 'complet' || d.code === 'pas_assez') chargerApercuDispo(artisanId);
+  } catch (e) { etat.style.color = '#dc2626'; etat.textContent = T('cpt_err_generique'); btn.disabled = false; }
+}
+
 // ── « Prévenir cet artisan » (Lot 24) : le client dit à un artisan pas encore réservable qu'il aimerait réserver chez lui ──
 function ouvrirInteret(id) {
   var ancien = document.getElementById('interet-fond'); if (ancien) ancien.remove();
@@ -1498,7 +1566,7 @@ function renderArtisanCard(a) {
   var noteAff = a.note_moyenne != null ? Number(a.note_moyenne) : 0;
   var nb = a.nb_avis || 0;
   var grise = a.paiement_en_ligne === false; // Stripe pas finalisé : visible, en couleurs, mais pas réservable — le client peut le prévenir
-  if (grise && !document.getElementById('style-carte-grisee')) {
+  if (!document.getElementById('style-carte-grisee')) {
     var stg = document.createElement('style'); stg.id = 'style-carte-grisee';
     stg.textContent = '.formateur-card.carte-grisee{cursor:default;}' +
       '.carte-grisee-note{margin-top:10px;padding:10px 12px;border-radius:12px;background:#eef4ff;border:1px solid #cfe0fb;color:#1f3b63;font-size:12.5px;line-height:1.5;}.carte-grisee-note b{color:#13223c;}' +
@@ -1508,7 +1576,12 @@ function renderArtisanCard(a) {
       '.interet-boite h3{margin:0 0 6px;font-size:17px;}.interet-boite p{margin:0 0 12px;font-size:13.5px;color:#5d6b82;}' +
       '.interet-boite input,.interet-boite textarea{width:100%;box-sizing:border-box;border:1px solid #d9e1ee;border-radius:10px;padding:10px 12px;font:inherit;font-size:15px;margin-bottom:10px;}' +
       '.interet-boite .i-act{display:flex;gap:8px;}.interet-boite .i-act button{flex:1;min-height:46px;border-radius:12px;border:1px solid #d9e1ee;background:#fff;color:#13223c;font:inherit;font-weight:600;cursor:pointer;}.interet-boite .i-act button.i-ok{background:#1565e8;border-color:#1565e8;color:#fff;}' +
-      '.interet-boite .i-msg{font-size:13.5px;margin:0 0 10px;min-height:18px;}';
+      '.interet-boite .i-msg{font-size:13.5px;margin:0 0 10px;min-height:18px;}' +
+      '.session-carte{margin-top:8px;padding:8px 10px;border-radius:10px;background:#fff7e6;border:1px solid #f6d99b;font-size:12.5px;line-height:1.45;color:#7a4b00;}' +
+      '.sessions-fiche{margin:14px 0;}.sessions-fiche h4{margin:0 0 8px;font-size:14px;}' +
+      '.session-fiche{border:1px solid #f6d99b;background:#fffaf0;border-radius:14px;padding:12px;margin-bottom:8px;color:#13223c;}' +
+      '.session-fiche .s-t{font-weight:700;font-size:14.5px;}.session-fiche .s-i{font-size:13px;color:#5d6b82;margin:3px 0 8px;line-height:1.5;}' +
+      '.session-fiche button{width:100%;min-height:44px;border:0;border-radius:12px;background:#1565e8;color:#fff;font:inherit;font-weight:700;cursor:pointer;}.session-fiche button[disabled]{background:#c7cfdc;cursor:default;}';
     document.head.appendChild(stg);
   }
   var noteGrisee = grise ? '<div class="carte-grisee-note"><b>' + escHtml(T('carte_grisee_titre')) + '</b><br>' + escHtml(T('carte_grisee_texte')) +
@@ -1531,6 +1604,7 @@ function renderArtisanCard(a) {
     (a.a_photos ? '<div style="font-size:12px;color:var(--mu2,#777);margin:2px 0 6px;">📷 ' + escHtml(T('badge_photos')) + '</div>' : '') +
     '<div class="dispo-grid" id="grille-carte-' + escHtml(a.id) + '" style="display:none;"></div>' +
     '<div id="avantages-carte-' + escHtml(a.id) + '" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>' +
+    '<div id="sessions-carte-' + escHtml(a.id) + '"></div>' +
     '<div id="phares-carte-' + escHtml(a.id) + '"></div>' + noteGrisee +
   '</div>';
 }
@@ -1564,6 +1638,9 @@ async function chargerApercuCarte(id) {
       grille.innerHTML = data.semaine.map(colonneJourCarte).join('');
       grille.style.display = 'grid';
     }
+
+    var zoneSess = document.getElementById('sessions-carte-' + id);
+    if (zoneSess && data.sessions && data.sessions.length) zoneSess.innerHTML = sessionsCarteHtml(data.sessions);
 
     if (zonePhares && data.produits_phares && data.produits_phares.length) {
       var miniatures = data.produits_phares.map(function(p) {
@@ -1853,9 +1930,14 @@ async function chargerApercuDispo(artisanId) {
     });
     var data = await res.json();
     var grilleFiche = (data.semaine && data.semaine.length) ? '<div class="dispo-grid fiche-grille">' + data.semaine.map(colonneJourCarte).join('') + '</div>' : '';
+    // Sessions avec places : dans un bloc à part, sous les disponibilités (il survit au changement d'affichage de la zone).
+    var sessHtml = data.error ? '' : sessionsFicheHtml(data.sessions, artisanId);
+    var contSess = document.getElementById('sessions-fiche-' + artisanId);
+    if (!contSess) { contSess = document.createElement('div'); contSess.id = 'sessions-fiche-' + artisanId; zone.parentNode.insertBefore(contSess, zone.nextSibling); }
+    contSess.innerHTML = sessHtml;
     if (data.error || (!data.prochaine_date && !grilleFiche)) {
       zone.innerHTML = '';
-      var secVide = zone.closest('.fiche-sec'); if (secVide) secVide.classList.add('fiche-vide');
+      var secVide = zone.closest('.fiche-sec'); if (secVide && !sessHtml) secVide.classList.add('fiche-vide');
       return;
     }
     if (!data.prochaine_date) { zone.innerHTML = grilleFiche; return; }

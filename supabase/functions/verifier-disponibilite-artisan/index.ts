@@ -227,6 +227,16 @@ Deno.serve(async (req: Request) => {
     const { data: artisanPublic, error: errArt } = await sb.from("artisans").select("id, slug_catalogue, code_promo, code_promo_pct, code_promo_fin, code_promo_visible, stripe_connect_statut, boutique_en_pause, plan, cashback_pct, cashback_ventes, cashback_interventions, code_promo_ventes, code_promo_interventions").eq("id", artisan_id).eq("actif", true).maybeSingle();
     if (errArt) throw errArt;
     if (!artisanPublic) return json({ error: "Artisan introuvable." }, 404);
+    // Heures fixes (Lot 25) : liste d'heures de départ « 08:00, 10:00… » valable tous les jours. Colonne facultative : sans elle, comportement d'avant.
+    let heuresFixes: number[] = [];
+    try {
+      const rhf = await sb.from("artisans").select("heures_fixes").eq("id", artisan_id).maybeSingle();
+      const brut = (rhf.data as any)?.heures_fixes;
+      if (!rhf.error && Array.isArray(brut)) {
+        heuresFixes = brut.filter((x: unknown) => typeof x === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(x)).map((x: string) => heureVersMin(x)).sort((u: number, v: number) => u - v);
+        heuresFixes = heuresFixes.filter((v: number, i: number) => i === 0 || v !== heuresFixes[i - 1]).slice(0, 12);
+      }
+    } catch (_e) { /* colonne absente : pas d'heures fixes */ }
     // Règle du 15/10/2026 : sans paiements en ligne actifs, plus de réservation de créneau (deux semaines de grâce, jusqu'au 1er/11/2026).
     if (mode === "creneaux" && artisanPublic.stripe_connect_statut !== "actif" && new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10) > "2026-11-01") {
       return json({ error: "Cet artisan n'accepte pas encore les réservations en ligne." }, 409);
@@ -284,7 +294,32 @@ Deno.serve(async (req: Request) => {
     // Boutique mise en pause par l'artisan : rien n'est mis en avant tant qu'elle est fermée.
     if (artisanPublic.boutique_en_pause === true) { produitsPhares = []; slugCatalogue = null; codePromo = null; }
 
-    if (mode === "apercu") apercuPartiel = { services, produits_phares: produitsPhares, slug_catalogue: slugCatalogue, code_promo: codePromo, avantages };
+    // Sessions avec places (Lot 25) : les prochaines sessions ouvertes, avec les places restantes. Tables facultatives : jamais bloquant.
+    let sessionsPubliques: any[] = [];
+    if (mode === "apercu") {
+      try {
+        const nowGP = new Date(Date.now() - 4 * 3600 * 1000);
+        const jourSess = nowGP.toISOString().slice(0, 10), heureSess = nowGP.toISOString().slice(11, 16);
+        const { data: ss, error: errSs } = await sb.from("artisans_sessions")
+          .select("id, titre, description, date_session, heure_debut, duree_min, lieu, places, prix_par_personne")
+          .eq("artisan_id", artisan_id).eq("statut", "ouverte").gte("date_session", jourSess)
+          .order("date_session", { ascending: true }).order("heure_debut", { ascending: true }).limit(10);
+        if (!errSs && ss) {
+          const futures = ss.filter((x: any) => x.date_session > jourSess || String(x.heure_debut).slice(0, 5) > heureSess).slice(0, 5);
+          if (futures.length) {
+            const { data: ins } = await sb.from("artisans_sessions_inscrits").select("session_id, nb_places").in("session_id", futures.map((x: any) => x.id)).eq("statut", "confirme");
+            const pris: Record<string, number> = {};
+            (ins || []).forEach((i: any) => { pris[i.session_id] = (pris[i.session_id] || 0) + i.nb_places; });
+            sessionsPubliques = futures.map((x: any) => ({
+              id: x.id, titre: x.titre, description: x.description, date: x.date_session, heure: String(x.heure_debut).slice(0, 5),
+              duree_min: x.duree_min, lieu: x.lieu, prix: Number(x.prix_par_personne), places_restantes: Math.max(0, x.places - (pris[x.id] || 0)),
+            }));
+          }
+        }
+      } catch (_e) { /* tables absentes : pas de sessions */ }
+    }
+
+    if (mode === "apercu") apercuPartiel = { services, produits_phares: produitsPhares, slug_catalogue: slugCatalogue, code_promo: codePromo, avantages, sessions: sessionsPubliques };
 
     const { data: horaires, error: errH } = await sb.from("artisans_horaires")
       .select("*").eq("artisan_id", artisan_id).order("heure_debut", { ascending: true });
@@ -292,7 +327,7 @@ Deno.serve(async (req: Request) => {
     if (!horaires || !horaires.length) {
       const message = "Cet artisan n'a pas encore renseigné ses horaires habituels.";
       return mode === "apercu"
-        ? json({ prochaine_date: null, label: null, semaine: [], services, produits_phares: produitsPhares, slug_catalogue: slugCatalogue, code_promo: codePromo, avantages, message })
+        ? json({ prochaine_date: null, label: null, semaine: [], services, produits_phares: produitsPhares, slug_catalogue: slugCatalogue, code_promo: codePromo, avantages, sessions: sessionsPubliques, message })
         : json({ jours: [], message });
     }
 
@@ -355,7 +390,7 @@ Deno.serve(async (req: Request) => {
       const interduJourStr = (jourStr: string) => (interventions || []).filter((x: any) => x.date_intervention === jourStr);
 
       // Semaine affichée sur la vignette : horaires + libre/complet. Jamais le détail du planning.
-      const semaine: Array<{ date: string; ferme: boolean; fermeture?: string | null; plages: Array<{ debut: string; fin: string; libre: boolean }> }> = [];
+      const semaine: Array<{ date: string; ferme: boolean; fermeture?: string | null; plages: Array<{ debut: string; fin: string; libre: boolean; fixe?: boolean }> }> = [];
       for (let i = 0; i < SEMAINE_JOURS; i++) {
         const jour = new Date(aujourdhui);
         jour.setDate(jour.getDate() + i);
@@ -363,6 +398,18 @@ Deno.serve(async (req: Request) => {
         const blocsJour = horaires.filter((h: any) => h.jour_semaine === jour.getDay());
         if (estJourBloque(jourStr) || !blocsJour.length) { semaine.push({ date: jourStr, ferme: true, fermeture: typeJourBloque(jourStr), plages: [] }); continue; }
         const interDuJour = interduJourStr(jourStr);
+        if (heuresFixes.length) {
+          // Heures fixes : la vignette montre SES heures (8 h · 10 h…), « libre » si l'heure est dans son planning, pas déjà prise, et pas déjà passée.
+          const hs = heuresFixes.filter((h: number) => blocsJour.some((b: any) => h >= heureVersMin(b.heure_debut) && h < heureVersMin(b.heure_fin)));
+          semaine.push({
+            date: jourStr, ferme: false,
+            plages: hs.map((h: number) => ({
+              debut: minVersHeure(h), fin: "", fixe: true,
+              libre: !interDuJour.some((x: any) => heureVersMin(x.heure_debut) <= h && heureVersMin(x.heure_fin) > h) && !(jourStr === jourGP && h < minPlancherAujourdhui),
+            })) as any,
+          });
+          continue;
+        }
         semaine.push({
           date: jourStr,
           ferme: false,
@@ -392,11 +439,11 @@ Deno.serve(async (req: Request) => {
             services,
             produits_phares: produitsPhares,
             slug_catalogue: slugCatalogue,
-            code_promo: codePromo, avantages,
+            code_promo: codePromo, avantages, sessions: sessionsPubliques,
           });
         }
       }
-      return json({ prochaine_date: null, label: null, semaine, services, produits_phares: produitsPhares, slug_catalogue: slugCatalogue, code_promo: codePromo, avantages, message: "Aucune disponibilité dans les " + HORIZON_JOURS + " prochains jours." });
+      return json({ prochaine_date: null, label: null, semaine, services, produits_phares: produitsPhares, slug_catalogue: slugCatalogue, code_promo: codePromo, avantages, sessions: sessionsPubliques, message: "Aucune disponibilité dans les " + HORIZON_JOURS + " prochains jours." });
     }
 
     // ═══ MODE CRÉNEAUX — vrai calcul avec trajet, une fois l'adresse connue ═══
@@ -456,7 +503,8 @@ Deno.serve(async (req: Request) => {
               for (const [d, f] of pris) {
                 let debutMin = arrondirQuart(curseur);
                 if (jourStr === jourGP && debutMin < minPlancherAujourdhui) debutMin = arrondirQuart(minPlancherAujourdhui);
-                for (; debutMin + duree <= d; debutMin += pas) creneauxJour.push(minVersHeure(debutMin));
+                if (heuresFixes.length) { for (const h of heuresFixes) if (h >= debutMin && h + duree <= d) creneauxJour.push(minVersHeure(h)); }
+                else for (; debutMin + duree <= d; debutMin += pas) creneauxJour.push(minVersHeure(debutMin));
                 curseur = Math.max(curseur, f);
               }
               continue;
@@ -488,6 +536,7 @@ Deno.serve(async (req: Request) => {
               if (jourStr === jourGP && debutMin < minPlancherAujourdhui) debutMin = arrondirQuart(minPlancherAujourdhui); // pas de créneau passé ni à moins de 2 h
               const finDispoBloc = next ? next.debutMin : finBloc;
 
+              let dernierDepart = finDispoBloc - duree; // dernière heure de départ possible dans ce trou
               if (next) {
                 let travelOut = TRAJET_DEFAUT_MIN;
                 if (next.lat != null) {
@@ -495,13 +544,17 @@ Deno.serve(async (req: Request) => {
                   if (t2 == null) continue;
                   travelOut = t2;
                 }
-                if (debutMin + duree + travelOut + MARGE_SECURITE_MIN > finDispoBloc) continue;
-              } else {
-                if (debutMin + duree > finDispoBloc) continue;
+                dernierDepart = finDispoBloc - duree - travelOut - MARGE_SECURITE_MIN;
               }
+              if (debutMin > dernierDepart) continue;
 
               if (debutMin < debutBloc) debutMin = debutBloc;
-              creneauxJour.push(minVersHeure(debutMin));
+              if (heuresFixes.length) {
+                // Heures fixes : seules SES heures, et seulement celles qui tiennent dans ce trou (trajet compris).
+                for (const h of heuresFixes) if (h >= debutMin && h <= dernierDepart) creneauxJour.push(minVersHeure(h));
+              } else {
+                creneauxJour.push(minVersHeure(debutMin));
+              }
             }
           }
         }
@@ -511,7 +564,7 @@ Deno.serve(async (req: Request) => {
           jour_label: JOURS_NOMS[joursemaine],
           jour_num: jour.getDate(),
           mois_label: MOIS_NOMS[jour.getMonth()],
-          creneaux: salon ? echantillonner(creneauxJour, NB_CRENEAUX_JOUR_SALON) : creneauxJour.slice(0, 4),
+          creneaux: heuresFixes.length ? creneauxJour.slice().sort().slice(0, 8) : (salon ? echantillonner(creneauxJour, NB_CRENEAUX_JOUR_SALON) : creneauxJour.slice(0, 4)),
           fermeture: typeJourBloque(jourStr), // null si le jour n'est pas bloqué ; sinon vacances | fermeture | inventaire | formation | autre
         });
       }

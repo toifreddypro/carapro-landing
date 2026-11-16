@@ -1264,6 +1264,7 @@ async function init() {
     tente(chargerAvis()),
     tente(chargerHoraires()),
     tente(chargerIndispos()),
+    tente(chargerSessionsMpa()),
     tente(chargerServices()),
     tente(chargerPhotos())
   ]);
@@ -6585,7 +6586,45 @@ function renderHoraires() {
         '<button onclick="confirmerAjoutPlage(' + jour + ')" style="padding:5px 10px;border-radius:6px;border:none;background:var(--ac);color:#fff;font-size:11.5px;font-weight:700;cursor:pointer;">OK</button>' +
       '</div>' +
     '</div>';
-  }).join('');
+  }).join('') + blocHeuresFixes();
+}
+
+// ── Heures précises (Lot 25) : au lieu de laisser le client choisir n'importe quelle heure dans vos plages, vous proposez SES heures (ex. 8h, 10h, 13h, 15h), les mêmes tous les jours. ──
+function heuresFixesArtisan() { return (_artisan && Array.isArray(_artisan.heures_fixes)) ? _artisan.heures_fixes.slice() : []; }
+function blocHeuresFixes() {
+  if (!_artisan || !('heures_fixes' in _artisan)) return ''; // la base n'a pas encore la colonne : on ne montre rien
+  var hs = heuresFixesArtisan();
+  return '<div style="margin-top:16px;padding:12px;border:1px solid var(--brd);border-radius:12px;background:var(--p2);">' +
+    '<div style="font-weight:700;font-size:13.5px;margin-bottom:4px;">🕐 Mes heures précises <span style="font-weight:400;color:var(--mu);">(facultatif)</span></div>' +
+    '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:10px;line-height:1.45;">Vous préférez donner des heures de rendez-vous précises ? Ajoutez-les ici : vos clients ne verront que celles-ci (dans vos plages, et seulement si la prestation et le trajet y tiennent). Sans heure ajoutée, vos plages restent affichées comme avant.</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' +
+      (hs.length ? hs.map(function(h) {
+        return '<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:99px;background:#fff;border:1px solid var(--brd);font-weight:600;font-size:13px;">' + escHtml(h) +
+          '<button type="button" aria-label="Retirer ' + escHtml(h) + '" onclick="retirerHeureFixe(\'' + escHtml(h) + '\')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;padding:0 2px;min-height:24px;">✕</button></span>';
+      }).join('') : '<span style="font-size:12.5px;color:var(--mu);">Aucune heure précise : vos plages sont affichées telles quelles.</span>') +
+    '</div>' +
+    '<div style="display:flex;gap:8px;align-items:center;"><input type="time" id="hf-nouvelle" step="900" style="padding:8px 10px;border-radius:8px;border:1px solid var(--b2);font-size:15px;">' +
+    '<button type="button" onclick="ajouterHeureFixe()" style="padding:9px 14px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-weight:700;font-size:13px;cursor:pointer;min-height:40px;">+ Ajouter cette heure</button></div></div>';
+}
+async function enregistrerHeuresFixes(liste) {
+  var propre = liste.filter(function(h, i) { return /^([01]\d|2[0-3]):[0-5]\d$/.test(h) && liste.indexOf(h) === i; }).sort().slice(0, 12);
+  var { error } = await sb.from('artisans').update({ heures_fixes: propre.length ? propre : null }).eq('id', _artisan.id);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  _artisan.heures_fixes = propre.length ? propre : null;
+  renderHoraires();
+}
+async function ajouterHeureFixe() {
+  if (!verifierAccesEcriture()) return;
+  var v = (document.getElementById('hf-nouvelle').value || '').trim();
+  if (!v) { alert('Choisissez d\'abord une heure.'); return; }
+  var hs = heuresFixesArtisan();
+  if (hs.length >= 12) { alert('12 heures au maximum.'); return; }
+  hs.push(v.slice(0, 5));
+  await enregistrerHeuresFixes(hs);
+}
+async function retirerHeureFixe(h) {
+  if (!verifierAccesEcriture()) return;
+  await enregistrerHeuresFixes(heuresFixesArtisan().filter(function(x) { return x !== h; }));
 }
 
 function ouvrirAjoutPlage(jour) {
@@ -6609,6 +6648,115 @@ async function supprimerPlageHoraire(id) {
   var { error } = await sb.from('artisans_horaires').delete().eq('id', id).eq('artisan_id', _artisan.id);
   if (error) { alert('Erreur : ' + error.message); return; }
   await chargerHoraires();
+}
+
+
+// ════════════════════════════════════════
+//  SESSIONS AVEC PLACES (Lot 25) — coaching, atelier, cours collectif
+//  L'artisan publie une session (date, heure, lieu, nombre de places, prix par personne) ; les clients réservent leur place
+//  depuis sa fiche. Le paiement se fait directement avec l'artisan. Les places sont comptées par la base (jamais deux clients sur la dernière).
+// ════════════════════════════════════════
+var _sessionsCache = [], _inscritsCache = {}, _sessionsOuvertes = {};
+function dateHeureSession(s) {
+  var d = new Date(s.date_session + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  var h = String(s.heure_debut).slice(0, 5).split(':');
+  return d + ' à ' + parseInt(h[0], 10) + ' h' + (h[1] === '00' ? '' : ' ' + h[1]);
+}
+async function chargerSessionsMpa() {
+  var zone = document.getElementById('zone-sessions');
+  if (!zone || !_artisan) return;
+  var aujourdhui = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+  var r = await sb.from('artisans_sessions').select('*').eq('artisan_id', _artisan.id).gte('date_session', aujourdhui)
+    .order('date_session', { ascending: true }).order('heure_debut', { ascending: true });
+  if (r.error) { zone.innerHTML = '<p style="font-size:12.5px;color:var(--mu);">Les sessions ne sont pas encore disponibles pour votre compte.</p>'; return; } // SQL du lot 25 pas encore lancé
+  _sessionsCache = r.data || [];
+  _inscritsCache = {};
+  if (_sessionsCache.length) {
+    var ri = await sb.from('artisans_sessions_inscrits').select('*').in('session_id', _sessionsCache.map(function(x) { return x.id; })).eq('statut', 'confirme').order('created_at', { ascending: true });
+    (ri.data || []).forEach(function(i) { (_inscritsCache[i.session_id] = _inscritsCache[i.session_id] || []).push(i); });
+  }
+  renderSessionsMpa();
+}
+function placesPrises(sid) { return (_inscritsCache[sid] || []).reduce(function(t, i) { return t + (i.nb_places || 1); }, 0); }
+function renderSessionsMpa() {
+  var zone = document.getElementById('zone-sessions');
+  if (!zone) return;
+  var actives = _sessionsCache.filter(function(x) { return x.statut === 'ouverte'; });
+  if (!actives.length) { zone.innerHTML = '<p style="font-size:13px;color:var(--mu);margin:0;">Aucune session à venir. Touchez « + Nouvelle session » pour en proposer une.</p>'; return; }
+  zone.innerHTML = actives.map(function(x) {
+    var pris = placesPrises(x.id), insc = _inscritsCache[x.id] || [], ouvert = !!_sessionsOuvertes[x.id];
+    var liste = ouvert ? ('<div style="margin-top:8px;">' + (insc.length ? insc.map(function(i) {
+      return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--brd);font-size:13px;flex-wrap:wrap;">' +
+        '<div style="flex:1;min-width:140px;"><strong>' + escHtml(i.nom) + '</strong>' + (i.nb_places > 1 ? ' · ' + i.nb_places + ' places' : '') + '<br><a href="tel:' + escHtml(String(i.telephone).replace(/[^0-9+]/g, '')) + '" style="color:var(--ac);">' + escHtml(i.telephone) + '</a>' + (i.email ? ' · ' + escHtml(i.email) : '') + '</div>' +
+        '<button type="button" onclick="retirerInscritSession(\'' + i.id + '\')" style="background:none;border:1px solid var(--brd);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;color:var(--danger);min-height:36px;">Retirer</button></div>';
+    }).join('') : '<div style="font-size:12.5px;color:var(--mu);">Personne pour l\'instant.</div>') + '</div>') : '';
+    return '<div style="border:1px solid var(--brd);border-radius:12px;padding:12px;margin-bottom:10px;background:#fff;">' +
+      '<div style="font-weight:700;font-size:14px;">' + escHtml(x.titre) + '</div>' +
+      '<div style="font-size:12.5px;color:var(--mu2);margin:2px 0 6px;">📅 ' + escHtml(dateHeureSession(x)) + ' · ' + x.duree_min + ' min<br>📍 ' + escHtml(x.lieu) + '<br>💶 ' + (Number(x.prix_par_personne) > 0 ? Number(x.prix_par_personne).toFixed(2).replace('.', ',') + ' € par personne' : 'Gratuit') + '</div>' +
+      '<div style="font-size:13px;font-weight:700;margin-bottom:8px;">👥 ' + pris + ' / ' + x.places + ' places' + (pris >= x.places ? ' — complet' : '') + '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;"><button type="button" onclick="basculerInscritsSession(\'' + x.id + '\')" style="border:1px solid var(--brd);background:#fff;border-radius:8px;padding:8px 12px;font-size:12.5px;cursor:pointer;min-height:38px;">' + (ouvert ? 'Masquer' : 'Voir') + ' les inscrits</button>' +
+      '<button type="button" onclick="annulerSessionMpa(\'' + x.id + '\')" style="border:1px solid var(--brd);background:#fff;border-radius:8px;padding:8px 12px;font-size:12.5px;cursor:pointer;color:var(--danger);min-height:38px;">Annuler la session</button></div>' + liste + '</div>';
+  }).join('');
+}
+function basculerInscritsSession(id) { _sessionsOuvertes[id] = !_sessionsOuvertes[id]; renderSessionsMpa(); }
+async function retirerInscritSession(id) {
+  if (!verifierAccesEcriture()) return;
+  if (!confirm('Retirer cette personne de la session ? Sa place sera de nouveau disponible. Pensez à la prévenir.')) return;
+  var r = await sb.from('artisans_sessions_inscrits').update({ statut: 'annule' }).eq('id', id);
+  if (r.error) { alert('Erreur : ' + r.error.message); return; }
+  await chargerSessionsMpa();
+}
+async function annulerSessionMpa(id) {
+  if (!verifierAccesEcriture()) return;
+  var insc = _inscritsCache[id] || [];
+  var msg = 'Annuler cette session ? Elle disparaîtra de votre fiche.';
+  if (insc.length) msg += '\n\n' + insc.length + ' personne' + (insc.length > 1 ? 's sont' : ' est') + ' inscrite' + (insc.length > 1 ? 's' : '') + ' : prévenez-' + (insc.length > 1 ? 'les' : 'la') + ' vous-même (téléphones dans « Voir les inscrits »).';
+  if (!confirm(msg)) return;
+  var r = await sb.from('artisans_sessions').update({ statut: 'annulee' }).eq('id', id).eq('artisan_id', _artisan.id);
+  if (r.error) { alert('Erreur : ' + r.error.message); return; }
+  await chargerSessionsMpa();
+}
+function ouvrirFormSession() {
+  if (!verifierAccesEcriture()) return;
+  var zone = document.getElementById('zone-sessions'); if (!zone) return;
+  if (document.getElementById('ss-titre')) { document.getElementById('ss-titre').focus(); return; }
+  var demain = new Date(Date.now() - 4 * 3600 * 1000 + 86400000).toISOString().slice(0, 10);
+  var champ = 'width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid var(--b2);font:inherit;font-size:15px;margin-bottom:8px;';
+  var f = document.createElement('div'); f.id = 'ss-form';
+  f.style.cssText = 'border:1px solid var(--brd);border-radius:12px;padding:12px;margin-bottom:12px;background:var(--p2);';
+  f.innerHTML = '<div style="font-weight:700;margin-bottom:8px;">Nouvelle session</div>' +
+    '<input id="ss-titre" type="text" maxlength="80" placeholder="Nom de la session (ex. Atelier coaching confiance en soi)" style="' + champ + '">' +
+    '<div style="display:flex;gap:8px;"><input id="ss-date" type="date" min="' + new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10) + '" value="' + demain + '" style="' + champ + '"><input id="ss-heure" type="time" value="13:00" step="900" style="' + champ + '"></div>' +
+    '<div style="display:flex;gap:8px;"><input id="ss-duree" type="number" min="15" max="720" step="15" value="120" placeholder="Durée (min)" aria-label="Durée en minutes" style="' + champ + '"><input id="ss-places" type="number" min="2" max="100" value="10" placeholder="Places" aria-label="Nombre de places" style="' + champ + '"></div>' +
+    '<input id="ss-prix" type="number" min="0" max="5000" step="0.5" placeholder="Prix par personne en € (0 = gratuit)" aria-label="Prix par personne" style="' + champ + '">' +
+    '<input id="ss-lieu" type="text" maxlength="160" placeholder="Lieu (ex. Salle des fêtes, Baie-Mahault)" style="' + champ + '">' +
+    '<textarea id="ss-desc" rows="2" maxlength="500" placeholder="Quelques mots sur la session (facultatif)" style="' + champ + '"></textarea>' +
+    '<div id="ss-etat" style="font-size:13px;min-height:18px;margin-bottom:8px;"></div>' +
+    '<div style="display:flex;gap:8px;"><button type="button" onclick="document.getElementById(\'ss-form\').remove()" style="flex:1;min-height:44px;border-radius:10px;border:1px solid var(--brd);background:#fff;font-weight:600;cursor:pointer;">Annuler</button>' +
+    '<button type="button" onclick="enregistrerSession()" style="flex:1;min-height:44px;border-radius:10px;border:none;background:var(--ac);color:#fff;font-weight:700;cursor:pointer;">Publier la session</button></div>';
+  zone.insertBefore(f, zone.firstChild);
+  document.getElementById('ss-titre').focus();
+}
+async function enregistrerSession() {
+  if (!verifierAccesEcriture()) return;
+  var etat = document.getElementById('ss-etat');
+  function erreur(m) { etat.style.color = 'var(--danger)'; etat.textContent = m; }
+  var titre = document.getElementById('ss-titre').value.trim(), date = document.getElementById('ss-date').value, heure = document.getElementById('ss-heure').value;
+  var duree = parseInt(document.getElementById('ss-duree').value, 10), places = parseInt(document.getElementById('ss-places').value, 10);
+  var prix = parseFloat(String(document.getElementById('ss-prix').value || '0').replace(',', '.')), lieu = document.getElementById('ss-lieu').value.trim();
+  var desc = document.getElementById('ss-desc').value.trim();
+  if (titre.length < 3) return erreur('Donnez un nom à la session (3 lettres au moins).');
+  if (!date || !heure) return erreur('Choisissez la date et l\'heure.');
+  var maintenantGP = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 16);
+  if ((date + 'T' + heure) <= maintenantGP) return erreur('Cette date est déjà passée.');
+  if (!(duree >= 15 && duree <= 720)) return erreur('La durée doit être entre 15 minutes et 12 heures.');
+  if (!(places >= 2 && places <= 100)) return erreur('Le nombre de places doit être entre 2 et 100.');
+  if (!(prix >= 0 && prix <= 5000)) return erreur('Le prix doit être entre 0 et 5000 €.');
+  if (lieu.length < 3) return erreur('Indiquez le lieu de la session.');
+  etat.style.color = 'var(--mu)'; etat.textContent = '…';
+  var r = await sb.from('artisans_sessions').insert({ artisan_id: _artisan.id, titre: titre, description: desc || null, date_session: date, heure_debut: heure, duree_min: duree, lieu: lieu, places: places, prix_par_personne: isFinite(prix) ? prix : 0 });
+  if (r.error) return erreur('Erreur : ' + r.error.message);
+  await chargerSessionsMpa();
 }
 
 // ════════════════════════════════════════
@@ -6857,11 +7005,12 @@ function initProfilMobile() {
   zone.setAttribute('data-ok', '1');
   var entreprise = document.querySelector('#bp0 .fcol .fcard'); // « Informations entreprise »
   var cartes = document.querySelectorAll('#bp0 .fcard');
-  var fiscal = null, horaires = null, indispo = null;
+  var fiscal = null, horaires = null, indispo = null, sessionsC = null;
   cartes.forEach(function(c) {
     if (c.querySelector('#cfg-cotis')) fiscal = c;
     if (c.querySelector('#zone-horaires')) horaires = c;
     if (c.querySelector('#zone-indispo')) indispo = c;
+    if (c.querySelector('#zone-sessions')) sessionsC = c;
   });
   // « Déplacement et réservation » : les 4 dernières lignes de la fiche entreprise, regroupées dans leur propre bloc.
   var depl = document.createElement('div'); depl.className = 'fcard';
@@ -6875,6 +7024,7 @@ function initProfilMobile() {
     ['🏢', '#e8f0ff', 'Mon entreprise', 'Nom, adresse, contact', entreprise],
     ['🕐', '#e6f7ef', 'Mes horaires', 'Les jours et heures où l\'on peut vous réserver', horaires],
     ['🌴', '#f3e8ff', 'Mes congés', 'Les jours où vous n\'êtes pas disponible', indispo],
+    ['🎓', '#fef3c7', 'Mes sessions', 'Coaching, ateliers : places et inscrits', sessionsC],
     ['🚗', '#fff1e8', 'Déplacement et réservation', 'Visite avant devis, frais, annulation', depl],
     ['🧾', '#e0f2fe', 'Mes cotisations', 'Réglages fiscaux', fiscal],
     ['⭐', '#fef9c3', 'Mon offre', 'Essentiel ou Pro', document.getElementById('zone-mon-offre')]
