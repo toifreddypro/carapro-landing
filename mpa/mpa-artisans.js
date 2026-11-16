@@ -6562,10 +6562,38 @@ async function chargerHoraires() {
   renderHoraires();
 }
 
+// Remplir plusieurs jours d'un coup : évite de toucher « + Plage » sept fois. Ne touche jamais un jour qui a déjà une plage.
+function blocRemplirJours() {
+  var puces = ORDRE_JOURS_AFFICHAGE.map(function(j) {
+    var avait = _horairesCache.some(function(h) { return h.jour_semaine === j; });
+    return '<label style="display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid var(--brd);border-radius:99px;background:#fff;font-size:12.5px;cursor:pointer;' + (avait ? 'opacity:.5;' : '') + '">' +
+      '<input type="checkbox" class="rj-jour" value="' + j + '"' + (!avait && j !== 0 ? ' checked' : '') + (avait ? ' disabled' : '') + '>' + JOURS_SEMAINE_LABEL[j].slice(0, 3) + '</label>';
+  }).join(' ');
+  return '<div style="margin-bottom:14px;padding:12px;border:1px solid var(--brd);border-radius:12px;background:var(--p2);">' +
+    '<div style="font-weight:700;font-size:13.5px;margin-bottom:4px;">⚡ Remplir plusieurs jours d\'un coup</div>' +
+    '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:8px;line-height:1.45;">Choisissez les jours où vous travaillez et vos heures de début et de fin. Les jours qui ont déjà une plage ne sont pas modifiés.</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' + puces + '</div>' +
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><input type="time" id="rj-debut" value="08:00" style="padding:8px 10px;border-radius:8px;border:1px solid var(--b2);font-size:15px;"><span style="font-size:12.5px;color:var(--mu);">à</span>' +
+    '<input type="time" id="rj-fin" value="17:00" style="padding:8px 10px;border-radius:8px;border:1px solid var(--b2);font-size:15px;">' +
+    '<button type="button" onclick="remplirJoursPlages()" style="padding:9px 14px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-weight:700;font-size:13px;cursor:pointer;min-height:40px;">Appliquer</button></div></div>';
+}
+async function remplirJoursPlages() {
+  if (!verifierAccesEcriture()) return;
+  var debut = document.getElementById('rj-debut').value, fin = document.getElementById('rj-fin').value;
+  if (!debut || !fin || debut >= fin) { alert('Merci de renseigner une heure de début et une heure de fin valides (fin après le début).'); return; }
+  var jours = Array.prototype.slice.call(document.querySelectorAll('.rj-jour:checked')).map(function(c) { return parseInt(c.value, 10); });
+  jours = jours.filter(function(j) { return !_horairesCache.some(function(h) { return h.jour_semaine === j; }); });
+  if (!jours.length) { alert('Cochez au moins un jour sans plage.'); return; }
+  var lignes = jours.map(function(j) { return { artisan_id: _artisan.id, jour_semaine: j, heure_debut: debut, heure_fin: fin }; });
+  var { error } = await sb.from('artisans_horaires').insert(lignes);
+  if (error) { alert('Erreur : ' + error.message); return; }
+  await chargerHoraires();
+}
+
 function renderHoraires() {
   var zone = document.getElementById('zone-horaires');
   if (!zone) return;
-  zone.innerHTML = ORDRE_JOURS_AFFICHAGE.map(function(jour) {
+  zone.innerHTML = blocRemplirJours() + ORDRE_JOURS_AFFICHAGE.map(function(jour) {
     var blocs = _horairesCache.filter(function(h) { return h.jour_semaine === jour; });
     return '<div>' +
       '<div class="hz-j" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--brd);flex-wrap:wrap;">' +
@@ -6596,7 +6624,8 @@ function blocHeuresFixes() {
   var hs = heuresFixesArtisan();
   return '<div style="margin-top:16px;padding:12px;border:1px solid var(--brd);border-radius:12px;background:var(--p2);">' +
     '<div style="font-weight:700;font-size:13.5px;margin-bottom:4px;">🕐 Mes heures précises <span style="font-weight:400;color:var(--mu);">(facultatif)</span></div>' +
-    '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:10px;line-height:1.45;">Vous préférez donner des heures de rendez-vous précises ? Ajoutez-les ici : vos clients ne verront que celles-ci (dans vos plages, et seulement si la prestation et le trajet y tiennent). Sans heure ajoutée, vos plages restent affichées comme avant.</div>' +
+    '<div style="font-size:12.5px;color:var(--mu2);margin-bottom:10px;line-height:1.45;">Vous préférez donner des heures de rendez-vous précises ? Ajoutez-les ici : vos clients ne verront que celles-ci, <strong>dans les jours et plages ci-dessus</strong> (et seulement si la prestation et le trajet y tiennent). Un jour « Ne travaille pas » n\'affiche rien. Sans heure ajoutée, vos plages restent affichées comme avant.</div>' +
+    (!_horairesCache.length ? '<div style="font-size:12.5px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.45;">⚠️ Vos clients ne pourront pas réserver tant que vous n\'avez indiqué aucun jour de travail. Utilisez d\'abord « ⚡ Remplir plusieurs jours d\'un coup » en haut de cette page : vos heures précises s\'afficheront ensuite dans ces jours.</div>' : '') +
     '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' +
       (hs.length ? hs.map(function(h) {
         return '<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:99px;background:#fff;border:1px solid var(--brd);font-weight:600;font-size:13px;">' + escHtml(h) +
