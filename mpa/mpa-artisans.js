@@ -6346,48 +6346,30 @@ async function calculerDashboardFiscal() {
   var t = totauxFamilles(lignes, 'production', function(d) { return d.getFullYear() === anneeAuj; });
   var caBrut = t.total;
 
-  // Jauge plafond micro-entreprise (2026-2028) : services 83 600 € ET ensemble 203 100 € — on montre le plus proche.
+  // Ma limite de l'année (plafond micro-entreprise 2026-2028) : services 83 600 € ET ensemble 203 100 € — on montre le plus proche.
   var p = calculPlafond(t);
   var pct = Math.min(100, p.pct);
-  document.getElementById('dash-me-pct').textContent = pct.toFixed(0) + '%';
-  document.getElementById('dash-me-amt').textContent = p.montant.toFixed(0) + ' € / ' + p.limite.toLocaleString('fr-FR') + ' €';
-  var bar = document.getElementById('dash-jauge-me');
-  bar.style.width = pct + '%';
-  bar.className = 'dj-bar' + (pct >= 90 ? ' danger' : pct >= 70 ? ' warn' : '');
-  document.getElementById('dash-me-msg').textContent =
-    pct >= 90 ? '⚠️ Seuil bientôt atteint' : pct >= 70 ? 'À surveiller' : 'Marge confortable';
-  document.getElementById('dash-me-detail').textContent =
-    'Services : ' + t.services.toFixed(0) + ' € / ' + PLAFOND_MICRO_SERVICES.toLocaleString('fr-FR') + ' € · Ensemble : ' + t.total.toFixed(0) + ' € / ' + PLAFOND_MICRO_VENTE.toLocaleString('fr-FR') + ' € ' +
-    '(interventions ' + t.interventions.toFixed(0) + ' €, livraisons ' + t.livraisons.toFixed(0) + ' €, ventes ' + t.ventes.toFixed(0) + ' €)';
+  var msgLimite = pct >= 90 ? '⚠️ Limite bientôt atteinte' : pct >= 70 ? 'À surveiller' : 'Marge confortable';
+  _dashEtat.limite = { p: p, t: t, pct: pct, msg: msgLimite };
+  majLigneDash('limite', { sub: msgLimite, val: pct.toFixed(0) + ' %', pct: pct, classe: pct >= 90 ? 'danger' : pct >= 70 ? 'warn' : '' });
 
-  // Jauge seuil gratuit — CA prestations du mois, clients "annuaire" uniquement
+  // Clients venus par CaraLink : gratuit jusqu'à 200 € par mois (ces clients uniquement)
   var caAnnuaireMois = await calculerCAPrestationsAnnuaireDuMois();
   var seuilCentimes = SEUIL_GRATUIT_PRESTATIONS_EUROS * 100;
   var partCommissionnableCentimes = calculerPartAuDessusDuSeuil(Math.round(caAnnuaireMois * 100), 0, seuilCentimes);
   var pctA = Math.min(100, (caAnnuaireMois / SEUIL_GRATUIT_PRESTATIONS_EUROS) * 100);
-  document.getElementById('dash-annuaire-pct').textContent = pctA.toFixed(0) + '%';
-  document.getElementById('dash-annuaire-amt').textContent = caAnnuaireMois.toFixed(0) + ' € / ' + SEUIL_GRATUIT_PRESTATIONS_EUROS + ' €';
-  var barA = document.getElementById('dash-jauge-annuaire');
-  barA.style.width = pctA + '%';
-  barA.className = 'dj-bar' + (pctA >= 100 ? ' danger' : pctA >= 70 ? ' warn' : '');
-  document.getElementById('dash-annuaire-msg').textContent = partCommissionnableCentimes > 0
-    ? '⚠️ ' + (partCommissionnableCentimes / 100).toFixed(0) + ' € au-dessus du seuil ce mois-ci'
-    : 'Encore gratuit ce mois-ci';
+  _dashEtat.seuil = { ca: caAnnuaireMois, pct: pctA, audessus: partCommissionnableCentimes / 100 };
+  majLigneDash('seuil', {
+    sub: partCommissionnableCentimes > 0 ? '⚠️ ' + (partCommissionnableCentimes / 100).toFixed(0) + ' € au-dessus du seuil ce mois-ci' : caAnnuaireMois.toFixed(0) + ' € sur ' + SEUIL_GRATUIT_PRESTATIONS_EUROS + ' € gratuits ce mois-ci',
+    val: '', pct: pctA, classe: pctA >= 100 ? 'danger' : pctA >= 70 ? 'warn' : '' });
 
-  // Estimation IR : abattement propre à chaque famille (71 % ventes, 50 % services), ou versement libératoire si l'artisan l'a choisi.
+  // Impôt à prévoir : abattement propre à chaque famille (71 % ventes, 50 % services), ou versement libératoire si l'artisan l'a choisi.
   var nbParts = parseFloat(document.getElementById('dash-parts').value) || 1;
   var ir = calculImpotEstime(t, nbParts);
   var regimeNonPrecise = ('versement_liberatoire' in _artisan) && _artisan.versement_liberatoire == null;
-  document.getElementById('dash-ir-body').innerHTML =
-    '<div class="ir-ligne"><span>CA brut (année)</span><span>' + caBrut.toFixed(0) + ' €</span></div>' +
-    (ir.liberatoire
-      ? '<div class="ir-ligne"><span>Versement libératoire (1 % ventes, 1,7 % services)</span><span>' + ir.impot.toFixed(0) + ' €</span></div>'
-      : '<div class="ir-ligne"><span>Revenu imposable (abattement 71 % ventes, 50 % services)</span><span>' + ir.imposable.toFixed(0) + ' €</span></div>' +
-        '<div class="ir-ligne"><span>Estimation impôt sur le revenu</span><span>' + ir.impot.toFixed(0) + ' €</span></div>') +
-    (regimeNonPrecise ? '<div style="font-size:10.5px;color:var(--mu);margin-top:6px;">Calcul au barème classique. Vous avez le versement libératoire ? Indiquez-le dans Mon profil › Paramètres fiscaux.</div>' : '');
-  if (!estPro()) document.getElementById('dash-ir-body').innerHTML = '<div style="cursor:pointer;padding:10px 0;color:var(--mu);font-weight:700;" onclick="proposerPassagePro(\'impot\')">🔒 L\'estimation de votre impôt fait partie de l\'offre Pro</div>';
-  var sousTitreIR = document.getElementById('dash-ir-sub');
-  if (sousTitreIR) sousTitreIR.textContent = ir.liberatoire ? 'Versement libératoire de l\'impôt sur le revenu' : 'Abattement forfaitaire : 71 % ventes, 50 % services';
+  _dashEtat.impot = { ir: ir, caBrut: caBrut, nbParts: nbParts, regimeNonPrecise: regimeNonPrecise };
+  if (!estPro()) majLigneDash('impot', { sub: '🔒 Fait partie de l\'offre Pro', val: '' });
+  else majLigneDash('impot', { sub: ir.liberatoire ? 'Versement libératoire' : 'Estimation pour l\'année', val: '≈ ' + ir.impot.toFixed(0) + ' €' });
   afficherCAMois();
   afficherAVenir();
 }
@@ -6396,8 +6378,7 @@ async function calculerDashboardFiscal() {
 // Uniquement les interventions déjà planifiées (jamais « encaissé ») ; ne touche ni la comptabilité ni la commission.
 function _minutesHeure(h) { var p = String(h || '').split(':'); return p.length >= 2 ? (parseInt(p[0], 10) * 60 + parseInt(p[1], 10)) : NaN; }
 async function afficherAVenir() {
-  var corps = document.getElementById('a-venir-corps');
-  if (!corps || !_artisan) return;
+  if (!document.getElementById('dl-avenir') || !_artisan) return;
   try {
     var n = new Date(), a = n.getFullYear(), m = n.getMonth();
     var auj = _dateLocaleISO(a, m, n.getDate());
@@ -6414,8 +6395,6 @@ async function afficherAVenir() {
     var inter = (rs[0].data || []).filter(function(i) { return !/^Livraison\b/i.test(i.notes || ''); });
     var horaires = rs[1].error ? [] : (rs[1].data || []);
     var indispos = rs[2].error ? [] : (rs[2].data || []);
-    var euros = function(x) { return Math.round(x).toLocaleString('fr-FR') + ' €'; };
-    var s = function(n2) { return n2 > 1 ? 's' : ''; };
     var dans30 = inter.filter(function(i) { return i.date_intervention <= fin30; });
     var prochain = inter.filter(function(i) { return i.date_intervention >= debutProch && i.date_intervention <= finProch; });
     var somme = function(l) { return l.reduce(function(t, i) { return t + (Number(i.prix) || 0); }, 0); };
@@ -6429,20 +6408,79 @@ async function afficherAVenir() {
     var reserve = 0;
     dans30.forEach(function(i) { var mm = _minutesHeure(i.heure_fin) - _minutesHeure(i.heure_debut); if (mm > 0) reserve += mm; });
     var taux = ouvert > 0 ? Math.min(100, Math.round(reserve / ouvert * 100)) : null;
-    var nomProch = MOIS_NOMS[(m + 1) % 12].toLowerCase();
-    var ligne = function(lib, val, aide) {
-      return '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:7px 0;border-top:1px solid var(--brd);font-size:13px;"><span>' + lib + (aide ? '<span style="display:block;font-size:11.5px;color:var(--mu);">' + aide + '</span>' : '') + '</span><strong style="font-size:15px;white-space:nowrap;">' + val + '</strong></div>';
-    };
-    corps.innerHTML =
-      '<div style="font-size:26px;font-weight:800;color:var(--tx,inherit);line-height:1.1;margin-bottom:2px;">' + euros(somme(dans30)) + '</div>' +
-      '<div style="margin-bottom:8px;color:var(--mu);">prévus sur les 30 prochains jours</div>' +
-      ligne('Rendez-vous', dans30.length) +
-      ligne('Taux de remplissage', taux === null ? '—' : taux + ' %', taux === null ? 'Indiquez vos horaires dans Mon profil pour le voir.' : 'Heures réservées sur vos heures ouvertes.') +
-      ligne('Le mois prochain (' + nomProch + ')', euros(somme(prochain)), prochain.length + ' rendez-vous prévu' + s(prochain.length) + ' pour l\'instant');
+    var liste = dans30.slice().sort(function(x, y) { return (x.date_intervention + (x.heure_debut || '')).localeCompare(y.date_intervention + (y.heure_debut || '')); });
+    _dashEtat.avenir = { liste: liste, total: somme(dans30), nb: dans30.length, taux: taux, prochainTotal: somme(prochain), prochainNb: prochain.length, nomProch: MOIS_NOMS[(m + 1) % 12].toLowerCase() };
+    majLigneDash('avenir', { sub: '30 prochains jours · ' + dans30.length + ' rendez-vous', val: eurosD(somme(dans30)) });
   } catch (e) {
     console.error(e);
-    corps.textContent = 'Les rendez-vous à venir n\'ont pas pu être chargés.';
+    majLigneDash('avenir', { sub: 'Les rendez-vous à venir n\'ont pas pu être chargés.', val: '' });
   }
+}
+
+// ── Tableau de bord épuré : 4 lignes simples, le détail s'ouvre dans une feuille (téléphone : du bas ; ordinateur : au centre).
+var _dashEtat = {}, _dashCleOuverte = null;
+function eurosD(x) { return Math.round(x).toLocaleString('fr-FR') + ' €'; }
+function majLigneDash(cle, o) {
+  var el = document.getElementById('dl-' + cle); if (!el) return;
+  if (o.sub != null) el.querySelector('.dl-s').textContent = o.sub;
+  var v = el.querySelector('.dl-v-txt'); if (v && o.val != null) v.textContent = o.val;
+  var b = el.querySelector('.dj-bar');
+  if (b && o.pct != null) { b.style.width = Math.min(100, o.pct) + '%'; b.className = 'dj-bar' + (o.classe ? ' ' + o.classe : ''); }
+}
+function fermerDetailDash() { var ov = document.getElementById('dash-sheet'); if (ov) ov.remove(); _dashCleOuverte = null; }
+function barreDash(pct, classe) { return '<div class="dj-track" style="height:14px;border-radius:8px;margin:16px 0 10px;"><div class="dj-bar ' + (classe || '') + '" style="width:' + Math.min(100, pct) + '%;border-radius:8px;"></div></div>'; }
+function ouvrirDetailDash(cle) {
+  var e = _dashEtat[cle], titre = '', corps = '';
+  if (cle === 'impot' && !estPro()) { proposerPassagePro('impot'); return; }
+  if (!e) { return; }
+  if (cle === 'avenir') {
+    titre = 'À venir · 30 jours';
+    var jolie = function(iso) { var d = new Date(iso + 'T12:00:00'); return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }); };
+    var max = 8, montrees = e.liste.slice(0, max);
+    corps = '<div class="ds-note" style="margin:0 0 6px;">Ce qui est déjà réservé. Rien n\'est encaissé tant que les rendez-vous ne sont pas faits.</div>' +
+      (montrees.length ? montrees.map(function(i) { return '<div class="ds-li"><span>' + escHtml(jolie(i.date_intervention)) + (i.heure_debut ? ' · ' + escHtml(String(i.heure_debut).slice(0, 5)) : '') + '</span><b>' + (Number(i.prix) ? eurosD(Number(i.prix)) : '—') + '</b></div>'; }).join('') : '<div class="ds-li"><span>Aucun rendez-vous pour le moment.</span></div>') +
+      (e.liste.length > max ? '<div class="ds-li"><span>… et ' + (e.liste.length - max) + ' autre' + (e.liste.length - max > 1 ? 's' : '') + '</span><b></b></div>' : '') +
+      '<div class="ds-li total"><span>Total prévu</span><b style="color:var(--ac);">' + eurosD(e.total) + '</b></div>' +
+      '<div class="ds-li"><span>Remplissage de vos horaires</span><b>' + (e.taux === null ? '—' : e.taux + ' %') + '</b></div>' +
+      '<div class="ds-li"><span>Le mois prochain (' + escHtml(e.nomProch) + ')</span><b>' + eurosD(e.prochainTotal) + ' · ' + e.prochainNb + ' rdv</b></div>' +
+      (e.taux === null ? '<div class="ds-note">Indiquez vos horaires dans Mon profil pour voir le remplissage.</div>' : '');
+  } else if (cle === 'limite') {
+    titre = 'Ma limite de l\'année';
+    var p = e.p, t = e.t, reste = Math.max(0, p.limite - p.montant);
+    corps = '<div class="ds-note" style="margin:0;">Tant que vous restez sous cette ligne, vous gardez la micro-entreprise.</div>' + barreDash(e.pct, e.pct >= 90 ? 'danger' : e.pct >= 70 ? 'warn' : '') +
+      '<div style="display:flex;justify-content:space-between;font-weight:700;font-size:15px;"><span>' + eurosD(p.montant) + '</span><span style="color:var(--mu);">' + eurosD(p.limite) + '</span></div>' +
+      '<div class="ds-li" style="margin-top:18px;"><span>Il vous reste</span><b style="color:#16a34a;">' + eurosD(reste) + '</b></div>' +
+      '<div class="ds-li"><span>Services</span><b>' + eurosD(t.services) + ' / ' + PLAFOND_MICRO_SERVICES.toLocaleString('fr-FR') + ' €</b></div>' +
+      '<div class="ds-li"><span>Ventes + services</span><b>' + eurosD(t.total) + ' / ' + PLAFOND_MICRO_VENTE.toLocaleString('fr-FR') + ' €</b></div>' +
+      '<div class="ds-note">Depuis janvier : interventions ' + eurosD(t.interventions) + ', livraisons ' + eurosD(t.livraisons) + ', ventes ' + eurosD(t.ventes) + '. Au-delà de la limite, le régime fiscal change : on vous prévient avant.</div>';
+  } else if (cle === 'seuil') {
+    titre = 'Clients venus par CaraLink';
+    corps = '<div class="ds-note" style="margin:0;">Les ' + SEUIL_GRATUIT_PRESTATIONS_EUROS + ' premiers euros de chaque mois, avec des clients trouvés grâce à CaraLink, sont gratuits.</div>' + barreDash(e.pct, e.pct >= 100 ? 'danger' : e.pct >= 70 ? 'warn' : '') +
+      '<div style="text-align:center;font-size:20px;font-weight:800;">' + eurosD(e.ca) + ' <span style="color:var(--mu);font-weight:600;">sur ' + SEUIL_GRATUIT_PRESTATIONS_EUROS + ' €</span></div>' +
+      '<div class="ds-li" style="margin-top:18px;"><span>' + (e.audessus > 0 ? 'Au-dessus du seuil ce mois-ci' : 'Ce mois-ci') + '</span><b>' + (e.audessus > 0 ? eurosD(e.audessus) : 'Encore gratuit') + '</b></div>' +
+      '<div class="ds-note">Seule la part au-dessus du seuil est concernée. Vos clients personnels, apportés par vous, ne comptent jamais.</div>';
+  } else if (cle === 'impot') {
+    titre = 'Impôt à prévoir';
+    var ir = e.ir;
+    corps = '<div class="ds-note" style="margin:0;">Une idée de ce qu\'il faudra payer, pour ne pas être surpris.</div>' +
+      '<div class="ds-big">≈ ' + eurosD(ir.impot) + '</div>' +
+      '<div class="ds-li"><span>Gagné depuis janvier</span><b>' + eurosD(e.caBrut) + '</b></div>' +
+      (ir.liberatoire ? '<div class="ds-li"><span>Versement libératoire (1 % ventes, 1,7 % services)</span><b>' + eurosD(ir.impot) + '</b></div>'
+        : '<div class="ds-li"><span>Revenu imposable (après réduction forfaitaire : 71 % ventes, 50 % services)</span><b>' + eurosD(ir.imposable) + '</b></div>') +
+      '<div class="ds-parts"><label for="dash-parts-feuille">Parts fiscales</label><input id="dash-parts-feuille" type="number" min="1" step="0.5" value="' + e.nbParts + '" onchange="changerPartsDash(this.value)"><span>1 pour un artisan seul</span></div>' +
+      '<div class="ds-note">Estimation pour vous guider, ce n\'est pas un calcul officiel.' + (e.regimeNonPrecise ? ' Calcul au barème classique : vous avez le versement libératoire ? Indiquez-le dans Mon profil › Paramètres fiscaux.' : '') + '</div>';
+  } else { return; }
+  fermerDetailDash();
+  _dashCleOuverte = cle;
+  var ov = document.createElement('div'); ov.id = 'dash-sheet'; ov.className = 'ds-ov';
+  ov.onclick = function(ev) { if (ev.target === ov) fermerDetailDash(); };
+  ov.innerHTML = '<div class="ds-card" role="dialog" aria-label="' + escHtml(titre) + '"><div class="ds-tete"><span>' + escHtml(titre) + '</span><button type="button" onclick="fermerDetailDash()" aria-label="Fermer">✕</button></div>' + corps + '</div>';
+  document.body.appendChild(ov);
+}
+async function changerPartsDash(v) {
+  var h = document.getElementById('dash-parts'); if (h) h.value = parseFloat(v) || 1;
+  await sauverPartsFiscales();
+  if (_dashCleOuverte === 'impot') ouvrirDetailDash('impot');
 }
 
 // ── CA du mois (carte du Tableau de bord) : trois familles, comparé au mois précédent complet. Mêmes règles que la Comptabilité (vue Production).
@@ -6456,21 +6494,21 @@ async function afficherCAMois() {
     var prec = totauxFamilles(lignes, 'production', function(d) { var p = new Date(a, m - 1, 1); return d.getFullYear() === p.getFullYear() && d.getMonth() === p.getMonth(); });
     var nomL = MOIS_NOMS[m].toLowerCase(), nomPrec = MOIS_NOMS[(m + 11) % 12].toLowerCase();
     var t = document.getElementById('ca-mois-titre');
-    if (t) t.textContent = 'Mon chiffre d\'affaires ' + (/^[aeiouhé]/.test(nomL) ? 'd\'' : 'de ') + nomL;
+    if (t) t.textContent = 'Ce que j\'ai gagné en ' + nomL;
     var euros = function(x) { return Math.round(x).toLocaleString('fr-FR') + ' €'; };
     var ecart = cur.total - prec.total, comp;
-    if (prec.total <= 0) comp = cur.total > 0 ? '<span style="color:var(--mu);">Pas de chiffre d\'affaires en ' + nomPrec + ' pour comparer.</span>' : '';
+    if (prec.total <= 0) comp = cur.total > 0 ? '<span style="color:var(--mu);">Pas de gains en ' + nomPrec + ' pour comparer.</span>' : '';
     else {
       var pct = Math.round(ecart / prec.total * 100);
-      comp = '<span style="font-weight:700;color:' + (ecart >= 0 ? '#0f9d78' : 'var(--danger)') + ';">' + (ecart >= 0 ? '▲ +' : '▼ ') + pct + ' %</span> <span style="color:var(--mu);">par rapport à ' + nomPrec + ' (' + euros(prec.total) + ', mois complet)</span>';
+      comp = '<span style="font-weight:700;color:' + (ecart >= 0 ? '#0f9d78' : 'var(--danger)') + ';">' + (ecart >= 0 ? '▲ +' : '▼ ') + pct + ' %</span> <span style="color:var(--mu);">par rapport à ' + nomPrec + ' (' + euros(prec.total) + ')</span>';
     }
     corps.innerHTML =
-      '<div style="font-size:26px;font-weight:800;color:var(--tx,inherit);line-height:1.1;margin-bottom:4px;">' + euros(cur.total) + '</div>' +
-      (comp ? '<div style="margin-bottom:8px;">' + comp + '</div>' : '') +
-      '<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;">' +
-        '<span>🔧 Interventions : <strong>' + euros(cur.interventions) + '</strong></span>' +
-        '<span>🛍️ Ventes : <strong>' + euros(cur.ventes) + '</strong></span>' +
-        '<span>🚚 Livraisons : <strong>' + euros(cur.livraisons) + '</strong></span>' +
+      '<div class="dh-big">' + euros(cur.total) + '</div>' +
+      (comp ? '<div class="dh-comp">' + comp + '</div>' : '') +
+      '<div class="dh-chips">' +
+        '<span class="dh-chip">🔧 Interventions ' + euros(cur.interventions) + '</span>' +
+        '<span class="dh-chip">🛍️ Ventes ' + euros(cur.ventes) + '</span>' +
+        '<span class="dh-chip">🚚 Livraisons ' + euros(cur.livraisons) + '</span>' +
       '</div>';
   } catch (e) {
     console.error(e);
