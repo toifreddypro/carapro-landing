@@ -562,7 +562,7 @@ function mpaAiGrandRendre() {
   if (!g || !fond) return;
   var m = g.liste[g.i], n = g.liste.length, dernier = g.i >= n - 1;
   g.atteint = Math.max(g.atteint, g.i);
-  var couleur = m.type === 'important' ? '#dc2626' : m.type === 'warning' ? '#f59e0b' : '#B5502F';
+  var couleur = m.type === 'important' ? '#dc2626' : m.type === 'warning' ? '#f59e0b' : '#EA580C';
   var loader = document.querySelector('#mpa-ai-fab .mpa-ai-loader');
   var ctas = [].concat(m.cta || []).map(function(c) {
     return '<button type="button" class="mpa-ai-grand-cta" onclick="mpaAiGrandFermer();' + c.action + '">' + c.label + '</button>';
@@ -1299,7 +1299,7 @@ function formaterDescriptionNouveaute(desc) {
     var corps = m ? '<strong style="color:var(--tx,#111);">' + escHtml(m[1]) + '</strong> — ' + escHtml(m[2]) : escHtml(l);
     var astuce = l.indexOf('💡') === 0;
     return '<div style="font-size:13.5px;line-height:1.55;color:var(--mu2);margin:0 0 8px;' +
-      (astuce ? 'background:rgba(181,80,47,.08);border-radius:8px;padding:8px 10px;' : '') + '">' + corps + '</div>';
+      (astuce ? 'background:rgba(234,88,12,.08);border-radius:8px;padding:8px 10px;' : '') + '">' + corps + '</div>';
   }).join('');
 }
 
@@ -1680,7 +1680,7 @@ function ouvrirDetailJourMobile(dateStr) {
     return '<div style="margin:14px 0 6px;font-size:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--mu2);">' + titre + '</div>' +
       (liste.length
         ? liste.map(carte).join('')
-        : '<div style="font-size:12.5px;color:var(--mu);padding:8px 0 4px;">Rien de prévu · <a href="#" onclick="event.preventDefault();fermerModale(\'modal-jour-mobile\');ouvrirNouvelleIntervention(\'' + dateStr + '\',\'' + creneau + '\')" style="color:var(--ac);font-weight:700;text-decoration:none;">+ Ajouter</a></div>');
+        : '<div style="font-size:12.5px;color:var(--mu);padding:8px 0 4px;">Rien de prévu · <a href="#" onclick="event.preventDefault();fermerModale(\'modal-jour-mobile\');ouvrirNouvelleIntervention(\'' + dateStr + '\',\'' + creneau + '\')" style="color:var(--ac-t,var(--ac));font-weight:700;text-decoration:none;">+ Ajouter</a></div>');
   }
   var matin = interDuJour.filter(function(i) { return i.creneau !== 'apres_midi'; });
   var apm = interDuJour.filter(function(i) { return i.creneau === 'apres_midi'; });
@@ -2316,7 +2316,7 @@ function renderDemandes() {
     else if (d.statut === 'creneau_propose') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(180,83,9,.1);color:#b45309;">📅 Créneau proposé</span>';
     else if (d.statut === 'creneau_confirme') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(22,163,74,.1);color:#16a34a;">✅ Confirmé</span>';
     else if (d.statut === 'creneau_refuse') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--brd);color:var(--mu);">❌ Refusé</span>';
-    else if (l.type === 'privee') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(181,80,47,.1);color:var(--ac);">🔓 Privée</span>';
+    else if (l.type === 'privee') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(234,88,12,.1);color:var(--ac-t,var(--ac));">🔓 Privée</span>';
     else badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(59,130,246,.1);color:#3b82f6;">📢 Ouverte (mise en concurrence)</span>';
 
     var actionsHaut;
@@ -2345,7 +2345,7 @@ function renderDemandes() {
 
     var ligneCreneau = estCreneau && d.date_intervention
       ? (d.hors_horaires ? '<div style="font-size:12px;font-weight:700;color:#9a3412;background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:4px 8px;margin-bottom:6px;display:inline-block;">⚠️ Hors horaires habituels</div><br>' : '') +
-        '<div style="font-size:13px;font-weight:700;color:var(--ac);margin-bottom:6px;">📅 ' + new Date(d.date_intervention).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' }) + ' à ' + (d.heure_debut||'').slice(0,5) + '</div>' +
+        '<div style="font-size:13px;font-weight:700;color:var(--ac-t,var(--ac));margin-bottom:6px;">📅 ' + new Date(d.date_intervention).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' }) + ' à ' + (d.heure_debut||'').slice(0,5) + '</div>' +
         (d.reponse_message ? '<div style="font-size:12px;color:var(--mu2);font-style:italic;margin-bottom:6px;">Votre message : « ' + escHtml(d.reponse_message) + ' »</div>' : '')
       : '';
 
@@ -2355,7 +2355,7 @@ function renderDemandes() {
     // l'artisan doit s'engager (Prendre en charge) avant d'y accéder, pour éviter que le client
     // ne se fasse contacter par des artisans qui n'ont jamais vraiment l'intention de répondre.
     var noteEmail = '<div style="font-size:10.5px;color:var(--mu);margin-top:5px;">⚠️ Cette adresse vous est communiquée uniquement pour répondre à cette demande — pas pour de la prospection commerciale.</div>';
-    var blocEmail = '<a href="mailto:' + escHtml(d.client_email) + '" style="display:inline-block;padding:8px 14px;border-radius:8px;background:rgba(181,80,47,.08);border:1px solid var(--ac-brd);color:var(--ac);font-size:13px;font-weight:700;text-decoration:none;font-family:\'JetBrains Mono\',monospace;">📧 ' + escHtml(d.client_email) + '</a>' + noteEmail;
+    var blocEmail = '<a href="mailto:' + escHtml(d.client_email) + '" style="display:inline-block;padding:8px 14px;border-radius:8px;background:rgba(234,88,12,.08);border:1px solid var(--ac-brd);color:var(--ac-t,var(--ac));font-size:13px;font-weight:700;text-decoration:none;font-family:\'JetBrains Mono\',monospace;">📧 ' + escHtml(d.client_email) + '</a>' + noteEmail;
     var contactPref = d.contact_prefere || 'telephone';
     var blocContact;
     if (l.type === 'ouverte') {
@@ -2397,7 +2397,7 @@ function renderDemandes() {
       '</div>' +
       blocQuand + blocBesoin + blocContactSec +
       (d.statut === 'creneau_confirme' ? '' :
-        '<div class="dm-pied"><button onclick="creerClientDepuisDemande(' + jsAttrLocal(d.client_nom) + ',' + jsAttrLocal(d.commune) + ')" style="background:none;border:none;color:var(--ac);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;">+ Ajouter comme client habituel</button></div>') +
+        '<div class="dm-pied"><button onclick="creerClientDepuisDemande(' + jsAttrLocal(d.client_nom) + ',' + jsAttrLocal(d.commune) + ')" style="background:none;border:none;color:var(--ac-t,var(--ac));font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;">+ Ajouter comme client habituel</button></div>') +
     '</div>';
     // Version téléphone : une vignette épurée ; la carte complète s'ouvre au clic (sur ordinateur, seule la carte complète s'affiche).
     var nomC = d.client_nom || '—';
@@ -2520,7 +2520,7 @@ function etapesAssistant() {
         var cur = _as.rep.visite !== undefined ? _as.rep.visite : (_artisan.proposer_visite != null ? _artisan.proposer_visite : null);
         var sug = _as.suggestion || { reponse: null, phrase: '' };
         return '<p style="font-size:13.5px;line-height:1.5;margin:0 0 10px;">Pour beaucoup de métiers, on ne peut pas chiffrer sans avoir vu les lieux.</p>' +
-          (sug.phrase ? '<div style="font-size:12.5px;color:var(--ac);margin-bottom:10px;">✨ ' + escHtml(sug.phrase) + '</div>' : '') +
+          (sug.phrase ? '<div style="font-size:12.5px;color:var(--ac-t,var(--ac));margin-bottom:10px;">✨ ' + escHtml(sug.phrase) + '</div>' : '') +
           '<label class="act-choix"><input type="radio" name="as-visite" id="as-visite-oui"' + (cur === true ? ' checked' : '') + '/><div><strong>Oui, souvent' + (sug.reponse === true ? ' (suggéré)' : '') + '</strong><span>Vos clients peuvent vous demander de venir voir le chantier : ils choisissent un créneau de visite, et vos frais de déplacement leur sont annoncés avant.</span></div></label>' +
           '<label class="act-choix"><input type="radio" name="as-visite" id="as-visite-non"' + (cur === false ? ' checked' : '') + '/><div><strong>Non, mes clients peuvent réserver directement' + (sug.reponse === false ? ' (suggéré)' : '') + '</strong><span>Ils réservent un créneau sans visite préalable.</span></div></label>';
       },
@@ -2726,7 +2726,7 @@ function ouvrirAideParcours() {
     bloc(3, 'Le client reçoit la confirmation', 'Par email, avec son lien pour annuler.' + etape3Annul) +
     bloc(4, 'Le jour J', 'Vous faites l\'intervention, puis vous la passez en « Terminée » dans « Mes interventions ».') +
     bloc(5, 'Le paiement du solde', '💳 Ouvrez l\'intervention et touchez <strong>« Demander un paiement »</strong> : le client reçoit un lien pour payer par carte, valable 14 jours. Tenez compte des frais déjà payés.<br>🧾 En Pro, « Facturer en 1 clic » crée la facture.') +
-    '<div style="font-size:12px;color:var(--mu);border-top:1px solid var(--brd);padding-top:10px;line-height:1.5;">Boutique : le client paie sa commande en ligne au moment de commander. Pour changer vos frais : <a href="#" onclick="fermerModale(\'modal-aide-parcours\');lancerAssistantReglages();return false;" style="color:var(--ac);">🧭 Assistant de réglage</a>.</div>';
+    '<div style="font-size:12px;color:var(--mu);border-top:1px solid var(--brd);padding-top:10px;line-height:1.5;">Boutique : le client paie sa commande en ligne au moment de commander. Pour changer vos frais : <a href="#" onclick="fermerModale(\'modal-aide-parcours\');lancerAssistantReglages();return false;" style="color:var(--ac-t,var(--ac));">🧭 Assistant de réglage</a>.</div>';
   ouvrirModale('modal-aide-parcours');
 }
 
@@ -3095,7 +3095,7 @@ async function calculerCreneaux() {
   }
 
   zone.innerHTML = creneaux.map(function(c) {
-    return '<button type="button" onclick="choisirCreneau(\'' + c.debut + '\')" style="padding:7px 12px;margin:3px 4px 3px 0;border-radius:8px;border:1px solid var(--ac-brd);background:var(--panel);color:var(--ac);font-weight:700;font-size:13px;cursor:pointer;">' +
+    return '<button type="button" onclick="choisirCreneau(\'' + c.debut + '\')" style="padding:7px 12px;margin:3px 4px 3px 0;border-radius:8px;border:1px solid var(--ac-brd);background:var(--panel);color:var(--ac-t,var(--ac));font-weight:700;font-size:13px;cursor:pointer;">' +
       c.debut + '<span style="display:block;font-weight:400;color:var(--mu);font-size:9.5px;">après ' + c.apres + ' +' + c.travelIn + ' min trajet</span></button>';
   }).join('');
 }
@@ -3491,7 +3491,7 @@ function majVerrouLivraisonIntervention(commande, nouvelle) {
   var ban = document.getElementById('mi-liv-banner');
   if (!ban) {
     ban = document.createElement('div'); ban.id = 'mi-liv-banner';
-    ban.style.cssText = 'display:none;margin:0 0 12px;padding:10px 12px;border-radius:8px;background:rgba(181,80,47,.08);border:1px solid rgba(181,80,47,.25);font-size:12.5px;line-height:1.5;';
+    ban.style.cssText = 'display:none;margin:0 0 12px;padding:10px 12px;border-radius:8px;background:rgba(234,88,12,.08);border:1px solid rgba(234,88,12,.25);font-size:12.5px;line-height:1.5;';
     var titre = document.getElementById('mi-titre'); titre.parentNode.insertBefore(ban, titre.nextSibling);
   }
   if (!commande) { ban.style.display = 'none'; return; }
@@ -3612,8 +3612,8 @@ function renderPaiementsIntervention(i) {
     var detailAttente = '';
     if (p.type === 'solde' && p.statut === 'en_attente') detailAttente = detailAttentePaiement(p);
     if (p.type === 'solde' && p.statut === 'expire') detailAttente = '<div style="font-size:11.5px;color:var(--mu);margin:3px 0 0 22px;">Le client n\'a pas payé' + historiqueRelances(p) + '. Contactez-le, ou créez un nouveau lien avec « Demander un paiement ».' + boutonMarquerPaye(p) + '</div>';
-    if (p.statut === 'en_attente') actions = ' <button type="button" onclick="copierLienPaiementPrestation(\'' + p.token + '\')" style="background:none;border:none;color:var(--ac);font-size:12px;cursor:pointer;text-decoration:underline;">Copier le lien</button>';
-    if (p.conditions_acceptees_le) actions += ' <button type="button" onclick="ouvrirPreuveConsentement(\'' + p.id + '\')" style="background:none;border:none;color:var(--ac);font-size:12px;cursor:pointer;text-decoration:underline;">📜 Preuve d\'acceptation</button>';
+    if (p.statut === 'en_attente') actions = ' <button type="button" onclick="copierLienPaiementPrestation(\'' + p.token + '\')" style="background:none;border:none;color:var(--ac-t,var(--ac));font-size:12px;cursor:pointer;text-decoration:underline;">Copier le lien</button>';
+    if (p.conditions_acceptees_le) actions += ' <button type="button" onclick="ouvrirPreuveConsentement(\'' + p.id + '\')" style="background:none;border:none;color:var(--ac-t,var(--ac));font-size:12px;cursor:pointer;text-decoration:underline;">📜 Preuve d\'acceptation</button>';
     var reste = Number(p.montant_rembourse) > 0 ? ' (remboursé : ' + eurosMPA(p.montant_rembourse) + ')' : '';
     return '<div style="font-size:12.5px;margin-bottom:6px;">💶 ' + nom + ' : <strong>' + eurosMPA(p.montant) + '</strong> — ' + (libelleStatut[p.statut] || escHtml(p.statut)) + datePaye + reste + actions + detailAttente + '</div>';
   }).join('');
@@ -3644,7 +3644,7 @@ function historiqueRelances(p) {
   return ' · relances : ' + h.map(function(r) { return new Date(r.le).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) + (r.par === 'auto' ? ' (auto)' : ' (vous)'); }).join(', ');
 }
 function boutonMarquerPaye(p) {
-  return ' <button type="button" onclick="payerEnMainPropre(null, true)" style="background:none;border:none;color:var(--ac);font-size:12px;cursor:pointer;text-decoration:underline;">Le client a payé autrement ? 💵 Payé en main propre</button>';
+  return ' <button type="button" onclick="payerEnMainPropre(null, true)" style="background:none;border:none;color:var(--ac-t,var(--ac));font-size:12px;cursor:pointer;text-decoration:underline;">Le client a payé autrement ? 💵 Payé en main propre</button>';
 }
 function detailAttentePaiement(p) {
   var creeLe = new Date(p.created_at).getTime(), maintenant = Date.now();
@@ -3658,8 +3658,8 @@ function detailAttentePaiement(p) {
   if (!p.client_email) bouton = '<span style="color:var(--mu);">Pas d\'email pour ce client : copiez le lien et envoyez-le vous-même (SMS, WhatsApp).</span>';
   else if (nb >= 2) bouton = '<button type="button" disabled aria-disabled="true" style="' + styleDesactive + '">✉️ Relancer (2/2)</button> <span style="color:var(--mu);">2 relances envoyées : c\'était la dernière.</span>';
   else if (heuresRestantes > 0) bouton = '<button type="button" disabled aria-disabled="true" style="' + styleDesactive + '">✉️ Relancer (' + nb + '/2)</button> <span style="color:var(--mu);">Disponible dans ' + (heuresRestantes > 1 ? heuresRestantes + ' h' : '1 h') + ' : une relance n\'est possible que 24 h après la demande de paiement' + (nb > 0 ? ' (ou après la précédente relance)' : '') + '.</span>';
-  else bouton = '<button type="button" onclick="relancerPaiementPrestation(\'' + p.id + '\')" style="padding:5px 12px;border-radius:7px;border:1.5px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;font-weight:700;cursor:pointer;">✉️ Relancer (' + nb + '/2)</button>';
-  if (p.client_email) bouton += '<br><span style="color:var(--mu);">Le client a perdu l\'email ? </span><button type="button" onclick="renvoyerLienPaiement(\'' + p.id + '\')" style="background:none;border:none;color:var(--ac);font-size:11.5px;cursor:pointer;text-decoration:underline;padding:0;">Renvoyer le même lien</button>';
+  else bouton = '<button type="button" onclick="relancerPaiementPrestation(\'' + p.id + '\')" style="padding:5px 12px;border-radius:7px;border:1.5px solid var(--ac);background:transparent;color:var(--ac-t,var(--ac));font-size:12px;font-weight:700;cursor:pointer;">✉️ Relancer (' + nb + '/2)</button>';
+  if (p.client_email) bouton += '<br><span style="color:var(--mu);">Le client a perdu l\'email ? </span><button type="button" onclick="renvoyerLienPaiement(\'' + p.id + '\')" style="background:none;border:none;color:var(--ac-t,var(--ac));font-size:11.5px;cursor:pointer;text-decoration:underline;padding:0;">Renvoyer le même lien</button>';
   var auto = (p.relance_auto && nb < 2) ? '<br>🤖 Relance automatique prévue si le client ne paie pas.' : '';
   return '<div style="font-size:11.5px;color:var(--mu);margin:3px 0 0 22px;line-height:1.6;">Lien envoyé il y a ' + (jours < 1 ? 'moins d\'un jour' : jours + ' jour' + (jours > 1 ? 's' : '')) + ', valable jusqu\'au ' + expireLe + historiqueRelances(p) + '.' + auto + '<br>' + bouton + boutonMarquerPaye(p) + '</div>';
 }
@@ -3792,7 +3792,7 @@ function afficherInfoRemisesDemande() {
     if (_artisan.code_promo && Number(_artisan.code_promo_pct) >= 1 && _artisan.code_promo_interventions !== false) actifs.push('🎁 code promo ' + escHtml(_artisan.code_promo) + ' (' + Math.round(Number(_artisan.code_promo_pct)) + ' %)');
     if (Number(_artisan.remise_fidele_pct) >= 1) actifs.push('🤝 client fidèle ' + Math.round(Number(_artisan.remise_fidele_pct)) + ' %');
   }
-  var lien = ' <a href="#" onclick="allerRemises();return false;" style="color:var(--ac);font-weight:700;">';
+  var lien = ' <a href="#" onclick="allerRemises();return false;" style="color:var(--ac-t,var(--ac));font-weight:700;">';
   if (!estPro()) z.innerHTML = '🎁 L\'offre Pro permet de proposer à vos clients un cashback, un code promo et une remise « client fidèle »,' + lien + 'voir Remises et fidélité</a>. Pour un client précis, le geste commercial ci-dessus est gratuit.';
   else if (!actifs.length) z.innerHTML = '🎁 <strong>Vos clients peuvent bénéficier d\'un cashback, d\'un code promo ou d\'une remise « client fidèle »</strong> : aucun n\'est réglé pour l\'instant.' + lien + 'Régler mes remises</a>';
   else z.innerHTML = '✅ Appliqués automatiquement si votre client y a droit : ' + actifs.join(' · ') + '.' + lien + 'Modifier</a>';
@@ -3971,10 +3971,10 @@ function renderZoneAvisIntervention(i) {
     var dateAff = new Date(i.avis_demande_le).toLocaleDateString('fr-FR');
     zone.innerHTML =
       '<div style="font-size:12px;color:var(--mu);margin-bottom:6px;">✅ Avis demandé le ' + dateAff + '</div>' +
-      '<button onclick="demanderAvis(\'' + i.id + '\')" style="background:none;border:none;color:var(--ac);font-size:12px;cursor:pointer;text-decoration:underline;">Renvoyer l\'email de demande</button>';
+      '<button onclick="demanderAvis(\'' + i.id + '\')" style="background:none;border:none;color:var(--ac-t,var(--ac));font-size:12px;cursor:pointer;text-decoration:underline;">Renvoyer l\'email de demande</button>';
   } else {
     zone.innerHTML =
-      '<button id="btn-demander-avis" onclick="demanderAvis(\'' + i.id + '\')" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--ac);background:transparent;color:var(--ac);font-size:12.5px;font-weight:700;cursor:pointer;">⭐ Demander un avis au client</button>';
+      '<button id="btn-demander-avis" onclick="demanderAvis(\'' + i.id + '\')" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--ac);background:transparent;color:var(--ac-t,var(--ac));font-size:12.5px;font-weight:700;cursor:pointer;">⭐ Demander un avis au client</button>';
   }
 }
 
@@ -4059,9 +4059,9 @@ function renderAvis() {
     var dateAff = new Date(a.created_at).toLocaleDateString('fr-FR');
     var etoiles = '★'.repeat(a.note) + '☆'.repeat(5 - a.note);
     var reponseHtml = a.reponse_artisan
-      ? '<div style="margin-top:10px;padding:10px 12px;background:var(--p2);border-radius:8px;font-size:12.5px;"><strong style="color:var(--ac);">Votre réponse :</strong> ' + escHtml(a.reponse_artisan) + '</div>'
+      ? '<div style="margin-top:10px;padding:10px 12px;background:var(--p2);border-radius:8px;font-size:12.5px;"><strong style="color:var(--ac-t,var(--ac));">Votre réponse :</strong> ' + escHtml(a.reponse_artisan) + '</div>'
       : '<div style="margin-top:10px;">' +
-          '<button onclick="ouvrirReponseAvis(\'' + a.id + '\')" id="btn-repondre-' + a.id + '" style="background:none;border:none;color:var(--ac);font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline;">Répondre à cet avis</button>' +
+          '<button onclick="ouvrirReponseAvis(\'' + a.id + '\')" id="btn-repondre-' + a.id + '" style="background:none;border:none;color:var(--ac-t,var(--ac));font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline;">Répondre à cet avis</button>' +
           '<div id="zone-reponse-' + a.id + '" style="display:none;margin-top:8px;">' +
             '<textarea id="txt-reponse-' + a.id + '" rows="2" placeholder="Votre réponse publique…" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--b2);font-family:Outfit,sans-serif;font-size:13px;box-sizing:border-box;"></textarea>' +
             '<button onclick="envoyerReponseAvis(\'' + a.id + '\')" style="margin-top:6px;padding:6px 14px;border-radius:7px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">Envoyer</button>' +
@@ -4370,7 +4370,7 @@ const MOIS_COURTS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oc
 
 // ── Système de couleurs par client (même mécanique que MPA Formation) ──
 var CLIENT_PALETTE = [
-  '#B5502F', // Terre cuite (marque)
+  '#EA580C', // Terre cuite (marque)
   '#0891b2', // Cyan/sarcelle doux
   '#7c6fdb', // Violet doux
   '#0a8f68', // Vert émeraude doux
@@ -4383,7 +4383,7 @@ var CLIENT_PALETTE = [
 ];
 var CLIENT_COLORS = {};
 function getClientColor(nom) {
-  if (!nom) return '#B5502F';
+  if (!nom) return '#EA580C';
   if (CLIENT_COLORS[nom]) return CLIENT_COLORS[nom];
   var hash = 0;
   for (var i = 0; i < nom.length; i++) {
@@ -4979,13 +4979,13 @@ function renderComptaMobile(parFam, parClient, clients, cols, curIdx, isCurYear,
     h += '<div class="compta-mobile-fam">' + _FAM_LIBELLE[f] + '</div>' +
       '<div class="compta-mobile-client"><span>CA brut</span><span>' + _fmtCA(b) + ' €</span></div>' +
       (pro ? '<div class="compta-mobile-client" style="color:var(--gold);"><span>Cotisations</span><span>' + _fmtCA(c) + ' €</span></div>' +
-      '<div class="compta-mobile-client" style="color:var(--ac);"><span>Net</span><span>' + _fmtCA(b - c) + ' €</span></div>'
+      '<div class="compta-mobile-client" style="color:var(--ac-t,var(--ac));"><span>Net</span><span>' + _fmtCA(b - c) + ' €</span></div>'
       : '<div class="compta-mobile-client" style="color:var(--mu);cursor:pointer;" onclick="proposerPassagePro(\'compta\')"><span>Cotisations et net</span><span>🔒 Pro</span></div>');
   });
   h += '<div class="compta-mobile-fam">Σ Total</div>' +
     '<div class="compta-mobile-total"><span>CA brut</span><span>' + _fmtCA(totB) + ' €</span></div>' +
     (pro ? '<div class="compta-mobile-total" style="color:var(--gold);"><span>Cotisations</span><span>' + _fmtCA(totC) + ' €</span></div>' +
-    '<div class="compta-mobile-total" style="color:var(--ac);"><span>Net</span><span>' + _fmtCA(totB - totC) + ' €</span></div>'
+    '<div class="compta-mobile-total" style="color:var(--ac-t,var(--ac));"><span>Net</span><span>' + _fmtCA(totB - totC) + ' €</span></div>'
     : '<div class="compta-mobile-total" style="color:var(--mu);cursor:pointer;" onclick="proposerPassagePro(\'compta\')"><span>Cotisations et net</span><span>🔒 Pro</span></div>');
   zoneListe.innerHTML = h;
 
@@ -5194,7 +5194,7 @@ function renderZoneFactureIntervention(i) {
   zone.innerHTML = i.facture_id
     ? '<div style="font-size:13px;color:#0f9d78;font-weight:700;margin-bottom:8px;">✓ Facturée' + (_numerosFactures[i.facture_id] ? ' — facture n° ' + escHtml(_numerosFactures[i.facture_id]) : '') + '</div>' + htmlEnvoiFacture(i.facture_id)
     : '<button onclick="facturerIntervention(\'' + i.id + '\')" style="padding:9px 18px;border-radius:8px;border:none;background:var(--ac);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">🧾 Facturer en 1 clic</button> ' +
-      '<button onclick="facturerIntervention(\'' + i.id + '\', true)" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--ac);background:transparent;color:var(--ac);font-size:13px;font-weight:700;cursor:pointer;">✉️ Facturer et envoyer</button>' +
+      '<button onclick="facturerIntervention(\'' + i.id + '\', true)" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--ac);background:transparent;color:var(--ac-t,var(--ac));font-size:13px;font-weight:700;cursor:pointer;">✉️ Facturer et envoyer</button>' +
       '<div style="font-size:11px;color:var(--mu);margin-top:5px;">Crée la facture de cette intervention ; elle s\'ouvre pour l\'imprimer, et vous la retrouvez dans « Mes factures ».</div>';
 }
 
@@ -5273,7 +5273,7 @@ async function chargerFacturesCommandes() {
 function htmlEnvoiFacture(factureId, petit) {
   var e = _envoisFactures[factureId];
   var taille = petit ? 'padding:4px 10px;font-size:11.5px;' : 'padding:7px 14px;font-size:12.5px;';
-  var bouton = '<button onclick="envoyerFacture(\'' + factureId + '\')" style="' + taille + 'border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-weight:700;cursor:pointer;">' + (e ? '↻ Renvoyer' : '✉️ Envoyer au client') + '</button>';
+  var bouton = '<button onclick="envoyerFacture(\'' + factureId + '\')" style="' + taille + 'border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac-t,var(--ac));font-weight:700;cursor:pointer;">' + (e ? '↻ Renvoyer' : '✉️ Envoyer au client') + '</button>';
   var mention = e ? '<span style="font-size:11.5px;color:var(--mu);margin-right:8px;">✉️ Envoyée le ' + new Date(e.le).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'America/Guadeloupe' }) + (e.a ? ' à ' + escHtml(e.a) : '') + '</span>' : '';
   return mention + bouton;
 }
@@ -5328,9 +5328,9 @@ function boutonFactureCommande(c) {
   }
   if (c.paiement_statut !== 'paye' || !(montantFacturableCommande(c) > 0)) return '';
   if (c.statut !== 'terminee') return '<button disabled title="Disponible une fois la commande terminée" style="padding:6px 14px;border-radius:7px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:700;opacity:.35;cursor:not-allowed;margin-left:6px;">🧾 Facturer</button>' +
-    '<button disabled title="Disponible une fois la commande terminée" style="padding:6px 14px;border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;font-weight:700;opacity:.35;cursor:not-allowed;margin-left:6px;">✉️ Facturer et envoyer</button>';
+    '<button disabled title="Disponible une fois la commande terminée" style="padding:6px 14px;border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac-t,var(--ac));font-size:12px;font-weight:700;opacity:.35;cursor:not-allowed;margin-left:6px;">✉️ Facturer et envoyer</button>';
   return '<button onclick="facturerCommande(\'' + c.id + '\')" style="padding:6px 14px;border-radius:7px;border:none;background:var(--ac);color:#fff;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">🧾 Facturer</button>' +
-    '<button onclick="facturerCommande(\'' + c.id + '\', true)" style="padding:6px 14px;border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">✉️ Facturer et envoyer</button>';
+    '<button onclick="facturerCommande(\'' + c.id + '\', true)" style="padding:6px 14px;border-radius:7px;border:1px solid var(--ac);background:transparent;color:var(--ac-t,var(--ac));font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">✉️ Facturer et envoyer</button>';
 }
 
 function normaliserNomClient(n) {
@@ -5380,7 +5380,7 @@ async function _facturerCommande(id, envoyer) {
 }
 
 // ── Factures à mon image (offre Pro) : logo, petit mot en bas, couleur de la boutique. Réglages rangés dans mpa_ai_prefs.facture (aucune colonne à créer). ──
-var COULEURS_FACTURE = { terre: '#B5502F', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
+var COULEURS_FACTURE = { terre: '#EA580C', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
 function factureReglages() {
   var p = (_artisan && _artisan.mpa_ai_prefs && typeof _artisan.mpa_ai_prefs === 'object') ? _artisan.mpa_ai_prefs : {};
   var f = (p.facture && typeof p.facture === 'object') ? p.facture : {};
@@ -6139,7 +6139,7 @@ function renderRge() {
     (peutEnvoyer ? '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
       '<input type="file" id="rge-fichier" accept=".pdf,.jpg,.jpeg,.png" style="font-size:12px;max-width:230px;">' +
       '<label style="font-size:12px;">Fin de validité <input type="date" id="rge-date" style="margin-left:4px;"></label>' +
-      '<button type="button" onclick="envoyerRge()" id="rge-btn" style="padding:8px 12px;border-radius:8px;border:none;background:var(--ac,#B5502F);color:#fff;font-weight:700;cursor:pointer;font-size:12.5px;">Envoyer</button>' + btnRetirer + '</div>' : '') +
+      '<button type="button" onclick="envoyerRge()" id="rge-btn" style="padding:8px 12px;border-radius:8px;border:none;background:var(--ac,#EA580C);color:#fff;font-weight:700;cursor:pointer;font-size:12.5px;">Envoyer</button>' + btnRetirer + '</div>' : '') +
     '<div id="rge-msg" style="font-size:12px;margin-top:8px;color:var(--danger);"></div></div>';
 }
 
@@ -6440,7 +6440,7 @@ function ouvrirDetailDash(cle) {
     corps = '<div class="ds-note" style="margin:0 0 6px;">Ce qui est déjà réservé. Rien n\'est encaissé tant que les rendez-vous ne sont pas faits.</div>' +
       (montrees.length ? montrees.map(function(i) { return '<div class="ds-li"><span>' + escHtml(jolie(i.date_intervention)) + (i.heure_debut ? ' · ' + escHtml(String(i.heure_debut).slice(0, 5)) : '') + '</span><b>' + (Number(i.prix) ? eurosD(Number(i.prix)) : '—') + '</b></div>'; }).join('') : '<div class="ds-li"><span>Aucun rendez-vous pour le moment.</span></div>') +
       (e.liste.length > max ? '<div class="ds-li"><span>… et ' + (e.liste.length - max) + ' autre' + (e.liste.length - max > 1 ? 's' : '') + '</span><b></b></div>' : '') +
-      '<div class="ds-li total"><span>Total prévu</span><b style="color:var(--ac);">' + eurosD(e.total) + '</b></div>' +
+      '<div class="ds-li total"><span>Total prévu</span><b style="color:var(--ac-t,var(--ac));">' + eurosD(e.total) + '</b></div>' +
       '<div class="ds-li"><span>Remplissage de vos horaires</span><b>' + (e.taux === null ? '—' : e.taux + ' %') + '</b></div>' +
       '<div class="ds-li"><span>Le mois prochain (' + escHtml(e.nomProch) + ')</span><b>' + eurosD(e.prochainTotal) + ' · ' + e.prochainNb + ' rdv</b></div>' +
       (e.taux === null ? '<div class="ds-note">Indiquez vos horaires dans Mon profil pour voir le remplissage.</div>' : '');
@@ -6856,7 +6856,7 @@ function renderSessionsMpa() {
     var pris = placesPrises(x.id), insc = _inscritsCache[x.id] || [], ouvert = !!_sessionsOuvertes[x.id];
     var liste = ouvert ? ('<div style="margin-top:8px;">' + (insc.length ? insc.map(function(i) {
       return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--brd);font-size:13px;flex-wrap:wrap;">' +
-        '<div style="flex:1;min-width:140px;"><strong>' + escHtml(i.nom) + '</strong>' + (i.nb_places > 1 ? ' · ' + i.nb_places + ' places' : '') + '<br><a href="tel:' + escHtml(String(i.telephone).replace(/[^0-9+]/g, '')) + '" style="color:var(--ac);">' + escHtml(i.telephone) + '</a>' + (i.email ? ' · ' + escHtml(i.email) : '') + '</div>' +
+        '<div style="flex:1;min-width:140px;"><strong>' + escHtml(i.nom) + '</strong>' + (i.nb_places > 1 ? ' · ' + i.nb_places + ' places' : '') + '<br><a href="tel:' + escHtml(String(i.telephone).replace(/[^0-9+]/g, '')) + '" style="color:var(--ac-t,var(--ac));">' + escHtml(i.telephone) + '</a>' + (i.email ? ' · ' + escHtml(i.email) : '') + '</div>' +
         '<button type="button" onclick="retirerInscritSession(\'' + i.id + '\')" style="background:none;border:1px solid var(--brd);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;color:var(--danger);min-height:36px;">Retirer</button></div>';
     }).join('') : '<div style="font-size:12.5px;color:var(--mu);">Personne pour l\'instant.</div>') + '</div>') : '';
     return '<div style="border:1px solid var(--brd);border-radius:12px;padding:12px;margin-bottom:10px;background:#fff;">' +
@@ -6959,7 +6959,7 @@ function renderIndispos() {
     return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--brd);">' +
       '<div>' +
         '<span style="font-weight:600;font-size:13px;">' + periode + '</span>' +
-        '<span style="font-size:12px;font-weight:600;color:var(--ac);margin-left:8px;">' + escHtml(libelleTypeFermeture(i.type_fermeture)) + '</span>' +
+        '<span style="font-size:12px;font-weight:600;color:var(--ac-t,var(--ac));margin-left:8px;">' + escHtml(libelleTypeFermeture(i.type_fermeture)) + '</span>' +
         (i.motif ? '<span style="font-size:12px;color:var(--mu);margin-left:8px;" title="Note personnelle : visible par vous seulement">🔒 ' + escHtml(i.motif) + '</span>' : '') +
       '</div>' +
       '<button onclick="supprimerIndispo(\'' + i.id + '\')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;padding:0;">✕</button>' +
@@ -7218,7 +7218,7 @@ function carteClientMobile(c) {
   var ligne = function(l, v) { return v ? '<div class="cl-lg"><span>' + l + '</span><span>' + escHtml(String(v)) + '</span></div>' : ''; };
   var plein = '<div class="pc-plein"><div class="cl-det"><div class="sv-tete" style="display:flex;align-items:center;gap:14px;margin-bottom:6px;"><div class="cv-av" style="background:' + coul + '">' + escHtml(ini) + '</div><div class="sv-nom" style="font-size:20px;font-weight:800;">' + escHtml(nom) + '</div></div>' +
     ligne('Téléphone', c.telephone) + ligne('E-mail', c.email) + ligne('Notes', c.notes) + ligne('Adresse', c.adresse) + ligne('Code postal', c.code_postal) + ligne('Commune', c.commune) + ligne('Paiement sous', (c.delai_paiement || 30) + ' jours') +
-    '<div class="sv-btns" style="display:flex;gap:10px;margin-top:20px;"><button class="sv-ret" style="flex:1;padding:14px;border-radius:14px;border:2px solid var(--ac);background:var(--ac);color:#fff;font-family:\'Outfit\',sans-serif;font-size:15.5px;font-weight:800;" onclick="fermerFicheMobile();ouvrirModifierClient(\'' + c.id + '\')">Modifier</button><button class="sv-ret" style="flex:1;padding:14px;border-radius:14px;border:2px solid var(--ac);background:#fff;color:var(--ac);font-family:\'Outfit\',sans-serif;font-size:15.5px;font-weight:800;" onclick="fermerFicheMobile();supprimerClient(\'' + c.id + '\')">Retirer ce client</button></div></div></div>';
+    '<div class="sv-btns" style="display:flex;gap:10px;margin-top:20px;"><button class="sv-ret" style="flex:1;padding:14px;border-radius:14px;border:2px solid var(--ac);background:var(--ac);color:#fff;font-family:\'Outfit\',sans-serif;font-size:15.5px;font-weight:800;" onclick="fermerFicheMobile();ouvrirModifierClient(\'' + c.id + '\')">Modifier</button><button class="sv-ret" style="flex:1;padding:14px;border-radius:14px;border:2px solid var(--ac);background:#fff;color:var(--ac-t,var(--ac));font-family:\'Outfit\',sans-serif;font-size:15.5px;font-weight:800;" onclick="fermerFicheMobile();supprimerClient(\'' + c.id + '\')">Retirer ce client</button></div></div></div>';
   return '<div class="pc-wrap" data-fid="cl-' + c.id + '"><div class="pc-ligne" onclick="ouvrirFicheMobile(this)"><div class="cv-av" style="background:' + coul + '">' + escHtml(ini) + '</div>' +
     '<div class="pl-txt"><div class="pl-nom">' + escHtml(nom) + '</div><div class="pl-sous">' + escHtml(c.commune || 'Commune non renseignée') + '</div></div><div class="pl-chev">›</div></div>' + plein + '</div>';
 }
@@ -7760,7 +7760,7 @@ async function chargerUsageCodePromo() {
 }
 
 // ── Personnalisation de la boutique (gratuite) : image de fond, coordonnées choisies, texte libre, couleur d'accent ──
-var COULEURS_BOUTIQUE = { terre: '#B5502F', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
+var COULEURS_BOUTIQUE = { terre: '#EA580C', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
 var NOMS_COULEURS = { terre: 'Terre cuite', bleu: 'Bleu', vert: 'Vert', rose: 'Rose', violet: 'Violet', ocre: 'Ocre' };
 var _accentChoisi = null;
 var _fondChoisi = 'clair';
@@ -8440,13 +8440,13 @@ function renderCatalogueGrille() {
           '<div style="font-size:13px;font-weight:700;">' + escHtml(c.nom) + '</div>' +
           '<button onclick="ouvrirModifierCatalogue(\'' + c.id + '\')" title="Modifier cet article" style="flex-shrink:0;background:none;border:1px solid var(--brd);border-radius:6px;width:22px;height:22px;cursor:pointer;font-size:11px;color:var(--mu2);">✎</button>' +
         '</div>' +
-        (c.prix != null ? '<div style="font-size:13px;color:var(--ac);font-weight:700;margin-bottom:6px;">' + c.prix + ' €</div>' : '') +
+        (c.prix != null ? '<div style="font-size:13px;color:var(--ac-t,var(--ac));font-weight:700;margin-bottom:6px;">' + c.prix + ' €</div>' : '') +
         (c.categorie ? '<div style="font-size:10.5px;color:var(--mu);margin-bottom:4px;">🏷️ ' + escHtml(c.categorie) + '</div>' : '') +
         badge +
         '<div style="font-size:11px;color:var(--mu);margin-top:6px;">' + ventes + ' vendu' + (ventes > 1 ? 's' : '') + '</div>' +
         '<div style="display:flex;align-items:center;gap:6px;margin-top:8px;">' +
           '<input type="number" min="0" max="99" placeholder="Remise %" value="' + (c.promo_pct || '') + '" id="promo-' + c.id + '" style="width:70px;padding:5px 7px;border-radius:6px;border:1px solid var(--brd);font-size:11.5px;">' +
-          '<button onclick="sauverPromoCatalogue(\'' + c.id + '\')" style="padding:5px 9px;border-radius:6px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:11px;font-weight:700;cursor:pointer;">OK</button>' +
+          '<button onclick="sauverPromoCatalogue(\'' + c.id + '\')" style="padding:5px 9px;border-radius:6px;border:1px solid var(--ac);background:transparent;color:var(--ac-t,var(--ac));font-size:11px;font-weight:700;cursor:pointer;">OK</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -8520,7 +8520,7 @@ function renderProduitsStock() {
           '<div style="font-size:13px;font-weight:700;">' + escHtml(c.nom) + '</div>' +
           '<button onclick="ouvrirModifierCatalogue(\'' + c.id + '\')" title="Modifier cet article" style="flex-shrink:0;background:none;border:1px solid var(--brd);border-radius:6px;width:22px;height:22px;cursor:pointer;font-size:11px;color:var(--mu2);">✎</button>' +
         '</div>' +
-        (c.prix != null ? '<div style="font-size:13px;color:var(--ac);font-weight:700;margin-bottom:4px;">' + c.prix + ' €</div>' : '') +
+        (c.prix != null ? '<div style="font-size:13px;color:var(--ac-t,var(--ac));font-weight:700;margin-bottom:4px;">' + c.prix + ' €</div>' : '') +
         '<div style="font-size:11.5px;color:' + (stockBas ? 'var(--danger)' : stockAlerte ? '#b45309' : 'var(--mu2)') + ';font-weight:' + (stockBas || stockAlerte ? '700' : '400') + ';">' + (stockBas ? '⚠️ ' : stockAlerte ? '🔔 Stock bas : ' : '') + stockTexte + '</div>' +
         '<span style="display:inline-block;margin-top:6px;padding:2px 8px;border-radius:6px;font-size:10.5px;font-weight:700;' + (enVente ? 'background:rgba(15,157,120,.1);color:#0f9d78;' : 'background:var(--p2);color:var(--mu);') + '">' + (enVente ? '✅ En vente' : 'Pas en vente') + '</span>' +
         '<button onclick="toggleEnVenteCatalogue(\'' + c.id + '\')" style="display:block;width:100%;margin-top:8px;padding:6px;border-radius:7px;border:1px solid ' + (enVente ? 'var(--brd)' : 'var(--ac)') + ';background:transparent;color:' + (enVente ? 'var(--mu2)' : 'var(--ac)') + ';font-size:11.5px;font-weight:700;cursor:pointer;">' + (enVente ? 'Retirer de la vente' : 'Mettre en vente') + '</button>' +
@@ -9105,7 +9105,7 @@ function renderCommandes() {
     _moisCommandesOuverts = {}; // tous les mois repliés au départ : le nombre de commandes « à traiter » reste visible sur chaque ligne
   }
   var nouvellesTotal = _commandesCache.filter(function(c) { return c.statut === 'nouvelle'; }).length;
-  zone.innerHTML = (nouvellesTotal ? '<div style="font-size:12.5px;font-weight:700;color:var(--ac);margin-bottom:10px;">🔔 ' + nouvellesTotal + ' commande' + (nouvellesTotal > 1 ? 's' : '') + ' à traiter</div>' : '') +
+  zone.innerHTML = (nouvellesTotal ? '<div style="font-size:12.5px;font-weight:700;color:var(--ac-t,var(--ac));margin-bottom:10px;">🔔 ' + nouvellesTotal + ' commande' + (nouvellesTotal > 1 ? 's' : '') + ' à traiter</div>' : '') +
     groupes.map(function(g) {
       var annee = g.mois.slice(0, 4), numMois = parseInt(g.mois.slice(5, 7), 10) - 1;
       var nom = MOIS_NOMS[numMois]; nom = nom.charAt(0).toUpperCase() + nom.slice(1);
@@ -9113,7 +9113,7 @@ function renderCommandes() {
       var aTraiter = g.cartes.filter(function(k) { return k.c.statut === 'nouvelle'; }).length;
       return '<details ' + (_moisCommandesOuverts[g.mois] ? 'open ' : '') + 'ontoggle="basculerMoisCommandes(\'' + g.mois + '\', this.open)" style="margin-bottom:12px;">' +
         '<summary style="cursor:pointer;font-size:14px;font-weight:700;padding:8px 0;border-bottom:1px solid var(--brd);margin-bottom:10px;">' + nom + ' ' + annee +
-        ' <span style="font-weight:500;font-size:12.5px;color:var(--mu);">· ' + g.cartes.length + ' commande' + (g.cartes.length > 1 ? 's' : '') + ' · ' + eurosFR(vendu) + (aTraiter ? ' · <span style="color:var(--ac);font-weight:700;">' + aTraiter + ' à traiter</span>' : '') + '</span></summary>' +
+        ' <span style="font-weight:500;font-size:12.5px;color:var(--mu);">· ' + g.cartes.length + ' commande' + (g.cartes.length > 1 ? 's' : '') + ' · ' + eurosFR(vendu) + (aTraiter ? ' · <span style="color:var(--ac-t,var(--ac));font-weight:700;">' + aTraiter + ' à traiter</span>' : '') + '</span></summary>' +
         '<div class="cm-grille">' + g.cartes.map(function(k) { return k.html; }).join('') + '</div></details>';
     }).join('');
   rafraichirFicheMobile();
@@ -9183,7 +9183,7 @@ function fluxCommandeHtml(c) {
     if (c.livraison_confirmee_le) {
       explication = '✓ Client prévenu : livraison le ' + dateCourteFR(c.livraison_prevue_le) + '. Quand l\'intervention de livraison sera terminée, cette commande passera automatiquement en « Terminée ».';
     } else {
-      principal = '<button onclick="prevenirClientLivraisonMaintenant(\'' + c.id + '\')" style="padding:8px 16px;border-radius:8px;border:1px solid var(--ac);background:transparent;color:var(--ac);font-size:12.5px;font-weight:700;cursor:pointer;">✉️ Prévenir le client maintenant</button>';
+      principal = '<button onclick="prevenirClientLivraisonMaintenant(\'' + c.id + '\')" style="padding:8px 16px;border-radius:8px;border:1px solid var(--ac);background:transparent;color:var(--ac-t,var(--ac));font-size:12.5px;font-weight:700;cursor:pointer;">✉️ Prévenir le client maintenant</button>';
       explication = '🕓 Livraison <strong>provisoire</strong> le ' + (c.livraison_prevue_le ? dateCourteFR(c.livraison_prevue_le) : '—') + ' : le client sera prévenu le ' + (c.livraison_prevue_le ? dateCourteFR(ajouterJoursISO(c.livraison_prevue_le, -2)) : '—') + ' (2 jours avant). D\'ici là vous pouvez la déplacer sans rien envoyer.';
     }
   } else {
@@ -9520,14 +9520,14 @@ async function planifierLivraisonCommande(commandeId) {
     return '<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;border:1px solid ' + (choisi ? 'var(--ac)' : 'var(--brd)') + ';margin-bottom:6px;' + (x.dispo ? 'cursor:pointer;' : 'opacity:.45;cursor:not-allowed;') + '">' +
       '<input type="radio" name="pl-jour" value="' + x.date + '"' + (x.dispo ? '' : ' disabled') + (choisi ? ' checked' : '') + ' onchange="_planifLivraison.jourChoisi=this.value;majChoixJourLivraison()">' +
       '<span style="flex:1;"><strong>' + dateCourteFR(x.date) + '</strong><br><span style="font-size:12px;color:' + (x.memeCommune ? '#16a34a' : 'var(--mu)') + ';">' + resumeJourLivraison(x, c.commune_livraison) + '</span></span>' +
-      (analyse.meilleur && analyse.meilleur.date === x.date ? '<span style="font-size:11px;font-weight:700;color:var(--ac);">⭐ Proposé par MPA-AI</span>' : '') +
+      (analyse.meilleur && analyse.meilleur.date === x.date ? '<span style="font-size:11px;font-weight:700;color:var(--ac-t,var(--ac));">⭐ Proposé par MPA-AI</span>' : '') +
     '</label>';
   }).join('');
   document.getElementById('pl-contenu').innerHTML =
     '<h3>🚚 Planifier la livraison</h3>' +
     '<div style="font-size:13px;line-height:1.55;margin-bottom:10px;"><strong>' + escHtml(c.client_nom) + '</strong> — ' + articles + '<br>📍 ' + escHtml(c.adresse_livraison || '') + ' ' + escHtml(c.code_postal_livraison || '') + ' ' + escHtml(c.commune_livraison || '') + '<br>' +
       '<span style="color:var(--mu);">Frais de livraison déjà payés : ' + eurosFR(c.frais_livraison || 0) + '</span></div>' +
-    '<div style="font-size:12.5px;margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(181,80,47,.08);">📅 ' + (c.livraison_debut ? 'Fenêtre annoncée au client : du <strong>' + dateCourteFR(c.livraison_debut) + '</strong> au <strong>' + dateCourteFR(c.livraison_fin) + '</strong>.' : 'Aucune fenêtre annoncée (ancienne commande).') + (analyse.horsFenetre ? '<br>⚠️ Cette fenêtre est dépassée : le client sera prévenu du nouveau jour.' : '') + '</div>' +
+    '<div style="font-size:12.5px;margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(234,88,12,.08);">📅 ' + (c.livraison_debut ? 'Fenêtre annoncée au client : du <strong>' + dateCourteFR(c.livraison_debut) + '</strong> au <strong>' + dateCourteFR(c.livraison_fin) + '</strong>.' : 'Aucune fenêtre annoncée (ancienne commande).') + (analyse.horsFenetre ? '<br>⚠️ Cette fenêtre est dépassée : le client sera prévenu du nouveau jour.' : '') + '</div>' +
     '<div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">Choisissez le jour</div>' + boutonsJours +
     '<div class="modal-row" style="display:flex;gap:10px;margin-top:10px;">' +
       '<div class="modal-field" style="flex:1;"><label>Créneau</label><select id="pl-creneau" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-size:13px;"><option value="matin">Matin</option><option value="apres_midi">Après-midi</option></select></div>' +
@@ -9631,7 +9631,7 @@ function ouvrirMaLivraison(i, c) {
   var actions = '';
   if (ouverte) {
     var styleBtn = 'flex:1;min-width:150px;padding:11px 14px;border-radius:10px;font-family:\'Outfit\',sans-serif;font-size:13px;font-weight:700;cursor:pointer;background:transparent;';
-    if (!c.livraison_confirmee_le) actions += '<button type="button" style="' + styleBtn + 'border:1.5px solid var(--ac);color:var(--ac);" onclick="prevenirDepuisMaLivraison()">✉️ Prévenir le client maintenant</button>';
+    if (!c.livraison_confirmee_le) actions += '<button type="button" style="' + styleBtn + 'border:1.5px solid var(--ac);color:var(--ac-t,var(--ac));" onclick="prevenirDepuisMaLivraison()">✉️ Prévenir le client maintenant</button>';
     actions += '<button type="button" style="' + styleBtn + 'border:1.5px solid #dc2626;color:#dc2626;" onclick="annulerDepuisMaLivraison()">🚫 Impossible de livrer</button>';
   }
   document.getElementById('ml-contenu').innerHTML =
@@ -9917,7 +9917,7 @@ async function dessinerCarteItineraire(interventions) {
   var points = etapes.map(function(e) { return [e.latitude, e.longitude]; });
   if (base) {
     L.marker([base.latitude, base.longitude], {
-      icon: L.divIcon({ className: '', html: '<div style="width:30px;height:30px;border-radius:50%;background:#fff;border:2px solid #B5502F;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,.25);">🏠</div>', iconSize: [30, 30], iconAnchor: [15, 15] }),
+      icon: L.divIcon({ className: '', html: '<div style="width:30px;height:30px;border-radius:50%;background:#fff;border:2px solid #EA580C;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,.25);">🏠</div>', iconSize: [30, 30], iconAnchor: [15, 15] }),
     }).addTo(_itinMap).bindTooltip('Départ — chez vous', { permanent: false });
   }
   avecCoords.forEach(function(i, idx) {
@@ -9937,12 +9937,12 @@ async function dessinerCarteItineraire(interventions) {
       var data = await res.json();
       if (data.geometry && data.geometry.coordinates) {
         var coordsLatLng = data.geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
-        var ligne = L.polyline(coordsLatLng, { color: '#B5502F', weight: 4, opacity: 0.85 }).addTo(_itinMap);
+        var ligne = L.polyline(coordsLatLng, { color: '#EA580C', weight: 4, opacity: 0.85 }).addTo(_itinMap);
         var minutes = Math.ceil(data.duration / 60);
         var km = Math.round(data.distance / 100) / 10;
         var milieu = coordsLatLng[Math.floor(coordsLatLng.length / 2)];
         L.marker(milieu, {
-          icon: L.divIcon({ className: '', html: '<div style="background:#fff;border:1px solid var(--brd,#e3eaf4);border-radius:7px;padding:2px 7px;font-size:11px;font-weight:700;color:#B5502F;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.15);">' + minutes + ' min · ' + km + ' km</div>', iconSize: null }),
+          icon: L.divIcon({ className: '', html: '<div style="background:#fff;border:1px solid var(--brd,#e3eaf4);border-radius:7px;padding:2px 7px;font-size:11px;font-weight:700;color:#C2410C;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.15);">' + minutes + ' min · ' + km + ' km</div>', iconSize: null }),
         }).addTo(_itinMap);
       }
       else { L.polyline([[a.latitude, a.longitude], [b.latitude, b.longitude]], { color: '#9aa7b8', weight: 3, opacity: 0.8, dashArray: '6 8' }).addTo(_itinMap); } // route introuvable : trait direct pointillé
@@ -10036,13 +10036,13 @@ function renderFournitures() {
   if (!zone || estPro()) return;
   var zoneM = document.getElementById('zone-fournitures-m');
   var bandeauPro = (
-    '<div style="border:1px dashed var(--ac);background:rgba(181,80,47,.05);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.55;">' +
+    '<div style="border:1px dashed var(--ac);background:rgba(234,88,12,.05);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.55;">' +
       '🔒 <strong>Mes fournitures fait partie de l\'offre Pro</strong> (' + PRIX_PRO_AFFICHE + '). Suivez vos consommables, scannez QR codes et codes-barres, soyez prévenu avant la rupture.' + texteEssai() +
       '<div><button class="addb" onclick="lancerAbonnement()" style="margin-top:8px;">Passer en Pro →</button></div>' +
     '</div>');
   if (zoneM) zoneM.insertAdjacentHTML('afterbegin', bandeauPro);
   zone.insertAdjacentHTML('afterbegin',
-    '<div style="border:1px dashed var(--ac);background:rgba(181,80,47,.05);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.55;">' +
+    '<div style="border:1px dashed var(--ac);background:rgba(234,88,12,.05);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.55;">' +
       '🔒 <strong>Mes fournitures fait partie de l\'offre Pro</strong> (' + PRIX_PRO_AFFICHE + '). Suivez vos consommables, scannez QR codes et codes-barres, soyez prévenu avant la rupture.' + texteEssai() +
       '<div><button class="addb" onclick="lancerAbonnement()" style="margin-top:8px;">Passer en Pro →</button></div>' +
     '</div>');
