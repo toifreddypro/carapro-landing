@@ -1682,38 +1682,13 @@ async function ouvrirProfil(id) {
     var data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    div.innerHTML = buildProfilHTML(data);
-    regrouperFicheTel();
     _profilDataCourant = data;
+    div.innerHTML = buildProfilHTML(data);
+    initFicheFx();
     chargerApercuDispo(data.artisan.id);
 
   } catch(e) {
     afficherFicheIndisponible(id, statutHttp);
-  }
-}
-// Téléphone : on range la fiche en 3 formes arrondies (A : de l'artisan aux photos · B : boutique · C : présentation + avis).
-// L'ordinateur ne change pas : on ne touche à rien. Un seul avis visible, les autres derrière « Voir plus ».
-function regrouperFicheTel() {
-  if (!ecranTel()) return;
-  var card = document.querySelector('#modal-profil .fiche-card');
-  if (!card || card.querySelector('.fiche-bloc')) return;
-  function sec(n) { return card.querySelector('.fiche-sec[data-sec="' + n + '"]'); }
-  var barre = card.querySelector('.fiche-appbar'); if (!barre) return;
-  var A = document.createElement('div'); A.className = 'fiche-bloc fiche-bloc-a';
-  var C = document.createElement('div'); C.className = 'fiche-bloc fiche-bloc-c';
-  var titre = card.querySelector('.fiche-titre');
-  card.insertBefore(A, (titre || barre).nextSibling);
-  [card.querySelector('.fiche-head'), card.querySelector('.fiche-sous-tete'), sec('services_titre'), sec('fiche_dispos'), card.querySelector('.fiche-devis'), sec('fiche_realisations')]
-    .forEach(function(e) { if (e) A.appendChild(e); });
-  [sec('fiche_presentation'), sec('fiche_avantages'), sec('avis_titre')].forEach(function(e) { if (e) C.appendChild(e); });
-  if (C.children.length) card.appendChild(C); 
-  var items = card.querySelectorAll('.avis-item');
-  if (items.length > 1) {
-    for (var i = 1; i < items.length; i++) items[i].classList.add('avis-cache');
-    var plus = document.createElement('button'); plus.type = 'button'; plus.className = 'avis-plus';
-    plus.textContent = T('avis_voir_plus') + ' (' + (items.length - 1) + ')';
-    plus.onclick = function() { card.querySelectorAll('.avis-cache').forEach(function(x) { x.classList.remove('avis-cache'); }); plus.remove(); };
-    items[items.length - 1].parentNode.appendChild(plus);
   }
 }
 // Fiche impossible à afficher : un message DOUX (jamais « Erreur : … » brut) et toujours une sortie (avant, l'écran d'erreur ne se fermait pas).
@@ -1790,121 +1765,238 @@ function fermerMenuPartage(e) { if (e && e.target !== e.currentTarget) return; v
 
 function fermerProfil(e) { if (e && e.target !== e.currentTarget) return; var div = document.getElementById('modal-profil'); if (div) div.innerHTML = ''; }
 
-// Fiche artisan : chaque thème dans sa propre carte (fond très clair, fine bordure, titre en petites capitales grises) pour une lecture claire et sobre.
-function sectionFiche(cleTitre, icone, contenu) {
-  if (!contenu) return '';
-  if (!document.getElementById('style-fiche-sec')) {
-    var st = document.createElement('style'); st.id = 'style-fiche-sec';
-    st.textContent = '.fiche-sec{border:1px solid var(--line,#e3eaf4);border-radius:12px;padding:14px 16px;margin:0 0 12px;background:var(--p2,#f8fafd);}' +
-      '.fiche-sec-titre{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--mu2,#5b6b82);margin:0 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line,#e3eaf4);}' +
-      '.fiche-sec-titre span{font-size:14px;letter-spacing:0;}' +
-      '.fiche-sec[data-sec="fiche_realisations"] .fiche-sec-titre{display:none;}';
-    document.head.appendChild(st);
-  }
-  return '<section class="fiche-sec" data-sec="' + cleTitre + '"><div class="fiche-sec-titre"><span>' + icone + '</span>' + escHtml(T(cleTitre)) + '</div>' + contenu + '</section>';
+// ════════════════════════════════════════
+//  FICHE ARTISAN (18/11/2026) — une seule présentation, téléphone ET ordinateur (maquette validée) :
+//  carte compacte en haut · 4 onglets (Services, Photos, Boutique, À propos) · services en lignes, détail au clic · bouton « Voir les disponibilités » toujours en bas.
+//  Les disponibilités, les sessions, la réservation et le devis sont les mêmes qu'avant : on les range seulement autrement.
+// ════════════════════════════════════════
+var _fxServices = [], _fxPhotos = [];
+var ICONES_FX = [['🛠️', '#fff1e8'], ['🌿', '#e6f7ef'], ['✨', '#e8f0ff'], ['🧰', '#f3e8ff'], ['🔧', '#fef9c3'], ['💧', '#e0f2fe']];
+
+function injecterStyleFx() {
+  if (document.getElementById('style-fx')) return;
+  var st = document.createElement('style'); st.id = 'style-fx';
+  st.textContent =
+    '.fx-ov{position:fixed;inset:0;background:rgba(19,34,60,.5);z-index:10001;display:flex;align-items:center;justify-content:center;padding:16px;font-family:inherit;}' +
+    '.fx-card{position:relative;width:100%;max-width:600px;height:min(90vh,900px);background:var(--panel,#fff);color:var(--tx,#13223c);border:2px solid var(--brd,#e3eaf4);border-radius:28px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(19,34,60,.3);}' +
+    '.fx-top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 6px 20px;}' +
+    '.fx-marque{font-weight:800;font-size:15px;color:#C2410C;}' +
+    '.fx-top-btns{display:flex;gap:8px;}.fx-top-btns button{width:38px;height:38px;border-radius:50%;border:2px solid var(--brd,#e3eaf4);background:transparent;color:inherit;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;}' +
+    '.fx-scroll{flex:1;overflow-y:auto;padding:6px 16px 20px;-webkit-overflow-scrolling:touch;}' +
+    '.fx-box{border:2px solid var(--brd,#e3eaf4);border-radius:24px;background:var(--panel,#fff);}' +
+    '.fx-head{padding:18px;}.fx-hrow{display:flex;gap:14px;align-items:center;}' +
+    '.fx-av{width:68px;height:68px;border-radius:50%;object-fit:cover;flex-shrink:0;}.fx-av-ini{background:var(--line,#eef2f8);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:24px;color:var(--mu,#64748b);}' +
+    '.fx-nom{font-size:21px;font-weight:800;line-height:1.15;letter-spacing:-.3px;}.fx-sub{font-size:14px;font-weight:600;color:var(--mu2,#5b6b82);margin-top:3px;}' +
+    '.fx-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;}.fx-chip{font-size:12.5px;font-weight:700;border-radius:30px;padding:4px 10px;}' +
+    '.fx-vert{background:#e3f8ec;color:#0f7a3c;}.fx-or{background:#fff3d6;color:#9a5b00;}.fx-bleu{background:#e0ecff;color:#1d4ed8;}.fx-gris{background:#eef2f8;color:#5b6b82;}.fx-amb{background:rgba(245,158,11,.14);color:#b45309;}' +
+    '.fx-bio{font-size:14.5px;line-height:1.5;margin-top:14px;}.fx-clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}' +
+    '.fx-more{background:none;border:none;color:#C2410C;font-weight:800;font-size:14px;cursor:pointer;padding:6px 0 0;font-family:inherit;}' +
+    '.fx-tabs{position:sticky;top:0;z-index:5;display:flex;margin:12px 0;padding:0 6px;}' +
+    '.fx-tab{flex:1;background:none;border:none;padding:16px 4px 18px;font-family:inherit;font-size:15px;font-weight:800;color:var(--mu,#7a8aa5);cursor:pointer;}.fx-tab.on{color:var(--tx,#13223c);}' +
+    '.fx-ind{position:absolute;bottom:7px;left:0;height:4px;border-radius:4px;background:#EA580C;transition:transform .25s ease,width .25s ease;}' +
+    '.fx-panel{display:none;}.fx-panel.on{display:block;animation:fxIn .25s ease;}@keyframes fxIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}' +
+    '.fx-svc{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:12px 14px;margin-bottom:10px;border:2px solid var(--brd,#e3eaf4);border-radius:22px;background:var(--panel,#fff);color:inherit;font-family:inherit;cursor:pointer;}' +
+    '.fx-th{width:54px;height:54px;border-radius:15px;object-fit:cover;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:26px;}' +
+    '.fx-svc-txt{flex:1;min-width:0;}.fx-svc-nom{display:block;font-size:16px;font-weight:800;line-height:1.25;}.fx-svc-meta{display:block;font-size:13.5px;font-weight:600;color:var(--mu2,#5b6b82);margin-top:3px;}' +
+    '.fx-plus{width:34px;height:34px;border-radius:50%;border:2.5px solid #EA580C;color:#EA580C;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1;}' +
+    '.fx-btn2{display:block;width:100%;margin-top:6px;padding:14px;border-radius:30px;border:2px solid #EA580C;background:transparent;color:#EA580C;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;}' +
+    '.fx-grille{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}.fx-ph{padding:0;border:none;background:none;cursor:pointer;aspect-ratio:1;border-radius:18px;overflow:hidden;}.fx-ph img{width:100%;height:100%;object-fit:cover;display:block;}' +
+    '.fx-prods{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}.fx-prod{border:2px solid var(--brd,#e3eaf4);border-radius:20px;padding:10px;}' +
+    '.fx-prod img,.fx-noimg{width:100%;aspect-ratio:1;object-fit:cover;border-radius:14px;display:block;background:var(--line,#eef2f8);}.fx-noimg{display:flex;align-items:center;justify-content:center;font-size:26px;}' +
+    '.fx-pn{font-size:14px;font-weight:800;margin-top:8px;line-height:1.25;}.fx-pp{font-size:14px;font-weight:800;color:#C2410C;margin-top:4px;}.fx-pp s{font-size:12px;font-weight:500;color:var(--mu,#999);margin-left:4px;}' +
+    '.fx-lnk{display:block;text-align:center;margin-top:16px;font-weight:800;font-size:15px;color:#C2410C;text-decoration:none;}' +
+    '.fx-bloc{margin-bottom:22px;}.fx-bloc h4{font-size:13px;font-weight:800;color:var(--mu2,#5b6b82);margin:0 0 8px;}' +
+    '.fx-avis{padding:10px 0;border-bottom:1px solid var(--line,#eee);font-size:13.5px;}.fx-cache{display:none;}' +
+    '.fx-bar{padding:12px 16px 16px;border-top:2px solid var(--brd,#e3eaf4);background:var(--panel,#fff);}' +
+    '.fx-cta{width:100%;height:56px;border-radius:30px;border:none;background:#EA580C;color:#fff;font-family:inherit;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 10px 22px rgba(234,88,12,.28);}' +
+    '.fx-scrim{position:absolute;inset:0;background:rgba(19,34,60,.45);opacity:0;pointer-events:none;transition:opacity .25s;z-index:20;}.fx-scrim.on{opacity:1;pointer-events:auto;}' +
+    '.fx-sheet{position:absolute;left:0;right:0;bottom:0;max-height:90%;display:flex;flex-direction:column;background:var(--panel,#fff);border-radius:28px 28px 0 0;transform:translateY(105%);transition:transform .3s cubic-bezier(.2,.8,.2,1);z-index:21;box-shadow:0 -10px 40px rgba(0,0,0,.18);}.fx-sheet.on{transform:none;}' +
+    '.fx-sheet-tete{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 8px;font-size:18px;font-weight:800;}' +
+    '.fx-sheet-tete button{width:36px;height:36px;border-radius:50%;border:2px solid var(--brd,#e3eaf4);background:transparent;color:inherit;cursor:pointer;font-size:15px;flex-shrink:0;padding:0;}' +
+    '.fx-sheet-corps{overflow-y:auto;padding:4px 20px 22px;}' +
+    '.fx-grand{width:100%;height:210px;object-fit:cover;border-radius:22px;display:block;margin-bottom:14px;}.fx-grand-ic{height:130px;border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:56px;margin-bottom:14px;}' +
+    '.fx-lb{position:fixed;inset:0;z-index:10030;background:rgba(0,0,0,.86);display:flex;align-items:center;justify-content:center;padding:14px;cursor:zoom-out;}.fx-lb img{max-width:96vw;max-height:90vh;border-radius:14px;}' +
+    '.fx-card .fiche-grille{display:grid !important;grid-template-columns:repeat(7,1fr);gap:6px;border-top:none !important;padding-top:0 !important;margin-bottom:8px;}' +
+    '.fx-card #dispo-service-photo img{max-height:120px !important;width:100%;object-fit:cover;border-radius:14px;}' +
+    '.fx-card .dispo-day-label{font-size:11px !important;white-space:nowrap;}.fx-card .dispo-slot{font-size:11px !important;font-weight:700 !important;}' +
+    '.fx-card .dispo-slot.available{background:#fff !important;color:#13223C !important;border-color:#cfd9e8 !important;}' +
+    '@media(max-width:768px){.fx-ov{padding:0;align-items:flex-end;}.fx-card{max-width:none;height:94vh;height:94dvh;border-radius:28px 28px 0 0;border-bottom:none;}.fx-prods{grid-template-columns:repeat(2,1fr);}.fx-card .dispo-day-label,.fx-card .dispo-slot{font-size:9.5px !important;}}';
+  document.head.appendChild(st);
 }
 
+function formatDureeFx(min) { min = parseInt(min, 10); if (!min) return ''; var h = Math.floor(min / 60), m = min % 60; return h && m ? h + ' h ' + (m < 10 ? '0' : '') + m : (h ? h + ' h' : m + ' min'); }
+function prixServiceFx(s) { return s.prix_indicatif ? (escHtml(s.prix_indicatif) + ' €' + (s.unite && s.unite !== 'forfait' ? ' / ' + escHtml(s.unite) : '')) : T('sur_devis'); }
+
 function buildProfilHTML(data) {
+  injecterStyleFx();
   var a = data.artisan;
-  var ini = initiales(a.nom_entreprise);
-  var photo = a.photo_profil_url
-    ? '<img src="' + escHtml(a.photo_profil_url) + '" style="width:72px;height:72px;border-radius:50%;object-fit:cover;" alt="">'
-    : '<div style="width:72px;height:72px;border-radius:50%;background:var(--line);display:flex;align-items:center;justify-content:center;font-family:Fraunces,serif;font-size:26px;font-weight:700;color:var(--mu);">' + ini + '</div>';
+  _fxServices = data.services || [];
+  _fxPhotos = data.photos || [];
+  var avatar = a.photo_profil_url
+    ? '<img class="fx-av" src="' + escHtml(a.photo_profil_url) + '" alt="">'
+    : '<div class="fx-av fx-av-ini">' + escHtml(initiales(a.nom_entreprise)) + '</div>';
 
-  var servicesHtml = data.services.length
-    ? data.services.map(function(s) {
-        var prix = s.prix_indicatif ? (escHtml(s.prix_indicatif) + '€' + (s.unite ? '/' + escHtml(s.unite) : '')) : T('sur_devis');
-        return '<div class="svc-ligne" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line,#eee);">' +
-          '<div style="display:flex;align-items:center;gap:12px;min-width:0;">' + (s.photo_url ? '<img src="' + escHtml(s.photo_url) + '" alt="' + escHtml(s.nom_service) + '" loading="lazy" style="width:64px;height:64px;border-radius:12px;object-fit:cover;flex-shrink:0;background:var(--line,#eee);">' : '') +
-          '<div style="min-width:0;"><strong>' + escHtml(s.nom_service) + '</strong>' + (s.description ? '<div style="font-size:12.5px;color:var(--mu2,#777);">' + escHtml(s.description) + '</div>' : '') + '</div></div>' +
-          '<div class="svc-prix" style="font-weight:700;white-space:nowrap;margin-left:12px;">' + prix + '</div>' +
-        '</div>';
-      }).join('')
-    : '<div style="color:var(--mu,#999);font-size:13px;">' + T('aucun_service') + '</div>';
-
-  var photosHtml = data.photos.length
-    ? '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">' +
-        data.photos.map(function(p){ return '<img src="' + escHtml(p.url_photo) + '" style="width:100%;height:90px;object-fit:cover;border-radius:8px;" alt="' + escHtml(p.legende||'') + '">'; }).join('') +
-      '</div>'
+  // Pastilles : l'essentiel de la confiance, en une ligne.
+  var chips = (a.verifie ? '<span class="fx-chip fx-vert">✅ ' + T('badge_verifie') + '</span>' : '') +
+    (data.nb_avis > 0
+      ? '<span class="fx-chip fx-or">⭐ ' + (Number(data.note_moyenne) || 0).toFixed(1) + ' · ' + data.nb_avis + ' ' + (data.nb_avis === 1 ? T('avis_un') : T('avis_plusieurs')) + '</span>'
+      : '<span class="fx-chip fx-gris">' + escHtml(T('avis_aucun_court')) + '</span>') +
+    (a.nouveau ? '<span class="fx-chip fx-bleu">' + escHtml(T('badge_nouveau')) + '</span>' : '') +
+    (a.rge ? '<span>' + badgeRgeTexte(a) + '</span>' : '') +
+    (a.alternance_niveau >= 2 ? '<span class="fx-chip fx-amb" title="Cette entreprise s\'engage activement pour la formation locale">🟠 Tremplin des jeunes</span>' : '');
+  var bioTxt = a.bio ? String(a.bio) : '';
+  var bioHtml = bioTxt
+    ? '<div class="fx-bio fx-clamp" id="fx-bio">' + escHtml(bioTxt) + '</div>' + (bioTxt.length > 110 ? '<button type="button" class="fx-more" id="fx-more" onclick="basculerBioFx()">' + escHtml(T('fx_lire_suite')) + '</button>' : '')
     : '';
 
-  var pharesInner = data.produits_phares.length
-    ? '<div class="phares-grille" style="display:grid;grid-template-columns:repeat(' + (data.produits_phares.length >= 4 ? 4 : 3) + ',1fr);gap:12px;">' +
-        data.produits_phares.map(function(p) {
-          var prixRemise = p.prix != null && p.promo_pct ? Math.round(p.prix * (1 - p.promo_pct / 100) * 100) / 100 : null;
-          var photo = p.url_photo
-            ? '<div style="position:relative;"><img src="' + escHtml(p.url_photo) + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;" alt="' + escHtml(p.nom) + '">' + (p.promo_pct ? '<span style="position:absolute;top:6px;right:6px;background:#1a1a1a;color:#fff;font-size:10.5px;font-weight:700;padding:3px 7px;border-radius:20px;">-' + p.promo_pct + '%</span>' : '') + '</div>'
-            : '<div style="width:100%;aspect-ratio:1;background:var(--line,#eee);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;">📦</div>';
-          return '<div>' + photo +
-            '<div style="font-size:12.5px;font-weight:600;margin-top:6px;">' + escHtml(p.nom) + '</div>' +
-            (p.description ? '<div style="font-size:11.5px;color:var(--mu2,#777);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">' + escHtml(p.description) + '</div>' : '') +
-            (p.prix != null ? '<div style="margin-top:4px;">' +
-              '<span style="font-size:13.5px;font-weight:700;color:var(--ac,#B5502F);">' + (prixRemise != null ? prixRemise : p.prix) + ' €</span>' +
-              (prixRemise != null ? ' <span style="font-size:11px;color:var(--mu,#999);text-decoration:line-through;">' + p.prix + ' €</span>' : '') +
-            '</div>' : '') +
-                      '</div>';
-        }).join('') +
-      '</div>' +
-      (data.artisan.slug_catalogue ? '<a href="catalogue.html?s=' + encodeURIComponent(data.artisan.slug_catalogue) + '" target="_blank" rel="noopener" class="btn-boutique-or btn-boutique-or-large">🛍️<span class="btn-or-txt">Voir toute la boutique →</span></a>' : '') +
-      ((data.artisan.code_promo && data.artisan.code_promo_ventes !== false) ? '<div style="text-align:center;margin-top:8px;font-family:monospace;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:7px;background:rgba(181,80,47,.08);color:var(--ac,#B5502F);border:1px dashed var(--ac,#B5502F);display:inline-block;">🎁 ' + escHtml(data.artisan.code_promo) + '</div>' : '')
-    : '';
-  var pharesHtml = sectionFiche('fiche_boutique', '🛍️', pharesInner);
+  // ── Onglet Services : une ligne par service (petite photo, durée, prix) ; la grande photo et le détail s'ouvrent au clic.
+  var devisBtn = '<button type="button" class="fx-btn2" onclick="ouvrirModalDevis(' + jsAttr(a.id) + ',' + jsAttr(a.nom_entreprise) + ',' + jsAttr(a.secteur) + ')">' + escHtml(T('demander_devis')) + '</button>';
+  var servicesHtml = _fxServices.length
+    ? _fxServices.map(function(s, i) {
+        var ic = ICONES_FX[i % ICONES_FX.length], d = formatDureeFx(s.duree_estimee_min);
+        var th = s.photo_url ? '<img class="fx-th" src="' + escHtml(s.photo_url) + '" alt="" loading="lazy">' : '<span class="fx-th" style="background:' + ic[1] + '">' + ic[0] + '</span>';
+        return '<button type="button" class="fx-svc" onclick="ouvrirServiceFx(' + i + ')">' + th +
+          '<span class="fx-svc-txt"><span class="fx-svc-nom">' + escHtml(s.nom_service) + '</span><span class="fx-svc-meta">' + (d ? d + ' · ' : '') + prixServiceFx(s) + '</span></span><span class="fx-plus">+</span></button>';
+      }).join('') + devisBtn
+    : '<div style="color:var(--mu,#999);font-size:13.5px;margin-bottom:12px;">' + T('aucun_service') + '</div>' + devisBtn;
 
-  var avisHtml = data.avis.length
-    ? data.avis.map(function(av) {
-        return '<div class="avis-item" style="padding:10px 0;border-bottom:1px solid var(--line,#eee);font-size:13px;">' +
-          '<strong>' + '★'.repeat(av.note) + '☆'.repeat(5-av.note) + '</strong> — ' + escHtml(av.client_nom) +
+  // ── Onglet Photos
+  var photosHtml = _fxPhotos.length
+    ? '<div class="fx-grille">' + _fxPhotos.map(function(p, i) { return '<button type="button" class="fx-ph" onclick="ouvrirPhotoFx(' + i + ')"><img src="' + escHtml(p.url_photo) + '" alt="' + escHtml(p.legende || '') + '" loading="lazy"></button>'; }).join('') + '</div>'
+    : '';
+
+  // ── Onglet Boutique (seulement si l'artisan a des produits phares)
+  var produits = data.produits_phares || [];
+  var boutiqueHtml = produits.length
+    ? '<div class="fx-prods">' + produits.map(function(p) {
+        var prixRemise = p.prix != null && p.promo_pct ? Math.round(p.prix * (1 - p.promo_pct / 100) * 100) / 100 : null;
+        return '<div class="fx-prod">' + (p.url_photo ? '<img src="' + escHtml(p.url_photo) + '" alt="' + escHtml(p.nom) + '" loading="lazy">' : '<div class="fx-noimg">📦</div>') +
+          '<div class="fx-pn">' + escHtml(p.nom) + '</div>' +
+          (p.prix != null ? '<div class="fx-pp">' + (prixRemise != null ? prixRemise : p.prix) + ' €' + (prixRemise != null ? '<s>' + p.prix + ' €</s>' : '') + '</div>' : '') + '</div>';
+      }).join('') + '</div>' +
+      (a.slug_catalogue ? '<a class="fx-lnk" href="catalogue.html?s=' + encodeURIComponent(a.slug_catalogue) + '" target="_blank" rel="noopener">🛍️ ' + escHtml(T('fx_voir_boutique')) + ' ›</a>' : '') +
+      ((a.code_promo && a.code_promo_ventes !== false) ? '<div style="text-align:center;margin-top:12px;"><span style="font-family:monospace;font-size:12px;font-weight:700;padding:5px 12px;border-radius:8px;background:rgba(234,88,12,.08);color:#C2410C;border:1px dashed #C2410C;">🎁 ' + escHtml(a.code_promo) + '</span></div>' : '')
+    : '';
+
+  // ── Onglet À propos : présentation complète, avantages, avis
+  var avantages = (a.cashback_pct || a.remise_fidele_pct || a.code_promo)
+    ? (a.cashback_pct ? '<div style="font-weight:600;font-size:13.5px;line-height:1.5;">' + escHtml(T('perk_cashback').replace('{p}', Math.round(a.cashback_pct)) + ' ' + libelleScopeAvantage(a.cashback_ventes !== false, a.cashback_interventions !== false)) + '</div>' : '') +
+      (a.code_promo && Number(a.code_promo_pct) >= 1 ? '<div style="font-weight:600;font-size:13.5px;line-height:1.5;">' + escHtml(T('avt_code').replace('{c}', a.code_promo).replace('{p}', Math.round(Number(a.code_promo_pct))) + ' ' + libelleScopeAvantage(a.code_promo_ventes !== false, a.code_promo_interventions !== false)) + '</div>' : '') +
+      (a.remise_fidele_pct ? '<div style="font-weight:600;font-size:13.5px;line-height:1.5;">' + escHtml(T('perk_fidele').replace('{p}', Math.round(a.remise_fidele_pct))) + '</div>' : '') +
+      '<div style="font-size:12px;color:var(--mu2,#777);margin-top:4px;">' + escHtml(T('perk_info')) + '</div>'
+    : '';
+  var avis = data.avis || [];
+  var avisHtml = avis.length
+    ? avis.map(function(av, i) {
+        return '<div class="fx-avis' + (i >= 2 ? ' fx-cache' : '') + '"><strong>' + '★'.repeat(av.note) + '☆'.repeat(5 - av.note) + '</strong> — ' + escHtml(av.client_nom) +
           (av.commentaire ? '<div style="color:var(--mu2,#777);margin-top:3px;">' + escHtml(av.commentaire) + '</div>' : '') +
-          (av.reponse_artisan ? '<div style="margin-top:6px;padding:8px 10px;background:var(--p2,#f6f9fe);border-radius:8px;font-size:12.5px;color:var(--mu2,#777);"><strong style="color:var(--ac,#B5502F);">' + T('reponse_artisan_prefix') + '</strong> ' + escHtml(av.reponse_artisan) + '</div>' : '') +
-        '</div>';
-      }).join('')
-    : '<div style="color:var(--mu,#999);font-size:13px;">' + T('aucun_avis') + '</div>';
+          (av.reponse_artisan ? '<div style="margin-top:6px;padding:8px 10px;background:var(--p2,#f6f9fe);border-radius:10px;font-size:12.5px;color:var(--mu2,#777);"><strong style="color:#C2410C;">' + T('reponse_artisan_prefix') + '</strong> ' + escHtml(av.reponse_artisan) + '</div>' : '') + '</div>';
+      }).join('') + (avis.length > 2 ? '<button type="button" class="fx-btn2" id="fx-avis-plus" onclick="voirPlusAvisFx()" style="margin-top:12px;">' + escHtml(T('avis_voir_plus')) + ' (' + (avis.length - 2) + ')</button>' : '')
+    : '<div style="color:var(--mu,#999);font-size:13.5px;">' + T('aucun_avis') + '</div>';
+  var presentation = (bioTxt ? '<p style="font-size:14.5px;line-height:1.6;margin:0;">' + escHtml(bioTxt) + '</p>' : '') +
+    (a.nouveau ? '<p style="font-size:12.5px;color:var(--mu2,#777);margin:' + (bioTxt ? '10px' : '0') + ' 0 0;">' + escHtml(T('badge_nouveau_info')) + '</p>' : '');
+  var aproposHtml =
+    (presentation ? '<div class="fx-bloc"><h4>' + escHtml(T('fiche_presentation')) + '</h4>' + presentation + '</div>' : '') +
+    (avantages ? '<div class="fx-bloc"><h4>' + escHtml(T('fiche_avantages')) + '</h4>' + avantages + '</div>' : '') +
+    '<div class="fx-bloc"><h4>' + escHtml(T('avis_titre')) + '</h4>' + avisHtml + '</div>';
 
-  var badgesFicheM = (a.verifie ? '<span class="badge-trust bt-green">✅ ' + T('badge_verifie') + '</span>' : '') +
-    (a.rge ? badgeRgeTexte(a) : '') +
-    (a.nouveau ? '<span class="badge-trust bt-blue">' + escHtml(T('badge_nouveau')) + '</span>' : '');
-  var starsFiche = data.nb_avis > 0
-    ? etoilesCarte(Number(data.note_moyenne) || 0) + '<span>' + (Number(data.note_moyenne) || 0).toFixed(1) + ' (' + data.nb_avis + ' ' + (data.nb_avis === 1 ? T('avis_un') : T('avis_plusieurs')) + ')</span>'
-    : '<span style="color:var(--mu2,#777);">' + escHtml(T('avis_aucun_court')) + '</span>';
-  return '<div class="fiche-ov" onclick="fermerProfil(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:12px;overflow-y:auto;">' +
-    '<div class="fiche-card" style="background:var(--panel,#fff);border-radius:16px;padding:28px;max-width:560px;width:100%;max-height:85vh;overflow-y:auto;">' +
-      '<div class="fiche-appbar"><span>🔧 CaraLink Artisans</span><span class="fiche-appbar-btns">' +
+  var onglets = [['services', T('fx_onglet_services'), servicesHtml]];
+  if (photosHtml) onglets.push(['photos', T('fx_onglet_photos'), photosHtml]);
+  if (boutiqueHtml) onglets.push(['boutique', T('fx_onglet_boutique'), boutiqueHtml]);
+  onglets.push(['apropos', T('fx_onglet_apropos'), aproposHtml]);
+
+  return '<div class="fx-ov" onclick="fermerProfil(event)">' +
+    '<div class="fx-card" role="dialog" aria-label="' + escHtml(a.nom_entreprise) + '">' +
+      '<div class="fx-top"><span class="fx-marque">🔧 CaraLink Artisans</span><span class="fx-top-btns">' +
         '<button type="button" onclick="partagerFiche(' + jsAttr(a.id) + ')" aria-label="' + escHtml(T('partage_titre')) + '">🔗</button>' +
         '<button type="button" onclick="fermerProfil({target:this,currentTarget:this})" aria-label="' + escHtml(T('partage_fermer')) + '">✕</button></span></div>' +
-      '<div class="fiche-titre">' + T('fiche_titre_noir') + ' <span>' + T('fiche_titre_marron') + '</span></div>' +
-      '<div class="fiche-head" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">' +
-        '<div style="display:flex;gap:14px;align-items:center;">' + photo +
-          '<div><div style="font-family:Fraunces,serif;font-size:19px;font-weight:700;">' + escHtml(a.nom_entreprise) + '</div>' +
-          '<div class="fiche-sub" style="font-size:13px;color:var(--mu2,#777);">' + secteurLabel(a.secteur) + ' · 📍 ' + escHtml(a.commune) + '</div>' +
-          '<div class="fiche-badges-d">' +
-          (a.verifie ? '<span class="badge-trust bt-green" style="margin-top:4px;margin-right:6px;display:inline-block;">✅ ' + T('badge_verifie') + '</span>' : '') +
-          (a.nouveau ? '<span class="badge-trust bt-blue" style="margin-top:4px;margin-left:6px;display:inline-block;">' + escHtml(T('badge_nouveau')) + '</span>' : '') +
-          (a.rge ? '<span style="margin-top:4px;margin-left:6px;display:inline-block;">' + badgeRgeTexte(a) + '</span>' : '') +
-          (a.profil_complet ? '<span class="badge-trust bt-more fiche-mini" style="margin-top:4px;margin-left:6px;display:inline-block;">📝 ' + escHtml(T('badge_complet')) + '</span>' : '') +
-          (a.alternance_niveau >= 2 ? '<span class="fiche-mini" title="Cette entreprise s\'engage activement pour la formation locale" style="margin-top:4px;margin-left:6px;display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(245,158,11,.12);color:#b45309;">🟠 Tremplin des jeunes</span>' : '') +
-          '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="fiche-actions" style="display:flex;gap:8px;align-items:center;flex-shrink:0;margin-left:8px;">' +
-          '<button type="button" onclick="partagerFiche(' + jsAttr(a.id) + ')" aria-label="' + escHtml(T('partage_titre')) + '" style="background:none;border:1px solid var(--line,#ddd);border-radius:20px;padding:5px 12px;font-size:13px;cursor:pointer;color:var(--mu2,#555);font-family:inherit;white-space:nowrap;">🔗 ' + T('partage_bouton') + '</button>' +
-          '<button onclick="fermerProfil({target:this,currentTarget:this})" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--mu,#999);">✕</button>' +
-        '</div>' +
+      '<div class="fx-scroll" id="fx-scroll">' +
+        '<div class="fx-box fx-head"><div class="fx-hrow">' + avatar + '<div style="min-width:0;"><div class="fx-nom">' + escHtml(a.nom_entreprise) + '</div>' +
+          '<div class="fx-sub">' + secteurLabel(a.secteur) + ' · 📍 ' + escHtml(a.commune) + '</div></div></div>' +
+          '<div class="fx-chips">' + chips + '</div>' + bioHtml + '</div>' +
+        '<div class="fx-box fx-tabs" id="fx-tabs" role="tablist">' + onglets.map(function(o, i) {
+          return '<button type="button" role="tab" class="fx-tab' + (i === 0 ? ' on' : '') + '" onclick="ongletFx(' + jsAttr(o[0]) + ',this)">' + escHtml(o[1]) + '</button>';
+        }).join('') + '<span class="fx-ind" id="fx-ind"></span></div>' +
+        onglets.map(function(o, i) { return '<div class="fx-panel' + (i === 0 ? ' on' : '') + '" data-p="' + o[0] + '">' + o[2] + '</div>'; }).join('') +
       '</div>' +
-      '<div class="fiche-sous-tete"><div class="fiche-stars">' + starsFiche + '</div><div class="fiche-badges-m">' + badgesFicheM + '</div></div>' +
-      sectionFiche('fiche_presentation', '👤', ((a.bio ? '<p style="font-size:14px;line-height:1.6;margin:0;">' + escHtml(a.bio) + '</p>' : '') + (a.nouveau ? '<p style="font-size:12.5px;color:var(--mu2,#777);margin:' + (a.bio ? '10px' : '0') + ' 0 0;">' + escHtml(T('badge_nouveau_info')) + '</p>' : ''))) +
-      sectionFiche('fiche_avantages', '🎁', ((a.cashback_pct || a.remise_fidele_pct || a.code_promo) ? (
-        (a.cashback_pct ? '<div style="font-weight:600;font-size:13px;line-height:1.5;">' + escHtml(T('perk_cashback').replace('{p}', Math.round(a.cashback_pct)) + ' ' + libelleScopeAvantage(a.cashback_ventes !== false, a.cashback_interventions !== false)) + '</div>' : '') +
-        (a.code_promo && Number(a.code_promo_pct) >= 1 ? '<div style="font-weight:600;font-size:13px;line-height:1.5;">' + escHtml(T('avt_code').replace('{c}', a.code_promo).replace('{p}', Math.round(Number(a.code_promo_pct))) + ' ' + libelleScopeAvantage(a.code_promo_ventes !== false, a.code_promo_interventions !== false)) + '</div>' : '') +
-        (a.remise_fidele_pct ? '<div style="font-weight:600;font-size:13px;line-height:1.5;">' + escHtml(T('perk_fidele').replace('{p}', Math.round(a.remise_fidele_pct))) + '</div>' : '') +
-        '<div style="font-size:11.5px;color:var(--mu2,#777);margin-top:4px;">' + escHtml(T('perk_info')) + '</div>') : '')) +
-      sectionFiche('services_titre', '🛠️', servicesHtml) +
-      sectionFiche('fiche_realisations', '📷', photosHtml) +
-      pharesHtml +
-      sectionFiche('fiche_dispos', '📅', '<div id="dispo-zone-' + escHtml(a.id) + '"><div style="font-size:12.5px;color:var(--mu,#999);">⏳ Vérification des disponibilités…</div></div>') +
-      sectionFiche('avis_titre', '⭐', (data.note_moyenne ? '<div style="font-size:13px;font-weight:700;margin-bottom:4px;">' + data.note_moyenne + '/5 (' + data.nb_avis + ')</div>' : '') + avisHtml) +
-      '<button class="fiche-devis" onclick="ouvrirModalDevis(' + jsAttr(a.id) + ',' + jsAttr(a.nom_entreprise) + ',' + jsAttr(a.secteur) + ')" style="width:100%;margin-top:18px;padding:13px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">' + T('demander_devis') + '</button>' +
-    '</div>' +
-  '</div>';
+      '<div class="fx-bar"><button type="button" class="fx-cta" id="fx-cta" onclick="ouvrirDispoFx()">📅 ' + escHtml(T('fx_voir_dispos')) + '</button></div>' +
+      '<div class="fx-scrim" id="fx-scrim" onclick="fermerFeuillesFx()"></div>' +
+      '<div class="fx-sheet" id="fx-dispo"><div class="fx-sheet-tete"><span>' + escHtml(T('fx_dispos_titre')) + '</span><button type="button" onclick="fermerFeuillesFx()" aria-label="' + escHtml(T('partage_fermer')) + '">✕</button></div>' +
+        '<div class="fx-sheet-corps"><div class="fx-dispo-sec"><div id="dispo-zone-' + escHtml(a.id) + '"><div style="font-size:12.5px;color:var(--mu,#999);">⏳ Vérification des disponibilités…</div></div></div></div></div>' +
+      '<div class="fx-sheet" id="fx-svc"><div class="fx-sheet-tete"><span id="fx-svc-titre"></span><button type="button" onclick="fermerFeuillesFx()" aria-label="' + escHtml(T('partage_fermer')) + '">✕</button></div><div class="fx-sheet-corps" id="fx-svc-corps"></div></div>' +
+    '</div></div>';
+}
+
+// Après l'affichage : on place le soulignement de l'onglet actif (une fois les polices chargées).
+function initFicheFx() {
+  var pos = function() { var b = document.querySelector('#fx-tabs .fx-tab.on'); if (b) posIndFx(b); };
+  requestAnimationFrame(pos);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(pos);
+}
+function posIndFx(btn) {
+  var ind = document.getElementById('fx-ind'); if (!ind || !btn) return;
+  ind.style.width = Math.round(btn.offsetWidth * 0.6) + 'px';
+  ind.style.transform = 'translateX(' + Math.round(btn.offsetLeft + btn.offsetWidth * 0.2) + 'px)';
+}
+function ongletFx(nom, btn) {
+  var card = document.querySelector('#modal-profil .fx-card'); if (!card) return;
+  card.querySelectorAll('.fx-tab').forEach(function(b) { b.classList.toggle('on', b === btn); });
+  card.querySelectorAll('.fx-panel').forEach(function(p) { p.classList.toggle('on', p.getAttribute('data-p') === nom); });
+  posIndFx(btn);
+  var sc = document.getElementById('fx-scroll'), tabs = document.getElementById('fx-tabs');
+  if (sc && tabs && sc.scrollTop > tabs.offsetTop - 12) sc.scrollTop = Math.max(0, tabs.offsetTop - 12);
+}
+function basculerBioFx() {
+  var b = document.getElementById('fx-bio'), m = document.getElementById('fx-more'); if (!b || !m) return;
+  var replie = b.classList.toggle('fx-clamp');
+  m.textContent = replie ? T('fx_lire_suite') : T('fx_reduire');
+}
+function voirPlusAvisFx() {
+  document.querySelectorAll('#modal-profil .fx-cache').forEach(function(x) { x.classList.remove('fx-cache'); });
+  var p = document.getElementById('fx-avis-plus'); if (p) p.remove();
+}
+function ouvrirPhotoFx(i) {
+  var p = _fxPhotos[i]; if (!p) return;
+  var d = document.createElement('div'); d.className = 'fx-lb';
+  d.onclick = function() { d.remove(); };
+  var im = document.createElement('img'); im.src = p.url_photo; im.alt = p.legende || '';
+  d.appendChild(im); document.body.appendChild(d);
+}
+function ouvrirFeuilleFx(id) {
+  fermerFeuillesFx(true);
+  var el = document.getElementById(id), sc = document.getElementById('fx-scrim'); if (!el) return;
+  el.classList.add('on'); if (sc) sc.classList.add('on');
+}
+function fermerFeuillesFx(garderFond) {
+  document.querySelectorAll('#modal-profil .fx-sheet.on').forEach(function(x) { x.classList.remove('on'); });
+  if (!garderFond) { var sc = document.getElementById('fx-scrim'); if (sc) sc.classList.remove('on'); }
+}
+function ouvrirDispoFx() { ouvrirFeuilleFx('fx-dispo'); }
+function ouvrirServiceFx(i) {
+  var s = _fxServices[i]; if (!s) return;
+  var ic = ICONES_FX[i % ICONES_FX.length], d = formatDureeFx(s.duree_estimee_min);
+  document.getElementById('fx-svc-titre').textContent = s.nom_service;
+  var corps = document.getElementById('fx-svc-corps');
+  corps.innerHTML = (s.photo_url ? '<img class="fx-grand" src="' + escHtml(s.photo_url) + '" alt="' + escHtml(s.nom_service) + '">' : '<div class="fx-grand-ic" style="background:' + ic[1] + '">' + ic[0] + '</div>') +
+    '<div style="font-size:15px;font-weight:700;color:var(--mu2,#5b6b82);">' + (d ? d + ' · ' : '') + prixServiceFx(s) + '</div>' +
+    (s.description ? '<p style="font-size:14.5px;line-height:1.55;margin:12px 0 0;">' + escHtml(s.description) + '</p>' : '') +
+    '<button type="button" class="fx-cta" style="margin-top:20px;" onclick="reserverServiceFx(' + i + ')">' + escHtml(T('fx_reserver_service')) + '</button>';
+  ouvrirFeuilleFx('fx-svc');
+}
+// « Réserver ce service » : on ouvre les disponibilités avec ce service déjà choisi.
+function reserverServiceFx(i) {
+  var s = _fxServices[i], a = _profilDataCourant && _profilDataCourant.artisan; if (!s || !a) return;
+  ouvrirFeuilleFx('fx-dispo');
+  ouvrirVerifDispo(a.id);
+  var sel = document.getElementById('dispo-service');
+  if (sel && s.id) { sel.value = s.id; surChangementPrestationsDispo(); }
+  var corps = document.querySelector('#fx-dispo .fx-sheet-corps'); if (corps) corps.scrollTop = 0;
+}
+// Si l'artisan n'a aucune disponibilité à montrer, le bouton du bas propose le devis à la place.
+function majBarreFx() {
+  var cta = document.getElementById('fx-cta'), a = _profilDataCourant && _profilDataCourant.artisan; if (!cta || !a) return;
+  cta.textContent = '📋 ' + T('demander_devis');
+  cta.onclick = function() { ouvrirModalDevis(a.id, a.nom_entreprise, a.secteur); };
 }
 
 // ════════════════════════════════════════
@@ -1938,7 +2030,7 @@ async function chargerApercuDispo(artisanId) {
     contSess.innerHTML = sessHtml;
     if (data.error || (!data.prochaine_date && !grilleFiche)) {
       zone.innerHTML = '';
-      var secVide = zone.closest('.fiche-sec'); if (secVide && !sessHtml) secVide.classList.add('fiche-vide');
+      if (!sessHtml) majBarreFx();
       return;
     }
     if (!data.prochaine_date) { zone.innerHTML = grilleFiche; return; }
@@ -1947,6 +2039,7 @@ async function chargerApercuDispo(artisanId) {
       '<div style="font-size:11.5px;color:var(--mu,#999);margin-top:5px;text-align:center;"><a href="#" onclick="ouvrirVerifDispo(' + jsAttr(artisanId) + ');return false;" style="color:var(--mu2,#777);">' + T('dispo_autres_creneaux') + '</a></div>';
   } catch (e) {
     zone.innerHTML = '';
+    majBarreFx();
   }
 }
 
