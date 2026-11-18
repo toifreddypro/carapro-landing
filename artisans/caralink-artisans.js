@@ -715,7 +715,7 @@ function renderHero() {
           '</button>' +
         '</div>' +
         '<div id="metier-puces" class="metier-puces" style="display:none"></div>' +
-        '<div class="devis-mobile">📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">' + T('hero_devisgen_lien') + '</a>' + T('hero_devisgen_suite') + '</div>' +
+        '<div class="devis-mobile">📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac-t,var(--ac));font-weight:700;text-decoration:none;">' + T('hero_devisgen_lien') + '</a>' + T('hero_devisgen_suite') + '</div>' +
         '</div>' +
         '<div class="filters-wrap">' +
           '<button class="filter-pill' + (_searchState.tri==='note'?' active':'') + '" onclick="trierPar(\'note\')">' + T('filter_note') + '</button>' +
@@ -723,7 +723,7 @@ function renderHero() {
         '</div>' +
         '<div class="infos-duo">' + htmlAidesInfo() + htmlVideoClients() + '</div>' +
         '<div class="devis-desktop" style="margin-top:14px;font-size:12.5px;color:var(--mu);">' +
-          '📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac);font-weight:700;text-decoration:none;">' + T('hero_devisgen_lien') + '</a>' +
+          '📢 <a href="#" onclick="ouvrirModalDevisGeneral();return false;" style="color:var(--ac-t,var(--ac));font-weight:700;text-decoration:none;">' + T('hero_devisgen_lien') + '</a>' +
           T('hero_devisgen_suite') +
         '</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">' +
@@ -786,7 +786,7 @@ async function demarrerInfosAnnuaire() {
   if (!document.getElementById('style-infos-defil')) {
     var st = document.createElement('style'); st.id = 'style-infos-defil';
     st.textContent = '.infos-defil{display:none;margin:10px 0 0;padding:9px 14px;border-radius:12px;background:rgba(255,255,255,.75);border:1px solid var(--line,#e3eaf4);font-size:13.5px;color:var(--ink,#13223c);text-align:center;min-height:20px;}' +
-      '.infos-defil b{color:var(--ac,#B5502F);}' +
+      '.infos-defil b{color:var(--ac,#EA580C);}' +
       '#infos-defil-txt{display:inline-block;transition:opacity .25s ease;}' +
       '@media (prefers-reduced-motion:reduce){#infos-defil-txt{transition:none;}}';
     document.head.appendChild(st);
@@ -999,7 +999,7 @@ function htmlBesoinAlternancePublic(b) {
   return (
     '<a href="https://learnlogicstudio.com/connect.html?besoin=' + b.code + '#section-calculateur" target="_blank" rel="noopener" id="besoin-alternance-lien-public" style="display:block;text-decoration:none;color:inherit;">' +
       '<div style="font-size:15px;font-weight:700;color:var(--tx);line-height:1.35;min-height:2.7em;margin-bottom:4px;">' + b.phrase + '</div>' +
-      '<div style="font-size:14px;font-weight:700;color:var(--ac);line-height:1.35;min-height:2.7em;margin-bottom:10px;">' + b.metier + ' →</div>' +
+      '<div style="font-size:14px;font-weight:700;color:var(--ac-t,var(--ac));line-height:1.35;min-height:2.7em;margin-bottom:10px;">' + b.metier + ' →</div>' +
       '<img src="' + b.img + '" alt="" width="540" height="770" decoding="async" style="display:block;width:100%;height:auto;aspect-ratio:54/77;object-fit:cover;border-radius:12px;background:var(--inp);box-shadow:0 6px 18px rgba(19,34,60,.18);">' +
     '</a>'
   );
@@ -1131,7 +1131,7 @@ function htmlPubAlternanceMobile() {
       '<div style="min-width:0;">' +
         '<div style="font-size:10.5px;font-weight:700;color:var(--mu2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px;">Vous êtes artisan ?</div>' +
         '<div style="font-size:14px;font-weight:700;color:var(--tx);line-height:1.35;margin-bottom:3px;">' + b.phrase + '</div>' +
-        '<div style="font-size:13.5px;font-weight:700;color:var(--ac);line-height:1.35;">' + b.metier + ' →</div>' +
+        '<div style="font-size:13.5px;font-weight:700;color:var(--ac-t,var(--ac));line-height:1.35;">' + b.metier + ' →</div>' +
       '</div>' +
     '</a>'
   );
@@ -1164,7 +1164,7 @@ function initCarte() {
     maxZoom: 18
   }).addTo(_map);
   window._caraproIcon = L.divIcon({
-    html: '<div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#B5502F,#8F3D22);border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;font-weight:700;">A</div>',
+    html: '<div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#EA580C,#C2410C);border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;font-weight:700;">A</div>',
     className:'', iconSize:[28,28], iconAnchor:[14,14], popupAnchor:[0,-16]
   });
 }
@@ -1309,7 +1309,7 @@ function htmlAidesInfo() {
   return '<details class="aides-info"><summary>🌿 ' + escHtml(T('aides_titre')) + '</summary><div class="aides-corps">' +
     '<p>' + escHtml(T('aides_intro')) + '</p>' +
     '<ul><li>' + escHtml(T('aides_p1')) + '</li><li>' + escHtml(T('aides_p2')) + '</li><li>' + escHtml(T('aides_p3')) + '</li></ul>' +
-    '<p><a href="https://france-renov.gouv.fr/aides/mpr-outremer" target="_blank" rel="noopener noreferrer" style="color:var(--ac,#B5502F);font-weight:700;">' + escHtml(T('aides_lien')) + ' →</a></p>' +
+    '<p><a href="https://france-renov.gouv.fr/aides/mpr-outremer" target="_blank" rel="noopener noreferrer" style="color:var(--ac,#EA580C);font-weight:700;">' + escHtml(T('aides_lien')) + ' →</a></p>' +
     '<p class="aides-note">' + escHtml(T('aides_avert')) + '</p></div></details>';
 }
 
@@ -1327,8 +1327,8 @@ function htmlVideoClients() {
       '.infos-duo .aides-info,.infos-duo .vid-clients{flex:1 1 420px;min-width:0;}' +
       '.vid-clients:not([open]){animation:vidDouce 2.6s ease-in-out infinite;}' +
       '.vid-clients:not([open]):hover{animation:none;}' +
-      '@keyframes vidDouce{0%,100%{box-shadow:0 0 0 0 rgba(181,80,47,0);border-color:var(--line,#e3eaf4);background:rgba(255,255,255,.75);}50%{box-shadow:0 0 0 5px rgba(181,80,47,.16);border-color:rgba(181,80,47,.55);background:rgba(255,246,241,.95);}}' +
-      '@media (prefers-reduced-motion:reduce){.vid-clients:not([open]){animation:none;border-color:rgba(181,80,47,.45);}}';
+      '@keyframes vidDouce{0%,100%{box-shadow:0 0 0 0 rgba(234,88,12,0);border-color:var(--line,#e3eaf4);background:rgba(255,255,255,.75);}50%{box-shadow:0 0 0 5px rgba(234,88,12,.16);border-color:rgba(234,88,12,.55);background:rgba(255,246,241,.95);}}' +
+      '@media (prefers-reduced-motion:reduce){.vid-clients:not([open]){animation:none;border-color:rgba(234,88,12,.45);}}';
     document.head.appendChild(st);
   }
   return '<details class="vid-clients" ontoggle="if(!this.open){var v=this.querySelector(\'video\');if(v)v.pause();}"><summary>▶️ ' + escHtml(T('vid_clients_titre')) + '</summary><div class="vid-corps">' +
@@ -1407,9 +1407,9 @@ function coeurHtml(id, enLigne) {
 function peindreCoeurs() {
   if (!document.getElementById('style-coeur')) {
     var st = document.createElement('style'); st.id = 'style-coeur';
-    st.textContent = '.coeur-btn{position:absolute;top:10px;right:12px;z-index:2;width:34px;height:34px;border-radius:50%;border:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.92);color:#B5502F;font-size:19px;line-height:1;cursor:pointer;padding:0;}' +
+    st.textContent = '.coeur-btn{position:absolute;top:10px;right:12px;z-index:2;width:34px;height:34px;border-radius:50%;border:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.92);color:#C2410C;font-size:19px;line-height:1;cursor:pointer;padding:0;}' +
       '.coeur-btn.coeur-inline{position:static;display:inline-block;vertical-align:middle;margin-left:10px;width:32px;height:32px;font-size:18px;}' +
-      '.coeur-btn.on{background:#B5502F;color:#fff;border-color:#B5502F;}';
+      '.coeur-btn.on{background:#EA580C;color:#fff;border-color:#EA580C;}';
     document.head.appendChild(st);
   }
   var tous = document.querySelectorAll('[data-coeur]');
@@ -1702,8 +1702,8 @@ function afficherFicheIndisponible(id, statut) {
   var texte = absente ? T('fiche_indisponible_texte') : (occupee ? T('fiche_occupee_texte') : T('fiche_erreur_texte'));
   var style = 'padding:11px 18px;border-radius:10px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;';
   var principal = absente
-    ? '<button type="button" onclick="fermerProfil({target:this,currentTarget:this})" style="' + style + 'border:none;background:var(--ac,#B5502F);color:#fff;">' + T('fiche_voir_artisans') + '</button>'
-    : '<button type="button" onclick="ouvrirProfil(' + jsAttr(id) + ')" style="' + style + 'border:none;background:var(--ac,#B5502F);color:#fff;">' + T('fiche_reessayer') + '</button>' +
+    ? '<button type="button" onclick="fermerProfil({target:this,currentTarget:this})" style="' + style + 'border:none;background:var(--ac,#EA580C);color:#fff;">' + T('fiche_voir_artisans') + '</button>'
+    : '<button type="button" onclick="ouvrirProfil(' + jsAttr(id) + ')" style="' + style + 'border:none;background:var(--ac,#EA580C);color:#fff;">' + T('fiche_reessayer') + '</button>' +
       '<button type="button" onclick="fermerProfil({target:this,currentTarget:this})" style="' + style + 'border:1px solid var(--line,#ddd);background:transparent;color:inherit;">' + T('partage_fermer') + '</button>';
   div.innerHTML = '<div onclick="fermerProfil(event)" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:12px;">' +
     '<div style="background:var(--panel,#fff);border-radius:16px;padding:30px 26px;max-width:380px;width:100%;text-align:center;">' +
@@ -2035,7 +2035,7 @@ async function chargerApercuDispo(artisanId) {
     }
     if (!data.prochaine_date) { zone.innerHTML = grilleFiche; return; }
     zone.innerHTML = grilleFiche +
-      '<button type="button" onclick="ouvrirVerifDispo(' + jsAttr(artisanId) + ')" style="width:100%;text-align:left;padding:12px 14px;border-radius:10px;border:1px solid var(--ac-brd,#e8c4b8);background:rgba(181,80,47,.06);color:var(--ac,#B5502F);font-size:13.5px;font-weight:700;cursor:pointer;">' + T('dispo_apercu_prefix') + ' ' + data.label + ' →</button>' +
+      '<button type="button" onclick="ouvrirVerifDispo(' + jsAttr(artisanId) + ')" style="width:100%;text-align:left;padding:12px 14px;border-radius:10px;border:1px solid var(--ac-brd,#e8c4b8);background:rgba(234,88,12,.06);color:var(--ac,#EA580C);font-size:13.5px;font-weight:700;cursor:pointer;">' + T('dispo_apercu_prefix') + ' ' + data.label + ' →</button>' +
       '<div style="font-size:11.5px;color:var(--mu,#999);margin-top:5px;text-align:center;"><a href="#" onclick="ouvrirVerifDispo(' + jsAttr(artisanId) + ');return false;" style="color:var(--mu2,#777);">' + T('dispo_autres_creneaux') + '</a></div>';
   } catch (e) {
     zone.innerHTML = '';
@@ -2071,7 +2071,7 @@ function ouvrirVerifDispo(artisanId, pourVisite) {
       (pourVisite ? '<div style="font-size:13px;font-weight:700;color:#1e40af;margin-bottom:8px;">' + T('type_visite') + '</div>' : '') +
       '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:10px;">' + T('dispo_intro') + '</div>' +
       (options ? '<div id="dispo-services"><select id="dispo-service" onchange="surChangementPrestationsDispo()" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' + options + '</select><div id="dispo-service-photo"></div></div>' +
-        (services.length > 1 ? '<a id="dispo-ajout-presta" href="#" onclick="ajouterPrestationDispo();return false;" style="display:inline-block;font-size:12.5px;font-weight:700;color:var(--ac,#B5502F);margin:-2px 0 10px;">' + T('dispo_ajout_presta') + '</a>' : '') : '') +
+        (services.length > 1 ? '<a id="dispo-ajout-presta" href="#" onclick="ajouterPrestationDispo();return false;" style="display:inline-block;font-size:12.5px;font-weight:700;color:var(--ac,#EA580C);margin:-2px 0 10px;">' + T('dispo_ajout_presta') + '</a>' : '') : '') +
       '<div id="dispo-compte" style="font-size:12.5px;color:var(--mu2,#777);margin-bottom:8px;"></div>' +
       lieuDispoHTML(artisanId) +
       '<div id="dispo-bloc-adresse" style="display:' + (lieuChoisiDepart(artisanId) === 'salon' ? 'none' : 'block') + ';">' +
@@ -2084,7 +2084,7 @@ function ouvrirVerifDispo(artisanId, pourVisite) {
       '<input id="dispo-nom" type="text" autocomplete="name" placeholder="' + T('ph_nom') + '" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' +
       '<input id="dispo-tel" type="tel" autocomplete="tel" placeholder="' + T('ph_tel') + '" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' +
       '<input id="dispo-email" type="email" autocomplete="email" placeholder="' + (montantPaiementEnLigne('visite', artisanId) > 0 || montantPaiementEnLigne('reservation', artisanId) > 0 ? T('ph_email_paiement') : T('ph_email_optionnel')) + '" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' +
-      '<button type="button" onclick="verifierDispoReelle(' + jsAttr(artisanId) + ')" style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--ac,#B5502F);color:#fff;font-weight:700;cursor:pointer;">' + T('dispo_verifier_btn') + '</button>' +
+      '<button type="button" onclick="verifierDispoReelle(' + jsAttr(artisanId) + ')" style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--ac,#EA580C);color:#fff;font-weight:700;cursor:pointer;">' + T('dispo_verifier_btn') + '</button>' +
       '<div id="dispo-resultat" style="margin-top:10px;"></div>' +
     '</div>';
   prefillDispoDepuisCompte();
@@ -2184,7 +2184,7 @@ async function prefillDispoDepuisCompte() {
   var o = await jetonClientConnecte();
   var uid = o && o.user && o.user.id, email = o && o.user && o.user.email;
   if (!uid) {
-    zone.innerHTML = T('cmpt_deja') + ' <a href="' + lienCompteRetour() + '" target="_blank" rel="noopener" style="color:var(--ac,#B5502F);font-weight:700;">' + T('cmpt_se_connecter') + '</a>';
+    zone.innerHTML = T('cmpt_deja') + ' <a href="' + lienCompteRetour() + '" target="_blank" rel="noopener" style="color:var(--ac,#EA580C);font-weight:700;">' + T('cmpt_se_connecter') + '</a>';
     return;
   }
   var p = {};
@@ -2252,7 +2252,7 @@ async function verifierDispoReelle(artisanId, dateDebut) {
 
     var auMoinsUnCreneau = data.jours.some(function(j) { return j.creneaux.length > 0; });
     var grille = '<div style="display:flex;align-items:stretch;gap:4px;">' +
-      '<button type="button" onclick="' + (data.peut_reculer ? "naviguerSemaineDispo(-1)" : '') + '" ' + (data.peut_reculer ? '' : 'disabled') + ' style="border:none;background:none;font-size:20px;color:' + (data.peut_reculer ? 'var(--ac,#B5502F)' : 'var(--line,#ddd)') + ';cursor:' + (data.peut_reculer ? 'pointer' : 'default') + ';padding:0 4px;">‹</button>' +
+      '<button type="button" onclick="' + (data.peut_reculer ? "naviguerSemaineDispo(-1)" : '') + '" ' + (data.peut_reculer ? '' : 'disabled') + ' style="border:none;background:none;font-size:20px;color:' + (data.peut_reculer ? 'var(--ac,#EA580C)' : 'var(--line,#ddd)') + ';cursor:' + (data.peut_reculer ? 'pointer' : 'default') + ';padding:0 4px;">‹</button>' +
       '<div style="flex:1;display:grid;grid-template-columns:repeat(' + data.jours.length + ',1fr);gap:4px;">' +
         data.jours.map(function(j) {
           var dateAff = new Date(j.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long' });
@@ -2263,7 +2263,7 @@ async function verifierDispoReelle(artisanId, dateDebut) {
             '</div>' +
             (j.creneaux.length
               ? j.creneaux.map(function(h) {
-                  return '<button type="button" onclick="choisirCreneauPublic(' + jsAttr(j.date) + ',' + jsAttr(h) + ')" style="display:block;width:100%;padding:5px 2px;margin-bottom:4px;border-radius:6px;border:1px solid var(--ac-brd,#e8c4b8);background:#eef7f2;color:var(--ac,#B5502F);font-weight:700;font-size:11.5px;cursor:pointer;">' + h + '</button>';
+                  return '<button type="button" onclick="choisirCreneauPublic(' + jsAttr(j.date) + ',' + jsAttr(h) + ')" style="display:block;width:100%;padding:5px 2px;margin-bottom:4px;border-radius:6px;border:1px solid var(--ac-brd,#e8c4b8);background:#eef7f2;color:var(--ac,#EA580C);font-weight:700;font-size:11.5px;cursor:pointer;">' + h + '</button>';
                 }).join('')
               : (j.fermeture
                   ? '<div style="color:var(--mu,#999);font-size:10.5px;line-height:1.25;padding:5px 0;">' + escHtml(libelleFermeture(j.fermeture)) + '</div>'
@@ -2271,15 +2271,15 @@ async function verifierDispoReelle(artisanId, dateDebut) {
           '</div>';
         }).join('') +
       '</div>' +
-      '<button type="button" onclick="' + (data.peut_avancer ? "naviguerSemaineDispo(1)" : '') + '" ' + (data.peut_avancer ? '' : 'disabled') + ' style="border:none;background:none;font-size:20px;color:' + (data.peut_avancer ? 'var(--ac,#B5502F)' : 'var(--line,#ddd)') + ';cursor:' + (data.peut_avancer ? 'pointer' : 'default') + ';padding:0 4px;">›</button>' +
+      '<button type="button" onclick="' + (data.peut_avancer ? "naviguerSemaineDispo(1)" : '') + '" ' + (data.peut_avancer ? '' : 'disabled') + ' style="border:none;background:none;font-size:20px;color:' + (data.peut_avancer ? 'var(--ac,#EA580C)' : 'var(--line,#ddd)') + ';cursor:' + (data.peut_avancer ? 'pointer' : 'default') + ';padding:0 4px;">›</button>' +
     '</div>';
 
     resultat.innerHTML = grille +
       '<div style="font-size:10.5px;color:var(--mu,#999);text-align:center;margin-top:10px;">' + T('dispo_disclaimer') + '</div>' +
       (auMoinsUnCreneau ? '' : '<div style="font-size:11.5px;color:var(--mu,#999);text-align:center;margin-top:8px;">' + T('dispo_rien_periode') + '</div>') +
       '<div style="text-align:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--line,#eee);">' +
-        '<style>@keyframes sm-pulse{0%,100%{opacity:1;background:rgba(181,80,47,.14);}50%{opacity:.45;background:rgba(181,80,47,0);}}.sm-clignote{display:inline-block;padding:2px 8px;border-radius:6px;animation:sm-pulse 1.4s ease-in-out infinite;}@media (prefers-reduced-motion:reduce){.sm-clignote{animation:none;background:rgba(181,80,47,.14);}}</style>' +
-        '<a href="#" onclick="ouvrirModalSurMesure();return false;" style="font-size:12px;color:var(--mu2,#777);">' + T('dispo_sur_mesure_q') + ' <strong class="sm-clignote" style="color:var(--ac,#B5502F);">' + T('dispo_sur_mesure_lien') + '</strong></a>' +
+        '<style>@keyframes sm-pulse{0%,100%{opacity:1;background:rgba(234,88,12,.14);}50%{opacity:.45;background:rgba(234,88,12,0);}}.sm-clignote{display:inline-block;padding:2px 8px;border-radius:6px;animation:sm-pulse 1.4s ease-in-out infinite;}@media (prefers-reduced-motion:reduce){.sm-clignote{animation:none;background:rgba(234,88,12,.14);}}</style>' +
+        '<a href="#" onclick="ouvrirModalSurMesure();return false;" style="font-size:12px;color:var(--mu2,#777);">' + T('dispo_sur_mesure_q') + ' <strong class="sm-clignote" style="color:var(--ac,#EA580C);">' + T('dispo_sur_mesure_lien') + '</strong></a>' +
       '</div>';
   } catch (e) {
     resultat.innerHTML = '<div style="color:var(--danger,#dc2626);font-size:12.5px;">Erreur de connexion, réessayez.</div>';
@@ -2362,7 +2362,7 @@ function afficherConfirmationDemande(nomArtisan, emailDonne) {
         '<div class="cf-t" style="font-size:16px;font-weight:700;margin-bottom:10px;">' + T('confirmation_titre') + '</div>' +
         '<div class="cf-s" style="font-size:13.5px;color:var(--mu2,#555);line-height:1.5;margin-bottom:6px;">' + T('confirmation_texte1') + ' <strong>' + escHtml(nomArtisan || 'l\'artisan') + '</strong>' + T('confirmation_texte2') + '</div>' +
         (emailDonne ? '<div class="cf-s" style="font-size:12.5px;color:var(--mu,#999);margin-bottom:16px;">' + T('confirmation_email') + '</div>' : '<div style="margin-bottom:16px;"></div>') +
-        '<button class="cf-btn" onclick="fermerConfirmationDemande()" style="width:100%;padding:11px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">' + T('btn_fermer') + '</button>' +
+        '<button class="cf-btn" onclick="fermerConfirmationDemande()" style="width:100%;padding:11px;border-radius:9px;border:none;background:var(--ac,#EA580C);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">' + T('btn_fermer') + '</button>' +
       '</div>' +
     '</div>';
 }
@@ -2439,7 +2439,7 @@ function ouvrirModalSurMesure() {
         photosPickerHTML() +
         '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
         '<div style="display:flex;gap:8px;">' +
-          '<button id="btn-devis" onclick="envoyerSurMesureDevis()" style="flex:1;padding:11px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">' + T('btn_envoyer_demande') + '</button>' +
+          '<button id="btn-devis" onclick="envoyerSurMesureDevis()" style="flex:1;padding:11px;border-radius:9px;border:none;background:var(--ac,#EA580C);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">' + T('btn_envoyer_demande') + '</button>' +
           '<button onclick="fermerModalDevis()" style="flex:1;padding:11px;border-radius:9px;border:1px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);cursor:pointer;">' + T('btn_annuler') + '</button>' +
         '</div>' +
       '</div>' +
@@ -2663,9 +2663,9 @@ function choisirTypeIntervention(code) {
     var btn = document.getElementById('type-interv-' + t.code);
     if (!btn) return;
     var actif = _typeInterventionChoisi === t.code;
-    btn.style.background = actif ? 'var(--ac,#B5502F)' : 'transparent';
+    btn.style.background = actif ? 'var(--ac,#EA580C)' : 'transparent';
     btn.style.color = actif ? '#fff' : 'var(--mu2,#555)';
-    btn.style.borderColor = actif ? 'var(--ac,#B5502F)' : 'var(--line,#ddd)';
+    btn.style.borderColor = actif ? 'var(--ac,#EA580C)' : 'var(--line,#ddd)';
   });
   var info = document.getElementById('type-interv-info');
   if (info) info.innerHTML = code === 'visite' ? visiteInfoHTML(window._typeInterventionFrais) : '';
@@ -2762,7 +2762,7 @@ function contactPrefHTML() {
   return '<div style="margin-bottom:10px;">' +
       '<div style="font-size:11.5px;font-weight:600;color:var(--mu2,#777);margin-bottom:6px;">' + T('pref_contact_titre') + '</div>' +
       '<div style="display:flex;gap:8px;">' +
-        '<button type="button" id="pref-tel-btn" onclick="choisirContactPref(\'telephone\')" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--ac,#B5502F);background:var(--ac,#B5502F);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;">' + T('pref_tel') + '</button>' +
+        '<button type="button" id="pref-tel-btn" onclick="choisirContactPref(\'telephone\')" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--ac,#EA580C);background:var(--ac,#EA580C);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;">' + T('pref_tel') + '</button>' +
         '<button type="button" id="pref-email-btn" onclick="choisirContactPref(\'email\')" style="flex:1;padding:8px;border-radius:8px;border:1.5px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);font-size:12.5px;font-weight:600;cursor:pointer;">' + T('pref_email') + '</button>' +
       '</div>' +
     '</div>' +
@@ -2775,12 +2775,12 @@ function choisirContactPref(pref) {
   var btnEmail = document.getElementById('pref-email-btn');
   var champEmail = document.getElementById('devis-email');
   if (!btnTel || !btnEmail) return;
-  btnTel.style.background = pref === 'telephone' ? 'var(--ac,#B5502F)' : 'transparent';
+  btnTel.style.background = pref === 'telephone' ? 'var(--ac,#EA580C)' : 'transparent';
   btnTel.style.color = pref === 'telephone' ? '#fff' : 'var(--mu2,#777)';
-  btnTel.style.borderColor = pref === 'telephone' ? 'var(--ac,#B5502F)' : 'var(--line,#ddd)';
-  btnEmail.style.background = pref === 'email' ? 'var(--ac,#B5502F)' : 'transparent';
+  btnTel.style.borderColor = pref === 'telephone' ? 'var(--ac,#EA580C)' : 'var(--line,#ddd)';
+  btnEmail.style.background = pref === 'email' ? 'var(--ac,#EA580C)' : 'transparent';
   btnEmail.style.color = pref === 'email' ? '#fff' : 'var(--mu2,#777)';
-  btnEmail.style.borderColor = pref === 'email' ? 'var(--ac,#B5502F)' : 'var(--line,#ddd)';
+  btnEmail.style.borderColor = pref === 'email' ? 'var(--ac,#EA580C)' : 'var(--line,#ddd)';
   if (champEmail) champEmail.style.display = pref === 'email' ? 'block' : 'none';
 }
 
@@ -2823,7 +2823,7 @@ function ouvrirModalDevis(artisanId, nomArtisan, secteurArtisan) {
         '</div>' +
         '<div id="devis-err" style="display:none;color:var(--danger,#dc2626);font-size:12px;margin-bottom:10px;"></div>' +
         '<div style="display:flex;gap:8px;">' +
-          '<button id="btn-devis" onclick="envoyerDemandeDevis(' + jsAttr(artisanId) + ',' + jsAttr(secteurArtisan||'autre') + ')" style="flex:1;padding:11px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">' + T('btn_envoyer') + '</button>' +
+          '<button id="btn-devis" onclick="envoyerDemandeDevis(' + jsAttr(artisanId) + ',' + jsAttr(secteurArtisan||'autre') + ')" style="flex:1;padding:11px;border-radius:9px;border:none;background:var(--ac,#EA580C);color:#fff;font-size:13px;font-weight:700;cursor:pointer;">' + T('btn_envoyer') + '</button>' +
           '<button onclick="fermerModalDevis()" style="flex:1;padding:11px;border-radius:9px;border:1px solid var(--line,#ddd);background:transparent;color:var(--mu2,#777);cursor:pointer;">' + T('btn_annuler') + '</button>' +
         '</div>' +
       '</div>' +
@@ -2944,7 +2944,7 @@ async function confirmerPaiementCommande() {
         '<div class="cf-ico" style="font-size:32px;margin-bottom:10px;">✅</div>' +
         '<div class="cf-t" style="font-size:15px;font-weight:700;margin-bottom:8px;">Paiement confirmé !</div>' +
         '<div class="cf-s" style="font-size:13px;color:var(--mu2,#777);margin-bottom:16px;">Votre commande est réglée, l\'artisan va la préparer.</div>' +
-        '<button class="cf-btn" onclick="fermerModalCommande()" style="padding:10px 20px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-weight:700;cursor:pointer;">Fermer</button>' +
+        '<button class="cf-btn" onclick="fermerModalCommande()" style="padding:10px 20px;border-radius:9px;border:none;background:var(--ac,#EA580C);color:#fff;font-weight:700;cursor:pointer;">Fermer</button>' +
       '</div>' +
     '</div>';
 }
@@ -2995,7 +2995,7 @@ async function envoyerCommande() {
           '<div class="cf-ico" style="font-size:32px;margin-bottom:10px;">✅</div>' +
           '<div class="cf-t" style="font-size:15px;font-weight:700;margin-bottom:8px;">Commande envoyée !</div>' +
           '<div class="cf-s" style="font-size:13px;color:var(--mu2,#777);margin-bottom:16px;">L\'artisan va la confirmer directement avec vous.</div>' +
-          '<button class="cf-btn" onclick="fermerModalCommande()" style="padding:10px 20px;border-radius:9px;border:none;background:var(--ac,#B5502F);color:#fff;font-weight:700;cursor:pointer;">Fermer</button>' +
+          '<button class="cf-btn" onclick="fermerModalCommande()" style="padding:10px 20px;border-radius:9px;border:none;background:var(--ac,#EA580C);color:#fff;font-weight:700;cursor:pointer;">Fermer</button>' +
         '</div>' +
       '</div>';
   } catch (e) {
@@ -3208,14 +3208,14 @@ function ouvrirModalLegal(type) {
       '<h2 style="font-size:18px;font-weight:800;margin-bottom:20px;padding-right:40px;">' + content.titre + '</h2>' +
       '<div class="legal-content-artisans" style="font-size:13.5px;color:var(--mu2,#555);line-height:1.7;">' + content.contenu + '</div>' +
       '<div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--brd,#e3eaf4);text-align:right;">' +
-        '<button onclick="document.getElementById(\'modal-legal\').remove()" style="padding:9px 24px;border-radius:8px;border:none;background:var(--ac,#B5502F);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;">' + (AT_LANG==='en'?'Close':AT_LANG==='es'?'Cerrar':'Fermer') + '</button>' +
+        '<button onclick="document.getElementById(\'modal-legal\').remove()" style="padding:9px 24px;border-radius:8px;border:none;background:var(--ac,#EA580C);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;">' + (AT_LANG==='en'?'Close':AT_LANG==='es'?'Cerrar':'Fermer') + '</button>' +
       '</div>' +
     '</div>';
 
   if (!document.getElementById('legal-styles-artisans')) {
     var style = document.createElement('style');
     style.id = 'legal-styles-artisans';
-    style.textContent = '.legal-content-artisans h3{font-size:14px;font-weight:700;color:var(--ink,#13223c);margin:16px 0 6px;}.legal-content-artisans p{margin-bottom:10px;}.legal-content-artisans a{color:var(--ac,#B5502F);}';
+    style.textContent = '.legal-content-artisans h3{font-size:14px;font-weight:700;color:var(--ink,#13223c);margin:16px 0 6px;}.legal-content-artisans p{margin-bottom:10px;}.legal-content-artisans a{color:var(--ac,#EA580C);}';
     document.head.appendChild(style);
   }
 

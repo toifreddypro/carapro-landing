@@ -11,7 +11,7 @@ body.fx-loaded::after {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(1100px 500px at 50% -5%, rgba(181,80,47,.07), transparent 60%),
+    radial-gradient(1100px 500px at 50% -5%, rgba(234,88,12,.07), transparent 60%),
     radial-gradient(800px 400px at 90% 15%, rgba(45,93,74,.05), transparent 60%);
 }
 
@@ -22,8 +22,8 @@ body.fx-loaded::after {
   z-index: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(181,80,47,.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(181,80,47,.028) 1px, transparent 1px);
+    linear-gradient(rgba(234,88,12,.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(234,88,12,.028) 1px, transparent 1px);
   background-size: 64px 64px;
   mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 72%);
   -webkit-mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 72%);
@@ -35,14 +35,14 @@ body.fx-loaded::after {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--ac2, #B5502F);
-  box-shadow: 0 0 0 4px rgba(181,80,47,.12), 0 0 12px rgba(181,80,47,.7);
+  background: var(--ac2, #EA580C);
+  box-shadow: 0 0 0 4px rgba(234,88,12,.12), 0 0 12px rgba(234,88,12,.7);
   animation: dotPulse 2.2s ease-in-out infinite;
   flex-shrink: 0;
 }
 @keyframes dotPulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 4px rgba(181,80,47,.12), 0 0 12px rgba(181,80,47,.7); }
-  50%       { opacity: .55; box-shadow: 0 0 0 6px rgba(181,80,47,.06), 0 0 6px rgba(181,80,47,.3); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 4px rgba(234,88,12,.12), 0 0 12px rgba(234,88,12,.7); }
+  50%       { opacity: .55; box-shadow: 0 0 0 6px rgba(234,88,12,.06), 0 0 6px rgba(234,88,12,.3); }
 }
 
 /* ── Pill avec dot ── */
@@ -67,8 +67,8 @@ body.fx-loaded::after {
   transition: box-shadow .35s ease, border-color .35s ease, transform .35s ease;
 }
 .ring-glow:hover {
-  box-shadow: 0 0 0 1px rgba(181,80,47,.35), 0 20px 60px -20px rgba(181,80,47,.3);
-  border-color: rgba(181,80,47,.3) !important;
+  box-shadow: 0 0 0 1px rgba(234,88,12,.35), 0 20px 60px -20px rgba(234,88,12,.3);
+  border-color: rgba(234,88,12,.3) !important;
   transform: translateY(-2px);
 }
 
@@ -108,7 +108,7 @@ body.fx-loaded::after {
   bottom: -3px;
   height: 1px;
   width: 100%;
-  background: linear-gradient(90deg, var(--ac2, #B5502F), transparent);
+  background: linear-gradient(90deg, var(--ac2, #EA580C), transparent);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform .35s ease;
@@ -136,12 +136,12 @@ body.fx-loaded::after {
 
 /* ── Btn primary premium ── */
 .btn-fx-primary {
-  box-shadow: 0 1px 0 rgba(255,255,255,.15) inset, 0 12px 30px -12px rgba(181,80,47,.4);
+  box-shadow: 0 1px 0 rgba(255,255,255,.15) inset, 0 12px 30px -12px rgba(234,88,12,.4);
   transition: transform .25s ease, box-shadow .25s ease;
 }
 .btn-fx-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 1px 0 rgba(255,255,255,.2) inset, 0 20px 50px -16px rgba(181,80,47,.6);
+  box-shadow: 0 1px 0 rgba(255,255,255,.2) inset, 0 20px 50px -16px rgba(234,88,12,.6);
 }
 
 /* ── Reveal scroll animation ── */
@@ -170,7 +170,7 @@ body.fx-loaded::after {
 
 /* ── Light mode overrides ── */
 body.light-mode .dot-pulse {
-  box-shadow: 0 0 0 4px rgba(181,80,47,.15), 0 0 10px rgba(181,80,47,.5);
+  box-shadow: 0 0 0 4px rgba(234,88,12,.15), 0 0 10px rgba(234,88,12,.5);
 }
 body.light-mode .fx-pill {
   border-color: rgba(0,0,0,.08);
@@ -184,5 +184,5 @@ body.light-mode .shine-wrap::after {
   background: linear-gradient(120deg, transparent 20%, rgba(255,255,255,.4) 50%, transparent 80%);
 }
 body.light-mode .ring-glow:hover {
-  box-shadow: 0 0 0 1px rgba(181,80,47,.25), 0 12px 40px -16px rgba(181,80,47,.2);
+  box-shadow: 0 0 0 1px rgba(234,88,12,.25), 0 12px 40px -16px rgba(234,88,12,.2);
 }
