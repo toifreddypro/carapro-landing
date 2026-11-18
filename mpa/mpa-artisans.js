@@ -3183,6 +3183,54 @@ async function remplirSelectsIntervention() {
   var selService = document.getElementById('mi-service');
   selService.innerHTML = '<option value="">— Aucun —</option>' +
     _servicesCache.map(function(s) { return '<option value="' + s.id + '">' + escHtml(s.nom_service) + '</option>'; }).join('');
+  basculerNouveauClientIntervention(false);
+}
+
+// ── Nouveau client créé directement dans le formulaire d'intervention (18/11/2026) : mêmes règles que « Ajouter un client » (accès, limite de l'offre Essentiel).
+function basculerNouveauClientIntervention(ouvrir) {
+  var bloc = document.getElementById('mi-nc'), lien = document.getElementById('mi-nc-lien'); if (!bloc || !lien) return;
+  var sel = document.getElementById('mi-client');
+  if (ouvrir === undefined) ouvrir = bloc.style.display === 'none';
+  if (ouvrir && sel && sel.disabled) return; // client verrouillé (annuaire ou livraison) : on n'en crée pas ici
+  bloc.style.display = ouvrir ? 'block' : 'none';
+  lien.style.display = ouvrir ? 'none' : 'block';
+  var msg = document.getElementById('mi-nc-msg'); if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
+  if (!ouvrir) { ['mi-nc-nom', 'mi-nc-tel', 'mi-nc-email'].forEach(function(id) { var e = document.getElementById(id); if (e) e.value = ''; }); }
+  else { var n = document.getElementById('mi-nc-nom'); if (n) n.focus(); }
+}
+var _ncEnCours = false;
+async function ajouterClientDepuisIntervention() {
+  if (_ncEnCours) return;
+  if (!verifierAccesEcriture()) return;
+  var msg = document.getElementById('mi-nc-msg');
+  var erreur = function(t) { msg.textContent = t; msg.style.display = 'block'; };
+  var nom = document.getElementById('mi-nc-nom').value.trim();
+  var tel = document.getElementById('mi-nc-tel').value.trim();
+  var email = document.getElementById('mi-nc-email').value.trim();
+  if (!nom) { erreur('Indiquez le nom du client.'); return; }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { erreur('Cette adresse e-mail ne semble pas correcte.'); return; }
+  var nbClients = (_clientsCache || []).length;
+  if (!estPro()) {
+    if (nbClients >= LIMITE_CLIENTS_ESSENTIEL) { proposerPassagePro('clients'); return; }
+    alerteEssentiel('clients', nbClients + 1, LIMITE_CLIENTS_ESSENTIEL, '');
+  }
+  _ncEnCours = true;
+  try {
+    var ligne = { artisan_id: _artisan.id, nom: nom, telephone: tel || null, email: email || null, delai_paiement: 30, ne_pas_demander_avis: false };
+    var r = await sb.from('mpa_artisans_clients').insert(ligne).select('*').single();
+    if (r.error && r.error.code === '42703') { // colonne téléphone absente (lot19-salon.sql pas lancé) : on enregistre le reste
+      var sans = Object.assign({}, ligne); delete sans.telephone;
+      r = await sb.from('mpa_artisans_clients').insert(sans).select('*').single();
+    }
+    if (r.error || !r.data) { erreur('Le client n\'a pas pu être ajouté : ' + ((r.error && r.error.message) || 'réessayez.')); return; }
+    _clientsCache = (_clientsCache || []).concat([r.data]).sort(function(a, b) { return String(a.nom).localeCompare(String(b.nom), 'fr'); });
+    var sel = document.getElementById('mi-client');
+    sel.innerHTML = '<option value="">— Aucun —</option>' + _clientsCache.map(function(c) { return '<option value="' + c.id + '">' + escHtml(c.nom) + '</option>'; }).join('');
+    sel.value = r.data.id;
+    basculerNouveauClientIntervention(false);
+    preRemplirAdresseIntervention();
+    chargerClients(); // met la liste « Mes clients » à jour en arrière-plan
+  } finally { _ncEnCours = false; }
 }
 
 // ════════════════════════════════════════
@@ -6341,6 +6389,60 @@ async function calculerDashboardFiscal() {
   var sousTitreIR = document.getElementById('dash-ir-sub');
   if (sousTitreIR) sousTitreIR.textContent = ir.liberatoire ? 'Versement libératoire de l\'impôt sur le revenu' : 'Abattement forfaitaire : 71 % ventes, 50 % services';
   afficherCAMois();
+  afficherAVenir();
+}
+
+// ── « À venir » (carte du Tableau de bord, 18/11/2026) : revenu prévu, rendez-vous et taux de remplissage sur les 30 prochains jours, + le mois prochain.
+// Uniquement les interventions déjà planifiées (jamais « encaissé ») ; ne touche ni la comptabilité ni la commission.
+function _minutesHeure(h) { var p = String(h || '').split(':'); return p.length >= 2 ? (parseInt(p[0], 10) * 60 + parseInt(p[1], 10)) : NaN; }
+async function afficherAVenir() {
+  var corps = document.getElementById('a-venir-corps');
+  if (!corps || !_artisan) return;
+  try {
+    var n = new Date(), a = n.getFullYear(), m = n.getMonth();
+    var auj = _dateLocaleISO(a, m, n.getDate());
+    var fin30 = _dateLocaleISO(a, m, n.getDate() + 30);
+    var debutProch = _dateLocaleISO(a, m + 1, 1), finProch = _dateLocaleISO(a, m + 2, 0);
+    var borne = finProch > fin30 ? finProch : fin30;
+    var rs = await Promise.all([
+      sb.from('mpa_artisans_interventions').select('date_intervention, heure_debut, heure_fin, prix, notes')
+        .eq('artisan_id', _artisan.id).in('statut', ['planifiee', 'en_cours']).gte('date_intervention', auj).lte('date_intervention', borne),
+      sb.from('artisans_horaires').select('jour_semaine, heure_debut, heure_fin').eq('artisan_id', _artisan.id),
+      sb.from('artisans_indisponibilites').select('date_debut, date_fin').eq('artisan_id', _artisan.id).gte('date_fin', auj)
+    ]);
+    if (rs[0].error) throw rs[0].error;
+    var inter = (rs[0].data || []).filter(function(i) { return !/^Livraison\b/i.test(i.notes || ''); });
+    var horaires = rs[1].error ? [] : (rs[1].data || []);
+    var indispos = rs[2].error ? [] : (rs[2].data || []);
+    var euros = function(x) { return Math.round(x).toLocaleString('fr-FR') + ' €'; };
+    var s = function(n2) { return n2 > 1 ? 's' : ''; };
+    var dans30 = inter.filter(function(i) { return i.date_intervention <= fin30; });
+    var prochain = inter.filter(function(i) { return i.date_intervention >= debutProch && i.date_intervention <= finProch; });
+    var somme = function(l) { return l.reduce(function(t, i) { return t + (Number(i.prix) || 0); }, 0); };
+    // Taux de remplissage : minutes réservées / minutes ouvertes (horaires habituels, hors jours bloqués) sur 30 jours
+    var ouvert = 0;
+    for (var k = 0; k <= 30; k++) {
+      var d = new Date(a, m, n.getDate() + k), iso = _dateLocaleISO(d.getFullYear(), d.getMonth(), d.getDate());
+      if (indispos.some(function(x) { return iso >= x.date_debut && iso <= x.date_fin; })) continue;
+      horaires.forEach(function(h) { if (h.jour_semaine === d.getDay()) { var mm = _minutesHeure(h.heure_fin) - _minutesHeure(h.heure_debut); if (mm > 0) ouvert += mm; } });
+    }
+    var reserve = 0;
+    dans30.forEach(function(i) { var mm = _minutesHeure(i.heure_fin) - _minutesHeure(i.heure_debut); if (mm > 0) reserve += mm; });
+    var taux = ouvert > 0 ? Math.min(100, Math.round(reserve / ouvert * 100)) : null;
+    var nomProch = MOIS_NOMS[(m + 1) % 12].toLowerCase();
+    var ligne = function(lib, val, aide) {
+      return '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:7px 0;border-top:1px solid var(--brd);font-size:13px;"><span>' + lib + (aide ? '<span style="display:block;font-size:11.5px;color:var(--mu);">' + aide + '</span>' : '') + '</span><strong style="font-size:15px;white-space:nowrap;">' + val + '</strong></div>';
+    };
+    corps.innerHTML =
+      '<div style="font-size:26px;font-weight:800;color:var(--tx,inherit);line-height:1.1;margin-bottom:2px;">' + euros(somme(dans30)) + '</div>' +
+      '<div style="margin-bottom:8px;color:var(--mu);">prévus sur les 30 prochains jours</div>' +
+      ligne('Rendez-vous', dans30.length) +
+      ligne('Taux de remplissage', taux === null ? '—' : taux + ' %', taux === null ? 'Indiquez vos horaires dans Mon profil pour le voir.' : 'Heures réservées sur vos heures ouvertes.') +
+      ligne('Le mois prochain (' + nomProch + ')', euros(somme(prochain)), prochain.length + ' rendez-vous prévu' + s(prochain.length) + ' pour l\'instant');
+  } catch (e) {
+    console.error(e);
+    corps.textContent = 'Les rendez-vous à venir n\'ont pas pu être chargés.';
+  }
 }
 
 // ── CA du mois (carte du Tableau de bord) : trois familles, comparé au mois précédent complet. Mêmes règles que la Comptabilité (vue Production).
@@ -10142,7 +10244,7 @@ function renderServices(liste) {
     var prix = s.prix_indicatif ? (s.prix_indicatif + '€' + (s.unite ? '/' + s.unite : '')) : '<span style="font-style:italic;color:var(--mu);">Sur devis</span>';
     var duree = s.duree_estimee_min ? formatDuree(s.duree_estimee_min) : '—';
     return '<tr>' +
-      '<td><strong>' + escHtml(s.nom_service) + '</strong>' + (s.rappel_mois ? '<div style="font-size:11px;color:var(--mu);margin-top:2px;" title="Rappel d\'entretien envoyé à vos clients">🔔 rappel ' + (s.rappel_mois % 12 === 0 ? (s.rappel_mois / 12) + ' an' + (s.rappel_mois > 12 ? 's' : '') : s.rappel_mois + ' mois') + '</div>' : '') + '</td>' +
+      '<td>' + (s.photo_url ? '<div style="display:flex;align-items:center;gap:10px;">' + vignetteServiceHtml(s, 40) + '<div>' : '') + '<strong>' + escHtml(s.nom_service) + '</strong>' + (s.rappel_mois ? '<div style="font-size:11px;color:var(--mu);margin-top:2px;" title="Rappel d\'entretien envoyé à vos clients">🔔 rappel ' + (s.rappel_mois % 12 === 0 ? (s.rappel_mois / 12) + ' an' + (s.rappel_mois > 12 ? 's' : '') : s.rappel_mois + ' mois') + '</div>' : '') + (s.photo_url ? '</div></div>' : '') + '</td>' +
       '<td>' + escHtml(s.description||'—') + '</td>' +
       '<td>' + duree + '</td>' +
       '<td>' + prix + '</td>' +
@@ -10162,12 +10264,12 @@ function carteServiceMobile(s, i) {
   var prix = s.prix_indicatif ? (s.prix_indicatif + ' €' + (s.unite && s.unite !== 'forfait' ? '/' + s.unite : '')) : 'Sur devis';
   var duree = s.duree_estimee_min ? formatDuree(s.duree_estimee_min) + ' environ' : 'Durée libre';
   var rappel = s.rappel_mois ? '🔔 Rappel client : ' + (s.rappel_mois % 12 === 0 ? (s.rappel_mois / 12) + ' an' + (s.rappel_mois > 12 ? 's' : '') : s.rappel_mois + ' mois') : '';
-  var plein = '<div class="pc-plein"><div class="sv-det"><div class="sv-tete"><div class="sv-tuile" style="background:' + ic[1] + '">' + ic[0] + '</div><div><div class="sv-nom">' + escHtml(s.nom_service) + '</div><div class="sv-meta">' + prix + ' · ' + duree + '</div></div></div>' +
+  var plein = '<div class="pc-plein"><div class="sv-det"><div class="sv-tete">' + (s.photo_url ? vignetteServiceHtml(s, 44, 'sv-tuile') : '<div class="sv-tuile" style="background:' + ic[1] + '">' + ic[0] + '</div>') + '<div><div class="sv-nom">' + escHtml(s.nom_service) + '</div><div class="sv-meta">' + prix + ' · ' + duree + '</div></div></div>' +
     (s.description ? '<div class="sv-desc">' + escHtml(s.description) + '</div>' : '') +
     (rappel ? '<div class="sv-rappel">' + rappel + '</div>' : '') +
     '<div class="sv-btns"><button class="sv-mod" onclick="fermerFicheMobile();ouvrirService(\'' + s.id + '\')">✎ Modifier</button><button class="sv-ret" onclick="fermerFicheMobile();supprimerService(\'' + s.id + '\')">Retirer</button></div></div></div>';
   return '<div class="pc-wrap" data-fid="svc-' + s.id + '"><div class="pc-ligne" onclick="ouvrirFicheMobile(this)">' +
-    '<div class="sv-tuile" style="background:' + ic[1] + '">' + ic[0] + '</div>' +
+    '' + (s.photo_url ? vignetteServiceHtml(s, 44, 'sv-tuile') : '<div class="sv-tuile" style="background:' + ic[1] + '">' + ic[0] + '</div>') + '' +
     '<div class="pl-txt"><div class="pl-nom">' + escHtml(s.nom_service) + '</div><div class="pl-sous">' + duree + '</div></div>' +
     '<div class="pl-prix">' + prix + '</div></div>' + plein + '</div>';
 }
@@ -10208,7 +10310,45 @@ function filtrerServices() {
 }
 
 var _servicesAvecRappel = null; // inconnu tant qu'on n'a pas lu les services
+
+// ── Photo d'un service (18/11/2026, lot26-photo-service.sql) : facultative, rangée dans l'espace public « artisans-photos », jamais modifiée.
+var _sPhotoUrl = null, _sPhotoFichier = null, _sPhotoRetiree = false, _sPhotoApercuObjet = null;
+function majApercuPhotoService() {
+  var ap = document.getElementById('s-photo-apercu'), bt = document.getElementById('s-photo-retirer'); if (!ap) return;
+  var src = _sPhotoFichier ? _sPhotoApercuObjet : (_sPhotoRetiree ? null : _sPhotoUrl);
+  ap.innerHTML = '';
+  if (src) { var im = document.createElement('img'); im.src = src; im.alt = ''; im.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;'; ap.appendChild(im); }
+  else ap.textContent = '🖼️';
+  if (bt) bt.style.display = src ? 'inline-block' : 'none';
+}
+function reinitPhotoService(url) {
+  if (_sPhotoApercuObjet) { try { URL.revokeObjectURL(_sPhotoApercuObjet); } catch (e) {} }
+  _sPhotoUrl = url || null; _sPhotoFichier = null; _sPhotoRetiree = false; _sPhotoApercuObjet = null;
+  var inp = document.getElementById('s-photo-input'); if (inp) inp.value = '';
+  var msg = document.getElementById('s-photo-msg'); if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
+  majApercuPhotoService();
+}
+function choisirPhotoService(input) {
+  var f = input.files && input.files[0]; if (!f) return;
+  var msg = document.getElementById('s-photo-msg'); msg.style.display = 'none';
+  if (!/^image\/(jpeg|png|webp)$/.test(f.type)) { msg.textContent = 'Choisissez une photo au format JPG, PNG ou WebP.'; msg.style.display = 'block'; input.value = ''; return; }
+  if (f.size > 10 * 1024 * 1024) { msg.textContent = 'Cette photo est trop lourde (10 Mo maximum).'; msg.style.display = 'block'; input.value = ''; return; }
+  if (_sPhotoApercuObjet) { try { URL.revokeObjectURL(_sPhotoApercuObjet); } catch (e) {} }
+  _sPhotoFichier = f; _sPhotoRetiree = false; _sPhotoApercuObjet = URL.createObjectURL(f);
+  majApercuPhotoService();
+}
+function retirerPhotoService() {
+  _sPhotoFichier = null; _sPhotoRetiree = true;
+  var inp = document.getElementById('s-photo-input'); if (inp) inp.value = '';
+  majApercuPhotoService();
+}
+function cheminPhotoServiceDepuisUrl(u) { var s = String(u || ''), i = s.indexOf('/artisans-photos/'); return i === -1 ? null : decodeURIComponent(s.slice(i + '/artisans-photos/'.length).split('?')[0]); }
+function vignetteServiceHtml(s, taille, classe, styleSup) {
+  return '<div class="' + (classe || '') + '" style="width:' + taille + 'px;height:' + taille + 'px;border-radius:10px;overflow:hidden;flex-shrink:0;background:#f3f4f6;' + (styleSup || '') + '"><img src="' + escHtml(s.photo_url) + '" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></div>';
+}
+
 function openAjouterService() {
+  reinitPhotoService(null);
   _serviceEnCours = null;
   document.getElementById('modal-service-titre').textContent = 'Ajouter un service';
   document.getElementById('modal-service-btn').textContent = 'Ajouter';
@@ -10224,6 +10364,7 @@ function openAjouterService() {
 function ouvrirService(id) {
   var s = _servicesCache.find(function(x) { return x.id === id; });
   if (!s) return;
+  reinitPhotoService(s.photo_url || null);
   _serviceEnCours = id;
   document.getElementById('modal-service-titre').textContent = 'Modifier ce service';
   document.getElementById('modal-service-btn').textContent = 'Enregistrer';
@@ -10277,6 +10418,18 @@ async function sauverService() {
   // Rappel d'entretien (colonne rappel_mois : retour-client-3.sql). Sans la colonne, on n'envoie rien plutôt que d'échouer.
   var rappelBrut = document.getElementById('s-rappel').value;
   if (_servicesAvecRappel !== false || rappelBrut !== '') maj.rappel_mois = rappelBrut === '' ? null : parseInt(rappelBrut, 10);
+  // Photo : envoyée telle quelle avant l'enregistrement ; retirée / remplacée → l'ancien fichier est supprimé après coup.
+  var ancienneUrl = _serviceEnCours ? ((_servicesCache.find(function(x) { return x.id === _serviceEnCours; }) || {}).photo_url || null) : null;
+  var nouvelleChemin = null;
+  if (_sPhotoFichier) {
+    var ext = (_sPhotoFichier.type === 'image/png' ? 'png' : _sPhotoFichier.type === 'image/webp' ? 'webp' : 'jpg');
+    nouvelleChemin = _artisan.user_id + '/service_' + Date.now() + '.' + ext;
+    var up = await sb.storage.from('artisans-photos').upload(nouvelleChemin, _sPhotoFichier, { contentType: _sPhotoFichier.type });
+    if (up.error) { alert('La photo n\'a pas pu être envoyée : ' + up.error.message); return; }
+    maj.photo_url = sb.storage.from('artisans-photos').getPublicUrl(nouvelleChemin).data.publicUrl;
+  } else if (_sPhotoRetiree && ancienneUrl) {
+    maj.photo_url = null;
+  }
   var res;
   if (_serviceEnCours) {
     res = await sb.from('artisans_services').update(maj).eq('id', _serviceEnCours).eq('artisan_id', _artisan.id);
@@ -10289,8 +10442,11 @@ async function sauverService() {
     maj.ordre = _servicesCache.length;
     res = await sb.from('artisans_services').insert(maj);
   }
+  if (res.error && nouvelleChemin) { try { await sb.storage.from('artisans-photos').remove([nouvelleChemin]); } catch (e) {} }
+  if (res.error && /photo_url/.test(res.error.message || '')) { alert('La photo du service n\'est pas encore activée sur votre compte (mise à jour en cours). Enregistrez sans photo ou réessayez plus tard.'); return; }
   if (res.error && /rappel_mois/.test(res.error.message || '')) { alert('Le rappel d\'entretien n\'est pas encore activé sur votre compte (mise à jour en cours). Réessayez plus tard.'); return; }
   if (res.error) { alert('Erreur : ' + res.error.message); return; }
+  if (ancienneUrl && (nouvelleChemin || _sPhotoRetiree)) { var ancienChemin = cheminPhotoServiceDepuisUrl(ancienneUrl); if (ancienChemin) { try { await sb.storage.from('artisans-photos').remove([ancienChemin]); } catch (e) {} } }
   fermerModale('modal-service');
   await chargerServices();
 }

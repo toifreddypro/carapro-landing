@@ -1814,8 +1814,9 @@ function buildProfilHTML(data) {
   var servicesHtml = data.services.length
     ? data.services.map(function(s) {
         var prix = s.prix_indicatif ? (escHtml(s.prix_indicatif) + '€' + (s.unite ? '/' + escHtml(s.unite) : '')) : T('sur_devis');
-        return '<div class="svc-ligne" style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line,#eee);">' +
-          '<div><strong>' + escHtml(s.nom_service) + '</strong>' + (s.description ? '<div style="font-size:12.5px;color:var(--mu2,#777);">' + escHtml(s.description) + '</div>' : '') + '</div>' +
+        return '<div class="svc-ligne" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line,#eee);">' +
+          '<div style="display:flex;align-items:center;gap:12px;min-width:0;">' + (s.photo_url ? '<img src="' + escHtml(s.photo_url) + '" alt="' + escHtml(s.nom_service) + '" loading="lazy" style="width:64px;height:64px;border-radius:12px;object-fit:cover;flex-shrink:0;background:var(--line,#eee);">' : '') +
+          '<div style="min-width:0;"><strong>' + escHtml(s.nom_service) + '</strong>' + (s.description ? '<div style="font-size:12.5px;color:var(--mu2,#777);">' + escHtml(s.description) + '</div>' : '') + '</div></div>' +
           '<div class="svc-prix" style="font-weight:700;white-space:nowrap;margin-left:12px;">' + prix + '</div>' +
         '</div>';
       }).join('')
@@ -1976,7 +1977,7 @@ function ouvrirVerifDispo(artisanId, pourVisite) {
     '<div style="border:1px solid var(--line,#eee);border-radius:10px;padding:14px;">' +
       (pourVisite ? '<div style="font-size:13px;font-weight:700;color:#1e40af;margin-bottom:8px;">' + T('type_visite') + '</div>' : '') +
       '<div style="font-size:12px;color:var(--mu2,#777);margin-bottom:10px;">' + T('dispo_intro') + '</div>' +
-      (options ? '<div id="dispo-services"><select id="dispo-service" onchange="surChangementPrestationsDispo()" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' + options + '</select></div>' +
+      (options ? '<div id="dispo-services"><select id="dispo-service" onchange="surChangementPrestationsDispo()" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line,#ddd);margin-bottom:8px;box-sizing:border-box;">' + options + '</select><div id="dispo-service-photo"></div></div>' +
         (services.length > 1 ? '<a id="dispo-ajout-presta" href="#" onclick="ajouterPrestationDispo();return false;" style="display:inline-block;font-size:12.5px;font-weight:700;color:var(--ac,#B5502F);margin:-2px 0 10px;">' + T('dispo_ajout_presta') + '</a>' : '') : '') +
       '<div id="dispo-compte" style="font-size:12.5px;color:var(--mu2,#777);margin-bottom:8px;"></div>' +
       lieuDispoHTML(artisanId) +
@@ -1994,6 +1995,14 @@ function ouvrirVerifDispo(artisanId, pourVisite) {
       '<div id="dispo-resultat" style="margin-top:10px;"></div>' +
     '</div>';
   prefillDispoDepuisCompte();
+  majPhotoServiceDispo();
+}
+// Photo du service choisi (première liste), affichée sous la liste : le client voit ce qu'il réserve.
+function majPhotoServiceDispo() {
+  var zone = document.getElementById('dispo-service-photo'), sel = document.getElementById('dispo-service');
+  if (!zone) return;
+  var s = sel && _profilDataCourant && (_profilDataCourant.services || []).find(function(x) { return String(x.id) === String(sel.value); });
+  zone.innerHTML = s && s.photo_url ? '<img src="' + escHtml(s.photo_url) + '" alt="' + escHtml(s.nom_service) + '" loading="lazy" style="display:block;width:100%;max-height:180px;object-fit:cover;border-radius:12px;margin:0 0 8px;background:var(--line,#eee);">' : '';
 }
 
 // ── Où se passe le rendez-vous : chez l'artisan (salon, atelier) ou chez le client (15/11/2026) ──
@@ -2042,6 +2051,7 @@ function retirerPrestationDispo(bouton) {
 // Les créneaux affichés dépendaient des anciennes prestations : on les efface, la cliente relance la recherche (jamais un créneau trop court).
 function surChangementPrestationsDispo() {
   window._dispoContexte = null;
+  majPhotoServiceDispo();
   var res = document.getElementById('dispo-resultat');
   if (res && res.innerHTML.trim()) res.innerHTML = '<div style="font-size:12.5px;color:var(--mu2,#777);">' + T('dispo_changer_presta') + '</div>';
 }

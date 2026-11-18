@@ -98,10 +98,23 @@ Deno.serve(async (req: Request) => {
     // Règle du 15/10/2026 : un artisan sans paiements en ligne actifs n'est plus visible (deux semaines de grâce, jusqu'au 1er/11/2026).
     if (artisan.stripe_connect_statut !== "actif" && new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10) > "2026-11-01") return json({ error: "Artisan introuvable." }, 404);
 
-    const { data: services } = await sb.from("artisans_services")
-      .select("id, nom_service, description, prix_indicatif, unite, duree_estimee_min")
+    // Photo du service (lot26-photo-service.sql) : si la colonne n'existe pas encore, on relit sans elle (rien ne casse).
+    let { data: services, error: errServices } = await sb.from("artisans_services")
+      .select("id, nom_service, description, prix_indicatif, unite, duree_estimee_min, photo_url")
       .eq("artisan_id", id)
       .order("ordre", { ascending: true });
+    if (errServices && (errServices as any).code === "42703") {
+      ({ data: services } = await sb.from("artisans_services")
+        .select("id, nom_service, description, prix_indicatif, unite, duree_estimee_min")
+        .eq("artisan_id", id)
+        .order("ordre", { ascending: true }));
+    }
+    // Sécurité : seule une photo rangée dans NOTRE espace public est renvoyée (jamais une adresse extérieure).
+    const prefixePhotos = (Deno.env.get("SUPABASE_URL") ?? "") + "/storage/v1/object/public/artisans-photos/";
+    services = (services || []).map((s: any) => {
+      if (s && "photo_url" in s) s.photo_url = (typeof s.photo_url === "string" && s.photo_url.startsWith(prefixePhotos)) ? s.photo_url : null;
+      return s;
+    });
 
     const { data: photos } = await sb.from("artisans_photos")
       .select("url_photo, legende")

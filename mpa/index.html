@@ -2428,6 +2428,18 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 <div id="ca-mois-corps" style="font-size:13px;color:var(--mu);">Chargement…</div>
 </div>
+<div class="dash-jauge-card" id="carte-a-venir">
+<div class="dj-header">
+<div class="dj-icon" style="background:rgba(21,101,232,.1);">
+<svg fill="none" height="13" stroke="#1565E8" stroke-width="2" viewbox="0 0 24 24" width="13"><rect height="18" rx="2" width="18" x="3" y="4"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>
+</div>
+<div class="dj-title-block">
+<div class="dj-title">À venir : les 30 prochains jours</div>
+<div class="dj-sub">D'après vos rendez-vous déjà planifiés. Rien n'est encaissé tant qu'ils ne sont pas réalisés.</div>
+</div>
+</div>
+<div id="a-venir-corps" style="font-size:13px;color:var(--mu);">Chargement…</div>
+</div>
 <div class="dash-jauge-card">
 <div class="dj-header">
 <div class="dj-icon" style="background:rgba(181,80,47,.1);">
@@ -2887,6 +2899,17 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="mi-section-titre">🛠️ Le service</div>
 <div class="modal-field"><label for="s-nom">Nom du service</label><input id="s-nom" placeholder="Ex : Tonte de pelouse" type="text"/></div>
 <div class="modal-field"><label for="s-desc">Description</label><input id="s-desc" placeholder="Ex : Entretien complet, évacuation des déchets comprise" type="text"/></div>
+<div class="modal-field" id="s-photo-champ"><label>Photo du service <span style="font-weight:400;color:var(--mu);">(facultatif)</span></label>
+<div style="display:flex;align-items:center;gap:12px;">
+<div id="s-photo-apercu" style="width:76px;height:76px;border-radius:12px;background:#f3f4f6;border:1px solid var(--b2);display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden;flex-shrink:0;">🖼️</div>
+<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start;">
+<button type="button" class="btn-secondary" onclick="document.getElementById('s-photo-input').click()">Choisir une photo</button>
+<button type="button" id="s-photo-retirer" onclick="retirerPhotoService()" style="display:none;background:none;border:none;color:var(--danger);font-size:12.5px;font-weight:700;cursor:pointer;padding:0;">Retirer la photo</button>
+</div></div>
+<input id="s-photo-input" type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="choisirPhotoService(this)"/>
+<div style="font-size:11.5px;color:var(--mu);margin-top:6px;line-height:1.4;">Elle s'affiche sur votre fiche, à côté du service. Votre photo est utilisée telle quelle.</div>
+<div id="s-photo-msg" style="display:none;font-size:12.5px;color:#b91c1c;margin-top:4px;"></div>
+</div>
 </div>
 <div class="mi-section mi-s-frais">
 <div class="mi-section-titre">💶 Durée et tarif</div>
@@ -3121,6 +3144,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="modal-field"><label for="mi-client">Client</label>
 <select id="mi-client" onchange="preRemplirAdresseIntervention()" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-family:'Outfit',sans-serif;font-size:13px;"></select>
 <div id="mi-client-note" style="display:none;font-size:11.5px;color:var(--mu);margin-top:4px;line-height:1.4;">🔒 Ce client vient de l'annuaire CaraLink : il ne peut pas être changé sur cette intervention.</div>
+<div id="mi-nc-lien" style="margin-top:6px;"><a href="#" onclick="event.preventDefault();basculerNouveauClientIntervention()" style="font-size:13px;font-weight:700;color:var(--ac);text-decoration:none;">＋ Nouveau client</a></div>
+<div id="mi-nc" style="display:none;margin-top:8px;padding:12px;border:1px solid var(--b2);border-radius:12px;background:#fff;">
+<div style="font-size:13px;font-weight:700;margin-bottom:8px;">Nouveau client</div>
+<div class="modal-field"><label for="mi-nc-nom">Nom complet</label><input id="mi-nc-nom" type="text" maxlength="120" autocomplete="off"/></div>
+<div class="modal-field"><label for="mi-nc-tel">Téléphone</label><input id="mi-nc-tel" type="tel" maxlength="30" autocomplete="off"/></div>
+<div class="modal-field"><label for="mi-nc-email">E-mail <span style="font-weight:400;color:var(--mu);">(facultatif)</span></label><input id="mi-nc-email" type="email" maxlength="160" autocomplete="off"/></div>
+<div id="mi-nc-msg" style="display:none;font-size:12.5px;color:#b91c1c;margin-bottom:8px;"></div>
+<div style="display:flex;gap:8px;"><button type="button" class="btn-primary" onclick="ajouterClientDepuisIntervention()">Ajouter ce client</button><button type="button" class="btn-secondary" onclick="basculerNouveauClientIntervention(false)">Annuler</button></div>
+</div>
 </div>
 <div id="mi-note-salon" style="display:none;font-size:12.5px;color:#166534;background:rgba(15,157,120,.08);border-radius:8px;padding:9px 12px;line-height:1.45;margin-bottom:10px;">📍 Rendez-vous chez vous : l'adresse de l'intervention est la vôtre, aucun trajet à prévoir.</div>
 <div id="mi-bloc-adresse">
@@ -3367,6 +3399,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261116d"></script>
+<script src="/mpa/mpa-artisans.js?v=20261118a"></script>
 </body>
 </html>
