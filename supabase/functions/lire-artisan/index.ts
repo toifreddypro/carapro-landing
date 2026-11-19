@@ -95,8 +95,9 @@ Deno.serve(async (req: Request) => {
     }
     if (error) throw error;
     if (!artisan) return json({ error: "Artisan introuvable." }, 404);
-    // Règle du 15/10/2026 : un artisan sans paiements en ligne actifs n'est plus visible (deux semaines de grâce, jusqu'au 1er/11/2026).
-    if (artisan.stripe_connect_statut !== "actif" && new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10) > "2026-11-01") return json({ error: "Artisan introuvable." }, 404);
+    // Paiements en ligne pas encore actifs : la fiche reste consultable (photos, services, avis) mais n'est pas réservable.
+    // Le client le voit via paiement_en_ligne = false (même règle que la carte grisée de l'annuaire).
+    artisan.paiement_en_ligne = artisan.stripe_connect_statut === "actif";
 
     // Photo du service (lot26-photo-service.sql) : si la colonne n'existe pas encore, on relit sans elle (rien ne casse).
     let { data: services, error: errServices } = await sb.from("artisans_services")

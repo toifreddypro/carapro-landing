@@ -90,7 +90,7 @@ Deno.serve(async (req: Request) => {
       .eq("suspendu_commission", false);
 
     // Un artisan sans paiement en ligne (Stripe) ne peut pas encaisser une réservation ni une commande : il reste visible dans l'annuaire,
-    // mais sa vignette est grisée (champ paiement_en_ligne). La fiche détaillée reste fermée tant que Stripe n'est pas finalisé.
+    // mais sa vignette est grisée (champ paiement_en_ligne). La fiche (photos, services, avis) reste consultable, sans réservation (décision du 19/11/2026).
     const aujourdhui = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10); // date en Guadeloupe (UTC-4)
     // Filtre « artisans RGE » : uniquement un badge validé par l'administrateur ET encore dans sa date de validité.
     if (url.searchParams.get("rge") === "1") requete = requete.eq("rge_statut", "valide").gte("rge_valide_jusqu", aujourdhui);

@@ -1568,7 +1568,7 @@ function renderArtisanCard(a) {
   var grise = a.paiement_en_ligne === false; // Stripe pas finalisé : visible, en couleurs, mais pas réservable — le client peut le prévenir
   if (!document.getElementById('style-carte-grisee')) {
     var stg = document.createElement('style'); stg.id = 'style-carte-grisee';
-    stg.textContent = '.formateur-card.carte-grisee{cursor:default;}' +
+    stg.textContent = '.formateur-card.carte-grisee{cursor:pointer;}' +
       '.carte-grisee-note{margin-top:10px;padding:10px 12px;border-radius:12px;background:#eef4ff;border:1px solid #cfe0fb;color:#1f3b63;font-size:12.5px;line-height:1.5;}.carte-grisee-note b{color:#13223c;}' +
       '.carte-grisee-note button{display:block;width:100%;margin-top:9px;min-height:44px;border:0;border-radius:12px;background:#1565e8;color:#fff;font:inherit;font-weight:700;font-size:14px;cursor:pointer;}' +
       '.interet-fond{position:fixed;inset:0;background:rgba(19,34,60,.55);z-index:99999;display:flex;align-items:flex-end;justify-content:center;padding:12px;}' +
@@ -1585,8 +1585,8 @@ function renderArtisanCard(a) {
     document.head.appendChild(stg);
   }
   var noteGrisee = grise ? '<div class="carte-grisee-note"><b>' + escHtml(T('carte_grisee_titre')) + '</b><br>' + escHtml(T('carte_grisee_texte')) +
-    '<button type="button" onclick="ouvrirInteret(' + jsAttr(a.id) + ')">' + escHtml(T('interet_bouton')) + '</button></div>' : '';
-  return '<div class="formateur-card' + (grise ? ' carte-grisee' : '') + '" style="position:relative;"' + (grise ? ' aria-disabled="true"' : ' onclick="ouvrirProfil(' + jsAttr(a.id) + ')"') + '>' + (grise ? '' : coeurHtml(a.id, false)) +
+    '<button type="button" onclick="event.stopPropagation();ouvrirInteret(' + jsAttr(a.id) + ')">' + escHtml(T('interet_bouton')) + '</button></div>' : '';
+  return '<div class="formateur-card' + (grise ? ' carte-grisee' : '') + '" style="position:relative;"' + ' onclick="ouvrirProfil(' + jsAttr(a.id) + ')"' + '>' + (grise ? '' : coeurHtml(a.id, false)) +
     '<div class="card-top-row">' + photo +
       '<div class="card-info">' +
         '<div class="card-name">' + escHtml(a.nom_entreprise) + '</div>' +
@@ -1685,7 +1685,7 @@ async function ouvrirProfil(id) {
     _profilDataCourant = data;
     div.innerHTML = buildProfilHTML(data);
     initFicheFx();
-    chargerApercuDispo(data.artisan.id);
+    if (data.artisan.paiement_en_ligne !== false) chargerApercuDispo(data.artisan.id);
 
   } catch(e) {
     afficherFicheIndisponible(id, statutHttp);
@@ -1851,14 +1851,17 @@ function buildProfilHTML(data) {
 
   // ── Onglet Services : une ligne par service (petite photo, durée, prix) ; la grande photo et le détail s'ouvrent au clic.
   var devisBtn = '<button type="button" class="fx-btn2" onclick="ouvrirModalDevis(' + jsAttr(a.id) + ',' + jsAttr(a.nom_entreprise) + ',' + jsAttr(a.secteur) + ')">' + escHtml(T('demander_devis')) + '</button>';
+  var grise = a.paiement_en_ligne === false; // paiements en ligne pas actifs : on voit la fiche, on ne réserve pas
+  if (grise) devisBtn = '';
   var servicesHtml = _fxServices.length
     ? _fxServices.map(function(s, i) {
         var ic = ICONES_FX[i % ICONES_FX.length], d = formatDureeFx(s.duree_estimee_min);
         var th = s.photo_url ? '<img class="fx-th" src="' + escHtml(s.photo_url) + '" alt="" loading="lazy">' : '<span class="fx-th" style="background:' + ic[1] + '">' + ic[0] + '</span>';
-        return '<button type="button" class="fx-svc" onclick="ouvrirServiceFx(' + i + ')">' + th +
-          '<span class="fx-svc-txt"><span class="fx-svc-nom">' + escHtml(s.nom_service) + '</span><span class="fx-svc-meta">' + (d ? d + ' · ' : '') + prixServiceFx(s) + '</span></span><span class="fx-plus">+</span></button>';
+        return '<' + (grise ? 'div style="cursor:default;"' : 'button type="button" onclick="ouvrirServiceFx(' + i + ')"') + ' class="fx-svc">' + th +
+          '<span class="fx-svc-txt"><span class="fx-svc-nom">' + escHtml(s.nom_service) + '</span><span class="fx-svc-meta">' + (d ? d + ' · ' : '') + prixServiceFx(s) + '</span></span>' + (grise ? '' : '<span class="fx-plus">+</span>') + '</' + (grise ? 'div' : 'button') + '>';
       }).join('') + devisBtn
     : '<div style="color:var(--mu,#999);font-size:13.5px;margin-bottom:12px;">' + T('aucun_service') + '</div>' + devisBtn;
+  if (grise) servicesHtml = '<div style="margin:0 0 12px;padding:12px 14px;border-radius:14px;background:#eef4ff;border:1px solid #cfe0fb;color:#1f3b63;font-size:13px;line-height:1.5;"><b style="color:#13223c;">' + escHtml(T('carte_grisee_titre')) + '</b><br>' + escHtml(T('carte_grisee_texte')) + '</div>' + servicesHtml;
 
   // ── Onglet Photos
   var photosHtml = _fxPhotos.length
@@ -1919,7 +1922,7 @@ function buildProfilHTML(data) {
         }).join('') + '<span class="fx-ind" id="fx-ind"></span></div>' +
         onglets.map(function(o, i) { return '<div class="fx-panel' + (i === 0 ? ' on' : '') + '" data-p="' + o[0] + '">' + o[2] + '</div>'; }).join('') +
       '</div>' +
-      '<div class="fx-bar"><button type="button" class="fx-cta" id="fx-cta" onclick="ouvrirDispoFx()">📅 ' + escHtml(T('fx_voir_dispos')) + '</button></div>' +
+      '<div class="fx-bar">' + (grise ? '<button type="button" class="fx-cta" id="fx-cta" onclick="ouvrirInteret(' + jsAttr(a.id) + ')">' + escHtml(T('interet_bouton')) + '</button>' : '<button type="button" class="fx-cta" id="fx-cta" onclick="ouvrirDispoFx()">📅 ' + escHtml(T('fx_voir_dispos')) + '</button>') + '</div>' +
       '<div class="fx-scrim" id="fx-scrim" onclick="fermerFeuillesFx()"></div>' +
       '<div class="fx-sheet" id="fx-dispo"><div class="fx-sheet-tete"><span>' + escHtml(T('fx_dispos_titre')) + '</span><button type="button" onclick="fermerFeuillesFx()" aria-label="' + escHtml(T('partage_fermer')) + '">✕</button></div>' +
         '<div class="fx-sheet-corps"><div class="fx-dispo-sec"><div id="dispo-zone-' + escHtml(a.id) + '"><div style="font-size:12.5px;color:var(--mu,#999);">⏳ Vérification des disponibilités…</div></div></div></div></div>' +
