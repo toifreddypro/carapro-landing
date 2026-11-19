@@ -113,10 +113,37 @@
   :root.fond-plan body{background:transparent;}
   :root.fond-plan body::before{content:'';position:fixed;inset:0;z-index:-1;background-size:cover;background-position:8% center;background-image:linear-gradient(rgba(6,16,30,0.3),rgba(6,16,30,0.3)),url('img/fond-plan-d.webp');}
   @media(min-width:701px){:root.fond-plan body::before{background-position:center;}}
-  :root.fond-circuit{--bg:#08182a;--panel:#0e2338;--brd:#1e4260;--b2:#1e4260;--inp:#12304a;--tx:#eaf4fb;--mu:#93b0c6;--mu2:#c3d7e6;--ok:#34d399;--gold:#f0b44c;--hf:#08182a;--hf-tx:#ffffff;--hf-brd:rgba(255,255,255,.28);--hf-hover:rgba(255,255,255,.14);--hf-act-bg:#ffffff;--hf-act-tx:#13223c;color-scheme:dark;background:var(--bg);}
+  :root.fond-circuit{--bg:#08182a;--panel:#0e2338;--brd:#1e4260;--b2:#1e4260;--inp:#12304a;--tx:#eaf4fb;--mu:#93b0c6;--mu2:#c3d7e6;--ok:#34d399;--gold:#f0b44c;--hf:#ffffff;--hf-tx:#13223c;--hf-brd:rgba(19,34,60,.18);--hf-hover:rgba(19,34,60,.07);--hf-act-bg:#13223c;--hf-act-tx:#ffffff;color-scheme:dark;background:var(--bg);}
+  :root.fond-circuit .recherche-in input{background:#f2f5f9;color:#13223c;border-color:rgba(19,34,60,.18);}
   :root.fond-circuit body{background:transparent;}
   :root.fond-circuit body::before{content:'';position:fixed;inset:0;z-index:-1;background-size:cover;background-position:4% center;background-image:linear-gradient(rgba(6,16,30,0.25),rgba(6,16,30,0.25)),url('img/fond-circuit-d.webp');}
   @media(min-width:701px){:root.fond-circuit body::before{background-position:center;}}
+  /* ── Élégance : noir satin, rouge drap, rose marbré. Boutons en dégradé d'or, prix et accents dorés ── */
+  :root.fond-satin{--bg:#050506;--panel:#0d0d10;--brd:#3a3120;--b2:#3a3120;--inp:#17171b;--tx:#f6f0e2;--mu:#b3aa98;--mu2:#d6cdb9;--ok:#34d399;--gold:#f0b44c;--ac:#E7BE55;--ac2:#E7BE55;--or-grad:linear-gradient(135deg,#fbe9a6 0%,#e0b64a 42%,#a87814 100%);--or-tx:#2a1c00;--or-ombre:rgba(224,182,74,.3);--hf:#0b0b0e;--hf-tx:#f6ecd0;--hf-brd:rgba(226,184,70,.35);--hf-hover:rgba(226,184,70,.14);--hf-act-bg:#e0b64a;--hf-act-tx:#2a1c00;color-scheme:dark;background:var(--bg);}
+  :root.fond-drap{--bg:#1f0309;--panel:#26050c;--brd:#5c3326;--b2:#5c3326;--inp:#340811;--tx:#fff3e6;--mu:#e0b5aa;--mu2:#f0d2c8;--ok:#34d399;--gold:#f0b44c;--ac:#F0CB6A;--ac2:#F0CB6A;--or-grad:linear-gradient(135deg,#fbe9a6 0%,#e0b64a 42%,#a87814 100%);--or-tx:#2a1c00;--or-ombre:rgba(240,200,90,.35);--hf:#2a0409;--hf-tx:#fff3e6;--hf-brd:rgba(236,196,90,.4);--hf-hover:rgba(236,196,90,.16);--hf-act-bg:#e0b64a;--hf-act-tx:#2a1c00;color-scheme:dark;background:var(--bg);}
+  :root.fond-marbre{--bg:#fbe7ea;--panel:#fffdfb;--brd:#ead5c8;--b2:#ead5c8;--inp:#fdf4f1;--tx:#4a2b2b;--mu:#8a6a66;--mu2:#6e4f4b;--ac:#9a6420;--ac2:#9a6420;--or-grad:linear-gradient(135deg,#f3d58c 0%,#d9a850 45%,#b17a2b 100%);--or-tx:#3b2410;--or-ombre:rgba(177,122,43,.3);--hf:#fffdfb;--hf-tx:#5a3a2a;--hf-brd:rgba(177,122,43,.35);--hf-hover:rgba(177,122,43,.1);--hf-act-bg:#b17a2b;--hf-act-tx:#ffffff;background:var(--bg);}
+  :root.fond-satin body,:root.fond-drap body,:root.fond-marbre body{background:transparent;}
+  :root.fond-satin body::before,:root.fond-drap body::before,:root.fond-marbre body::before{content:'';position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center;}
+  :root.fond-satin body::before{background-image:url('img/fond-satin-m.webp');}
+  :root.fond-drap body::before{background-image:url('img/fond-drap-m.webp');}
+  :root.fond-marbre body::before{background-image:url('img/fond-marbre-d.webp');}
+  @media(min-width:701px){:root.fond-satin body::before{background-image:url('img/fond-satin-d.webp');}:root.fond-drap body::before{background-image:url('img/fond-drap-d.webp');}}
+  :root.fond-satin h2.section-titre,:root.fond-drap h2.section-titre,:root.fond-marbre h2.section-titre{display:inline-block;background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:6px 18px;}
+  :root.fond-satin .onglets,:root.fond-drap .onglets,:root.fond-marbre .onglets{background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:0 14px;}
+  :root.fond-satin .promo-bandeau,:root.fond-drap .promo-bandeau,:root.fond-marbre .promo-bandeau{background:var(--panel);}
+  :root.fond-satin .carte-produit,:root.fond-drap .carte-produit,:root.fond-satin .bloc-infos,:root.fond-drap .bloc-infos,:root.fond-satin .entete,:root.fond-drap .entete{box-shadow:none;}
+  :root.fond-satin .recherche-in input,:root.fond-drap .recherche-in input{border-color:var(--hf-brd);}
+  /* boutons pleins : dégradé d'or, texte foncé */
+  :root.fond-satin .annonce,:root.fond-drap .annonce,:root.fond-marbre .annonce,
+  :root.fond-satin .btn-commander,:root.fond-drap .btn-commander,:root.fond-marbre .btn-commander,
+  :root.fond-satin .btn-primary,:root.fond-drap .btn-primary,:root.fond-marbre .btn-primary,
+  :root.fond-satin .panier-flottant,:root.fond-drap .panier-flottant,:root.fond-marbre .panier-flottant,
+  :root.fond-satin .pastille-panier,:root.fond-drap .pastille-panier,:root.fond-marbre .pastille-panier,
+  :root.fond-satin .btn-vue.actif,:root.fond-drap .btn-vue.actif,:root.fond-marbre .btn-vue.actif{background:var(--or-grad);color:var(--or-tx);border-color:transparent;}
+  :root.fond-satin .btn-commander,:root.fond-drap .btn-commander,:root.fond-marbre .btn-commander,
+  :root.fond-satin .btn-primary,:root.fond-drap .btn-primary,:root.fond-marbre .btn-primary,
+  :root.fond-satin .panier-flottant,:root.fond-drap .panier-flottant,:root.fond-marbre .panier-flottant{box-shadow:0 6px 18px var(--or-ombre),inset 0 1px 0 rgba(255,255,255,.5);}
+  :root.fond-satin .panier-badge,:root.fond-drap .panier-badge,:root.fond-marbre .panier-badge{background:#2a1c00;color:#f6e3a1;}
   :root.fond-chene h2.section-titre,:root.fond-acier h2.section-titre,:root.fond-beton h2.section-titre,:root.fond-plan h2.section-titre,:root.fond-circuit h2.section-titre{display:inline-block;background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:6px 18px;}
   :root.fond-chene .onglets,:root.fond-acier .onglets,:root.fond-beton .onglets,:root.fond-plan .onglets,:root.fond-circuit .onglets{background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:0 14px;}
   :root.fond-chene .promo-bandeau,:root.fond-acier .promo-bandeau,:root.fond-beton .promo-bandeau,:root.fond-plan .promo-bandeau,:root.fond-circuit .promo-bandeau{background:var(--panel);}
@@ -1361,16 +1388,17 @@ function render() {
 
   // ── Personnalisation de l'artisan : couleur d'accent, image de fond, coordonnées et texte choisis par lui ──
   var COULEURS = { terre: '#EA580C', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
-  if (['creme', 'sombre', 'terre', 'bleu', 'vert', 'rose', 'violet', 'ocre', 'plage', 'sable', 'motif', 'emeraude', 'soie', 'couleurs', 'bois', 'jungle', 'brume', 'aube', 'menthe', 'ciel', 'lavande', 'perle', 'ocean', 'lagon', 'corail', 'foret', 'schiste', 'aurore', 'feuillage', 'frangipanier', 'provence', 'palmes', 'chene', 'acier', 'beton', 'plan', 'circuit'].indexOf(a.boutique_fond) >= 0) {
+  if (['creme', 'sombre', 'terre', 'bleu', 'vert', 'rose', 'violet', 'ocre', 'plage', 'sable', 'motif', 'emeraude', 'soie', 'couleurs', 'bois', 'jungle', 'brume', 'aube', 'menthe', 'ciel', 'lavande', 'perle', 'ocean', 'lagon', 'corail', 'foret', 'schiste', 'aurore', 'feuillage', 'frangipanier', 'provence', 'palmes', 'chene', 'acier', 'beton', 'plan', 'circuit', 'satin', 'drap', 'marbre'].indexOf(a.boutique_fond) >= 0) {
     document.documentElement.classList.add('fond-' + a.boutique_fond);
     if (a.boutique_fond === 'sombre' || a.boutique_fond === 'motif' || a.boutique_fond === 'emeraude') COULEURS = { terre: '#D0623B', bleu: '#3F86D6', vert: '#2F9A62', rose: '#D0449A', violet: '#8061DB', ocre: '#C48A1F' };
   }
-  if (a.boutique_accent && COULEURS[a.boutique_accent]) {
+  var estOr = ['satin', 'drap', 'marbre'].indexOf(a.boutique_fond) >= 0; // thèmes « Or » : boutons et prix dorés, pas de couleur d'accent
+  if (a.boutique_accent && COULEURS[a.boutique_accent] && !estOr) {
     document.documentElement.style.setProperty('--ac', COULEURS[a.boutique_accent]);
     document.documentElement.style.setProperty('--ac2', COULEURS[a.boutique_accent]);
   }
   var estSombre = a.boutique_fond === 'sombre' || a.boutique_fond === 'motif' || a.boutique_fond === 'emeraude';
-  if (/^#[0-9a-f]{6}$/.test(a.boutique_accent_libre || '')) {
+  if (/^#[0-9a-f]{6}$/.test(a.boutique_accent_libre || '') && !estOr) {
     var accL = ajusterAccent(a.boutique_accent_libre, estSombre);
     document.documentElement.style.setProperty('--ac', accL);
     document.documentElement.style.setProperty('--ac2', accL);
