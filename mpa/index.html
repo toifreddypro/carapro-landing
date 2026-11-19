@@ -534,14 +534,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   @keyframes fmMonte{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 }
 
-/* Bande bleue en bas de page (ordinateur) : casse le blanc et l'orange */
+/* Bande bleue en bas de page (ordinateur) : pleine largeur, de bord à bord */
 .bande-bleue{display:none;}
 @media(min-width:641px){
-  .bande-bleue{display:flex;order:98;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;max-width:1200px;width:100%;box-sizing:border-box;margin:34px auto 0;padding:26px 30px;border-radius:20px;background:#13223c;color:#fff;}
-  .bande-bleue b{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:800;margin-bottom:3px;}
-  .bande-bleue span{font-size:14px;color:#b9c6dc;}
-  .bande-bleue button{background:#EA580C;color:#fff;border:0;border-radius:12px;padding:12px 22px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
-  .bande-bleue button:hover{background:#C2410C;}
+  .bande-bleue{display:block;order:98;flex-shrink:0;width:calc(100% + 40px);margin:34px -20px 0;height:56px;background:#13223c;}
 }
 /* ── Menu du bas (téléphone) : 5 boutons toujours visibles, le reste dans « Plus » ── */
 #bnav,#plus-fond,#plus-feuille{display:none;}
@@ -1803,7 +1799,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Demandes reçues -->
 <!-- Avis reçus -->
 <!-- Commandes reçues -->
-<div class="bande-bleue"><div><b>Une idée, un souci ?</b><span>Dites-nous ce qui vous aiderait, on lit tout.</span></div><button type="button" onclick="ouvrirAvisProduit()">Donner mon avis</button></div>
+<div class="bande-bleue" aria-hidden="true"></div>
 <footer style="max-width:1200px;margin:30px auto 10px;padding:20px;text-align:center;border-top:1px solid var(--brd);">
 <div style="font-size:11.5px;color:var(--mu);">
       MPA Artisans — <a href="#" onclick="ouvrirAvisProduit();return false;" style="color:var(--ac-t,var(--ac));text-decoration:underline;">Donner votre avis sur CaraLink Artisans</a> — <a href="#" onclick="ouvrirQuestionActivites();return false;" style="color:var(--ac-t,var(--ac));text-decoration:underline;">Mes activités</a> — <a href="#" onclick="ouvrirSuppressionCompte();return false;" style="color:var(--mu);text-decoration:underline;">Supprimer mon compte</a>
