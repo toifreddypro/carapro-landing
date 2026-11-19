@@ -1896,10 +1896,29 @@ function buildProfilHTML(data) {
           (av.reponse_artisan ? '<div style="margin-top:6px;padding:8px 10px;background:var(--p2,#f6f9fe);border-radius:10px;font-size:12.5px;color:var(--mu2,#777);"><strong style="color:#C2410C;">' + T('reponse_artisan_prefix') + '</strong> ' + escHtml(av.reponse_artisan) + '</div>' : '') + '</div>';
       }).join('') + (avis.length > 2 ? '<button type="button" class="fx-btn2" id="fx-avis-plus" onclick="voirPlusAvisFx()" style="margin-top:12px;">' + escHtml(T('avis_voir_plus')) + ' (' + (avis.length - 2) + ')</button>' : '')
     : '<div style="color:var(--mu,#999);font-size:13.5px;">' + T('aucun_avis') + '</div>';
-  var presentation = (bioTxt ? '<p style="font-size:14.5px;line-height:1.6;margin:0;">' + escHtml(bioTxt) + '</p>' : '') +
-    (a.nouveau ? '<p style="font-size:12.5px;color:var(--mu2,#777);margin:' + (bioTxt ? '10px' : '0') + ' 0 0;">' + escHtml(T('badge_nouveau_info')) + '</p>' : '');
+  // Onglet À propos : la description est déjà en haut de la fiche (plus de doublon). Ici : infos pratiques, réseaux, avantages, avis.
+  var infos = [];
+  var kmRayon = Number(a.rayon_intervention_km);
+  if (a.mode_lieu === 'salon') infos.push('🏠 ' + T('fiche_salon').replace('{commune}', a.commune || ''));
+  else if (kmRayon > 0) infos.push('📍 ' + T('fiche_zone').replace('{km}', Math.round(kmRayon)).replace('{commune}', a.commune || ''));
+  if (a.membre_depuis) {
+    var dMembre = new Date(a.membre_depuis);
+    if (!isNaN(dMembre.getTime())) infos.push('🗓️ ' + T('fiche_membre').replace('{date}', dMembre.toLocaleDateString(AT_LANG === 'en' ? 'en-GB' : (AT_LANG === 'es' ? 'es-ES' : 'fr-FR'), { month: 'long', year: 'numeric' })));
+  }
+  var reseaux = [];
+  if (/^[A-Za-z0-9._]{1,30}$/.test(a.boutique_instagram || '')) reseaux.push(['📸 Instagram', 'https://www.instagram.com/' + a.boutique_instagram]);
+  if (/^[A-Za-z0-9.\-]{1,80}$/.test(a.boutique_facebook || '')) reseaux.push(['📘 Facebook', 'https://www.facebook.com/' + a.boutique_facebook]);
+  if (/^[A-Za-z0-9._]{1,30}$/.test(a.boutique_tiktok || '')) reseaux.push(['🎵 TikTok', 'https://www.tiktok.com/@' + a.boutique_tiktok]);
+  var infosHtml = infos.map(function(t) { return '<div style="font-weight:600;font-size:13.5px;line-height:1.5;">' + escHtml(t) + '</div>'; }).join('') +
+    (a.nouveau ? '<div style="font-size:12.5px;color:var(--mu2,#777);margin-top:' + (infos.length ? '8px' : '0') + ';">' + escHtml(T('badge_nouveau_info')) + '</div>' : '');
+  var reseauxHtml = reseaux.length
+    ? '<div style="display:flex;flex-wrap:wrap;gap:8px;">' + reseaux.map(function(r) {
+        return '<a href="' + escHtml(r[1]) + '" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:9px 14px;border-radius:99px;border:1px solid var(--brd,#e3eaf4);color:var(--tx,#13223c);font-weight:700;font-size:13px;text-decoration:none;">' + escHtml(r[0]) + '</a>';
+      }).join('') + '</div>'
+    : '';
   var aproposHtml =
-    (presentation ? '<div class="fx-bloc"><h4>' + escHtml(T('fiche_presentation')) + '</h4>' + presentation + '</div>' : '') +
+    (infosHtml ? '<div class="fx-bloc"><h4>' + escHtml(T('fiche_infos')) + '</h4>' + infosHtml + '</div>' : '') +
+    (reseauxHtml ? '<div class="fx-bloc"><h4>' + escHtml(T('fiche_reseaux')) + '</h4>' + reseauxHtml + '</div>' : '') +
     (avantages ? '<div class="fx-bloc"><h4>' + escHtml(T('fiche_avantages')) + '</h4>' + avantages + '</div>' : '') +
     '<div class="fx-bloc"><h4>' + escHtml(T('avis_titre')) + '</h4>' + avisHtml + '</div>';
 

@@ -28,7 +28,7 @@ const corsHeaders = {
 //    ce sont des lectures publiques, mieux vaut un service disponible qu'un site bloqué par une panne du limiteur. ──
 const COLONNES_ARTISAN_BASE = "id, nom_entreprise, secteur, commune, bio, photo_profil_url, verifie, rayon_intervention_km, alternance_niveau, stripe_connect_statut, slug_catalogue, code_promo, boutique_en_pause";
 // Du plus complet au plus simple : si une colonne facultative n'existe pas encore (SQL pas lancé), on réessaie avec moins.
-const JEUX_COLONNES_ARTISAN = [`${COLONNES_ARTISAN_BASE}, mode_lieu, cashback_pct, cashback_ventes, cashback_interventions, code_promo_ventes, code_promo_interventions, remise_fidele_pct, code_promo_pct, code_promo_fin, code_promo_visible, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, cashback_pct, cashback_ventes, cashback_interventions, code_promo_ventes, code_promo_interventions, remise_fidele_pct, code_promo_pct, code_promo_fin, code_promo_visible, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, cashback_pct, remise_fidele_pct, code_promo_pct, code_promo_fin, code_promo_visible, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, code_promo_pct, code_promo_fin, code_promo_visible, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, code_promo_pct, code_promo_fin, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite`, `${COLONNES_ARTISAN_BASE}, frais_deplacement`, COLONNES_ARTISAN_BASE];
+const JEUX_COLONNES_ARTISAN = [`${COLONNES_ARTISAN_BASE}, mode_lieu, cashback_pct, cashback_ventes, cashback_interventions, code_promo_ventes, code_promo_interventions, remise_fidele_pct, code_promo_pct, code_promo_fin, code_promo_visible, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures, boutique_instagram, boutique_facebook, boutique_tiktok`, `${COLONNES_ARTISAN_BASE}, cashback_pct, cashback_ventes, cashback_interventions, code_promo_ventes, code_promo_interventions, remise_fidele_pct, code_promo_pct, code_promo_fin, code_promo_visible, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, cashback_pct, remise_fidele_pct, code_promo_pct, code_promo_fin, code_promo_visible, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, code_promo_pct, code_promo_fin, code_promo_visible, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, code_promo_pct, code_promo_fin, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite, frais_reservation, annulation_gratuite_heures`, `${COLONNES_ARTISAN_BASE}, frais_deplacement, proposer_visite`, `${COLONNES_ARTISAN_BASE}, frais_deplacement`, COLONNES_ARTISAN_BASE];
 const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MSG_ERREUR_GENERIQUE = "Une erreur est survenue. Réessayez dans un instant.";
 // Produits phares selon l'offre : 1 en gratuit, 4 en Pro (même règle écrite côté base : phares-plan.sql).
@@ -86,30 +86,51 @@ Deno.serve(async (req: Request) => {
     const id = url.searchParams.get("id");
     if (!id) return json({ error: "Identifiant manquant." }, 400);
     if (!REGEX_UUID.test(id)) return json({ error: "Artisan introuvable." }, 404);
-    if (await limiteAtteinte(sb, "lire-artisan:" + ipVisiteur(req), 120, 60)) return reponseTropDeRequetes(corsHeaders);
+    const limitePromise = limiteAtteinte(sb, "lire-artisan:" + ipVisiteur(req), 120, 60); // lancée en même temps que la lecture de l'artisan (plus rapide)
 
     let artisan: any = null, error: any = null;
     for (const colonnes of JEUX_COLONNES_ARTISAN) {
       ({ data: artisan, error } = await sb.from("artisans").select(colonnes).eq("id", id).eq("actif", true).eq("suspendu_commission", false).maybeSingle());
       if (!(error && (error as any).code === "42703")) break;
     }
+    if (await limitePromise) return reponseTropDeRequetes(corsHeaders);
     if (error) throw error;
     if (!artisan) return json({ error: "Artisan introuvable." }, 404);
     // Paiements en ligne pas encore actifs : la fiche reste consultable (photos, services, avis) mais n'est pas réservable.
     // Le client le voit via paiement_en_ligne = false (même règle que la carte grisée de l'annuaire).
     artisan.paiement_en_ligne = artisan.stripe_connect_statut === "actif";
 
+    // Lectures indépendantes lancées TOUTES EN MÊME TEMPS (avant : une après l'autre, ce qui rendait l'ouverture de la fiche lente).
     // Photo du service (lot26-photo-service.sql) : si la colonne n'existe pas encore, on relit sans elle (rien ne casse).
-    let { data: services, error: errServices } = await sb.from("artisans_services")
-      .select("id, nom_service, description, prix_indicatif, unite, duree_estimee_min, photo_url")
-      .eq("artisan_id", id)
-      .order("ordre", { ascending: true });
-    if (errServices && (errServices as any).code === "42703") {
-      ({ data: services } = await sb.from("artisans_services")
-        .select("id, nom_service, description, prix_indicatif, unite, duree_estimee_min")
+    const lireServices = async () => {
+      const r1: any = await sb.from("artisans_services")
+        .select("id, nom_service, description, prix_indicatif, unite, duree_estimee_min, photo_url")
         .eq("artisan_id", id)
-        .order("ordre", { ascending: true }));
-    }
+        .order("ordre", { ascending: true });
+      if (r1.error && (r1.error as any).code === "42703") {
+        return await sb.from("artisans_services")
+          .select("id, nom_service, description, prix_indicatif, unite, duree_estimee_min")
+          .eq("artisan_id", id)
+          .order("ordre", { ascending: true });
+      }
+      return r1;
+    };
+    const [rServices, rPhotos, rProduits, rPlan, rAvis, rNotes]: any[] = await Promise.all([
+      lireServices(),
+      sb.from("artisans_photos").select("url_photo, legende").eq("artisan_id", id).order("ordre", { ascending: true }),
+      sb.from("artisans_catalogue")
+        .select("id, nom, description, prix, url_photo, type, delai_preparation, promo_pct, est_phare")
+        .eq("artisan_id", id)
+        .or("en_vente.is.null,en_vente.eq.true"), // jamais « Mon stock »
+      sb.from("artisans").select("plan, created_at").eq("id", id).maybeSingle(), // le plan n'est jamais renvoyé au public
+      sb.from("avis_carapro")
+        .select("client_nom, note, commentaire, created_at, reponse_artisan, reponse_le")
+        .eq("artisan_id", id)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      sb.from("avis_carapro").select("note").eq("artisan_id", id), // note moyenne sur TOUS les avis (la liste ci-dessus n'en montre que 10)
+    ]);
+    let services: any[] = rServices.data;
     // Sécurité : seule une photo rangée dans NOTRE espace public est renvoyée (jamais une adresse extérieure).
     const prefixePhotos = (Deno.env.get("SUPABASE_URL") ?? "") + "/storage/v1/object/public/artisans-photos/";
     services = (services || []).map((s: any) => {
@@ -117,22 +138,16 @@ Deno.serve(async (req: Request) => {
       return s;
     });
 
-    const { data: photos } = await sb.from("artisans_photos")
-      .select("url_photo, legende")
-      .eq("artisan_id", id)
-      .order("ordre", { ascending: true });
+    const photos = rPhotos.data;
 
     // Produits phares — choisis à la main par l'artisan (est_phare), sinon repli sur les
     // meilleures ventes (1 en gratuit, 4 en Pro). Même logique que catalogue.html et la vignette (verifier-disponibilite-
     // artisan.ts), jamais un compteur stocké : toujours recalculé sur les commandes réglées.
     // Le catalogue complet reste sur la page boutique dédiée (lien slug_catalogue) — cette fiche
     // ne montre qu'un aperçu soigné des produits phares, pas la liste entière.
-    const { data: produitsArtisan } = await sb.from("artisans_catalogue")
-      .select("id, nom, description, prix, url_photo, type, delai_preparation, promo_pct, est_phare")
-      .eq("artisan_id", id)
-      .or("en_vente.is.null,en_vente.eq.true"); // jamais « Mon stock »
+    const produitsArtisan = rProduits.data;
     const listeProduits = produitsArtisan || [];
-    const { data: lignePlan } = await sb.from("artisans").select("plan").eq("id", id).maybeSingle(); // jamais renvoyé au public
+    const lignePlan = rPlan.data; // jamais renvoyé au public
     const nbPhares = nbPharesPlan(lignePlan?.plan);
     let produitsPhares: any[] = [];
     if (listeProduits.length) {
@@ -168,23 +183,22 @@ Deno.serve(async (req: Request) => {
     artisan.cashback_pct = peutAfficherAvantages && pctCb >= 1 && pctCb <= 10 && !(artisan.cashback_ventes === false && artisan.cashback_interventions === false) ? pctCb : null;
     artisan.remise_fidele_pct = peutAfficherAvantages && pctFid >= 1 && pctFid <= 20 ? pctFid : null;
 
-    const { data: avis } = await sb.from("avis_carapro")
-      .select("client_nom, note, commentaire, created_at, reponse_artisan, reponse_le")
-      .eq("artisan_id", id)
-      .order("created_at", { ascending: false })
-      .limit(10);
-
-    // Note moyenne et nombre d'avis sur TOUS les avis (la liste ci-dessus n'en montre que les 10 derniers).
-    const { data: toutesLesNotes } = await sb.from("avis_carapro").select("note").eq("artisan_id", id);
+    const avis = rAvis.data;
+    const toutesLesNotes = rNotes.data;
     const notes = (toutesLesNotes || []).map((a: any) => Number(a.note)).filter((n: number) => Number.isFinite(n));
     const noteMoyenne = notes.length ? Math.round((notes.reduce((s: number, n: number) => s + n, 0) / notes.length) * 10) / 10 : null;
 
     // « Nouveau sur CaraLink » : inscrit depuis moins de 90 jours ET moins de 3 avis (même règle que l'annuaire). Jamais une recommandation.
-    const { data: dateInscription } = await sb.from("artisans").select("created_at").eq("id", id).maybeSingle();
+    const dateInscription = rPlan.data;
     const nouveau = !!dateInscription?.created_at
       && new Date(dateInscription.created_at).getTime() > Date.now() - 90 * 24 * 3600 * 1000
       && notes.length < 3;
     artisan.nouveau = nouveau;
+    artisan.membre_depuis = dateInscription?.created_at || null; // affiché « Membre depuis … » dans l'onglet À propos
+    // Réseaux sociaux : seulement un identifiant simple (même contrôle que la boutique), jamais une adresse libre.
+    if (!/^[A-Za-z0-9._]{1,30}$/.test(artisan.boutique_instagram || "")) artisan.boutique_instagram = null;
+    if (!/^[A-Za-z0-9.\-]{1,80}$/.test(artisan.boutique_facebook || "")) artisan.boutique_facebook = null;
+    if (!/^[A-Za-z0-9._]{1,30}$/.test(artisan.boutique_tiktok || "")) artisan.boutique_tiktok = null;
     // « Profil complet » (même règle que l'annuaire) : photo de profil, description d'au moins 40 caractères, au moins un service.
     artisan.profil_complet = !!artisan.photo_profil_url && String(artisan.bio || "").trim().length >= 40 && (services || []).length > 0;
 
