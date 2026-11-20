@@ -33,9 +33,8 @@
   :root.fond-sable{--bg:#f7efe2;--panel:#fffdf8;--brd:#e8dcc8;--b2:#e8dcc8;--inp:#faf4ea;}
   :root.fond-motif{--bg:#0f1115;--panel:#1a1d24;--brd:#2c313c;--b2:#2c313c;--inp:#232732;--tx:#f3f1ec;--mu:#9ba4b3;--mu2:#c5ccd8;--ok:#34d399;--gold:#f0b44c;color-scheme:dark;}
   :root.fond-emeraude{--bg:#0c1f19;--panel:#13302a;--brd:#25493f;--b2:#25493f;--inp:#183a32;--tx:#f3f1ec;--mu:#9fb8ae;--mu2:#c9ddd3;--ok:#34d399;--gold:#e3b95a;color-scheme:dark;}
-  :root.fond-soie{--bg:#f7efec;--panel:#fffdfb;--brd:#eadfd8;--b2:#eadfd8;--inp:#fbf5f2;--ac:#9a6420;--ac2:#9a6420;--or-grad:linear-gradient(135deg,#f3d58c 0%,#d9a850 45%,#b17a2b 100%);--or-tx:#3b2410;--or-ombre:rgba(177,122,43,.3);--hf:#dfb552;--hf-tx:#2a1c00;--hf-brd:rgba(42,28,0,.25);--hf-hover:rgba(42,28,0,.1);--hf-act-bg:#2a1c00;--hf-act-tx:#f6e3a1;}
-  :root.fond-soie .recherche-in input{background:#fff9ec;border-color:rgba(42,28,0,.25);}
-  :root.fond-couleurs{--bg:#faf6ee;--panel:#ffffff;--brd:#eadfca;--b2:#eadfca;--inp:#fcf8f0;}
+  :root.fond-soie{--bg:#f7efec;--panel:#fffdfb;--brd:#eadfd8;--b2:#eadfd8;--inp:#fbf5f2;--ac:#9a6420;--ac2:#9a6420;--or-grad:linear-gradient(135deg,#f3d58c 0%,#d9a850 45%,#b17a2b 100%);--or-tx:#3b2410;--or-ombre:rgba(177,122,43,.3);--hf:#ffffff;--hf-tx:#a8701c;--hf-brd:rgba(168,112,28,.35);--hf-hover:rgba(168,112,28,.1);--hf-act-bg:#b17a2b;--hf-act-tx:#ffffff;}
+  :root.fond-couleurs{--bg:#faf6ee;--panel:#ffffff;--brd:#eadfca;--b2:#eadfca;--inp:#fcf8f0;--ac:#D0064F;--ac2:#D0064F;--hf:#ffffff;--hf-tx:#D0064F;--hf-brd:rgba(208,6,79,.3);--hf-hover:rgba(208,6,79,.08);--hf-act-bg:#D0064F;--hf-act-tx:#ffffff;}
   :root.fond-bois{--bg:#efe3d0;--panel:#fffaf2;--brd:#e3d3ba;--b2:#e3d3ba;--inp:#f9f1e3;}
   :root.fond-jungle{--bg:#e6f0e2;--panel:#fbfefa;--brd:#cfe0c8;--b2:#cfe0c8;--inp:#f1f8ee;}
   :root.fond-plage body,:root.fond-sable body,:root.fond-motif body,:root.fond-emeraude body,:root.fond-soie body,:root.fond-couleurs body,:root.fond-bois body,:root.fond-jungle body{background:transparent;}
@@ -120,6 +119,7 @@
   :root.fond-circuit .annonce,:root.fond-circuit .btn-commander,:root.fond-circuit .btn-primary,:root.fond-circuit .panier-flottant,:root.fond-circuit .pastille-panier,:root.fond-circuit .btn-vue.actif{background:#ffffff;color:#13223c;border-color:transparent;}
   :root.fond-circuit .btn-commander,:root.fond-circuit .btn-primary,:root.fond-circuit .panier-flottant{box-shadow:0 6px 18px rgba(0,0,0,.35);}
   :root.fond-circuit .panier-badge{background:#13223c;color:#ffffff;}
+  :root.fond-circuit .prix-actuel,:root.fond-circuit .panier-total span:last-child{color:#ffffff;}
   :root.fond-circuit body{background:transparent;}
   :root.fond-circuit body::before{content:'';position:fixed;inset:0;z-index:-1;background-size:cover;background-position:4% center;background-image:linear-gradient(rgba(6,16,30,0.25),rgba(6,16,30,0.25)),url('img/fond-circuit-d.webp');}
   @media(min-width:701px){:root.fond-circuit body::before{background-position:center;}}
@@ -129,29 +129,33 @@
   :root.fond-marbre{--bg:#fbe7ea;--panel:#fffdfb;--brd:#ead5c8;--b2:#ead5c8;--inp:#fdf4f1;--tx:#4a2b2b;--mu:#8a6a66;--mu2:#6e4f4b;--ac:#9a6420;--ac2:#9a6420;--or-grad:linear-gradient(135deg,#f3d58c 0%,#d9a850 45%,#b17a2b 100%);--or-tx:#3b2410;--or-ombre:rgba(177,122,43,.3);--hf:#fffdfb;--hf-tx:#5a3a2a;--hf-brd:rgba(177,122,43,.35);--hf-hover:rgba(177,122,43,.1);--hf-act-bg:#b17a2b;--hf-act-tx:#ffffff;background:var(--bg);}
   :root.fond-blancrouge{--bg:#fafafa;--panel:#ffffff;--brd:#e6e3e3;--b2:#e6e3e3;--inp:#f6f4f4;--tx:#1c1c1f;--mu:#6b6b73;--mu2:#45454c;--ac:#C8102E;--ac2:#C8102E;--or-grad:linear-gradient(135deg,#ff6a6a 0%,#d81e3a 45%,#98091f 100%);--or-tx:#ffffff;--or-ombre:rgba(200,16,46,.35);--hf:#ffffff;--hf-tx:#1c1c1f;--hf-brd:#e6e3e3;--hf-hover:rgba(200,16,46,.08);--hf-act-bg:#C8102E;--hf-act-tx:#ffffff;background:var(--bg);}
   :root.fond-blancrouge body::before{background-image:url('img/fond-blancrouge-m.webp');}
-  @media(min-width:701px){:root.fond-blancrouge body::before{background-image:url('img/fond-blancrouge-d.webp');}}
-  :root.fond-satin body,:root.fond-drap body,:root.fond-marbre body,:root.fond-blancrouge body{background:transparent;}
-  :root.fond-satin body::before,:root.fond-drap body::before,:root.fond-marbre body::before,:root.fond-blancrouge body::before{content:'';position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center;}
+  @media(min-width:701px){:root.fond-blancrouge body::before,:root.fond-nuages body::before{background-image:url('img/fond-blancrouge-d.webp');}}
+  :root.fond-nuages{--bg:#dcebfb;--panel:#ffffff;--brd:#d3e3f6;--b2:#d3e3f6;--inp:#f3f8fe;--tx:#14284b;--mu:#5a6f93;--mu2:#3c5282;--ac:#2f7fe0;--ac2:#2f7fe0;--or-grad:linear-gradient(135deg,#8cc8ff 0%,#3f8fe8 48%,#1f5fc2 100%);--or-tx:#ffffff;--or-ombre:rgba(47,127,224,.35);--hf:#ffffff;--hf-tx:#1f5fc2;--hf-brd:rgba(31,95,194,.25);--hf-hover:rgba(31,95,194,.08);--hf-act-bg:#1f5fc2;--hf-act-tx:#ffffff;background:var(--bg);}
+  :root.fond-nuages body::before{background-image:url('img/fond-nuages-m.webp');}
+  @media(min-width:701px){:root.fond-nuages body::before{background-image:url('img/fond-nuages-d.webp');}}
+  :root.fond-nuages .panier-badge{background:#ffffff;color:#1f5fc2;}
+  :root.fond-satin body,:root.fond-drap body,:root.fond-marbre body,:root.fond-blancrouge body,:root.fond-nuages body{background:transparent;}
+  :root.fond-satin body::before,:root.fond-drap body::before,:root.fond-marbre body::before,:root.fond-blancrouge body::before,:root.fond-nuages body::before{content:'';position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center;}
   :root.fond-satin body::before{background-image:url('img/fond-satin-m.webp');}
   :root.fond-drap body::before{background-image:url('img/fond-drap-m.webp');}
   :root.fond-marbre body::before{background-image:url('img/fond-marbre-d.webp');}
   @media(min-width:701px){:root.fond-satin body::before{background-image:url('img/fond-satin-d.webp');}:root.fond-drap body::before{background-image:url('img/fond-drap-d.webp');}}
-  :root.fond-satin h2.section-titre,:root.fond-drap h2.section-titre,:root.fond-marbre h2.section-titre,:root.fond-blancrouge h2.section-titre{display:inline-block;background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:6px 18px;}
-  :root.fond-satin .onglets,:root.fond-drap .onglets,:root.fond-marbre .onglets,:root.fond-blancrouge .onglets{background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:0 14px;}
-  :root.fond-satin .promo-bandeau,:root.fond-drap .promo-bandeau,:root.fond-marbre .promo-bandeau,:root.fond-blancrouge .promo-bandeau{background:var(--panel);}
+  :root.fond-satin h2.section-titre,:root.fond-drap h2.section-titre,:root.fond-marbre h2.section-titre,:root.fond-blancrouge h2.section-titre,:root.fond-nuages h2.section-titre{display:inline-block;background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:6px 18px;}
+  :root.fond-satin .onglets,:root.fond-drap .onglets,:root.fond-marbre .onglets,:root.fond-blancrouge .onglets,:root.fond-nuages .onglets{background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:0 14px;}
+  :root.fond-satin .promo-bandeau,:root.fond-drap .promo-bandeau,:root.fond-marbre .promo-bandeau,:root.fond-blancrouge .promo-bandeau,:root.fond-nuages .promo-bandeau{background:var(--panel);}
   :root.fond-satin .carte-produit,:root.fond-drap .carte-produit,:root.fond-satin .bloc-infos,:root.fond-drap .bloc-infos,:root.fond-satin .entete,:root.fond-drap .entete{box-shadow:none;}
   :root.fond-satin .recherche-in input,:root.fond-drap .recherche-in input{border-color:var(--hf-brd);}
   /* boutons pleins : dégradé d'or, texte foncé */
-  :root.fond-satin .annonce,:root.fond-drap .annonce,:root.fond-marbre .annonce,:root.fond-blancrouge .annonce,:root.fond-soie .annonce,
-  :root.fond-satin .btn-commander,:root.fond-drap .btn-commander,:root.fond-marbre .btn-commander,:root.fond-blancrouge .btn-commander,:root.fond-soie .btn-commander,
-  :root.fond-satin .btn-primary,:root.fond-drap .btn-primary,:root.fond-marbre .btn-primary,:root.fond-blancrouge .btn-primary,:root.fond-soie .btn-primary,
-  :root.fond-satin .panier-flottant,:root.fond-drap .panier-flottant,:root.fond-marbre .panier-flottant,:root.fond-blancrouge .panier-flottant,:root.fond-soie .panier-flottant,
-  :root.fond-satin .pastille-panier,:root.fond-drap .pastille-panier,:root.fond-marbre .pastille-panier,:root.fond-blancrouge .pastille-panier,:root.fond-soie .pastille-panier,
-  :root.fond-satin .btn-vue.actif,:root.fond-drap .btn-vue.actif,:root.fond-marbre .btn-vue.actif,:root.fond-blancrouge .btn-vue.actif,:root.fond-soie .btn-vue.actif{background:var(--or-grad);color:var(--or-tx);border-color:transparent;}
-  :root.fond-satin .btn-commander,:root.fond-drap .btn-commander,:root.fond-marbre .btn-commander,:root.fond-blancrouge .btn-commander,:root.fond-soie .btn-commander,
-  :root.fond-satin .btn-primary,:root.fond-drap .btn-primary,:root.fond-marbre .btn-primary,:root.fond-blancrouge .btn-primary,:root.fond-soie .btn-primary,
-  :root.fond-satin .panier-flottant,:root.fond-drap .panier-flottant,:root.fond-marbre .panier-flottant,:root.fond-blancrouge .panier-flottant,:root.fond-soie .panier-flottant{box-shadow:0 6px 18px var(--or-ombre),inset 0 1px 0 rgba(255,255,255,.5);}
-  :root.fond-satin .panier-badge,:root.fond-drap .panier-badge,:root.fond-marbre .panier-badge,:root.fond-blancrouge .panier-badge,:root.fond-soie .panier-badge{background:#2a1c00;color:#f6e3a1;}
+  :root.fond-satin .annonce,:root.fond-drap .annonce,:root.fond-marbre .annonce,:root.fond-blancrouge .annonce,:root.fond-nuages .annonce,:root.fond-soie .annonce,
+  :root.fond-satin .btn-commander,:root.fond-drap .btn-commander,:root.fond-marbre .btn-commander,:root.fond-blancrouge .btn-commander,:root.fond-nuages .btn-commander,:root.fond-soie .btn-commander,
+  :root.fond-satin .btn-primary,:root.fond-drap .btn-primary,:root.fond-marbre .btn-primary,:root.fond-blancrouge .btn-primary,:root.fond-nuages .btn-primary,:root.fond-soie .btn-primary,
+  :root.fond-satin .panier-flottant,:root.fond-drap .panier-flottant,:root.fond-marbre .panier-flottant,:root.fond-blancrouge .panier-flottant,:root.fond-nuages .panier-flottant,:root.fond-soie .panier-flottant,
+  :root.fond-satin .pastille-panier,:root.fond-drap .pastille-panier,:root.fond-marbre .pastille-panier,:root.fond-blancrouge .pastille-panier,:root.fond-nuages .pastille-panier,:root.fond-soie .pastille-panier,
+  :root.fond-satin .btn-vue.actif,:root.fond-drap .btn-vue.actif,:root.fond-marbre .btn-vue.actif,:root.fond-blancrouge .btn-vue.actif,:root.fond-nuages .btn-vue.actif,:root.fond-soie .btn-vue.actif{background:var(--or-grad);color:var(--or-tx);border-color:transparent;}
+  :root.fond-satin .btn-commander,:root.fond-drap .btn-commander,:root.fond-marbre .btn-commander,:root.fond-blancrouge .btn-commander,:root.fond-nuages .btn-commander,:root.fond-soie .btn-commander,
+  :root.fond-satin .btn-primary,:root.fond-drap .btn-primary,:root.fond-marbre .btn-primary,:root.fond-blancrouge .btn-primary,:root.fond-nuages .btn-primary,:root.fond-soie .btn-primary,
+  :root.fond-satin .panier-flottant,:root.fond-drap .panier-flottant,:root.fond-marbre .panier-flottant,:root.fond-blancrouge .panier-flottant,:root.fond-nuages .panier-flottant,:root.fond-soie .panier-flottant{box-shadow:0 6px 18px var(--or-ombre),inset 0 1px 0 rgba(255,255,255,.5);}
+  :root.fond-satin .panier-badge,:root.fond-drap .panier-badge,:root.fond-marbre .panier-badge,:root.fond-blancrouge .panier-badge,:root.fond-nuages .panier-badge,:root.fond-soie .panier-badge{background:#2a1c00;color:#f6e3a1;}
   :root.fond-blancrouge .panier-badge{background:#ffffff;color:#98091f;}
   :root.fond-chene h2.section-titre,:root.fond-acier h2.section-titre,:root.fond-beton h2.section-titre,:root.fond-plan h2.section-titre,:root.fond-circuit h2.section-titre{display:inline-block;background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:6px 18px;}
   :root.fond-chene .onglets,:root.fond-acier .onglets,:root.fond-beton .onglets,:root.fond-plan .onglets,:root.fond-circuit .onglets{background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:0 14px;}
@@ -1397,11 +1401,11 @@ function render() {
 
   // ── Personnalisation de l'artisan : couleur d'accent, image de fond, coordonnées et texte choisis par lui ──
   var COULEURS = { terre: '#EA580C', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
-  if (['creme', 'sombre', 'terre', 'bleu', 'vert', 'rose', 'violet', 'ocre', 'plage', 'sable', 'motif', 'emeraude', 'soie', 'couleurs', 'bois', 'jungle', 'brume', 'aube', 'menthe', 'ciel', 'lavande', 'perle', 'ocean', 'lagon', 'corail', 'foret', 'schiste', 'aurore', 'feuillage', 'frangipanier', 'provence', 'palmes', 'chene', 'acier', 'beton', 'plan', 'circuit', 'satin', 'drap', 'marbre', 'blancrouge'].indexOf(a.boutique_fond) >= 0) {
+  if (['creme', 'sombre', 'terre', 'bleu', 'vert', 'rose', 'violet', 'ocre', 'plage', 'sable', 'motif', 'emeraude', 'soie', 'couleurs', 'bois', 'jungle', 'brume', 'aube', 'menthe', 'ciel', 'lavande', 'perle', 'ocean', 'lagon', 'corail', 'foret', 'schiste', 'aurore', 'feuillage', 'frangipanier', 'provence', 'palmes', 'chene', 'acier', 'beton', 'plan', 'circuit', 'satin', 'drap', 'marbre', 'blancrouge', 'nuages'].indexOf(a.boutique_fond) >= 0) {
     document.documentElement.classList.add('fond-' + a.boutique_fond);
     if (a.boutique_fond === 'sombre' || a.boutique_fond === 'motif' || a.boutique_fond === 'emeraude') COULEURS = { terre: '#D0623B', bleu: '#3F86D6', vert: '#2F9A62', rose: '#D0449A', violet: '#8061DB', ocre: '#C48A1F' };
   }
-  var estOr = ['satin', 'drap', 'marbre', 'soie', 'blancrouge'].indexOf(a.boutique_fond) >= 0; // thèmes « Or » : boutons et prix dorés, pas de couleur d'accent
+  var estOr = ['satin', 'drap', 'marbre', 'soie', 'blancrouge', 'couleurs', 'nuages'].indexOf(a.boutique_fond) >= 0; // thèmes « Or » : boutons et prix dorés, pas de couleur d'accent
   if (a.boutique_accent && COULEURS[a.boutique_accent] && !estOr) {
     document.documentElement.style.setProperty('--ac', COULEURS[a.boutique_accent]);
     document.documentElement.style.setProperty('--ac2', COULEURS[a.boutique_accent]);
