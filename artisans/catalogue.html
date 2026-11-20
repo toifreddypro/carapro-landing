@@ -157,6 +157,30 @@
   :root.fond-satin .panier-flottant,:root.fond-drap .panier-flottant,:root.fond-marbre .panier-flottant,:root.fond-blancrouge .panier-flottant,:root.fond-nuages .panier-flottant,:root.fond-soie .panier-flottant{box-shadow:0 6px 18px var(--or-ombre),inset 0 1px 0 rgba(255,255,255,.5);}
   :root.fond-satin .panier-badge,:root.fond-drap .panier-badge,:root.fond-marbre .panier-badge,:root.fond-blancrouge .panier-badge,:root.fond-nuages .panier-badge,:root.fond-soie .panier-badge{background:#2a1c00;color:#f6e3a1;}
   :root.fond-blancrouge .panier-badge{background:#ffffff;color:#98091f;}
+  /* ── Élégance : Violet royal, Vert émeraude. Boutons en dégradé clair de la couleur du thème, texte et prix blancs ── */
+  :root.fond-violetroyal{--bg:#1a0630;--panel:#240a40;--brd:#5b2f93;--b2:#5b2f93;--inp:#2f1253;--tx:#ffffff;--mu:#cdb4ea;--mu2:#e6d6f7;--ok:#34d399;--gold:#f0b44c;--ac:#c58cff;--ac2:#c58cff;--or-grad:linear-gradient(135deg,#dcb2ff 0%,#a55df0 46%,#6a27c4 100%);--or-tx:#ffffff;--or-ombre:rgba(165,93,240,.45);--hf:#1c0734;--hf-tx:#ffffff;--hf-brd:rgba(214,168,255,.4);--hf-hover:rgba(197,140,255,.18);--hf-act-bg:#a55df0;--hf-act-tx:#ffffff;color-scheme:dark;background:var(--bg);}
+  :root.fond-vertemeraude{--bg:#03150a;--panel:#07210f;--brd:#1d6b38;--b2:#1d6b38;--inp:#0b2d16;--tx:#ffffff;--mu:#a9d9ba;--mu2:#d3f0de;--ok:#34d399;--gold:#f0b44c;--ac:#5ee38a;--ac2:#5ee38a;--or-grad:linear-gradient(135deg,#8df0ae 0%,#27c25c 46%,#0e8a38 100%);--or-tx:#ffffff;--or-ombre:rgba(39,194,92,.45);--hf:#041a0c;--hf-tx:#ffffff;--hf-brd:rgba(110,230,150,.4);--hf-hover:rgba(94,227,138,.16);--hf-act-bg:#27c25c;--hf-act-tx:#ffffff;color-scheme:dark;background:var(--bg);}
+  :root.fond-violetroyal body,:root.fond-vertemeraude body{background:transparent;}
+  :root.fond-violetroyal body::before,:root.fond-vertemeraude body::before{content:'';position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center;}
+  :root.fond-violetroyal body::before{background-image:url('img/fond-violetroyal.webp');}
+  :root.fond-vertemeraude body::before{background-image:url('img/fond-vertemeraude.webp');background-position:center bottom;}
+  :root.fond-violetroyal h2.section-titre,:root.fond-vertemeraude h2.section-titre{display:inline-block;background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:6px 18px;}
+  :root.fond-violetroyal .onglets,:root.fond-vertemeraude .onglets{background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:0 14px;}
+  :root.fond-violetroyal .promo-bandeau,:root.fond-vertemeraude .promo-bandeau{background:var(--panel);}
+  :root.fond-violetroyal .carte-produit,:root.fond-vertemeraude .carte-produit,:root.fond-violetroyal .bloc-infos,:root.fond-vertemeraude .bloc-infos,:root.fond-violetroyal .entete,:root.fond-vertemeraude .entete{box-shadow:none;}
+  :root.fond-violetroyal .recherche-in input,:root.fond-vertemeraude .recherche-in input{border-color:var(--hf-brd);}
+  :root.fond-violetroyal .annonce,:root.fond-vertemeraude .annonce,
+  :root.fond-violetroyal .btn-commander,:root.fond-vertemeraude .btn-commander,
+  :root.fond-violetroyal .btn-primary,:root.fond-vertemeraude .btn-primary,
+  :root.fond-violetroyal .panier-flottant,:root.fond-vertemeraude .panier-flottant,
+  :root.fond-violetroyal .pastille-panier,:root.fond-vertemeraude .pastille-panier,
+  :root.fond-violetroyal .btn-vue.actif,:root.fond-vertemeraude .btn-vue.actif{background:var(--or-grad);color:#ffffff;border-color:transparent;text-shadow:0 1px 2px rgba(0,0,0,.35);}
+  :root.fond-violetroyal .btn-commander,:root.fond-vertemeraude .btn-commander,
+  :root.fond-violetroyal .btn-primary,:root.fond-vertemeraude .btn-primary,
+  :root.fond-violetroyal .panier-flottant,:root.fond-vertemeraude .panier-flottant{box-shadow:0 6px 18px var(--or-ombre),inset 0 1px 0 rgba(255,255,255,.45);}
+  :root.fond-violetroyal .panier-badge,:root.fond-vertemeraude .panier-badge{background:#ffffff;color:#1a0630;}
+  :root.fond-vertemeraude .panier-badge{color:#03150a;}
+  :root.fond-violetroyal .prix-actuel,:root.fond-vertemeraude .prix-actuel,:root.fond-violetroyal .panier-total span:last-child,:root.fond-vertemeraude .panier-total span:last-child{color:#ffffff;}
   :root.fond-chene h2.section-titre,:root.fond-acier h2.section-titre,:root.fond-beton h2.section-titre,:root.fond-plan h2.section-titre,:root.fond-circuit h2.section-titre{display:inline-block;background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:6px 18px;}
   :root.fond-chene .onglets,:root.fond-acier .onglets,:root.fond-beton .onglets,:root.fond-plan .onglets,:root.fond-circuit .onglets{background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:0 14px;}
   :root.fond-chene .promo-bandeau,:root.fond-acier .promo-bandeau,:root.fond-beton .promo-bandeau,:root.fond-plan .promo-bandeau,:root.fond-circuit .promo-bandeau{background:var(--panel);}
@@ -1403,11 +1427,11 @@ function render() {
 
   // ── Personnalisation de l'artisan : couleur d'accent, image de fond, coordonnées et texte choisis par lui ──
   var COULEURS = { terre: '#EA580C', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
-  if (['creme', 'sombre', 'terre', 'bleu', 'vert', 'rose', 'violet', 'ocre', 'plage', 'sable', 'motif', 'emeraude', 'soie', 'couleurs', 'bois', 'jungle', 'brume', 'aube', 'menthe', 'ciel', 'lavande', 'perle', 'ocean', 'lagon', 'corail', 'foret', 'schiste', 'aurore', 'feuillage', 'frangipanier', 'provence', 'palmes', 'chene', 'acier', 'beton', 'plan', 'circuit', 'satin', 'drap', 'marbre', 'blancrouge', 'nuages'].indexOf(a.boutique_fond) >= 0) {
+  if (['creme', 'sombre', 'terre', 'bleu', 'vert', 'rose', 'violet', 'ocre', 'plage', 'sable', 'motif', 'emeraude', 'soie', 'couleurs', 'bois', 'jungle', 'brume', 'aube', 'menthe', 'ciel', 'lavande', 'perle', 'ocean', 'lagon', 'corail', 'foret', 'schiste', 'aurore', 'feuillage', 'frangipanier', 'provence', 'palmes', 'chene', 'acier', 'beton', 'plan', 'circuit', 'satin', 'drap', 'marbre', 'blancrouge', 'nuages', 'violetroyal', 'vertemeraude'].indexOf(a.boutique_fond) >= 0) {
     document.documentElement.classList.add('fond-' + a.boutique_fond);
     if (a.boutique_fond === 'sombre' || a.boutique_fond === 'motif' || a.boutique_fond === 'emeraude') COULEURS = { terre: '#D0623B', bleu: '#3F86D6', vert: '#2F9A62', rose: '#D0449A', violet: '#8061DB', ocre: '#C48A1F' };
   }
-  var estOr = ['satin', 'drap', 'marbre', 'soie', 'blancrouge', 'couleurs', 'nuages'].indexOf(a.boutique_fond) >= 0; // thèmes « Or » : boutons et prix dorés, pas de couleur d'accent
+  var estOr = ['satin', 'drap', 'marbre', 'soie', 'blancrouge', 'couleurs', 'nuages', 'violetroyal', 'vertemeraude'].indexOf(a.boutique_fond) >= 0; // thèmes « Or » : boutons et prix dorés, pas de couleur d'accent
   if (a.boutique_accent && COULEURS[a.boutique_accent] && !estOr) {
     document.documentElement.style.setProperty('--ac', COULEURS[a.boutique_accent]);
     document.documentElement.style.setProperty('--ac2', COULEURS[a.boutique_accent]);
