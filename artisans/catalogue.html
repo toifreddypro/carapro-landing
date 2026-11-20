@@ -158,8 +158,8 @@
   :root.fond-satin .panier-badge,:root.fond-drap .panier-badge,:root.fond-marbre .panier-badge,:root.fond-blancrouge .panier-badge,:root.fond-nuages .panier-badge,:root.fond-soie .panier-badge{background:#2a1c00;color:#f6e3a1;}
   :root.fond-blancrouge .panier-badge{background:#ffffff;color:#98091f;}
   /* ── Élégance : Violet royal, Vert émeraude. Boutons en dégradé clair de la couleur du thème, texte et prix blancs ── */
-  :root.fond-violetroyal{--bg:#1a0630;--panel:#240a40;--brd:#5b2f93;--b2:#5b2f93;--inp:#2f1253;--tx:#ffffff;--mu:#cdb4ea;--mu2:#e6d6f7;--ok:#34d399;--gold:#f0b44c;--ac:#c58cff;--ac2:#c58cff;--or-grad:linear-gradient(135deg,#dcb2ff 0%,#a55df0 46%,#6a27c4 100%);--or-tx:#ffffff;--or-ombre:rgba(165,93,240,.45);--hf:#000000;--hf-tx:#f2cf6b;--hf-brd:rgba(226,184,70,.4);--hf-hover:rgba(226,184,70,.16);--hf-act-bg:#e0b64a;--hf-act-tx:#2a1c00;color-scheme:dark;background:var(--bg);}
-  :root.fond-vertemeraude{--bg:#03150a;--panel:#07210f;--brd:#1d6b38;--b2:#1d6b38;--inp:#0b2d16;--tx:#ffffff;--mu:#a9d9ba;--mu2:#d3f0de;--ok:#34d399;--gold:#f0b44c;--ac:#5ee38a;--ac2:#5ee38a;--or-grad:linear-gradient(135deg,#8df0ae 0%,#27c25c 46%,#0e8a38 100%);--or-tx:#ffffff;--or-ombre:rgba(39,194,92,.45);--hf:#000000;--hf-tx:#f2cf6b;--hf-brd:rgba(226,184,70,.4);--hf-hover:rgba(226,184,70,.16);--hf-act-bg:#e0b64a;--hf-act-tx:#2a1c00;color-scheme:dark;background:var(--bg);}
+  :root.fond-violetroyal{--bg:#1a0630;--panel:#240a40;--brd:#5b2f93;--b2:#5b2f93;--inp:#2f1253;--tx:#ffffff;--mu:#cdb4ea;--mu2:#e6d6f7;--ok:#34d399;--gold:#f0b44c;--ac:#c58cff;--ac2:#c58cff;--or-grad:linear-gradient(135deg,#dcb2ff 0%,#a55df0 46%,#6a27c4 100%);--or-tx:#ffffff;--or-ombre:rgba(165,93,240,.45);--hf:#000000;--hf-tx:#f0bd3e;--hf-brd:rgba(226,184,70,.4);--hf-hover:rgba(226,184,70,.16);--hf-act-bg:#e0b64a;--hf-act-tx:#2a1c00;color-scheme:dark;background:var(--bg);}
+  :root.fond-vertemeraude{--bg:#03150a;--panel:#07210f;--brd:#1d6b38;--b2:#1d6b38;--inp:#0b2d16;--tx:#ffffff;--mu:#a9d9ba;--mu2:#d3f0de;--ok:#34d399;--gold:#f0b44c;--ac:#5ee38a;--ac2:#5ee38a;--or-grad:linear-gradient(135deg,#8df0ae 0%,#27c25c 46%,#0e8a38 100%);--or-tx:#ffffff;--or-ombre:rgba(39,194,92,.45);--hf:#000000;--hf-tx:#f0bd3e;--hf-brd:rgba(226,184,70,.4);--hf-hover:rgba(226,184,70,.16);--hf-act-bg:#e0b64a;--hf-act-tx:#2a1c00;color-scheme:dark;background:var(--bg);}
   :root.fond-violetroyal body,:root.fond-vertemeraude body{background:transparent;}
   :root.fond-violetroyal body::before,:root.fond-vertemeraude body::before{content:'';position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center;}
   :root.fond-violetroyal body::before{background-image:url('img/fond-violetroyal.webp');}
@@ -183,6 +183,17 @@
   :root.fond-violetroyal .panier-badge,:root.fond-vertemeraude .panier-badge{background:#ffffff;color:#1a0630;}
   :root.fond-vertemeraude .panier-badge{color:#03150a;}
   :root.fond-violetroyal .prix-actuel,:root.fond-vertemeraude .prix-actuel,:root.fond-violetroyal .panier-total span:last-child,:root.fond-vertemeraude .panier-total span:last-child{color:#ffffff;}
+  /* polices dorées : onglets (sélection du mois, meilleures ventes, promotions…) et texte des boutons */
+  :root.fond-violetroyal .onglet,:root.fond-vertemeraude .onglet{color:#f0bd3e;}
+  :root.fond-violetroyal .onglet:hover,:root.fond-vertemeraude .onglet:hover,:root.fond-violetroyal .onglet.actif,:root.fond-vertemeraude .onglet.actif{color:#ffd24d;border-bottom-color:#f0bd3e;}
+  :root.fond-violetroyal{--or-grad:linear-gradient(135deg,#b077f2 0%,#7b34d8 48%,#53199f 100%);}
+  :root.fond-vertemeraude{--or-grad:linear-gradient(135deg,#46d27f 0%,#16a047 48%,#0a642a 100%);}
+  :root.fond-violetroyal .annonce,:root.fond-vertemeraude .annonce,
+  :root.fond-violetroyal .btn-commander,:root.fond-vertemeraude .btn-commander,
+  :root.fond-violetroyal .btn-primary,:root.fond-vertemeraude .btn-primary,
+  :root.fond-violetroyal .panier-flottant,:root.fond-vertemeraude .panier-flottant,
+  :root.fond-violetroyal .pastille-panier,:root.fond-vertemeraude .pastille-panier,
+  :root.fond-violetroyal .btn-vue.actif,:root.fond-vertemeraude .btn-vue.actif{color:#ffd24d;}
   :root.fond-chene h2.section-titre,:root.fond-acier h2.section-titre,:root.fond-beton h2.section-titre,:root.fond-plan h2.section-titre,:root.fond-circuit h2.section-titre{display:inline-block;background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:6px 18px;}
   :root.fond-chene .onglets,:root.fond-acier .onglets,:root.fond-beton .onglets,:root.fond-plan .onglets,:root.fond-circuit .onglets{background:var(--panel);border:1px solid var(--brd);border-radius:12px;padding:0 14px;}
   :root.fond-chene .promo-bandeau,:root.fond-acier .promo-bandeau,:root.fond-beton .promo-bandeau,:root.fond-plan .promo-bandeau,:root.fond-circuit .promo-bandeau{background:var(--panel);}
