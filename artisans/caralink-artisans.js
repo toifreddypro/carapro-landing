@@ -1907,8 +1907,9 @@ function buildProfilHTML(data) {
   }
   var reseaux = [];
   if (/^[A-Za-z0-9._]{1,30}$/.test(a.boutique_instagram || '')) reseaux.push(['📸 Instagram', 'https://www.instagram.com/' + a.boutique_instagram]);
-  if (/^[A-Za-z0-9.\-]{1,80}$/.test(a.boutique_facebook || '')) reseaux.push(['📘 Facebook', 'https://www.facebook.com/' + a.boutique_facebook]);
   if (/^[A-Za-z0-9._]{1,30}$/.test(a.boutique_tiktok || '')) reseaux.push(['🎵 TikTok', 'https://www.tiktok.com/@' + a.boutique_tiktok]);
+  if (/^[A-Za-z0-9.\-]{1,80}$/.test(a.boutique_facebook || '')) reseaux.push(['📘 Facebook', 'https://www.facebook.com/' + a.boutique_facebook]);
+  if (/^[A-Za-z0-9._\-]{3,30}$/.test(a.boutique_youtube || '')) reseaux.push(['▶️ YouTube', 'https://www.youtube.com/@' + a.boutique_youtube]);
   var infosHtml = infos.map(function(t) { return '<div style="font-weight:600;font-size:13.5px;line-height:1.5;">' + escHtml(t) + '</div>'; }).join('') +
     (a.nouveau ? '<div style="font-size:12.5px;color:var(--mu2,#777);margin-top:' + (infos.length ? '8px' : '0') + ';">' + escHtml(T('badge_nouveau_info')) + '</div>' : '');
   var reseauxHtml = reseaux.length

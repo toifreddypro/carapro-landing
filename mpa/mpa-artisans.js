@@ -7863,6 +7863,14 @@ function nettoyerReseau(txt, domaine) {
   s = s.replace(/^\/+/, '').replace(/^@/, '').split(/[/?#]/)[0].replace(/\s+/g, '');
   return s;
 }
+function nettoyerYoutube(txt) {
+  var s = String(txt || '').trim();
+  if (!s) return '';
+  var i = s.toLowerCase().indexOf('youtube.com');
+  if (i >= 0) s = s.slice(i + 'youtube.com'.length);
+  s = s.replace(/^\/+/, '').replace(/^@/, '').split(/[/?#]/)[0].replace(/\s+/g, '');
+  return s;
+}
 function nettoyerWhatsapp(txt) {
   var d = String(txt || '').replace(/[^\d+]/g, '');
   if (!d) return '';
@@ -7886,6 +7894,7 @@ function afficherStyleBoutique() {
   document.getElementById('pers-instagram').value = _artisan.boutique_instagram || '';
   document.getElementById('pers-facebook').value = _artisan.boutique_facebook || '';
   document.getElementById('pers-tiktok').value = _artisan.boutique_tiktok || '';
+  document.getElementById('pers-youtube').value = _artisan.boutique_youtube || '';
   document.getElementById('pers-whatsapp').value = _artisan.boutique_whatsapp ? '+' + _artisan.boutique_whatsapp : '';
   majInfoWhatsapp();
   if (!document.getElementById('pers-accroche')._lie) {
@@ -7922,11 +7931,24 @@ function persAvance() {
   if (ouvre) chargerPolicesApercu();
 }
 function persReseau(k) {
-  var cfg = { whatsapp: ['pw-wa-on', 'pw-wa-champ', 'pers-whatsapp'], instagram: ['pw-ig-on', 'pw-ig-champ', 'pers-instagram'] }[k];
+  var cfg = { whatsapp: ['pw-wa-on', 'pw-wa-champ', 'pers-whatsapp'], ig: ['pw-ig-on', 'pw-ig-champ', 'pers-instagram'], tt: ['pw-tt-on', 'pw-tt-champ', 'pers-tiktok'], fb: ['pw-fb-on', 'pw-fb-champ', 'pers-facebook'], yt: ['pw-yt-on', 'pw-yt-champ', 'pers-youtube'] }[k];
   var on = document.getElementById(cfg[0]).checked, champ = document.getElementById(cfg[1]), inp = document.getElementById(cfg[2]);
   champ.style.display = on ? '' : 'none';
-  if (on) inp.focus(); else { inp.value = ''; if (k === 'whatsapp') majInfoWhatsapp(); }
+  if (k === 'whatsapp') {
+    if (on) {
+      // Numéro du profil repris tout de suite (converti au format WhatsApp) : l'artisan n'a rien à retaper s'il utilise le même numéro.
+      var np = nettoyerWhatsapp(_artisan && _artisan.telephone), ok = /^[0-9]{8,15}$/.test(np);
+      document.getElementById('pw-wa-meme-l').style.display = ok ? 'flex' : 'none';
+      if (ok && !inp.value.trim()) { document.getElementById('pw-wa-meme').checked = true; persWaMeme(); } else { majInfoWhatsapp(); inp.focus(); }
+    } else { inp.value = ''; inp.readOnly = false; document.getElementById('pw-wa-meme').checked = false; majInfoWhatsapp(); }
+  } else if (on) inp.focus(); else inp.value = '';
   majApercuLive();
+}
+function persWaMeme() {
+  var cb = document.getElementById('pw-wa-meme'), inp = document.getElementById('pers-whatsapp');
+  if (cb.checked) { inp.value = '+' + nettoyerWhatsapp(_artisan && _artisan.telephone); inp.readOnly = true; }
+  else { inp.readOnly = false; inp.value = ''; inp.focus(); }
+  majInfoWhatsapp(); majApercuLive();
 }
 function majApercuLive() {
   var live = document.getElementById('pers-live'); if (!live || !_artisan) return;
@@ -7947,14 +7969,24 @@ function majApercuLive() {
   if (document.getElementById('pers-tel').checked) ic.push('📞');
   if (document.getElementById('pw-wa-on').checked) ic.push('💬');
   if (document.getElementById('pw-ig-on').checked) ic.push('📸');
+  if (document.getElementById('pw-tt-on').checked) ic.push('🎵');
+  if (document.getElementById('pw-fb-on').checked) ic.push('📘');
+  if (document.getElementById('pw-yt-on').checked) ic.push('▶️');
   if (document.getElementById('pers-adresse').checked) ic.push('📍');
   if (document.getElementById('pers-email').checked) ic.push('✉️');
   document.getElementById('pw-icones').innerHTML = ic.map(function(x) { return '<span>' + x + '</span>'; }).join('');
 }
 function persInitUI() {
-  var wa = document.getElementById('pers-whatsapp').value.trim(), ig = document.getElementById('pers-instagram').value.trim();
+  var wa = document.getElementById('pers-whatsapp').value.trim();
   document.getElementById('pw-wa-on').checked = !!wa; document.getElementById('pw-wa-champ').style.display = wa ? '' : 'none';
-  document.getElementById('pw-ig-on').checked = !!ig; document.getElementById('pw-ig-champ').style.display = ig ? '' : 'none';
+  var npro = nettoyerWhatsapp(_artisan && _artisan.telephone), okpro = /^[0-9]{8,15}$/.test(npro);
+  document.getElementById('pw-wa-meme-l').style.display = okpro ? 'flex' : 'none';
+  var meme = !!wa && okpro && nettoyerWhatsapp(wa) === npro;
+  document.getElementById('pw-wa-meme').checked = meme; document.getElementById('pers-whatsapp').readOnly = meme;
+  [['ig', 'pers-instagram'], ['tt', 'pers-tiktok'], ['fb', 'pers-facebook'], ['yt', 'pers-youtube']].forEach(function(p) {
+    var v = document.getElementById(p[1]).value.trim();
+    document.getElementById('pw-' + p[0] + '-on').checked = !!v; document.getElementById('pw-' + p[0] + '-champ').style.display = v ? '' : 'none';
+  });
   if (!_persLie) {
     _persLie = true;
     ['pers-accroche', 'pers-annonce'].forEach(function(id) { document.getElementById(id).addEventListener('input', majApercuLive); });
@@ -8205,10 +8237,12 @@ async function sauverPersonnalisation() {
   if (accroche.length > 90 || annonce.length > 140) { alert('L\'accroche est limitée à 90 caractères et l\'annonce à 140.'); return; }
   if (/https?:|www\./i.test(accroche + ' ' + annonce)) { alert('Les liens ne sont pas autorisés dans l\'accroche ni dans l\'annonce.'); return; }
   var insta = nettoyerReseau(document.getElementById('pers-instagram').value, 'instagram.com'), tik = nettoyerReseau(document.getElementById('pers-tiktok').value, 'tiktok.com'),
-      fb = nettoyerReseau(document.getElementById('pers-facebook').value, 'facebook.com'), wa = nettoyerWhatsapp(document.getElementById('pers-whatsapp').value);
+      fb = nettoyerReseau(document.getElementById('pers-facebook').value, 'facebook.com'), wa = nettoyerWhatsapp(document.getElementById('pers-whatsapp').value),
+      yt = nettoyerYoutube(document.getElementById('pers-youtube').value);
   if (insta && !/^[A-Za-z0-9._]{1,30}$/.test(insta)) { alert('Instagram : écrivez seulement votre nom d\'utilisateur (lettres, chiffres, point, tiret bas).'); return; }
   if (tik && !/^[A-Za-z0-9._]{1,30}$/.test(tik)) { alert('TikTok : écrivez seulement votre nom d\'utilisateur (lettres, chiffres, point, tiret bas).'); return; }
   if (fb && !/^[A-Za-z0-9.\-]{1,80}$/.test(fb)) { alert('Facebook : écrivez seulement le nom de votre page (lettres, chiffres, point, tiret).'); return; }
+  if (yt && !/^[A-Za-z0-9._\-]{3,30}$/.test(yt)) { alert('YouTube : écrivez seulement le nom de votre chaîne, celui qui vient après le @ (3 à 30 caractères : lettres, chiffres, point, tiret).'); return; }
   if (wa && !/^[0-9]{8,15}$/.test(wa)) { alert('WhatsApp : numéro non valide. Exemple : 0690 12 34 56, ou +590 690 12 34 56.'); return; }
   var finAnn = document.getElementById('pers-annonce-fin').value || null;
   var marquesTitre = document.getElementById('pers-marques-titre').value.trim(), messageBas = document.getElementById('pers-message').value.trim();
@@ -8219,7 +8253,7 @@ async function sauverPersonnalisation() {
   var maj = {
     boutique_police: _policeChoisie, boutique_cartes: _cartesChoisies,
     boutique_accroche: accroche || null, boutique_annonce: annonce || null, boutique_annonce_fin: annonce ? finAnn : null,
-    boutique_instagram: insta || null, boutique_facebook: fb || null, boutique_tiktok: tik || null, boutique_whatsapp: wa || null,
+    boutique_instagram: insta || null, boutique_facebook: fb || null, boutique_tiktok: tik || null, boutique_youtube: yt || null, boutique_whatsapp: wa || null,
     boutique_accent_libre: libre,
     boutique_texte: texte || null,
     boutique_marques_titre: marquesTitre || null,
