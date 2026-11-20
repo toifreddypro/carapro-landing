@@ -72,7 +72,7 @@ header{padding:26px 48px;text-align:center;position:relative;z-index:2;}
 
 main{flex:1;padding:70px 24px 60px;text-align:center;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;min-height:60vh;}
 
-.choix-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;max-width:960px;width:100%;margin:0 auto;}
+.choix-grid{display:grid;grid-template-columns:minmax(0,420px);justify-content:center;gap:20px;max-width:960px;width:100%;margin:0 auto;} /* une seule carte (Artisans) ; remettre 1fr 1fr 1fr avec Formation et Alternance */
 .choix-card{background:#fff;border-radius:16px;padding:36px 28px;text-decoration:none;color:var(--ink);transition:transform .15s,box-shadow .15s;box-shadow:0 1px 3px rgba(19,34,60,.08);}
 .choix-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(19,34,60,.12);}
 .choix-icon{font-size:38px;margin-bottom:14px;}
@@ -80,11 +80,11 @@ main{flex:1;padding:70px 24px 60px;text-align:center;position:relative;z-index:1
 .choix-sub{font-size:13.5px;color:var(--mu);line-height:1.5;}
 .choix-card.formation .choix-titre{color:var(--blue);}
 .choix-card.alternance .choix-titre{color:var(--alt);}
-.choix-card.artisans .choix-titre{color:var(--clay);}
+.choix-card.artisans .choix-titre{color:#C2410C;}
 .choix-cta{display:inline-block;margin-top:16px;font-size:12.5px;font-weight:700;}
 .choix-card.formation .choix-cta{color:var(--blue);}
 .choix-card.alternance .choix-cta{color:var(--alt);}
-.choix-card.artisans .choix-cta{color:var(--clay);}
+.choix-card.artisans .choix-cta{color:#C2410C;}
 
 footer{display:flex;align-items:center;justify-content:space-between;padding:22px 48px;font-size:11.5px;color:var(--mu);border-top:1px solid var(--brd);flex-wrap:wrap;gap:10px;}
 footer .footer-links{display:flex;gap:18px;}
@@ -138,6 +138,7 @@ footer .footer-links a:hover{color:var(--blue);}
 
 <main>
   <div class="choix-grid">
+    <!-- Formation et Alternance masqués pour l'instant : à remettre quand Artisans sera bien rempli (enlever ce commentaire).
     <a href="https://www.learnlogicstudio.com/landing-annuaire.html" class="choix-card formation">
       <div class="choix-icon">🎓</div>
       <div class="choix-titre" data-i18n="formation_titre">CaraLink Formation</div>
@@ -151,6 +152,7 @@ footer .footer-links a:hover{color:var(--blue);}
       <div class="choix-sub" data-i18n="alternance_sub">Candidats à l'alternance, entreprises et centres — la mise en relation qui simplifie tout.</div>
       <div class="choix-cta" data-i18n="decouvrir">Découvrir →</div>
     </a>
+    -->
 
     <a href="https://www.learnlogicstudio.com/landing-artisans.html" class="choix-card artisans">
       <div class="choix-icon">🔧</div>
