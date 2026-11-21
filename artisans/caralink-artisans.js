@@ -817,9 +817,9 @@ async function demarrerInfosAnnuaire() {
 
 
 // ════════════════════════════════════════
-//  VITRINE : avant toute recherche, 1 vignette (téléphone) ou 2 (ordinateur) d'artisans qui défilent doucement toutes seules.
+//  VITRINE : avant toute recherche, vignettes réduites d'artisans (nom, secteur, commune, avis) qui défilent doucement (plus de 4 sur ordinateur, plus de 2 sur téléphone).
 //  Même liste publique que le bandeau d'infos (un seul appel). Les artisans grisés (Stripe pas finalisé) y sont aussi : ça montre que l'annuaire se remplit.
-//  Ordre mélangé à chaque visite ; une vignette de plus toutes les 6 s ; pause au survol ou au toucher. Disparaît dès qu'on cherche.
+//  Ordre mélangé à chaque visite ; défilement d'une vignette toutes les 4,5 s ; flèches et glissement au doigt ; pause au survol, au focus ou au toucher. Disparaît dès qu'on cherche.
 // ════════════════════════════════════════
 var _pListePublique = null;
 function listePublique() {
@@ -840,19 +840,36 @@ function melangerListe(t) {
   for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var x = a[i]; a[i] = a[j]; a[j] = x; }
   return a;
 }
-function htmlVitrineCartes() {
-  var v = _vitrine, n = Math.min(ecranTel() ? 1 : 2, v.liste.length), h = '';
-  for (var i = 0; i < n; i++) h += renderArtisanCard(v.liste[(v.debut + i) % v.liste.length]);
-  return h;
+var VITRINE_NOUVEAU = { fr: 'Nouveau', en: 'New', es: 'Nuevo' };
+// Vignette réduite : nom (+ petite coche si vérifié), secteur, commune en couleur, avis. Rien d'autre.
+function htmlVitrineCarte(a) {
+  _artisansCartes[a.id] = a;
+  var lg = (typeof AT_LANG !== 'undefined' && AT_LANG) || 'fr';
+  var photo = a.photo_profil_url
+    ? '<img src="' + escHtml(a.photo_profil_url) + '" class="vit-av" alt="" loading="lazy">'
+    : '<div class="vit-av vit-av-ini">' + initiales(a.nom_entreprise) + '</div>';
+  var nb = a.nb_avis || 0, note = a.note_moyenne != null ? Number(a.note_moyenne) : 0;
+  var avis = nb > 0
+    ? '<span class="vit-etoiles">' + etoilesCarte(note) + '</span> <span>' + note.toFixed(1) + ' (' + nb + ')</span>'
+    : (a.nouveau ? '<span class="vit-nouveau">' + escHtml(VITRINE_NOUVEAU[lg] || VITRINE_NOUVEAU.fr) + '</span>' : '<span class="vit-sans-avis">' + escHtml(T('avis_aucun_court')) + '</span>');
+  return '<div class="vit-carte" role="link" tabindex="0" onclick="ouvrirProfil(' + jsAttr(a.id) + ')" onkeydown="if(event.key===\'Enter\'){ouvrirProfil(' + jsAttr(a.id) + ')}">' + photo +
+    '<div class="vit-nom"><span class="vit-nom-txt">' + escHtml(a.nom_entreprise) + '</span>' + (a.verifie ? '<span class="vit-coche" title="' + escHtml(T('badge_verifie')) + '" aria-label="' + escHtml(T('badge_verifie')) + '">✔</span>' : '') + '</div>' +
+    '<div class="vit-secteur">' + secteurLabel(a.secteur) + '</div>' +
+    '<div class="vit-commune">📍 ' + escHtml(a.commune) + '</div>' +
+    '<div class="vit-avis">' + avis + '</div></div>';
 }
 function peindreVitrineCartes(avecEntree) {
-  var z = document.getElementById('vitrine-cartes');
+  var z = document.getElementById('vitrine-piste');
   if (!z) return;
-  z.innerHTML = htmlVitrineCartes();
-  var v = _vitrine, n = Math.min(ecranTel() ? 1 : 2, v.liste.length);
-  for (var i = 0; i < n; i++) chargerApercuCarte(v.liste[(v.debut + i) % v.liste.length].id);
-  planifierCoeurs();
-  if (avecEntree) atEntree(z.children, 0.1);
+  z.innerHTML = _vitrine.liste.slice(0, 30).map(htmlVitrineCarte).join('');
+  if (avecEntree) atEntree(z.children, 0.05);
+}
+function vitrineDefiler(sens) {
+  var z = document.getElementById('vitrine-piste'); if (!z) return;
+  var c = z.querySelector('.vit-carte'); var pas = c ? c.getBoundingClientRect().width + 12 : 200;
+  var fin = z.scrollLeft + z.clientWidth >= z.scrollWidth - 4;
+  if (sens > 0 && fin) z.scrollTo({ left: 0, behavior: 'smooth' });
+  else z.scrollBy({ left: sens * pas, behavior: 'smooth' });
 }
 function arreterVitrine() {
   clearInterval(_vitrine.timer); _vitrine.timer = null; _vitrine.actif = false;
@@ -870,10 +887,27 @@ async function afficherVitrine() {
     var st = document.createElement('style'); st.id = 'style-vitrine';
     st.textContent = '#vitrine{display:none;}body.avant-recherche #vitrine{display:block;}' +
       '#vitrine .vit-titre{text-align:center;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mu2,#6b7c96);margin:0 0 12px;}' +
-      '#vitrine-cartes{transition:opacity .45s ease;}' +
-      '@media(min-width:769px){#vitrine{max-width:1100px;margin:22px auto 8px;padding:0 24px;}#vitrine-cartes{display:grid;grid-template-columns:1fr 1fr;column-gap:20px;}}' +
-      '@media(max-width:768px){#vitrine{margin:6px 12px 22px;}}' +
-      '@media (prefers-reduced-motion:reduce){#vitrine-cartes{transition:none;}}';
+      '#vitrine-cadre{position:relative;}' +
+      '#vitrine-piste{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:4px 2px 12px;}' +
+      '#vitrine-piste::-webkit-scrollbar{display:none;}' +
+      '.vit-carte{flex:0 0 200px;scroll-snap-align:start;box-sizing:border-box;background:#fff;border:2px solid #e3eaf4;border-radius:18px;padding:14px 10px 12px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px;cursor:pointer;box-shadow:0 6px 18px rgba(19,34,60,.06);transition:transform .15s ease,box-shadow .15s ease;min-width:0;}' +
+      '.vit-carte:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(19,34,60,.11);}' +
+      '.vit-carte:focus-visible{outline:3px solid #EA580C;outline-offset:2px;}' +
+      '.vit-av{width:54px;height:54px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-bottom:4px;}' +
+      '.vit-av-ini{display:flex;align-items:center;justify-content:center;background:rgba(234,88,12,.12);color:#C2410C;font-weight:700;font-size:17px;}' +
+      '.vit-nom{display:flex;align-items:center;justify-content:center;gap:5px;max-width:100%;font-weight:700;font-size:14.5px;color:#13223c;}' +
+      '.vit-nom-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}' +
+      '.vit-coche{flex-shrink:0;width:16px;height:16px;border-radius:50%;background:#16a34a;color:#fff;font-size:10px;line-height:16px;text-align:center;}' +
+      '.vit-secteur{font-size:12.5px;color:#5d6b82;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
+      '.vit-commune{font-size:13.5px;font-weight:800;color:#C2410C;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
+      '.vit-avis{font-size:12px;color:#5d6b82;margin-top:2px;display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;}' +
+      '.vit-etoiles .star-on{color:#f59e0b;}.vit-etoiles .star-off{color:#d5dbe6;}' +
+      '.vit-nouveau{background:#e8f0ff;color:#1565e8;font-weight:700;border-radius:999px;padding:2px 9px;font-size:11.5px;}' +
+      '.vit-fl{display:none;position:absolute;top:42%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:1px solid #d9e1ee;background:#fff;color:#13223c;font-size:20px;line-height:1;cursor:pointer;box-shadow:0 4px 12px rgba(19,34,60,.15);z-index:2;}' +
+      '.vit-fl.g{left:-14px;}.vit-fl.d{right:-14px;}' +
+      '@media(min-width:769px){#vitrine{max-width:1100px;margin:22px auto 8px;padding:0 24px;}.vit-fl{display:block;}}' +
+      '@media(max-width:768px){#vitrine{margin:6px 0 22px;}#vitrine .vit-titre{margin-left:12px;margin-right:12px;}#vitrine-piste{padding-left:12px;padding-right:12px;scroll-padding-left:12px;}.vit-carte{flex:0 0 43%;padding:12px 8px 10px;}.vit-av{width:46px;height:46px;}.vit-nom{font-size:13.5px;}}' +
+      '@media (prefers-reduced-motion:reduce){#vitrine-piste{scroll-behavior:auto;}.vit-carte{transition:none;}}';
     document.head.appendChild(st);
   }
   var liste;
@@ -883,23 +917,25 @@ async function afficherVitrine() {
   if (!v.actif || v.liste.length !== liste.length) { v.liste = melangerListe(liste); v.debut = 0; }
   v.actif = true;
   var titre = VITRINE_TITRE[(typeof AT_LANG !== 'undefined' && AT_LANG) || 'fr'] || VITRINE_TITRE.fr;
-  zone.innerHTML = '<div class="vit-titre">' + escHtml(titre) + '</div><div id="vitrine-cartes"></div>';
+  zone.innerHTML = '<div class="vit-titre">' + escHtml(titre) + '</div><div id="vitrine-cadre">' +
+    '<button type="button" class="vit-fl g" aria-label="←" onclick="vitrineDefiler(-1)">‹</button>' +
+    '<div id="vitrine-piste"></div>' +
+    '<button type="button" class="vit-fl d" aria-label="→" onclick="vitrineDefiler(1)">›</button></div>';
   peindreVitrineCartes(true);
   zone.onmouseenter = function() { v.pause = true; };
   zone.onmouseleave = function() { v.pause = false; };
-  zone.ontouchstart = function() { v.pause = true; clearTimeout(v.repriseTactile); v.repriseTactile = setTimeout(function() { v.pause = false; }, 4000); };
+  zone.onfocusin = function() { v.pause = true; };
+  zone.onfocusout = function() { v.pause = false; };
+  var repriseTactile = function() { v.pause = true; clearTimeout(v.repriseTactile); v.repriseTactile = setTimeout(function() { v.pause = false; }, 6000); };
+  zone.ontouchstart = repriseTactile; zone.onpointerdown = repriseTactile;
   clearInterval(v.timer);
-  var visibles = ecranTel() ? 1 : 2;
-  if (v.liste.length > visibles) {
-    var calme = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var calme = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!calme && v.liste.length > 2) {
     v.timer = setInterval(function() {
-      var z = document.getElementById('vitrine-cartes');
-      if (!z) { arreterVitrine(); return; }
+      if (!document.getElementById('vitrine-piste')) { arreterVitrine(); return; }
       if (v.pause || document.hidden || window._rechercheFaite) return;
-      var changer = function() { v.debut = (v.debut + 1) % v.liste.length; peindreVitrineCartes(false); z.style.opacity = '1'; };
-      if (calme) { changer(); return; }
-      z.style.opacity = '0'; setTimeout(changer, 450);
-    }, 6000);
+      vitrineDefiler(1);
+    }, 4500);
   }
 }
 
