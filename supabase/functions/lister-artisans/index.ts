@@ -13,6 +13,8 @@
 //    heure de Guadeloupe), clé = date + identifiant de l'artisan. Les avis n'y entrent JAMAIS, ni l'abonnement Pro.
 //  - « Nouveau sur CaraLink » = inscrit depuis moins de 90 jours ET moins de 3 avis. Une place découverte est réservée toutes les 3 positions
 //    (3e, 6e, 9e…) à un profil nouveau, s'il en reste ; sinon les autres profils remontent. Après 90 jours, l'artisan rejoint le mélange normal.
+//  - Lot 44 (24/11/2026) : deux indicateurs vrai/faux sont ajoutés pour le DÉFILEMENT de l'accueil, sans changer l'ordre ici : actif_recemment et vitrine_eligible
+//    (photo + au moins un produit ou un service). Le site ne s'en sert qu'à partir de 30 artisans. Ni les avis ni l'abonnement Pro n'y entrent.
 //  - Les chiffres (avis, photos…) sont renvoyés tels quels pour AIDER à choisir ; l'absence d'avis donne note_moyenne = null, jamais 0.
 // ═══════════════════════════════════════════════════════════
 
@@ -35,6 +37,7 @@ function json(payload: unknown, status = 200): Response {
 const JOURS_NOUVEAU = 90;      // un artisan reste « nouveau » 90 jours…
 const AVIS_NOUVEAU = 3;        // …ou jusqu'à son 3e avis, le premier des deux
 const PAS_DECOUVERTE = 3;      // une place découverte toutes les 3 positions
+const JOURS_ACTIVITE = 14;     // « actif récemment » = nouveau produit/service, nouvelle photo, changement de prix ou nouvelle promo depuis moins de 14 jours (lot 44)
 
 // Jour de Guadeloupe (UTC-4) : la clé du mélange change à minuit chez nous, pas à 20 h.
 function jourGuadeloupe(): string {
@@ -120,6 +123,23 @@ Deno.serve(async (req: Request) => {
       for (const l of lignes || []) stats.set(l.artisan_id, l);
     }
 
+    // Lot 44 : activité récente et « a au moins un produit ou un service ». Si la mise à jour de la base (lot44-activite-recente.sql) n'est pas
+    // encore faite, l'annuaire fonctionne comme avant : les deux indicateurs restent simplement neutres.
+    const dateActivite = new Map<string, string>();
+    let avecOffre: Set<string> | null = null;
+    if (liste.length) {
+      const idsListe = liste.map((a) => a.id);
+      try {
+        const { data: act, error: errAct } = await sb.from("artisans").select("id, derniere_activite_le").in("id", idsListe);
+        if (!errAct) for (const r of act || []) if (r.derniere_activite_le) dateActivite.set(r.id, r.derniere_activite_le);
+      } catch (_e) { /* colonne pas encore créée */ }
+      try {
+        const { data: off, error: errOff } = await sb.rpc("artisans_avec_offre", { p_ids: idsListe });
+        if (!errOff && Array.isArray(off)) avecOffre = new Set(off.map((r: any) => String(r.artisan_id ?? r)));
+      } catch (_e) { /* fonction pas encore créée */ }
+    }
+    const limiteActivite = Date.now() - JOURS_ACTIVITE * 24 * 3600 * 1000;
+
     const jour = jourGuadeloupe();
     const limiteNouveau = Date.now() - JOURS_NOUVEAU * 24 * 3600 * 1000;
     const enrichis = await Promise.all(liste.map(async (a) => {
@@ -141,6 +161,8 @@ Deno.serve(async (req: Request) => {
           note_moyenne: nbAvis > 0 && st.note_moyenne != null ? Number(st.note_moyenne) : null, // null = pas encore d'avis (jamais 0)
           a_photos: Number(st.nb_photos || 0) > 0,
           profil_complet: profilComplet(a, Number(st.nb_services || 0)),
+          actif_recemment: dateActivite.has(a.id) && new Date(dateActivite.get(a.id) as string).getTime() > limiteActivite,
+          vitrine_eligible: (!!a.photo_profil_url || Number(st.nb_photos || 0) > 0) && (avecOffre ? avecOffre.has(a.id) || Number(st.nb_services || 0) > 0 : true),
         },
       };
     }));

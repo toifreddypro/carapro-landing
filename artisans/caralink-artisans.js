@@ -879,6 +879,20 @@ function preparerBoucleVitrine() {
   var c2 = z.querySelectorAll('.vit-carte')[cartes.length];
   return c2.offsetLeft - cartes[0].offsetLeft; // largeur d'une série (espaces compris)
 }
+// Ordre du défilement. Avant 30 artisans : tout le monde, au hasard (c'est juste et suffisant).
+// À partir de 30 : seuls les profils avec photo + un produit ou un service sont montrés, et le mélange est PONDÉRÉ :
+// les artisans actifs depuis 14 jours ont plus de chances de passer en premier (poids 3), les nouveaux aussi (poids 2), les autres gardent leur chance (poids 1).
+// Ce n'est pas un classement : personne n'est écarté parce qu'il met rarement à jour. Les avis et l'abonnement Pro n'y entrent jamais.
+var SEUIL_VITRINE_PONDEREE = 30;
+function poidsVitrine(a) { return a.actif_recemment ? 3 : (a.nouveau ? 2 : 1); }
+function ordreVitrine(liste, hasard) {
+  hasard = hasard || Math.random;
+  if (liste.length < SEUIL_VITRINE_PONDEREE) return melangerListe(liste);
+  var retenus = liste.filter(function(a) { return a.vitrine_eligible !== false; });
+  return retenus.map(function(a) { return { a: a, k: -Math.log(1 - hasard()) / poidsVitrine(a) }; })
+    .sort(function(x, y) { return x.k - y.k; })
+    .map(function(x) { return x.a; });
+}
 function vitrineDefiler(sens) {
   var z = document.getElementById('vitrine-piste'); if (!z) return;
   var c = z.querySelector('.vit-carte'); var pas = c ? c.getBoundingClientRect().width + 12 : 200;
@@ -929,7 +943,7 @@ async function afficherVitrine() {
   try { liste = await listePublique(); } catch (e) { liste = []; }
   if (!liste.length || window._rechercheFaite) { arreterVitrine(); return; }
   var v = _vitrine;
-  if (!v.actif || v.liste.length !== liste.length) { v.liste = melangerListe(liste); v.debut = 0; }
+  if (!v.actif || v.total !== liste.length) { v.liste = ordreVitrine(liste); v.total = liste.length; v.debut = 0; }
   v.actif = true;
   var titre = VITRINE_TITRE[(typeof AT_LANG !== 'undefined' && AT_LANG) || 'fr'] || VITRINE_TITRE.fr;
   zone.innerHTML = '<div class="vit-titre">' + escHtml(titre) + '</div><div id="vitrine-cadre">' +
