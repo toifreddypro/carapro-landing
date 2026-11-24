@@ -1281,6 +1281,7 @@ async function init() {
   rappelerPaiementsBoutique('demarrage');
   rappelerStripeReservations();
   await verifierNouveautes();
+  await verifierInvitationAvis();
   renderMonOffre();
   renderPremiersPas();
   traiterRetourAbonnement(); // sans attendre : peut patienter jusqu'à 30 s le temps que Stripe prévienne le serveur
@@ -4126,6 +4127,44 @@ function toggleDatePaiement() {
 var AVIS_PRODUIT_URL = 'https://coqprurgsvfxddbmwtor.supabase.co/functions/v1/lire-avis';
 var AVIS_PRODUIT_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvcXBydXJnc3ZmeGRkYm13dG9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0OTg5OTcsImV4cCI6MjA5NDA3NDk5N30.v_8LietUpGkZVgyKgqojE2HoMIE7Y0GVO7fi9AWm4IY';
 
+// ── Invitation à donner son avis : après une intervention terminée, ou à partir de 3 achats réglés dans la boutique ──
+// Une première fois, puis une seule relance si l'artisan a dit « Plus tard » (à l'intervention terminée suivante ou 3 achats de plus).
+// Réponse « Non merci » ou avis envoyé : plus jamais. Écrit sur la fiche artisan (lot 45) ; sans les colonnes, on ne demande rien.
+async function verifierInvitationAvis() {
+  try {
+    if (!_artisan || !('avis_produit_etat' in _artisan)) return;
+    var etat = _artisan.avis_produit_etat || '';
+    if (etat === 'envoye' || etat === 'refuse') return;
+    if (document.querySelector('.modal-overlay.show')) return; // une autre fenêtre est ouverte : on attend la prochaine ouverture
+    var r = await Promise.all([
+      sb.from('mpa_artisans_interventions').select('id', { count: 'exact', head: true }).eq('artisan_id', _artisan.id).in('statut', ['terminee', 'payee']),
+      sb.from('commandes_catalogue').select('id', { count: 'exact', head: true }).eq('artisan_id', _artisan.id).in('paiement_statut', ['paye', 'partiellement_rembourse']).neq('statut', 'annulee')
+    ]);
+    if (r[0].error || r[1].error) return;
+    var nbI = r[0].count || 0, nbA = r[1].count || 0;
+    var parIntervention = etat ? nbI > (_artisan.avis_produit_nb_inter || 0) : nbI >= 1;
+    var parAchats = etat ? nbA >= (_artisan.avis_produit_nb_achats || 0) + 3 : nbA >= 3;
+    if (!parIntervention && !parAchats) return;
+    window._invitAvisCompte = { i: nbI, a: nbA };
+    document.getElementById('invit-avis-texte').textContent = parIntervention
+      ? 'Bravo, une intervention est terminée ! Si CaraLink vous est utile, un petit mot de votre part aiderait d\'autres artisans à nous connaître.'
+      : 'Bravo, vos clients achètent dans votre boutique ! Si CaraLink vous est utile, un petit mot de votre part aiderait d\'autres artisans à nous connaître.';
+    ouvrirModale('modal-invit-avis');
+  } catch (e) { console.warn('[Invitation avis]', e); }
+}
+
+async function repondreInvitationAvis(choix) {
+  fermerModale('modal-invit-avis');
+  var c = window._invitAvisCompte || { i: 0, a: 0 };
+  var demandes = (_artisan.avis_produit_demandes || 0) + 1;
+  var maj = { avis_produit_demandes: demandes, avis_produit_nb_inter: c.i, avis_produit_nb_achats: c.a };
+  // « Non merci » = fini. « Plus tard » (ou fenêtre d'avis refermée sans envoi) = une seule relance, puis fini.
+  maj.avis_produit_etat = (choix === 'non' || demandes >= 2) ? 'refuse' : 'plus_tard';
+  Object.assign(_artisan, maj);
+  try { await sb.from('artisans').update(maj).eq('id', _artisan.id); } catch (e) {}
+  if (choix === 'donner') ouvrirAvisProduit();
+}
+
 function ouvrirAvisProduit() {
   document.getElementById('ap-nom').value = _artisan.nom_entreprise || '';
   document.getElementById('ap-texte').value = '';
@@ -4156,6 +4195,10 @@ async function envoyerAvisProduit() {
     if (data.error) throw new Error(data.error);
     ok.textContent = 'Merci ! Votre avis sera visible après vérification.';
     ok.style.display = 'block';
+    if (_artisan && 'avis_produit_etat' in _artisan) { // avis envoyé : on ne lui redemande plus jamais
+      _artisan.avis_produit_etat = 'envoye';
+      try { await sb.from('artisans').update({ avis_produit_etat: 'envoye' }).eq('id', _artisan.id); } catch (e) {}
+    }
     setTimeout(function() { fermerModale('modal-avis-produit'); }, 2000);
   } catch (e) {
     err.textContent = 'Erreur : ' + e.message;

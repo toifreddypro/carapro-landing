@@ -2483,6 +2483,18 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 </div>
 </div>
+<!-- MODALE : Invitation à donner son avis (après une intervention terminée ou 3 achats) -->
+<div class="modal-overlay" id="modal-invit-avis">
+<div class="modal-box">
+<h3>💬 Un petit mot sur CaraLink ?</h3>
+<p id="invit-avis-texte" style="font-size:14px;color:var(--mu);margin-bottom:16px;line-height:1.55;"></p>
+<div class="modal-actions">
+<button class="btn-primary" onclick="repondreInvitationAvis('donner')">Donner mon avis</button>
+<button class="btn-secondary" onclick="repondreInvitationAvis('plus_tard')">Plus tard</button>
+<button class="btn-secondary" onclick="repondreInvitationAvis('non')">Non merci</button>
+</div>
+</div>
+</div>
 <!-- MODALE : Quoi de neuf -->
 <div class="modal-overlay" id="modal-nouveautes">
 <div class="modal-box">
@@ -3360,6 +3372,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261120e"></script>
+<script src="/mpa/mpa-artisans.js?v=20261125a"></script>
 </body>
 </html>
