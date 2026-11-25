@@ -1055,6 +1055,7 @@ function renderResults() {
   demarrerInfosAnnuaire();
   if (!window._rechercheFaite) document.body.classList.add('avant-recherche');
   afficherVitrine();
+  chargerPubAccueil();
   chargerArtisans();
   setTimeout(initCarte, 100);
 }
@@ -1146,21 +1147,39 @@ function allerPub(i) {
   zone.style.opacity = '0';
   setTimeout(remplacer, 300);
 }
+// Lit la liste des pubs actives (une seule fois). Éteinte ou vide : liste vide.
+async function lirePubListe() {
+  if (_pubListe) return _pubListe;
+  var res = await fetch(SUPABASE_URL + '/rest/v1/rpc/pub_annonces_actives', {
+    method: 'POST',
+    headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON, 'Content-Type': 'application/json' },
+    body: '{}'
+  });
+  var data = await res.json();
+  // Défense en plus : un logo ne vient que de notre dossier de logos, un lien que en https.
+  _pubListe = (Array.isArray(data) ? data : []).filter(function(a) { return a && a.logo_url && String(a.logo_url).indexOf(PUB_URL_LOGOS_OK) === 0; })
+    .map(function(a) { return { nom: String(a.nom || ''), logo_url: a.logo_url, lien: /^https:\/\//i.test(a.lien || '') ? a.lien : null }; });
+  return _pubListe;
+}
+
+// Page d'accueil (avant toute recherche, ordinateur ET téléphone) : une bande discrète sous le défilement, tous les logos côte à côte.
+async function chargerPubAccueil() {
+  var zone = document.getElementById('pub-accueil');
+  if (!zone) return;
+  try {
+    var liste = await lirePubListe();
+    if (!liste.length) { zone.innerHTML = ''; return; }
+    zone.innerHTML = '<div class="pub-accueil-in">' +
+      '<div style="font-size:10.5px;font-weight:700;color:var(--mu2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px;display:flex;justify-content:space-between;"><span>' + escHtml(T('pub_titre')) + '</span><span style="font-weight:600;opacity:.7;">' + escHtml(T('pub_mention')) + '</span></div>' +
+      '<div class="pub-accueil-logos">' + liste.map(function(a) { return '<div class="pub-accueil-item">' + htmlPubLogo(a) + '</div>'; }).join('') + '</div></div>';
+  } catch (e) { zone.innerHTML = ''; /* la pub ne doit jamais gêner l'annuaire */ }
+}
+
 async function chargerPubAnnuaire() {
   var carte = document.getElementById('pub-carte');
   if (!carte) return;
   try {
-    if (!_pubListe) {
-      var res = await fetch(SUPABASE_URL + '/rest/v1/rpc/pub_annonces_actives', {
-        method: 'POST',
-        headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON, 'Content-Type': 'application/json' },
-        body: '{}'
-      });
-      var data = await res.json();
-      // Défense en plus : un logo ne vient que de notre dossier de logos, un lien que en https.
-      _pubListe = (Array.isArray(data) ? data : []).filter(function(a) { return a && a.logo_url && String(a.logo_url).indexOf(PUB_URL_LOGOS_OK) === 0; })
-        .map(function(a) { return { nom: String(a.nom || ''), logo_url: a.logo_url, lien: /^https:\/\//i.test(a.lien || '') ? a.lien : null }; });
-    }
+    await lirePubListe();
     if (!_pubListe.length) { carte.innerHTML = ''; return; }
     if (!document.getElementById('style-pub-annuaire')) {
       var st = document.createElement('style'); st.id = 'style-pub-annuaire';

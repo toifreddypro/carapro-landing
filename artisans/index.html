@@ -1239,6 +1239,15 @@ body.theme-light footer { background:#fbfcfe; }
   <nav id="nav"></nav>
   <section id="hero"></section>
   <section id="vitrine" aria-live="off"></section>
+  <section id="pub-accueil" aria-label="Publicité"></section>
+  <style>
+    #pub-accueil{display:none;}
+    body.avant-recherche #pub-accueil:not(:empty){display:block;max-width:1200px;margin:0 auto 18px;padding:0 16px;box-sizing:border-box;}
+    .pub-accueil-in{background:var(--panel,#fff);border:1px solid var(--brd);border-radius:18px;padding:14px 16px;}
+    .pub-accueil-logos{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;}
+    .pub-accueil-item{flex:0 1 150px;min-width:110px;}
+    @media(max-width:600px){ .pub-accueil-item{flex:0 1 calc(50% - 8px);} body.avant-recherche #pub-accueil:not(:empty){padding:0 12px;} }
+  </style>
 
   <main id="main-results"></main>
   <div id="overlay-profil" style="display:none;"></div>
@@ -1265,7 +1274,7 @@ body.theme-light footer { background:#fbfcfe; }
     </div>
   </footer>
   <script src="/artisans/tr-artisans.js?v=20261119b"></script>
-  <script src="/artisans/caralink-artisans.js?v=20261124a"></script>
+  <script src="/artisans/caralink-artisans.js?v=20261125a"></script>
 
   <!-- ════ FAQ BOUTON FLOTTANT ════ -->
   <button class="faq-fab" onclick="toggleFAQ()" title="Aide & FAQ">
