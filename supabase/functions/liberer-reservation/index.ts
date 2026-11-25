@@ -93,8 +93,8 @@ Deno.serve(async (req: Request) => {
             ? `📧 <a href="mailto:${escHtml(d.client_email)}">${escHtml(d.client_email)}</a>`
             : `📞 <a href="tel:${escHtml(telHref(d.client_telephone))}">${escHtml(d.client_telephone)}</a>`;
           const html = `<div style="font-family:sans-serif;max-width:480px;">
-            <h2 style="color:#B5502F;">📅 Réservation payée — proposition de créneau</h2>
-            ${d.hors_horaires ? `<p style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;padding:10px 14px;border-radius:8px;font-weight:700;">⚠️ Demande hors de vos horaires habituels — vérifiez que ça vous convient avant de confirmer.</p>` : ""}
+            <h2 style="color:#1266E3;">📅 Réservation payée — proposition de créneau</h2>
+            ${d.hors_horaires ? `<p style="background:#EEF4FF;border:1px solid #9DC2F7;color:#0B3D91;padding:10px 14px;border-radius:8px;font-weight:700;">⚠️ Demande hors de vos horaires habituels — vérifiez que ça vous convient avant de confirmer.</p>` : ""}
             <p style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:8px;">💶 Le client a déjà payé <strong>${escHtml(euros(montant))}</strong> de ${nature} en ligne${d.type_intervention === "visite" ? "" : " (un acompte : à déduire du prix final de l'intervention)"}. Si vous refusez ou ne répondez pas, il est remboursé automatiquement.</p>
             <p><strong>${escHtml(d.client_nom)}</strong> (${escHtml(d.commune)}) souhaite une intervention le <strong>${escHtml(dateAff)} entre ${escHtml(hDebut)} et ${escHtml(hFin)}</strong>, à cette adresse : ${escHtml(d.adresse)}.</p>
             <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${texteHtml(d.description_besoin)}</p>

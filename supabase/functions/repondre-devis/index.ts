@@ -190,7 +190,7 @@ Deno.serve(async (req: Request) => {
             <p>Votre demande de rendez-vous pour le <strong>${escHtml(dateAff)} à ${escHtml(heure)}</strong>${chez} n'a malheureusement pas pu être retenue.</p>
             ${message ? `<p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${escHtml(message)}</p>` : ""}
             ${paiement ? `<p style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:8px;">💶 Les <strong>${escHtml(Number(paiement.montant).toFixed(2).replace(".", ","))} €</strong> que vous avez réglés en ligne vous sont <strong>remboursés intégralement</strong>${rembourse ? "" : " (le remboursement est en cours de traitement)"}. Ils apparaîtront sur votre carte sous quelques jours.</p>` : ""}
-            <p style="text-align:center;margin:22px 0;"><a href="${lienFiche}" style="display:inline-block;background:#B5502F;color:#ffffff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:700;">Choisir un autre créneau</a></p>
+            <p style="text-align:center;margin:22px 0;"><a href="${lienFiche}" style="display:inline-block;background:#1266E3;color:#ffffff;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:700;">Choisir un autre créneau</a></p>
             <p style="font-size:12px;color:#6b7c96;">Vous pouvez aussi consulter d'autres artisans sur CaraLink.</p>
           </div>`;
           await envoyerEmail(demande.client_email, `Créneau non disponible${nomArtisan ? ` chez ${nomArtisan}` : ""} — ${dateAff}`, html);

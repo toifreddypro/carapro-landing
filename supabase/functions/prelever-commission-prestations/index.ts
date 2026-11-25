@@ -245,11 +245,11 @@ async function traiterUnArtisan(sb: any, artisan: any, debut: string, finExclusi
     if (artisan.email && !silencieux && !reprise) {
       await envoyerEmail(artisan.email, "⚠️ Une carte est nécessaire pour votre commission CaraLink",
         `<div style="font-family:sans-serif;max-width:480px;">
-          <h2 style="color:#B5502F;">Commission due, aucune carte enregistrée</h2>
+          <h2 style="color:#1266E3;">Commission due, aucune carte enregistrée</h2>
           <p>Bonjour,</p>
           <p>Vos prestations trouvées via CaraLink ont dépassé le seuil gratuit ce mois-ci (${moisISO.slice(0, 7)}) : ${euros(commissionCentimes)} de commission sont dus, mais aucune carte n'est enregistrée sur votre compte.</p>
           <p>Merci d'enregistrer une carte dans MPA Artisans (Ma comptabilité, encart « Carte ») pour régulariser.</p>
-          <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Ouvrir MPA Artisans →</a></p>
+          <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#1266E3;font-weight:700;">Ouvrir MPA Artisans →</a></p>
         </div>`);
     }
     return { artisan_id: artisan.id, nom, statut: "echoue", erreur: "Aucune carte enregistrée." };
@@ -280,12 +280,12 @@ async function traiterUnArtisan(sb: any, artisan: any, debut: string, finExclusi
     if (artisan.email && !silencieux) {
       await envoyerEmail(artisan.email, "⚠️ Le prélèvement de votre commission CaraLink a échoué",
         `<div style="font-family:sans-serif;max-width:480px;">
-          <h2 style="color:#B5502F;">Prélèvement de commission — échec</h2>
+          <h2 style="color:#1266E3;">Prélèvement de commission — échec</h2>
           <p>Bonjour,</p>
           <p>Le prélèvement automatique de ${euros(commissionCentimes)} (commission sur vos prestations de ${moisISO.slice(0, 7)}) n'a pas pu être effectué${intent?.error?.message ? " : " + escHtml(intent.error.message) : ""}.</p>
           <p>Merci de mettre à jour votre carte enregistrée dans MPA Artisans (Ma comptabilité, encart « Carte ») pour régulariser.</p>
-          <p>Le détail du calcul est dans MPA Artisans (bandeau rouge « Voir le calcul »). <a href="https://caralink.app/artisans/#faq-commission" style="color:#B5502F;">Pourquoi cette commission ?</a> Sans règlement sous 30 jours, votre fiche est suspendue de l'annuaire (elle revient dès que vous avez réglé).</p>
-          <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Ouvrir MPA Artisans →</a></p>
+          <p>Le détail du calcul est dans MPA Artisans (bandeau rouge « Voir le calcul »). <a href="https://caralink.app/artisans/#faq-commission" style="color:#1266E3;">Pourquoi cette commission ?</a> Sans règlement sous 30 jours, votre fiche est suspendue de l'annuaire (elle revient dès que vous avez réglé).</p>
+          <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#1266E3;font-weight:700;">Ouvrir MPA Artisans →</a></p>
         </div>`);
     }
     return { artisan_id: artisan.id, nom, statut: "echoue", erreur: motif };
@@ -341,7 +341,7 @@ async function prevenirAdmin(resultats: any[], contexte: string) {
   const lignes = aSignaler.map((r) =>
     `<li><strong>${escHtml(r.nom || r.artisan_id)}</strong>${r.mois ? " (" + escHtml(String(r.mois).slice(0, 7)) + ")" : ""} : ${escHtml(r.statut)}${r.erreur ? " — " + escHtml(r.erreur) : ""}${r.commission ? " — " + escHtml(String(r.commission)) + " €" : ""}</li>`).join("");
   await envoyerEmail(ADMIN_EMAIL, `⚠️ Commission prestations : ${aSignaler.length} prélèvement(s) non abouti(s)`,
-    `<div style="font-family:sans-serif;max-width:560px;"><h2 style="color:#B5502F;">Prélèvements de commission non aboutis</h2><p>Contexte : ${escHtml(contexte)}.</p><ul>${lignes}</ul>
+    `<div style="font-family:sans-serif;max-width:560px;"><h2 style="color:#1266E3;">Prélèvements de commission non aboutis</h2><p>Contexte : ${escHtml(contexte)}.</p><ul>${lignes}</ul>
      <p>Tant qu'une commission reste échouée, l'artisan ne peut plus planifier de nouvelle intervention « annuaire » à la main.</p></div>`);
 }
 

@@ -164,9 +164,9 @@ Deno.serve(async (req: Request) => {
             : `<p><strong>${escHtml(artisan.nom_entreprise)}</strong> a répondu à votre projet à <strong>${escHtml(r.commune)}</strong>. D'autres artisans peuvent encore répondre (jusqu'à ${r.max}).</p>`;
           await envoyerEmail(u.user.email, sujet, `
             <div style="font-family:sans-serif;max-width:480px;">
-              <h2 style="color:#B5502F;">${escHtml(sujet)}</h2>
+              <h2 style="color:#1266E3;">${escHtml(sujet)}</h2>
               ${corps}
-              <p style="margin:22px 0;"><a href="${URL_COMPTE}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#B5502F;color:#fff;font-weight:700;text-decoration:none;">Voir mes projets</a></p>
+              <p style="margin:22px 0;"><a href="${URL_COMPTE}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#1266E3;color:#fff;font-weight:700;text-decoration:none;">Voir mes projets</a></p>
               <p style="font-size:12px;color:#6b7c96;">Vos coordonnées restent cachées : vous décidez vous-même, à la fin, de les partager avec l'artisan que vous choisissez.</p>
             </div>`);
         }

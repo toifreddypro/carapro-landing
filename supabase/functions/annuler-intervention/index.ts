@@ -138,7 +138,7 @@ Deno.serve(async (req: Request) => {
     if (client?.email) {
       const heure = inter.heure_debut ? String(inter.heure_debut).slice(0, 5) : (inter.creneau === "matin" ? "le matin" : (inter.creneau === "apres_midi" || inter.creneau === "apres-midi") ? "l'après-midi" : "");
       const html = `<div style="font-family:sans-serif;max-width:520px;">
-        <h2 style="color:#B5502F;">Votre rendez-vous est annulé</h2>
+        <h2 style="color:#1266E3;">Votre rendez-vous est annulé</h2>
         <p>Bonjour ${escHtml(client.nom || "")},</p>
         <p>Nous sommes désolés : <strong>${escHtml(artisan.nom_entreprise)}</strong> ne pourra pas honorer votre rendez-vous prévu <strong>${escHtml(dateFr(inter.date_intervention))}</strong>${heure ? " (" + escHtml(heure) + ")" : ""}${service?.nom_service ? " pour : " + escHtml(service.nom_service) : ""}, à cause de ${escHtml(MOTIFS[motif])}.</p>
         ${message ? `<p style="padding:10px 14px;background:#f6f9fe;border-radius:8px;">${escHtml(message).replace(/\n/g, "<br>")}</p>` : ""}

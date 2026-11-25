@@ -94,12 +94,12 @@ Deno.serve(async (req: Request) => {
         const photos = nbPhotos > 0 ? `<p>📷 ${nbPhotos} photo${nbPhotos > 1 ? "s" : ""} jointe${nbPhotos > 1 ? "s" : ""} — à voir dans MPA Artisans.</p>` : "";
         const html = `
           <div style="font-family:sans-serif;max-width:480px;">
-            <h2 style="color:#B5502F;">📢 Un client cherche un professionnel</h2>
+            <h2 style="color:#1266E3;">📢 Un client cherche un professionnel</h2>
             <p><strong>${escHtml(besoin.label_fr)}</strong> à <strong>${escHtml(p.commune)}</strong></p>
             <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${texteHtml(extrait)}</p>
             ${photos}
             <p>Ce projet accepte <strong>6 réponses au maximum</strong> : les premiers artisans qui répondent sont retenus.</p>
-            <p style="margin:22px 0;"><a href="${URL_MPA}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#B5502F;color:#fff;font-weight:700;text-decoration:none;">Voir le projet dans MPA Artisans</a></p>
+            <p style="margin:22px 0;"><a href="${URL_MPA}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#1266E3;color:#fff;font-weight:700;text-decoration:none;">Voir le projet dans MPA Artisans</a></p>
             <p style="font-size:12px;color:#6b7c96;">Pour protéger le client contre le harcèlement, ses coordonnées ne sont pas communiquées : vous échangerez avec lui par messagerie, et c'est lui qui décidera de vous les donner à la fin.</p>
           </div>`;
         await Promise.allSettled((cibles ?? []).map(async (c: any) => {

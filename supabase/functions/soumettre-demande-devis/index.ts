@@ -134,7 +134,7 @@ function emailHtmlDemande(clientNom: string, clientTel: string, clientEmail: str
     : "";
   return `
     <div style="font-family:sans-serif;max-width:480px;">
-      <h2 style="color:#B5502F;">📢 Nouvelle demande de devis</h2>
+      <h2 style="color:#1266E3;">📢 Nouvelle demande de devis</h2>
       ${badgeTypeIntervention(typeIntervention)}
       <p><strong>${escHtml(clientNom)}</strong> (${escHtml(commune)}) vous contacte pour un devis en <strong>${escHtml(secteur)}</strong>.</p>
       <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${texteHtml(description)}</p>
@@ -184,11 +184,11 @@ function emailHtmlCreneau(clientNom: string, clientTel: string, clientEmail: str
     : `📞 <a href="tel:${escHtml(telHref(clientTel))}">${escHtml(clientTel)}</a>`;
   const photosHtml = nbPhotos > 0 ? `<p>📷 ${nbPhotos} photo${nbPhotos > 1 ? "s" : ""} jointe${nbPhotos > 1 ? "s" : ""} — à consulter dans votre espace MPA Artisans.</p>` : "";
   const alerteHorsHoraires = horsHoraires
-    ? `<p style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;padding:10px 14px;border-radius:8px;font-weight:700;">⚠️ Demande hors de vos horaires habituels — vérifiez que ça vous convient avant de confirmer.</p>`
+    ? `<p style="background:#EEF4FF;border:1px solid #9DC2F7;color:#0B3D91;padding:10px 14px;border-radius:8px;font-weight:700;">⚠️ Demande hors de vos horaires habituels — vérifiez que ça vous convient avant de confirmer.</p>`
     : "";
   return `
     <div style="font-family:sans-serif;max-width:480px;">
-      <h2 style="color:#B5502F;">📅 Proposition de créneau</h2>
+      <h2 style="color:#1266E3;">📅 Proposition de créneau</h2>
       ${alerteHorsHoraires}
       ${badgeTypeIntervention(typeIntervention)}
       ${blocVisiteArtisan(typeIntervention, fraisDeplacement)}
@@ -258,7 +258,7 @@ function emailHtmlDemandeOuverte(commune: string, description: string, secteur: 
   const photosHtml = nbPhotos > 0 ? `<p>📷 ${nbPhotos} photo${nbPhotos > 1 ? "s" : ""} jointe${nbPhotos > 1 ? "s" : ""} — à consulter dans votre espace MPA Artisans.</p>` : "";
   return `
     <div style="font-family:sans-serif;max-width:480px;">
-      <h2 style="color:#B5502F;">📢 Un client vous cherche</h2>
+      <h2 style="color:#1266E3;">📢 Un client vous cherche</h2>
       ${badgeTypeIntervention(typeIntervention)}
       <p>Un client recherche un professionnel en <strong>${escHtml(secteur)}</strong>, disponible rapidement, à <strong>${escHtml(commune)}</strong>.</p>
       <p style="background:#f7f9fc;padding:12px 16px;border-radius:8px;">${texteHtml(description)}</p>

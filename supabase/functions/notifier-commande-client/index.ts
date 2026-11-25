@@ -111,7 +111,7 @@ Deno.serve(async (req: Request) => {
     const contact = [artisan.telephone ? `📞 ${escHtml(artisan.telephone)}` : "", artisan.email ? `✉️ ${escHtml(artisan.email)}` : ""].filter(Boolean).join(" &nbsp; ");
     const bas = contact ? `<p style="font-size:12.5px;color:#475569;">Une question ? ${contact}</p>` : "";
     const sujet = `Votre livraison est prévue le ${dateFR(date)}`;
-    const html = `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#B5502F;">Votre livraison est prévue 🚚</h2><p>Bonjour ${escHtml(c.client_nom || "")},</p><p><strong>${escHtml(nomArtisan)}</strong> vous livrera <strong>le ${escHtml(dateFR(date))}</strong>${heure ? ` vers ${escHtml(heure)}` : creneau ? `, ${escHtml(creneau)}` : ""}${c.adresse_livraison ? ` à l'adresse : ${escHtml(c.adresse_livraison)} ${escHtml(c.code_postal_livraison || "")} ${escHtml(c.commune_livraison || "")}` : ""}.</p><p>Merci d'être joignable ce jour-là.</p>${bas}</div>`;
+    const html = `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#1266E3;">Votre livraison est prévue 🚚</h2><p>Bonjour ${escHtml(c.client_nom || "")},</p><p><strong>${escHtml(nomArtisan)}</strong> vous livrera <strong>le ${escHtml(dateFR(date))}</strong>${heure ? ` vers ${escHtml(heure)}` : creneau ? `, ${escHtml(creneau)}` : ""}${c.adresse_livraison ? ` à l'adresse : ${escHtml(c.adresse_livraison)} ${escHtml(c.code_postal_livraison || "")} ${escHtml(c.commune_livraison || "")}` : ""}.</p><p>Merci d'être joignable ce jour-là.</p>${bas}</div>`;
 
     const envoye = await envoyerEmail(c.client_email, artisan.email || null, sujet, html);
     if (!envoye) return json({ error: "envoi_impossible" }, 502);

@@ -118,9 +118,9 @@ Deno.serve(async (req: Request) => {
           const bouton = versClient ? "Lire le message" : "Lire dans MPA Artisans";
           await envoyerEmail(u.user.email, sujet, `
             <div style="font-family:sans-serif;max-width:480px;">
-              <h2 style="color:#B5502F;">💬 ${escHtml(sujet)}</h2>
+              <h2 style="color:#1266E3;">💬 ${escHtml(sujet)}</h2>
               <p>${versClient ? `<strong>${escHtml(r.artisan_nom)}</strong> vous a envoyé un message à propos de votre projet à <strong>${escHtml(r.commune)}</strong>.` : `Le client du projet à <strong>${escHtml(r.commune)}</strong> vous a envoyé un message.`}</p>
-              <p style="margin:22px 0;"><a href="${lien}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#B5502F;color:#fff;font-weight:700;text-decoration:none;">${bouton}</a></p>
+              <p style="margin:22px 0;"><a href="${lien}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#1266E3;color:#fff;font-weight:700;text-decoration:none;">${bouton}</a></p>
               <p style="font-size:12px;color:#6b7c96;">Pour la sécurité de chacun, les échanges se font uniquement sur CaraLink : aucun téléphone ni email n'est échangé tant que le client n'a pas décidé de les partager.</p>
             </div>`);
         }

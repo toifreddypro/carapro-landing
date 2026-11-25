@@ -141,14 +141,14 @@ Deno.serve(async (req: Request) => {
           return `<div style="border:1px solid #e3eaf4;border-radius:10px;padding:14px 16px;margin:0 0 14px;">
             <div style="font-weight:700;">🔧 ${service}</div>
             <p style="margin:6px 0 10px;font-size:14px;">${escHtml(dureeDepuis(String(l.derniere_intervention_le)))}, ${nom} est intervenu chez vous. <strong>Cet artisan n'est plus disponible sur CaraLink.</strong> Si vous avez encore besoin de ce service, vous pouvez trouver un autre artisan dans l'annuaire.</p>
-            <a href="${SITE}/" style="display:inline-block;background:#B5502F;color:#ffffff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">Trouver un artisan</a>${stop}</div>`;
+            <a href="${SITE}/" style="display:inline-block;background:#1266E3;color:#ffffff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">Trouver un artisan</a>${stop}</div>`;
         }
         const lienFiche = REGEX_UUID.test(String(l.artisan_id)) ? `${SITE}/?artisan=${encodeURIComponent(l.artisan_id)}` : `${SITE}/`;
         const tel = l.telephone ? `<div style="font-size:12.5px;color:#475569;margin-top:8px;">Ou appelez directement ${nom} : ${escHtml(l.telephone)}</div>` : "";
         return `<div style="border:1px solid #e3eaf4;border-radius:10px;padding:14px 16px;margin:0 0 14px;">
           <div style="font-weight:700;">🔧 ${service}</div>
           <p style="margin:6px 0 10px;font-size:14px;">${escHtml(dureeDepuis(String(l.derniere_intervention_le)))}, <strong>${nom}</strong> est intervenu chez vous. C'est le bon moment d'y penser.</p>
-          <a href="${escHtml(lienFiche)}" style="display:inline-block;background:#B5502F;color:#ffffff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">Reprendre rendez-vous</a>
+          <a href="${escHtml(lienFiche)}" style="display:inline-block;background:#1266E3;color:#ffffff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">Reprendre rendez-vous</a>
           ${avantagesHtml(l, dateJour)}${tel}${stop}</div>`;
       }).join("");
 
@@ -157,7 +157,7 @@ Deno.serve(async (req: Request) => {
         ? `🔧 C'est le moment : ${String(premier.service_nom).replace(/[\u0000-\u001f\u007f]+/g, " ").slice(0, 80)}`
         : "🔧 Vos rappels d'entretien CaraLink";
       const html = `<div style="font-family:sans-serif;max-width:520px;">
-        <h2 style="color:#B5502F;">${un ? "Un petit rappel d'entretien" : "Vos rappels d'entretien"}</h2>
+        <h2 style="color:#1266E3;">${un ? "Un petit rappel d'entretien" : "Vos rappels d'entretien"}</h2>
         <p>Bonjour,</p>
         <p style="font-size:14px;">Voici ${un ? "un entretien" : "des entretiens"} à prévoir, d'après votre carnet CaraLink.</p>
         ${blocs}

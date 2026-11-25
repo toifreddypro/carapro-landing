@@ -132,7 +132,7 @@ Deno.serve(async (req: Request) => {
       if (emailArtisan) {
         await envoyerEmail(emailArtisan, "Un client vous a choisi", `
           <div style="font-family:sans-serif;max-width:520px;">
-            <h2 style="color:#B5502F;">Un client vous a choisi 🎉</h2>
+            <h2 style="color:#1266E3;">Un client vous a choisi 🎉</h2>
             <p>Pour son projet <strong>${escHtml(r.besoin)}</strong> à <strong>${escHtml(r.commune)}</strong>, le client a choisi de vous communiquer ses coordonnées :</p>
             <div style="background:#f6f9fe;border-radius:10px;padding:14px 18px;line-height:1.8;">
               <strong>${escHtml(nom)}</strong><br>
@@ -142,18 +142,18 @@ Deno.serve(async (req: Request) => {
             </div>
             <p style="margin-top:14px;"><strong>Son projet :</strong> ${escHtml(r.description)}</p>
             <p>Contactez-le rapidement pour convenir d'un rendez-vous. Il a déjà été ajouté à vos clients dans votre espace, et votre discussion reste ouverte.</p>
-            <p style="margin:22px 0;"><a href="${URL_MPA}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#B5502F;color:#fff;font-weight:700;text-decoration:none;">Ouvrir mon espace</a></p>
+            <p style="margin:22px 0;"><a href="${URL_MPA}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#1266E3;color:#fff;font-weight:700;text-decoration:none;">Ouvrir mon espace</a></p>
             <p style="font-size:12px;color:#6b7c96;">Ce client vient de CaraLink : ses prestations entrent dans le calcul de votre commission mensuelle (franchise de 200 €).</p>
           </div>`);
       }
       if (user.email) {
         await envoyerEmail(user.email, "Votre artisan est engagé", `
           <div style="font-family:sans-serif;max-width:480px;">
-            <h2 style="color:#B5502F;">Vous avez choisi ${escHtml(r.artisan_nom)}</h2>
+            <h2 style="color:#1266E3;">Vous avez choisi ${escHtml(r.artisan_nom)}</h2>
             <p>Vos coordonnées ont été communiquées à <strong>${escHtml(r.artisan_nom)}</strong> pour votre projet <strong>${escHtml(r.besoin)}</strong>. Il va vous contacter.</p>
             ${r.artisan_telephone ? `<p>Vous pouvez aussi l'appeler : <strong>${escHtml(r.artisan_telephone)}</strong></p>` : ""}
             <p>Vos échanges restent disponibles dans votre espace.</p>
-            <p style="margin:22px 0;"><a href="${URL_COMPTE}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#B5502F;color:#fff;font-weight:700;text-decoration:none;">Voir mes projets</a></p>
+            <p style="margin:22px 0;"><a href="${URL_COMPTE}" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#1266E3;color:#fff;font-weight:700;text-decoration:none;">Voir mes projets</a></p>
           </div>`);
       }
     } catch (e) { console.error("[engager-artisan] Emails échoués (engagement enregistré quand même) :", e); }

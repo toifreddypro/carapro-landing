@@ -107,8 +107,8 @@ async function traiterCommissionsImpayees(sb: any) {
       const jours = Math.floor((Date.now() - depuis.getTime()) / 86400000);
       const dateSuspension = new Date(depuis.getTime() + 30 * 86400000);
       const nom = escHtml(art.nom_entreprise || "");
-      const lienMpa = `<p style="margin:20px 0;"><a href="https://caralink.app/mpa/" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#B5502F;color:#fff;font-weight:700;text-decoration:none;">Régler dans MPA Artisans</a></p>`;
-      const lienFaq = `<p style="font-size:13px;"><a href="https://caralink.app/artisans/#faq-commission" style="color:#B5502F;">Pourquoi cette commission ? Voir l'explication et le calcul</a></p>`;
+      const lienMpa = `<p style="margin:20px 0;"><a href="https://caralink.app/mpa/" style="display:inline-block;padding:12px 22px;border-radius:8px;background:#1266E3;color:#fff;font-weight:700;text-decoration:none;">Régler dans MPA Artisans</a></p>`;
+      const lienFaq = `<p style="font-size:13px;"><a href="https://caralink.app/artisans/#faq-commission" style="color:#1266E3;">Pourquoi cette commission ? Voir l'explication et le calcul</a></p>`;
 
       if (jours >= 30) {
         if (art.suspendu_commission) continue;
@@ -134,7 +134,7 @@ async function traiterCommissionsImpayees(sb: any) {
         ? `<p><strong>Dernier rappel avant suspension.</strong> Votre commission de <strong>${eurosFr(total)}</strong> est impayée depuis ${jours} jours. Sans règlement avant le <strong>${dateFr(dateSuspension)}</strong>, votre fiche et votre boutique seront retirées de l'annuaire (elles reviennent dès le règlement).</p>`
         : `<p>Votre commission de <strong>${eurosFr(total)}</strong> n'a pas pu être prélevée il y a ${jours} jours. Merci de mettre à jour votre carte dans MPA Artisans : le prélèvement est retenté immédiatement. Sans règlement avant le ${dateFr(dateSuspension)}, votre fiche sera retirée de l'annuaire.</p>`;
       const ok = await envoyerEmail(art.email, etape === 14 ? "⚠️ Dernier rappel : commission CaraLink impayée" : "Rappel : commission CaraLink impayée",
-        `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#B5502F;">Commission impayée</h2><p>Bonjour ${nom},</p>${corps}${lienMpa}${lienFaq}</div>`);
+        `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#1266E3;">Commission impayée</h2><p>Bonjour ${nom},</p>${corps}${lienMpa}${lienFaq}</div>`);
       if (ok) { if (etape === 14) bilan.relance_14++; else bilan.relance_7++; }
       else { bilan.echecs++; await sb.from("prelevements_prestations").update({ [colonne]: null }).in("id", ids); }
     } catch (e) { console.error("[envoyer-rappels-prestations] commission impayée, artisan", artisanId, e); bilan.echecs++; }
@@ -207,7 +207,7 @@ Deno.serve(async (req: Request) => {
       const lieuRappel = chezArtisan
         ? `<p style="background:#f6f9fe;border:1px solid #dbe5f5;padding:10px 14px;border-radius:8px;">📍 <strong>Adresse :</strong> ${escHtml([artisan.adresse, [artisan.code_postal, artisan.commune].filter(Boolean).join(" ")].filter(Boolean).join(", "))}</p>` : "";
       const html = `<div style="font-family:sans-serif;max-width:480px;">
-        <h2 style="color:#B5502F;">Rappel — rendez-vous demain</h2>
+        <h2 style="color:#1266E3;">Rappel — rendez-vous demain</h2>
         <p>Bonjour ${escHtml(client.nom || "")},</p>
         <p>Petit rappel : <strong>${escHtml(artisan?.nom_entreprise || "votre artisan")}</strong> a rendez-vous avec vous demain${service?.nom_service ? " pour : " + escHtml(service.nom_service) : ""}${heure ? " — " + escHtml(heure) : ""}.</p>
         ${lieuRappel}

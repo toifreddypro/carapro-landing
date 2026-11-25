@@ -106,7 +106,7 @@ Deno.serve(async (req: Request) => {
           try {
             const { data: art } = await sb.from("artisans").select("nom_entreprise, email").eq("id", p.artisan_id).maybeSingle();
             if (art?.email) await envoyerEmail(art.email, `⌛ Paiement non réglé — ${p.client_nom || "votre client"}`,
-              `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#B5502F;">⌛ Lien de paiement expiré</h2><p>Le lien de paiement de <strong>${escHtml(Number(p.montant).toFixed(2).replace(".", ","))} €</strong> envoyé à <strong>${escHtml(p.client_nom || "votre client")}</strong> a expiré sans règlement${Number(p.relances_nb || 0) > 0 ? ` (${Number(p.relances_nb)} relance${Number(p.relances_nb) > 1 ? "s" : ""} envoyée${Number(p.relances_nb) > 1 ? "s" : ""})` : ""}.</p><p>Vous pouvez le contacter, créer un nouveau lien depuis l'intervention (« Demander un paiement »), ou marquer l'intervention « Payée » s'il a réglé autrement.</p></div>`);
+              `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#1266E3;">⌛ Lien de paiement expiré</h2><p>Le lien de paiement de <strong>${escHtml(Number(p.montant).toFixed(2).replace(".", ","))} €</strong> envoyé à <strong>${escHtml(p.client_nom || "votre client")}</strong> a expiré sans règlement${Number(p.relances_nb || 0) > 0 ? ` (${Number(p.relances_nb)} relance${Number(p.relances_nb) > 1 ? "s" : ""} envoyée${Number(p.relances_nb) > 1 ? "s" : ""})` : ""}.</p><p>Vous pouvez le contacter, créer un nouveau lien depuis l'intervention (« Demander un paiement »), ou marquer l'intervention « Payée » s'il a réglé autrement.</p></div>`);
           } catch (e) { console.error("[maintenance-reservations] Prévenir l'artisan (lien expiré) :", e); }
         }
       } catch (e) { bilan.erreurs++; console.error("[maintenance-reservations] Expiration :", e); }
@@ -168,12 +168,12 @@ Deno.serve(async (req: Request) => {
         const dateAff = new Date(d.date_intervention + "T12:00:00Z").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
         if (p.client_email) {
           await envoyerEmail(p.client_email, `Votre demande n'a pas reçu de réponse — vous êtes remboursé(e)`,
-            `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#B5502F;">Pas de réponse de l'artisan</h2><p>Bonjour ${escHtml(p.client_nom || "")}, ${art?.nom_entreprise ? `<strong>${escHtml(art.nom_entreprise)}</strong> n'a pas répondu` : "l'artisan n'a pas répondu"} à votre demande de rendez-vous du <strong>${escHtml(dateAff)}</strong>.</p><p>Vous êtes <strong>remboursé(e) intégralement</strong>${ok ? "" : " (remboursement en cours de traitement)"} ; il apparaît sur votre carte sous quelques jours. Vous pouvez choisir un autre artisan ou un autre créneau sur CaraLink.</p></div>`);
+            `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#1266E3;">Pas de réponse de l'artisan</h2><p>Bonjour ${escHtml(p.client_nom || "")}, ${art?.nom_entreprise ? `<strong>${escHtml(art.nom_entreprise)}</strong> n'a pas répondu` : "l'artisan n'a pas répondu"} à votre demande de rendez-vous du <strong>${escHtml(dateAff)}</strong>.</p><p>Vous êtes <strong>remboursé(e) intégralement</strong>${ok ? "" : " (remboursement en cours de traitement)"} ; il apparaît sur votre carte sous quelques jours. Vous pouvez choisir un autre artisan ou un autre créneau sur CaraLink.</p></div>`);
         }
         if (art?.user_id) {
           const { data: u } = await sb.auth.admin.getUserById(art.user_id);
           if (u?.user?.email) await envoyerEmail(u.user.email, `⏱️ Demande expirée faute de réponse — ${d.client_nom}`,
-            `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#B5502F;">Demande expirée</h2><p>Vous n'avez ni confirmé ni refusé la demande de <strong>${escHtml(d.client_nom)}</strong> pour le <strong>${escHtml(dateAff)}</strong>. Elle a été refusée automatiquement et le client remboursé.</p><p style="font-size:12.5px;color:#6b7c96;">Pensez à répondre rapidement aux prochaines demandes : c'est ce qui fait la confiance de vos clients.</p></div>`);
+            `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#1266E3;">Demande expirée</h2><p>Vous n'avez ni confirmé ni refusé la demande de <strong>${escHtml(d.client_nom)}</strong> pour le <strong>${escHtml(dateAff)}</strong>. Elle a été refusée automatiquement et le client remboursé.</p><p style="font-size:12.5px;color:#6b7c96;">Pensez à répondre rapidement aux prochaines demandes : c'est ce qui fait la confiance de vos clients.</p></div>`);
         }
       } catch (e) { bilan.erreurs++; console.error("[maintenance-reservations] Réservation payée :", e); }
     }

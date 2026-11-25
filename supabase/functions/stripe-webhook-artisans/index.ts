@@ -145,7 +145,7 @@ async function envoyerEmail(to: string, subject: string, html: string): Promise<
 }
 
 async function alerterAdmin(sujet: string, lignes: string[]) {
-  const html = `<div style="font-family:sans-serif;max-width:520px;"><h3 style="color:#B5502F;">${escHtml(sujet)}</h3>${lignes.map((l) => `<p>${escHtml(l)}</p>`).join("")}</div>`;
+  const html = `<div style="font-family:sans-serif;max-width:520px;"><h3 style="color:#1266E3;">${escHtml(sujet)}</h3>${lignes.map((l) => `<p>${escHtml(l)}</p>`).join("")}</div>`;
   await envoyerEmail(ADMIN_EMAIL, `⚠️ CaraLink — ${sujet}`, html);
 }
 
@@ -358,7 +358,7 @@ async function envoyerAlertesStock(alertes: any[]) {
       if (!artisan?.email) continue;
       const vide = a.stock <= 0;
       const sujet = vide ? `✨ MPA AI — "${a.nom}" est épuisé` : `✨ MPA AI — stock bas : "${a.nom}"`;
-      const html = `<div style="font-family:sans-serif;max-width:520px;"><h3 style="color:#B5502F;">${vide ? "🚫" : "⚠️"} ${escHtml(a.nom)}</h3>
+      const html = `<div style="font-family:sans-serif;max-width:520px;"><h3 style="color:#1266E3;">${vide ? "🚫" : "⚠️"} ${escHtml(a.nom)}</h3>
         <p>${vide ? `Votre produit <strong>${escHtml(a.nom)}</strong> est <strong>épuisé</strong>.` : `Il ne reste que <strong>${a.stock}</strong> exemplaire${a.stock > 1 ? "s" : ""} de <strong>${escHtml(a.nom)}</strong> (votre seuil d'alerte : ${a.seuil}).`}</p>
         <p>Pensez à réapprovisionner pour ne pas manquer de ventes. Vous pouvez mettre à jour le stock dans MPA, onglet Mes produits.</p></div>`;
       await envoyerEmail(artisan.email, sujet, html);
@@ -379,14 +379,14 @@ function emailNouvelleCommande(commande: any, lignes: any[]): string {
     ? `<p>📅 Livraison estimée au client : <strong>entre le ${escHtml(dateFR(commande.livraison_debut))} et le ${escHtml(dateFR(commande.livraison_fin))}</strong>. Passez la commande en « Prête » avant le ${escHtml(dateFR(commande.livraison_debut))} : MPA AI vous proposera alors le meilleur jour pour regrouper vos livraisons.</p>`
     : "";
   return `<div style="font-family:sans-serif;max-width:480px;">
-        <h2 style="color:#B5502F;">Nouvelle commande payée — ${Number(commande.montant_total).toFixed(2)} €</h2>
+        <h2 style="color:#1266E3;">Nouvelle commande payée — ${Number(commande.montant_total).toFixed(2)} €</h2>
         <p><strong>${escHtml(commande.client_nom)}</strong> (${escHtml(commande.client_telephone)}) a payé en ligne :</p>
         <ul>${detail}</ul>
         <p>Mode : ${mode}</p>
-        ${Number(commande.cashback_utilise) > 0 ? `<p style="background:#fbf3ee;padding:9px 12px;border-radius:8px;font-size:13px;">🎁 Le client a utilisé <strong>${Number(commande.cashback_utilise).toFixed(2)} €</strong> de son crédit cashback : le montant encaissé est donc de ${Number(commande.montant_total).toFixed(2)} €.</p>` : ""}
+        ${Number(commande.cashback_utilise) > 0 ? `<p style="background:#F3F7FF;padding:9px 12px;border-radius:8px;font-size:13px;">🎁 Le client a utilisé <strong>${Number(commande.cashback_utilise).toFixed(2)} €</strong> de son crédit cashback : le montant encaissé est donc de ${Number(commande.montant_total).toFixed(2)} €.</p>` : ""}
         ${date}
         ${commande.notes ? `<p>Précisions : ${escHtml(commande.notes)}</p>` : ""}
-        <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Voir dans MPA Artisans →</a></p>
+        <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#1266E3;font-weight:700;">Voir dans MPA Artisans →</a></p>
       </div>`;
 }
 
@@ -406,17 +406,17 @@ async function gererRuptureApresPaiement(commande: any, lignes: any[], artisan: 
     if (artisan?.email) {
       await envoyerEmail(artisan.email, `✨ MPA AI — vente remboursée : "${manquants[0]}" en rupture`,
         `<div style="font-family:sans-serif;max-width:480px;">
-        <h2 style="color:#B5502F;">✨ MPA AI — une vente a été remboursée, faute de stock</h2>
+        <h2 style="color:#1266E3;">✨ MPA AI — une vente a été remboursée, faute de stock</h2>
         <p><strong>${escHtml(commande.client_nom)}</strong> a payé <strong>${Number(commande.montant_total).toFixed(2)} €</strong> pour ${escHtml(resume)}, mais il ne restait plus assez de <strong>${escHtml(manquants[0])}</strong> au moment du paiement (une autre commande a été payée juste avant).</p>
         <p>Le client a été remboursé automatiquement et intégralement. <strong>Il n'y a rien à faire de votre côté.</strong></p>
         <p style="margin-top:16px;">Pensez à réapprovisionner ce produit dans <strong>Mon stock → Mes produits</strong> si vous le pouvez.</p>
-        <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Voir dans MPA Artisans →</a></p>
+        <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#1266E3;font-weight:700;">Voir dans MPA Artisans →</a></p>
       </div>`);
     }
     if (commande.client_email) {
       await envoyerEmail(commande.client_email, `Votre commande chez ${artisan?.nom_entreprise || "l'artisan"} n'a pas pu être honorée`,
         `<div style="font-family:sans-serif;max-width:480px;">
-        <h2 style="color:#B5502F;">Votre commande n'a pas pu être honorée</h2>
+        <h2 style="color:#1266E3;">Votre commande n'a pas pu être honorée</h2>
         <p>Bonjour ${escHtml(commande.client_nom)}, le dernier exemplaire de <strong>${escHtml(manquants[0])}</strong> a été vendu pendant que vous payiez.</p>
         <p>Vous êtes <strong>remboursé(e) intégralement</strong> (${Number(commande.montant_total).toFixed(2)} €). Le remboursement apparaît sur votre carte sous quelques jours.</p>
         <p>Nous sommes désolés pour ce désagrément.</p>
@@ -430,10 +430,10 @@ async function gererRuptureApresPaiement(commande: any, lignes: any[], artisan: 
   if (artisan?.email) {
     await envoyerEmail(artisan.email, `⚠️ MPA AI — commande payée à rembourser : "${manquants[0]}" en rupture`,
       `<div style="font-family:sans-serif;max-width:480px;">
-        <h2 style="color:#B5502F;">⚠️ Une commande payée est à rembourser</h2>
+        <h2 style="color:#1266E3;">⚠️ Une commande payée est à rembourser</h2>
         <p><strong>${escHtml(commande.client_nom)}</strong> a payé <strong>${Number(commande.montant_total).toFixed(2)} €</strong> pour ${escHtml(resume)}, mais il n'y avait plus assez de <strong>${escHtml(manquants[0])}</strong>.</p>
         <p>Le remboursement automatique n'a pas pu se faire. <strong>Merci de rembourser cette commande depuis MPA</strong> (onglet Commandes, bouton « Rembourser »).</p>
-        <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Voir dans MPA Artisans →</a></p>
+        <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#1266E3;font-weight:700;">Voir dans MPA Artisans →</a></p>
       </div>`);
   }
   await alerterAdmin("Commande payée, remboursement automatique échoué", [
@@ -588,7 +588,7 @@ async function traiterPaiementPrestation(intent: any, compteEvenement: string | 
       updated_at: new Date().toISOString(),
     }).eq("id", id).in("statut", ["annule", "expire"]);
     lever(errT, "Maj du paiement tardif");
-    if (p.client_email) await envoyerEmail(p.client_email, "Votre paiement a été remboursé", `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#B5502F;">Votre paiement a été remboursé</h2><p>Bonjour ${escHtml(p.client_nom || "")}, votre demande avait déjà été annulée ou avait expiré au moment de votre paiement. Il vous est <strong>remboursé intégralement</strong> ; il apparaîtra sur votre carte sous quelques jours.</p></div>`);
+    if (p.client_email) await envoyerEmail(p.client_email, "Votre paiement a été remboursé", `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#1266E3;">Votre paiement a été remboursé</h2><p>Bonjour ${escHtml(p.client_nom || "")}, votre demande avait déjà été annulée ou avait expiré au moment de votre paiement. Il vous est <strong>remboursé intégralement</strong> ; il apparaîtra sur votre carte sous quelques jours.</p></div>`);
     return;
   }
 
@@ -632,7 +632,7 @@ async function traiterPaiementPrestation(intent: any, compteEvenement: string | 
           const { data: art } = await sbAdmin.from("artisans").select("email, nom_entreprise").eq("id", p.artisan_id).maybeSingle();
           if (art?.email) {
             await envoyerEmail(art.email, `💶 Paiement reçu — ${Number(p.montant).toFixed(2).replace(".", ",")} € de ${p.client_nom || "votre client"}`,
-              `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#16a34a;">💶 Paiement reçu</h2><p><strong>${escHtml(p.client_nom || "Votre client")}</strong> vient de régler <strong>${Number(p.montant).toFixed(2).replace(".", ",")} €</strong>${p.description ? ` (${escHtml(p.description)})` : ""} en ligne.</p><p style="font-size:13px;color:#475569;">L'argent arrive sur votre compte Stripe, selon vos paramètres de virement.</p><p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Voir dans MPA Artisans →</a></p></div>`);
+              `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#16a34a;">💶 Paiement reçu</h2><p><strong>${escHtml(p.client_nom || "Votre client")}</strong> vient de régler <strong>${Number(p.montant).toFixed(2).replace(".", ",")} €</strong>${p.description ? ` (${escHtml(p.description)})` : ""} en ligne.</p><p style="font-size:13px;color:#475569;">L'argent arrive sur votre compte Stripe, selon vos paramètres de virement.</p><p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#1266E3;font-weight:700;">Voir dans MPA Artisans →</a></p></div>`);
           }
         } catch (e) { console.error("[stripe-webhook-artisans] Suites du paiement de solde incomplètes :", e); }
         return;

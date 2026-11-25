@@ -78,7 +78,7 @@ Deno.serve(async (req: Request) => {
     if (!client?.email) return json({ error: "Ce client n'a pas d'email enregistré." }, 400);
 
     const html = `<div style="font-family:sans-serif;max-width:480px;">
-      <h2 style="color:#B5502F;">⏰ Léger retard prévu</h2>
+      <h2 style="color:#1266E3;">⏰ Léger retard prévu</h2>
       <p>Bonjour ${escHtml(client.nom)},</p>
       <p><strong>${escHtml(artisan.nom_entreprise)}</strong> vous informe d'un retard d'environ <strong>${minutes} minutes</strong> sur votre rendez-vous${intervention.heure_debut ? " de " + escHtml(intervention.heure_debut) : ""} aujourd'hui.</p>
       <p>Merci de votre compréhension.</p>

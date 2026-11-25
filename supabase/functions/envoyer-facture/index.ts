@@ -163,10 +163,10 @@ Deno.serve(async (req: Request) => {
     // Offre Pro : logo, couleur de la boutique et petit mot en bas (réglages de l'artisan, relus ici côté serveur : on ne fait confiance à aucune donnée du navigateur).
     const estProFact = artisan.plan === "pro" || artisan.plan === "pro_offert";
     const reglagesFact = (artisan.mpa_ai_prefs && typeof artisan.mpa_ai_prefs === "object" && artisan.mpa_ai_prefs.facture && typeof artisan.mpa_ai_prefs.facture === "object") ? artisan.mpa_ai_prefs.facture : {};
-    const COULEURS_FACT: Record<string, string> = { terre: "#B5502F", bleu: "#2563A8", vert: "#2F7D4F", rose: "#B83280", violet: "#6B46C1", ocre: "#B7791F" };
-    const coulFact = !estProFact ? "#B5502F"
+    const COULEURS_FACT: Record<string, string> = { terre: "#1266E3", bleu: "#2563A8", vert: "#2F7D4F", rose: "#B83280", violet: "#6B46C1", ocre: "#B7791F" };
+    const coulFact = !estProFact ? "#1266E3"
       : (typeof artisan.boutique_accent_libre === "string" && /^#[0-9a-f]{6}$/i.test(artisan.boutique_accent_libre)) ? artisan.boutique_accent_libre
-      : (COULEURS_FACT[String(artisan.boutique_accent ?? "terre")] ?? "#B5502F");
+      : (COULEURS_FACT[String(artisan.boutique_accent ?? "terre")] ?? "#1266E3");
     const logoFact = (estProFact && typeof reglagesFact.logo === "string" && /^https:\/\/[a-z0-9.-]+\.supabase\.co\/storage\/[^\s"'<>]+$/i.test(reglagesFact.logo)) ? reglagesFact.logo : "";
     const motFact = (estProFact && typeof reglagesFact.message === "string") ? reglagesFact.message.replace(/\s+/g, " ").trim().slice(0, 200) : "";
     const html = `<div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#1a2233;">

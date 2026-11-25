@@ -135,9 +135,9 @@ Deno.serve(async (req: Request) => {
     const envoye = await envoyerEmail(p.client_email, artisan.email || null,
       `${dernierRappel ? "Dernier rappel" : "Rappel"} — paiement de ${euros(Number(p.montant))} à ${nomArtisan}`,
       `<div style="font-family:sans-serif;max-width:480px;">
-        <h2 style="color:#B5502F;">💶 ${dernierRappel ? "Dernier rappel de paiement" : "Petit rappel de paiement"}</h2>
+        <h2 style="color:#1266E3;">💶 ${dernierRappel ? "Dernier rappel de paiement" : "Petit rappel de paiement"}</h2>
         <p>Bonjour ${escHtml(p.client_nom || "")}, <strong>${escHtml(nomArtisan)}</strong> vous a demandé de régler <strong>${escHtml(euros(Number(p.montant)))}</strong>${p.description ? ` pour : ${escHtml(p.description)}` : ""}, et nous n'avons pas encore reçu votre paiement.</p>
-        <p style="text-align:center;margin:22px 0;"><a href="${escHtml(lien)}" style="display:inline-block;background:#B5502F;color:#ffffff;padding:13px 26px;border-radius:8px;text-decoration:none;font-weight:700;">Payer en ligne</a></p>
+        <p style="text-align:center;margin:22px 0;"><a href="${escHtml(lien)}" style="display:inline-block;background:#1266E3;color:#ffffff;padding:13px 26px;border-radius:8px;text-decoration:none;font-weight:700;">Payer en ligne</a></p>
         <p style="font-size:12.5px;color:#475569;">Le lien est valable jusqu'au <strong>${escHtml(expire)}</strong>${dernierRappel ? ", puis il ne fonctionnera plus. Si vous avez déjà réglé autrement (espèces, virement), ignorez ce message." : "."}</p>
         ${contact ? `<p style="font-size:12.5px;color:#475569;">Une question ? Contactez directement l'artisan : ${contact}</p>` : ""}
         <p style="font-size:11.5px;color:#6b7c96;">Paiement sécurisé par carte (Stripe). ${dernierRappel ? "Vous ne recevrez pas d'autre relance pour cette demande." : "Vous pourriez recevoir au plus un dernier rappel."}</p>

@@ -124,10 +124,10 @@ Deno.serve(async (req: Request) => {
 
     const lien = `${PAGE_AVIS}?token=${encodeURIComponent(token)}`;
     const html = `<div style="font-family:sans-serif;max-width:480px;">
-      <h2 style="color:#B5502F;">Votre avis compte !</h2>
+      <h2 style="color:#1266E3;">Votre avis compte !</h2>
       <p>${escHtml(artisan.nom_entreprise)} vous invite à partager votre expérience sur l'intervention réalisée.</p>
       <div style="margin:24px 0;">
-        <a href="${lien}" style="display:inline-block;padding:12px 24px;border-radius:8px;background:#B5502F;color:#fff;font-weight:700;text-decoration:none;">⭐ Laisser mon avis</a>
+        <a href="${lien}" style="display:inline-block;padding:12px 24px;border-radius:8px;background:#1266E3;color:#fff;font-weight:700;text-decoration:none;">⭐ Laisser mon avis</a>
       </div>
       <p style="font-size:12px;color:#6b7c96;">Ça prend moins d'une minute, aucun compte n'est nécessaire.</p>
     </div>`;

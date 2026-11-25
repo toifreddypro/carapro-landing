@@ -110,9 +110,9 @@ async function alerterAdmin(sbAdmin: any, etape: string, e: any, artisan: any, u
       ["Détail Stripe", e instanceof ErreurStripe ? `HTTP ${e.status}${e.type ? " · type " + e.type : ""}${e.code ? " · code " + e.code : ""}${e.param ? " · paramètre " + e.param : ""}` : "(erreur hors Stripe)"],
       ["Artisan", artisan ? `${artisan.nom_entreprise || "?"} — ${artisan.email || utilisateur?.email || "sans email"} — id ${artisan.id}` : `profil non lu (compte ${utilisateur?.email || "?"})`],
     ];
-    const html = `<div style="font-family:sans-serif;max-width:560px;"><h3 style="color:#B5502F;">Un artisan n'a pas pu activer ses paiements</h3>
+    const html = `<div style="font-family:sans-serif;max-width:560px;"><h3 style="color:#1266E3;">Un artisan n'a pas pu activer ses paiements</h3>
       ${lignes.map(([k, v]) => `<p><strong>${escHtml(k)} :</strong> ${escHtml(v)}</p>`).join("")}
-      <p style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:10px;"><strong>Conseil :</strong> ${escHtml(conseilPour(message))}</p>
+      <p style="background:#EEF4FF;border:1px solid #C7DCFA;border-radius:8px;padding:10px;"><strong>Conseil :</strong> ${escHtml(conseilPour(message))}</p>
       <p style="color:#888;font-size:12px;">L'artisan a vu « Une erreur est survenue. Réessayez dans un instant. » — aucun détail technique ne lui est montré.</p></div>`;
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",

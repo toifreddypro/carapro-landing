@@ -218,11 +218,11 @@ Deno.serve(async (req: Request) => {
       if (a.quantite_stock < demande) {
         if (artisan.email && !apercu) {
           const html = `<div style="font-family:sans-serif;max-width:480px;">
-            <h2 style="color:#B5502F;">✨ MPA AI — une vente vient d'échouer, faute de stock</h2>
+            <h2 style="color:#1266E3;">✨ MPA AI — une vente vient d'échouer, faute de stock</h2>
             <p><strong>${escHtml(client_nom)}</strong> a tenté de commander <strong>${demande} × ${escHtml(a.nom)}</strong>, mais il n'en restait que <strong>${a.quantite_stock}</strong>.</p>
             <p>La commande n'a pas été enregistrée — le client a vu un message clair, mais rien n'apparaît dans vos commandes.</p>
             <p style="margin-top:16px;">Pensez à réapprovisionner ce produit dans <strong>Mon stock → Mes produits</strong> si vous le pouvez.</p>
-            <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Voir dans MPA Artisans →</a></p>
+            <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#1266E3;font-weight:700;">Voir dans MPA Artisans →</a></p>
           </div>`;
           await envoyerEmail(artisan.email, `✨ MPA AI — vente manquée : "${a.nom}" en rupture`, html);
         }

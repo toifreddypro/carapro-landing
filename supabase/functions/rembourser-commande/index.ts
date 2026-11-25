@@ -158,7 +158,7 @@ async function remettreEnStock(sb: any, articleId: string, quantite: number): Pr
 
 function emailClientRemboursement(entreprise: string, article: string, montantCents: number, total: boolean, motif: string): string {
   return `<div style="font-family:sans-serif;max-width:480px;">
-    <h2 style="color:#B5502F;">Votre commande a été ${total ? "remboursée" : "remboursée en partie"}</h2>
+    <h2 style="color:#1266E3;">Votre commande a été ${total ? "remboursée" : "remboursée en partie"}</h2>
     <p><strong>${escHtml(entreprise)}</strong> vous a remboursé <strong>${euros(montantCents)}</strong> pour « ${escHtml(article)} ».</p>
     ${motif ? `<p>Motif indiqué : ${escHtml(motif)}</p>` : ""}
     <p>L'argent est renvoyé sur la carte utilisée pour le paiement. Selon votre banque, il apparaît sous quelques jours ouvrés.</p>
@@ -168,12 +168,12 @@ function emailClientRemboursement(entreprise: string, article: string, montantCe
 
 function emailArtisanRemboursement(d: { article: string; client: string; montantCents: number; total: boolean; reprisCents: number; motif: string; stock: string }): string {
   return `<div style="font-family:sans-serif;max-width:480px;">
-    <h2 style="color:#B5502F;">Remboursement effectué — ${escHtml(d.article)}</h2>
+    <h2 style="color:#1266E3;">Remboursement effectué — ${escHtml(d.article)}</h2>
     <p><strong>${euros(d.montantCents)}</strong> ont été remboursés à <strong>${escHtml(d.client)}</strong> (${d.total ? "remboursement total" : "remboursement partiel"}).</p>
     ${d.motif ? `<p>Motif : ${escHtml(d.motif)}</p>` : ""}
     <p>Stripe a repris <strong>${euros(d.reprisCents)}</strong> sur votre solde. Les frais de paiement de la vente ne sont pas restitués par Stripe : ils restent à votre charge.</p>
     ${d.stock ? `<p>${escHtml(d.stock)}</p>` : ""}
-    <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#B5502F;font-weight:700;">Voir dans MPA Artisans →</a></p>
+    <p style="margin-top:20px;"><a href="https://caralink.app/mpa/" style="color:#1266E3;font-weight:700;">Voir dans MPA Artisans →</a></p>
   </div>`;
 }
 

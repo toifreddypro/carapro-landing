@@ -143,11 +143,11 @@ Deno.serve(async (req: Request) => {
     if (emailClient) {
       emailEnvoye = await envoyerEmail(emailClient, `Paiement demandé par ${String(artisan.nom_entreprise || "votre artisan").replace(/[\u0000-\u001f\u007f]+/g, " ").slice(0, 80)} — ${euros(montantNet)}`,
         `<div style="font-family:sans-serif;max-width:480px;">
-          <h2 style="color:#B5502F;">💶 Paiement demandé</h2>
+          <h2 style="color:#1266E3;">💶 Paiement demandé</h2>
           <p>Bonjour ${escHtml(client?.nom || "")}, <strong>${escHtml(artisan.nom_entreprise)}</strong> vous demande de régler <strong>${escHtml(euros(montantNet))}</strong>${description ? ` pour : ${escHtml(description)}` : ""}.</p>
           ${geste > 0 ? `<p style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:13.5px;color:#166534;">🤝 <strong>Geste commercial de ${escHtml(artisan.nom_entreprise)}</strong> : ${escHtml(euros(geste))} de remise${gestePct ? ` (${escHtml(String(gestePct).replace(".", ","))} %)` : ""} sur ${escHtml(euros(montant))}.${gesteMotif ? ` ${escHtml(gesteMotif)}` : ""}</p>` : ""}
           ${dejaPayeEnLigne > 0 ? `<p style="font-size:12.5px;color:#475569;">Vous avez déjà réglé ${escHtml(euros(dejaPayeEnLigne))} en ligne (frais de réservation / de déplacement) : l'artisan en tient compte dans le montant demandé.</p>` : ""}
-          <p style="text-align:center;margin:22px 0;"><a href="${escHtml(lien)}" style="display:inline-block;background:#B5502F;color:#ffffff;padding:13px 26px;border-radius:8px;text-decoration:none;font-weight:700;">Payer en ligne</a></p>
+          <p style="text-align:center;margin:22px 0;"><a href="${escHtml(lien)}" style="display:inline-block;background:#1266E3;color:#ffffff;padding:13px 26px;border-radius:8px;text-decoration:none;font-weight:700;">Payer en ligne</a></p>
           <p style="font-size:12px;color:#6b7c96;">Paiement sécurisé par carte (Stripe). Le lien est valable 14 jours.</p>
         </div>`);
     }

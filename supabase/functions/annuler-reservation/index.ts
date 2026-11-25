@@ -140,7 +140,7 @@ Deno.serve(async (req: Request) => {
         if (u?.user?.email) {
           await envoyerEmail(u.user.email, `Rendez-vous annulé par le client — ${d.client_nom} (${dateAff})`,
             `<div style="font-family:sans-serif;max-width:480px;">
-              <h2 style="color:#B5502F;">Le client a annulé</h2>
+              <h2 style="color:#1266E3;">Le client a annulé</h2>
               <p><strong>${escHtml(d.client_nom)}</strong> a annulé son rendez-vous du <strong>${escHtml(dateAff)} à ${escHtml(heureAff)}</strong>${confirme ? " (il figurait dans votre planning, il est passé en « Annulée »)" : ""}.</p>
               ${seraRembourse ? `<p style="font-size:13px;color:#475569;">Le client est remboursé de ${escHtml(euros(Number(p.montant)))}${confirme ? " (annulation dans le délai gratuit que vous avez fixé)" : " (vous n'aviez pas encore confirmé)"}.</p>`
                 : `<p style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:8px;">💶 L'annulation est tardive (hors du délai gratuit de ${heures} h) : les <strong>${escHtml(euros(Number(p.montant)))}</strong> réglés restent acquis.</p>`}
@@ -150,7 +150,7 @@ Deno.serve(async (req: Request) => {
       if (p.client_email) {
         await envoyerEmail(p.client_email, "Votre réservation est annulée",
           `<div style="font-family:sans-serif;max-width:480px;">
-            <h2 style="color:#B5502F;">Réservation annulée</h2>
+            <h2 style="color:#1266E3;">Réservation annulée</h2>
             <p>Bonjour ${escHtml(p.client_nom || "")}, votre rendez-vous du <strong>${escHtml(dateAff)} à ${escHtml(heureAff)}</strong>${artisan?.nom_entreprise ? ` chez <strong>${escHtml(artisan.nom_entreprise)}</strong>` : ""} est annulé.</p>
             <p>${!paye ? "Aucun paiement n'a été prélevé." : (seraRembourse ? `Vous êtes <strong>remboursé(e) intégralement</strong> (${escHtml(euros(Number(p.montant)))}) ; le remboursement apparaît sur votre carte sous quelques jours.` : `Comme l'annulation intervient après le délai gratuit, les ${escHtml(euros(Number(p.montant)))} de ${d.type_intervention === "visite" ? "frais de déplacement" : "frais de réservation"} restent acquis à l'artisan, conformément aux conditions que vous avez acceptées.`)}</p>
           </div>`);

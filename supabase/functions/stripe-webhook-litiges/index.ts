@@ -185,7 +185,7 @@ Deno.serve(async (req: Request) => {
           <p>Le client (ou sa banque) conteste un paiement reçu sur votre compte Stripe. <strong>C'est à vous de répondre</strong>, depuis votre espace Stripe, avant le <strong>${dateLimite}</strong> : sans réponse, le litige est perdu et le montant est repris sur votre solde Stripe (des frais de litige s'y ajoutent).</p>
           <p><strong>Motif indiqué par la banque :</strong> ${escHtml(dispute.reason)}</p>
           <p>Joignez les preuves utiles (commande, échanges avec le client, preuve de retrait ou de livraison).</p>
-          <p style="margin-top:16px;"><a href="https://connect.stripe.com/express_login" style="color:#B5502F;font-weight:700;">Ouvrir mon espace Stripe →</a></p>
+          <p style="margin-top:16px;"><a href="https://connect.stripe.com/express_login" style="color:#1266E3;font-weight:700;">Ouvrir mon espace Stripe →</a></p>
           <p style="margin-top:12px;color:#666;font-size:12.5px;">Besoin d'aide ? Répondez à cet email.</p>
         </div>`;
         if (art?.email) await envoyerEmail(art.email, `⚠️ Litige sur une de vos ventes (${(dispute.amount / 100).toFixed(2)} €) — réponse avant le ${dateLimite}`, htmlArtisan);
@@ -200,8 +200,8 @@ Deno.serve(async (req: Request) => {
         <p><strong>Artisan :</strong> ${escHtml(artisanInfos?.nom_entreprise ?? "non identifié")}</p>
         <p><strong>Motif indiqué par la banque :</strong> ${escHtml(dispute.reason)}</p>
         <p><strong>Date limite pour répondre à Stripe :</strong> ${dateLimite}</p>
-        <p style="margin-top:16px;">Répondez directement dans le <a href="https://dashboard.stripe.com/disputes/${encodeURIComponent(String(dispute.id))}" style="color:#B5502F;font-weight:700;">Dashboard Stripe</a> avant cette date, sans quoi le litige est automatiquement perdu.</p>
-        <p style="margin-top:12px;"><a href="https://caralink.app/artisans/admin.html" style="color:#B5502F;font-weight:700;">Voir dans Admin →</a></p>
+        <p style="margin-top:16px;">Répondez directement dans le <a href="https://dashboard.stripe.com/disputes/${encodeURIComponent(String(dispute.id))}" style="color:#1266E3;font-weight:700;">Dashboard Stripe</a> avant cette date, sans quoi le litige est automatiquement perdu.</p>
+        <p style="margin-top:12px;"><a href="https://caralink.app/artisans/admin.html" style="color:#1266E3;font-weight:700;">Voir dans Admin →</a></p>
       </div>`;
       await envoyerEmail(EMAIL_ADMIN, `⚠️ Litige Stripe (${(dispute.amount / 100).toFixed(2)} €) — réponse avant le ${dateLimite}`, html);
 
