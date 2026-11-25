@@ -11,7 +11,7 @@
 <style>
   :root{
     --bg:#f7f8fb;--panel:#ffffff;--brd:#e3eaf4;--b2:#c9d8ef;
-    --ac:#EA580C;--ac2:#EA580C;--tx:#13223c;--mu:#5a6b86;--mu2:#4a5c78;
+    --ac:#1266E3;--ac2:#1266E3;--tx:#13223c;--mu:#5a6b86;--mu2:#4a5c78;
     --inp:#f6f9fe;--ok:#059669;--gold:#b45309;--danger:#dc2626;
     /* En-tête et bas de page : par défaut comme les cartes ; les fonds de couleur les passent en teinte foncée. */
     --hf:var(--panel);--hf-tx:var(--tx);--hf-brd:var(--brd);--hf-hover:var(--inp);--hf-act-bg:var(--ac);--hf-act-tx:#fff;
@@ -210,7 +210,7 @@
   /* En-tête sans grande barre pleine largeur : le nom et les langues se posent directement sous la bannière, alignés sur le reste de la page. */
   header{background:transparent;border-bottom:none;padding:18px 0 6px;margin-bottom:18px;}
   .header-inner{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
-  .avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;flex-shrink:0;background:rgba(234,88,12,.1);color:var(--ac);display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:700;}
+  .avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;flex-shrink:0;background:rgba(18,102,227,.1);color:var(--ac);display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:700;}
   /* Personnalisation : image de fond façon Facebook, logo qui la chevauche, infos pratiques */
   .hero{position:relative;}
   .hero .bandeau-couv{width:100%;aspect-ratio:3/1;max-height:460px;min-height:130px;background-color:var(--b2);background-size:cover;background-position:center;border-radius:0;}
@@ -261,7 +261,7 @@
   .boutique-meta{font-size:13.5px;color:var(--mu);margin-top:3px;}
   .badge-verifie{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(5,150,105,.1);color:var(--ok);}
 
-  .promo-bandeau{background:rgba(234,88,12,.08);border:1px dashed var(--ac);border-radius:12px;padding:12px 18px;margin-top:18px;display:flex;align-items:center;gap:10px;font-size:14px;}
+  .promo-bandeau{background:rgba(18,102,227,.08);border:1px dashed var(--ac);border-radius:12px;padding:12px 18px;margin-top:18px;display:flex;align-items:center;gap:10px;font-size:14px;}
   .promo-code{font-family:'JetBrains Mono',monospace;font-weight:700;background:var(--panel);border:1px solid var(--ac);border-radius:7px;padding:3px 10px;color:var(--ac);letter-spacing:.03em;}
 
   h2.section-titre{font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:800;margin:44px 0 20px;}
@@ -362,7 +362,7 @@
   .btn-secondary{border:1px solid var(--brd);background:transparent;color:var(--tx);}
 
   /* Panier */
-  .panier-flottant{position:fixed;bottom:20px;right:20px;z-index:900;background:var(--ac);color:#fff;border:none;border-radius:50px;padding:13px 20px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(234,88,12,.35);display:none;align-items:center;gap:8px;}
+  .panier-flottant{position:fixed;bottom:20px;right:20px;z-index:900;background:var(--ac);color:#fff;border:none;border-radius:50px;padding:13px 20px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 6px 20px rgba(18,102,227,.35);display:none;align-items:center;gap:8px;}
   .panier-flottant.visible{display:inline-flex;}
   .panier-badge{background:#fff;color:var(--ac);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;}
   .ligne-panier{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--brd);}
@@ -410,7 +410,7 @@
   .entete-d{display:flex;justify-content:flex-end;gap:4px;}
   .entete-c{display:flex;align-items:center;justify-content:center;gap:10px;min-width:0;}
   .entete-c .boutique-nom{font-size:clamp(18px,2.6vw,28px);justify-content:center;gap:6px;line-height:1.15;}
-  .avatar-haut{width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0;background:rgba(234,88,12,.12);color:var(--ac);display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;}
+  .avatar-haut{width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0;background:rgba(18,102,227,.12);color:var(--ac);display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;}
   @media(max-width:600px){.entete-in{padding:8px 10px}.avatar-haut{display:none}.entete-c .badge-verifie{display:none}}
   .ic-btn{position:relative;width:42px;height:42px;border-radius:50%;border:none;background:transparent;color:var(--hf-tx);font-size:21px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;}
   .ic-btn:hover{background:var(--hf-hover);}
@@ -521,7 +521,7 @@
     <div class="modal-field"><label data-i18n="cat_telephone">Téléphone</label><input type="tel" id="mc-tel"></div>
     <div class="modal-field"><label data-i18n="cat_email">Email</label><input type="email" id="mc-email" required autocomplete="email"></div>
     <div id="mc-compte" style="font-size:12.5px;color:var(--mu);margin:-4px 0 12px;"></div>
-    <div id="mc-cashback" style="display:none;margin:0 0 14px;padding:11px 13px;border-radius:10px;background:rgba(234,88,12,.07);border:1px dashed var(--ac);font-size:13px;line-height:1.5;"></div>
+    <div id="mc-cashback" style="display:none;margin:0 0 14px;padding:11px 13px;border-radius:10px;background:rgba(18,102,227,.07);border:1px dashed var(--ac);font-size:13px;line-height:1.5;"></div>
     <div class="modal-field">
       <label data-i18n="cat_mode">Mode</label>
       <select id="mc-mode" onchange="document.getElementById('mc-adresse-bloc').style.display=this.value==='livraison'?'block':'none'; _fraisLivraison=null; planifierApercuFrais(); majCashback();">
@@ -909,7 +909,7 @@ function prefillCompteClient() {
     zone.textContent = '✓ ' + T('cpt_connecte_pre');
     prefillDepuisProfil(); // nom, téléphone et adresse enregistrés dans le compte
   } else {
-    zone.innerHTML = T('cpt_compte_avantages') + ' <a href="' + lienCompte() + '" target="_blank" rel="noopener" style="color:var(--clay,#EA580C);font-weight:600;">' + T('cpt_onglet_creer') + '</a>';
+    zone.innerHTML = T('cpt_compte_avantages') + ' <a href="' + lienCompte() + '" target="_blank" rel="noopener" style="color:var(--clay,#1266E3);font-weight:600;">' + T('cpt_onglet_creer') + '</a>';
   }
 }
 
@@ -1015,9 +1015,9 @@ function coeurHtml(id, enLigne) {
 function peindreCoeurs() {
   if (!document.getElementById('style-coeur')) {
     var st = document.createElement('style'); st.id = 'style-coeur';
-    st.textContent = '.coeur-btn{position:absolute;top:10px;right:12px;z-index:2;width:34px;height:34px;border-radius:50%;border:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.92);color:#C2410C;font-size:19px;line-height:1;cursor:pointer;padding:0;}' +
+    st.textContent = '.coeur-btn{position:absolute;top:10px;right:12px;z-index:2;width:34px;height:34px;border-radius:50%;border:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.92);color:#0E4FB8;font-size:19px;line-height:1;cursor:pointer;padding:0;}' +
       '.coeur-btn.coeur-inline{position:static;display:inline-block;vertical-align:middle;margin-left:10px;width:32px;height:32px;font-size:18px;}' +
-      '.coeur-btn.on{background:#EA580C;color:#fff;border-color:#EA580C;}';
+      '.coeur-btn.on{background:#1266E3;color:#fff;border-color:#1266E3;}';
     document.head.appendChild(st);
   }
   var tous = document.querySelectorAll('[data-coeur]');
@@ -1439,7 +1439,7 @@ function render() {
   var boutonPartage = '<button type="button" class="btn-partage" onclick="partagerBoutique()" aria-label="' + escHtml(T('partage_titre_boutique')) + '" style="padding:6px 13px;border-radius:20px;border:1px solid var(--brd);background:transparent;color:var(--mu2);font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;white-space:nowrap;">🔗 ' + T('partage_bouton') + '</button>';
 
   // ── Personnalisation de l'artisan : couleur d'accent, image de fond, coordonnées et texte choisis par lui ──
-  var COULEURS = { terre: '#EA580C', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
+  var COULEURS = { terre: '#1266E3', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
   if (['creme', 'sombre', 'terre', 'bleu', 'vert', 'rose', 'violet', 'ocre', 'plage', 'sable', 'motif', 'emeraude', 'soie', 'couleurs', 'bois', 'jungle', 'brume', 'aube', 'menthe', 'ciel', 'lavande', 'perle', 'ocean', 'lagon', 'corail', 'foret', 'schiste', 'aurore', 'feuillage', 'frangipanier', 'provence', 'palmes', 'chene', 'acier', 'beton', 'plan', 'circuit', 'satin', 'drap', 'marbre', 'blancrouge', 'nuages', 'violetroyal', 'vertemeraude'].indexOf(a.boutique_fond) >= 0) {
     document.documentElement.classList.add('fond-' + a.boutique_fond);
     if (a.boutique_fond === 'sombre' || a.boutique_fond === 'motif' || a.boutique_fond === 'emeraude') COULEURS = { terre: '#D0623B', bleu: '#3F86D6', vert: '#2F9A62', rose: '#D0449A', violet: '#8061DB', ocre: '#C48A1F' };
@@ -1465,7 +1465,7 @@ function render() {
   if (a.boutique_cartes === 'carre' || a.boutique_cartes === 'sobre') document.documentElement.classList.add('cartes-' + a.boutique_cartes);
   var dispo = (a.boutique_disposition === 'dessous' || a.boutique_disposition === 'centre') ? a.boutique_disposition : 'image';
   var reseaux = liensReseaux(a), wa = reseaux.filter(function(r) { return r.k === 'whatsapp'; })[0];
-  var annonceHtml = (a.boutique_annonce && (!a.boutique_annonce_fin || String(a.boutique_annonce_fin) >= aujourdhuiLocal())) ? '<div class="annonce" role="status" style="color:' + (contraste(getComputedStyle(document.documentElement).getPropertyValue('--ac').trim().replace(/^(#[0-9a-f]{3})$/i, function(m){return '#' + m[1]+m[1]+m[2]+m[2]+m[3]+m[3];}) || '#EA580C', '#ffffff') >= 4.5 ? '#ffffff' : '#0f1115') + ';">' + escHtml(a.boutique_annonce) + '</div>' : '';
+  var annonceHtml = (a.boutique_annonce && (!a.boutique_annonce_fin || String(a.boutique_annonce_fin) >= aujourdhuiLocal())) ? '<div class="annonce" role="status" style="color:' + (contraste(getComputedStyle(document.documentElement).getPropertyValue('--ac').trim().replace(/^(#[0-9a-f]{3})$/i, function(m){return '#' + m[1]+m[1]+m[2]+m[2]+m[3]+m[3];}) || '#1266E3', '#ffffff') >= 4.5 ? '#ffffff' : '#0f1115') + ';">' + escHtml(a.boutique_annonce) + '</div>' : '';
   var blocReseaux = reseaux.length ? '<div class="reseaux">' + reseaux.map(function(r) { return '<a class="reseau" href="' + escHtml(r.href) + '" target="_blank" rel="noopener noreferrer" aria-label="' + r.nom + '" title="' + r.nom + '">' + svgReseau(r.k) + '</a>'; }).join('') + '</div>' : '';
   var boutonWa = wa ? '<a class="btn-wa" href="' + escHtml(wa.href + '?text=' + encodeURIComponent(T('cat_whatsapp_msg'))) + '" target="_blank" rel="noopener noreferrer">' + svgReseau('whatsapp', 16) + ' ' + T('cat_whatsapp_question') + '</a>' : '';
   var urlBanniere = (a.boutique_banniere_url && /^https:\/\/[a-z0-9.-]+\.supabase\.co\/storage\//i.test(a.boutique_banniere_url)) ? a.boutique_banniere_url : null;
@@ -1780,7 +1780,7 @@ function afficherBoutiqueBientot(a) {
   document.getElementById('racine').innerHTML = '<div class="etat-page"><div style="font-size:42px;margin-bottom:10px;">🛍️</div><h1>' + T('cat_bientot_titre') + '</h1>' +
     '<p><strong>' + escHtml(a.nom_entreprise || '') + '</strong>' + (a.commune ? ' — ' + escHtml(a.commune) : '') + '</p>' +
     '<p>' + T('cat_bientot_texte') + '</p>' +
-    (a.id ? '<p style="margin-top:18px;"><a href="/artisans/?artisan=' + encodeURIComponent(a.id) + '" style="color:var(--ac,#EA580C);font-weight:700;text-decoration:none;">' + T('cat_bientot_fiche') + '</a></p>' : '') +
+    (a.id ? '<p style="margin-top:18px;"><a href="/artisans/?artisan=' + encodeURIComponent(a.id) + '" style="color:var(--ac,#1266E3);font-weight:700;text-decoration:none;">' + T('cat_bientot_fiche') + '</a></p>' : '') +
   '</div>';
 }
 
@@ -1789,7 +1789,7 @@ function afficherBoutiquePause(a) {
   document.getElementById('racine').innerHTML = '<div class="etat-page"><div style="font-size:42px;margin-bottom:10px;">⏸️</div><h1>' + T('cat_pause_titre') + '</h1>' +
     '<p><strong>' + escHtml(a.nom_entreprise || '') + '</strong>' + (a.commune ? ' — ' + escHtml(a.commune) : '') + '</p>' +
     '<p>' + T('cat_pause_texte') + '</p>' +
-    (a.id ? '<p style="margin-top:18px;"><a href="/artisans/?artisan=' + encodeURIComponent(a.id) + '" style="color:var(--ac,#EA580C);font-weight:700;text-decoration:none;">' + T('cat_bientot_fiche') + '</a></p>' : '') +
+    (a.id ? '<p style="margin-top:18px;"><a href="/artisans/?artisan=' + encodeURIComponent(a.id) + '" style="color:var(--ac,#1266E3);font-weight:700;text-decoration:none;">' + T('cat_bientot_fiche') + '</a></p>' : '') +
   '</div>';
 }
 

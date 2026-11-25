@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root{ --bg:#faf7f3; --paper:#ffffff; --ink:#13223c; --mute:#6b7c96; --clay:#EA580C; --clay-dark:#C2410C; --line:#e3eaf4; --danger:#B3261E; --ok:#0f9d78; }
+:root{ --bg:#faf7f3; --paper:#ffffff; --ink:#13223c; --mute:#6b7c96; --clay:#1266E3; --clay-dark:#0E4FB8; --line:#e3eaf4; --danger:#B3261E; --ok:#0f9d78; }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Work Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
 h1,h2,h3{font-family:'Fraunces',serif;font-weight:600;}
@@ -54,7 +54,7 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
 .step i{display:block;height:5px;border-radius:3px;background:var(--line);margin-bottom:5px;}
 .step.fait{color:var(--ok);} .step.fait i{background:var(--ok);}
 .step.cours{color:var(--clay);} .step.cours i{background:var(--clay);}
-.cmd-info{background:#fbf3ee;border-radius:9px;padding:10px 12px;font-size:13px;margin-top:6px;}
+.cmd-info{background:#F3F7FF;border-radius:9px;padding:10px 12px;font-size:13px;margin-top:6px;}
 .cmd-info.ok{background:rgba(15,157,120,.08);color:var(--ok);font-weight:600;}
 .badge{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:rgba(179,38,30,.1);color:var(--danger);margin-top:8px;}
 .cmd-contact{margin-top:10px;font-size:13px;} .cmd-contact a{color:var(--clay);font-weight:600;text-decoration:none;}
@@ -63,13 +63,13 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
 .zone-danger{border-top:1px solid var(--line);margin-top:22px;padding-top:18px;}
 .tabs{overflow-x:auto;} .tab{white-space:nowrap;}
 .prj-etapes{display:grid;gap:10px;margin:6px 0 14px;}
-.prj-etape{background:#fbf3ee;border-radius:10px;padding:11px 13px;} .prj-etape b{display:block;font-size:13.5px;margin-bottom:2px;} .prj-etape span{font-size:12.5px;color:var(--mute);}
+.prj-etape{background:#F3F7FF;border-radius:10px;padding:11px 13px;} .prj-etape b{display:block;font-size:13.5px;margin-bottom:2px;} .prj-etape span{font-size:12.5px;color:var(--mute);}
 @media (max-width:640px){.prj-etapes{gap:6px;margin:4px 0 10px;}.prj-etape{padding:7px 10px;border-radius:8px;}.prj-etape b{display:inline;font-size:12.5px;margin:0;}.prj-etape span{display:none;}.prj-protege{padding:8px 11px;font-size:11.5px;line-height:1.4;margin-bottom:10px;}}
 .prj-protege{background:rgba(15,157,120,.08);border:1px solid rgba(15,157,120,.3);color:#0b6b52;border-radius:9px;padding:11px 13px;font-size:12.5px;margin-bottom:14px;line-height:1.5;}
 .opts{display:grid;gap:8px;margin:10px 0 4px;}
 .opt{display:flex;align-items:center;gap:11px;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;font-family:inherit;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;width:100%;}
-.opt:hover{border-color:var(--clay);background:#fbf3ee;} .opt .ic{font-size:22px;flex-shrink:0;}
-.prj-choix{display:inline-block;background:#fbf3ee;border-radius:99px;padding:5px 12px;font-size:12.5px;font-weight:600;margin-bottom:12px;}
+.opt:hover{border-color:var(--clay);background:#F3F7FF;} .opt .ic{font-size:22px;flex-shrink:0;}
+.prj-choix{display:inline-block;background:#F3F7FF;border-radius:99px;padding:5px 12px;font-size:12.5px;font-weight:600;margin-bottom:12px;}
 .field textarea{width:100%;padding:11px 13px;border-radius:8px;border:1.5px solid var(--line);font-family:inherit;font-size:14px;resize:vertical;}
 .field textarea:focus{outline:2px solid var(--clay);outline-offset:1px;border-color:var(--clay);}
 .prj-thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
@@ -146,7 +146,7 @@ main{max-width:640px;margin:0 auto;padding:8px 16px 60px;}
 <!-- ÉCRAN 3 : espace connecté -->
 <div id="v-app" style="display:none;">
   <div id="bandeau-modo" style="display:none;"></div>
-  <div id="bandeau-infos" style="display:none;margin:12px 0;padding:12px 14px;border-radius:10px;background:#fff4e5;border:1px solid #f59e0b;color:#7c2d12;font-size:14px;line-height:1.5;"><span data-i18n="cpt_infos_inviter"></span> <a href="#" onclick="ongletApp('profil');window.scrollTo({top:0,behavior:'smooth'});return false;" style="font-weight:700;color:#7c2d12;text-decoration:underline;" data-i18n="cpt_infos_bouton"></a></div>
+  <div id="bandeau-infos" style="display:none;margin:12px 0;padding:12px 14px;border-radius:10px;background:#EAF2FF;border:1px solid #93B7F2;color:#0B3D91;font-size:14px;line-height:1.5;"><span data-i18n="cpt_infos_inviter"></span> <a href="#" onclick="ongletApp('profil');window.scrollTo({top:0,behavior:'smooth'});return false;" style="font-weight:700;color:#0B3D91;text-decoration:underline;" data-i18n="cpt_infos_bouton"></a></div>
   <div class="haut">
     <h1 id="bonjour"></h1>
     <button class="btn sec" onclick="seDeconnecter()" data-i18n="cpt_deconnexion"></button>
@@ -855,7 +855,7 @@ function reponseVue(id){ try { return localStorage.getItem('at_rep_vue_'+id) ===
 function marquerReponseVue(id){ try { localStorage.setItem('at_rep_vue_'+id, '1'); } catch(e) {} }
 function carteFil(r){
   var n = NONLUS[r.id] || 0, id = esc(r.id);
-  var badge = n>0 ? ' <span class="prj-badge" style="background:#EA580C;color:#fff;">'+esc(fill(T('msg_non_lus'),{n:n}))+'</span>'
+  var badge = n>0 ? ' <span class="prj-badge" style="background:#1266E3;color:#fff;">'+esc(fill(T('msg_non_lus'),{n:n}))+'</span>'
     : (!reponseVue(r.id) ? ' <span class="prj-badge" style="background:#dc2626;color:#fff;">'+esc(T('msg_nouvelle_rep'))+'</span>' : '');
   return '<button class="btn" id="fil-bouton-'+id+'" style="margin-top:10px;" onclick="ouvrirFil(\''+id+'\')">💬 '+esc(T('msg_bouton'))+badge+'</button>'
     + '<div id="fil-'+id+'" style="display:none;margin-top:10px;"><div id="fil-msgs-'+id+'"></div>'
@@ -887,7 +887,7 @@ async function chargerFil(id){
   }).join('') : (d.signale_par_moi ? '' : '<div class="cmd-date" style="margin-top:6px;">'+esc(T('msg_aucun'))+'</div>'))
     + (d.signale_par_moi ? '<div style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#fdecec;color:#991b1b;font-size:13px;">'+esc(T('msg_auto_signale'))+'</div>'
       : d.ferme ? '<div class="cmd-date" style="margin-top:8px;">'+esc(T('msg_ferme'))+'</div>'
-      : (msgs.length ? '' : '<div style="margin-top:10px;padding:12px 14px;border-radius:10px;background:#fff4e5;border:1px solid #f59e0b;color:#7c2d12;font-size:14px;font-weight:600;line-height:1.5;">'+esc(T('msg_regle'))+'</div>'))
+      : (msgs.length ? '' : '<div style="margin-top:10px;padding:12px 14px;border-radius:10px;background:#EAF2FF;border:1px solid #93B7F2;color:#0B3D91;font-size:14px;font-weight:600;line-height:1.5;">'+esc(T('msg_regle'))+'</div>'))
     + (d.messagerie_bloquee ? '<div style="margin-top:10px;font-size:13px;color:#991b1b;">'+esc(T('msg_modo_bloque'))+'</div>' : '');
   form.style.display = d.peut_ecrire ? '' : 'none';
   zone.scrollTop = zone.scrollHeight;
@@ -972,7 +972,7 @@ function ouvrirEngagement(idReponse, nomArtisan){
   d.style.cssText = 'position:fixed;inset:0;background:rgba(20,28,45,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 12px;';
   d.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:460px;width:100%;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25);">'
     + '<h2 style="margin:0 0 10px;">'+esc(fill(T('prj_engage_titre'),{nom:nomArtisan}))+'</h2>'
-    + '<div style="padding:10px 12px;border-radius:8px;background:#fff4e5;border:1px solid #f59e0b;color:#7c2d12;font-size:13.5px;line-height:1.5;">'+esc(T('prj_engage_intro'))+'</div>'
+    + '<div style="padding:10px 12px;border-radius:8px;background:#EAF2FF;border:1px solid #93B7F2;color:#0B3D91;font-size:13.5px;line-height:1.5;">'+esc(T('prj_engage_intro'))+'</div>'
     + '<div style="margin-top:12px;font-weight:700;font-size:14px;">'+esc(T('prj_engage_champs'))+'</div>'
     + ch('eg-nom', T('cpt_nom'), P.nom, 'name') + ch('eg-tel', T('cpt_tel'), P.telephone, 'tel')
     + ch('eg-adr', T('cat_adresse'), P.adresse, 'street-address') + ch('eg-cp', T('cat_code_postal'), P.code_postal, 'postal-code') + ch('eg-com', T('cat_commune'), P.commune, 'address-level2')

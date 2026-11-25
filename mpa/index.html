@@ -40,7 +40,7 @@
 <style>
 :root{
   --bg:#f7f9fc; --panel:#ffffff; --p2:#f6f9fe; --brd:#e3eaf4; --b2:#c9d8ef;
-  --ac:#EA580C; --ac2:#EA580C; --ac-t:#C2410C; --tx:#13223c; --mu:#6b7c96; --mu2:#4a5c78;
+  --ac:#1266E3; --ac2:#1266E3; --ac-t:#0E4FB8; --tx:#13223c; --mu:#6b7c96; --mu2:#4a5c78;
   --danger:#dc2626; --gold:#b45309; --purple:#6d28d9; --inp:#f6f9fe;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -126,9 +126,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .faq-vide{padding:30px 20px;text-align:center;color:var(--mu);font-size:13px;}
 .btab{display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:9px;border:1px solid var(--brd);background:var(--panel);color:var(--mu);font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;}
 .btab svg{width:15px;height:15px;}
-.btab.active{background:var(--ac-dim,rgba(234,88,12,.08));border-color:var(--ac-t,var(--ac));color:var(--ac-t,var(--ac));}
+.btab.active{background:var(--ac-dim,rgba(18,102,227,.08));border-color:var(--ac-t,var(--ac));color:var(--ac-t,var(--ac));}
 .bcnt{background:var(--brd);color:var(--mu2);font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:10px;margin-left:2px;}
-.btab.active .bcnt{background:rgba(234,88,12,.15);color:var(--ac-t,var(--ac));}
+.btab.active .bcnt{background:rgba(18,102,227,.15);color:var(--ac-t,var(--ac));}
 .bpnl{display:none;}
 .bpnl.active{display:block;}
 .dcard{background:var(--panel);border:1px solid var(--brd);border-radius:14px;overflow:hidden;}
@@ -136,7 +136,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .dcdesc{font-size:12.5px;font-weight:400;color:var(--mu);line-height:1.4;}
 .dchdr{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--brd);flex-wrap:wrap;gap:10px;}
 .dchdr.fam-bleu{background:rgba(37,99,235,.09);border-left:5px solid #2563eb;border-radius:12px 12px 0 0;}
-.dchdr.fam-orange{background:rgba(242,106,28,.10);border-left:5px solid #f26a1c;border-radius:12px 12px 0 0;}
+.dchdr.fam-orange{background:rgba(18,102,227,.10);border-left:5px solid #1266E3;border-radius:12px 12px 0 0;}
 .dchdr.fam-violet{background:rgba(124,58,237,.09);border-left:5px solid #7c3aed;border-radius:12px 12px 0 0;}
 .dchdr.fam-vert{background:rgba(18,163,122,.10);border-left:5px solid #12a37a;border-radius:12px 12px 0 0;}
 .dchdr .hdr-sub{font-size:12px;color:var(--mu);font-weight:500;margin-left:auto;margin-right:8px;}
@@ -158,7 +158,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .pw-accroche{font-size:13px;opacity:.75;margin-top:3px;min-height:18px;}
 .pw-live-bas{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;}
 .pw-btn{display:inline-block;padding:8px 16px;border-radius:12px;color:#fff;font-weight:800;font-size:13px;}
-.pw-annonce{font-size:12px;font-weight:700;padding:5px 11px;border-radius:12px;background:#fff7e6;border:1px solid #f7d58a;color:#8a5a00;}
+.pw-annonce{font-size:12px;font-weight:700;padding:5px 11px;border-radius:12px;background:#EEF4FF;border:1px solid #f7d58a;color:#8a5a00;}
 .pw-steps{display:flex;gap:6px;margin-bottom:12px;}
 .pw-step{flex:1;padding:9px 2px;border-radius:999px;border:1px solid var(--brd);background:var(--bg);color:var(--tx);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
 .pw-step.on{background:var(--ac);border-color:var(--ac-t,var(--ac));color:#fff;}
@@ -251,9 +251,9 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 
 /* Loader "lava blob" — même mécanique que Formation, recoloré en terre cuite */
 .mpa-ai-loader{
-  --c1:#d97a52; --c2:#C2410C; --t:2.4s;
+  --c1:#5B9BF0; --c2:#0E4FB8; --t:2.4s;
   position:relative;width:48px;height:48px;border-radius:50%;
-  box-shadow:0 0 14px 0 rgba(234,88,12,.4),0 8px 20px 0 rgba(143,61,34,.35);
+  box-shadow:0 0 14px 0 rgba(18,102,227,.4),0 8px 20px 0 rgba(11,61,145,.35);
   animation:mpa-colorize calc(var(--t) * 3) ease-in-out infinite;
   overflow:hidden;
 }
@@ -261,7 +261,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   content:"";position:absolute;inset:0;border-radius:50%;
   border-top:1px solid var(--c1);border-bottom:1px solid var(--c2);
   background:linear-gradient(180deg,#d97a5240,#C2410C80);
-  box-shadow:inset 0 5px 5px 0 rgba(217,122,82,.5),inset 0 -5px 5px 0 rgba(143,61,34,.5);
+  box-shadow:inset 0 5px 5px 0 rgba(91,155,240,.5),inset 0 -5px 5px 0 rgba(11,61,145,.5);
 }
 .mpa-ai-loader-inner{
   position:absolute;inset:0;border-radius:50%;overflow:hidden;
@@ -277,16 +277,16 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 @keyframes mpa-spin{to{transform:rotate(360deg);}}
 /* ── MPA AI — grande fenêtre d'accueil : un message à la fois, plein écran sur téléphone ── */
 .mpa-ai-grand{position:fixed;inset:0;z-index:1200;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px;}
-.mpa-ai-grand-box{box-sizing:border-box;background:var(--panel,#fff);width:100%;max-width:520px;max-height:92vh;overflow-y:auto;border-radius:20px;border-top:6px solid #EA580C;
+.mpa-ai-grand-box{box-sizing:border-box;background:var(--panel,#fff);width:100%;max-width:520px;max-height:92vh;overflow-y:auto;border-radius:20px;border-top:6px solid #1266E3;
   padding:26px 26px 22px;box-shadow:0 24px 60px rgba(0,0,0,.35);text-align:center;display:flex;flex-direction:column;}
 .mpa-ai-grand-loader{width:112px;height:112px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .mpa-ai-grand-loader .mpa-ai-loader{transform:scale(2.2);}
 .mpa-ai-grand-msg{font-size:17px;line-height:1.6;margin:8px 0 18px;text-align:left;}
-.mpa-ai-grand-cta{display:block;width:100%;padding:15px 18px;margin:0 0 10px;border-radius:12px;border:none;background:#EA580C;color:#fff;
+.mpa-ai-grand-cta{display:block;width:100%;padding:15px 18px;margin:0 0 10px;border-radius:12px;border:none;background:#1266E3;color:#fff;
   font-family:'Outfit',sans-serif;font-size:16px;font-weight:700;cursor:pointer;}
 .mpa-ai-grand-points{display:flex;justify-content:center;gap:7px;margin:6px 0 14px;}
 .mpa-ai-grand-point{width:9px;height:9px;border-radius:50%;background:var(--brd,#d6dce8);}
-.mpa-ai-grand-point.actif{background:#EA580C;}
+.mpa-ai-grand-point.actif{background:#1266E3;}
 .mpa-ai-grand-pied{display:flex;gap:10px;}
 .mpa-ai-grand-plus-tard,.mpa-ai-grand-suivant{flex:1;padding:14px 16px;border-radius:12px;font-family:'Outfit',sans-serif;font-size:15px;font-weight:700;cursor:pointer;}
 .mpa-ai-grand-plus-tard{background:transparent;border:1.5px solid var(--brd,#d6dce8);color:var(--mu,#6b7c96);}
@@ -311,7 +311,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   background:var(--panel);border:1px solid var(--brd);border-radius:16px;
   box-shadow:0 16px 48px rgba(19,34,60,.18);z-index:899;display:none;flex-direction:column;overflow:hidden;}
 .mpa-ai-panel.open{display:flex;}
-.mpa-ai-panel-header{padding:14px 16px;background:linear-gradient(135deg,#EA580C,#C2410C);
+.mpa-ai-panel-header{padding:14px 16px;background:linear-gradient(135deg,#1266E3,#0E4FB8);
   color:#fff;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:14px;
   display:flex;align-items:center;justify-content:space-between;}
 .mpa-ai-panel-header button{background:rgba(255,255,255,.15);border:none;color:#fff;
@@ -335,11 +335,11 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 #fact-panier .panier-total-label{font-family:'Bricolage Grotesque',sans-serif;}
 #fact-panier .panier-total-montant{color:var(--ac-t,var(--ac));}
 #fact-panier .addb{background:var(--ac);border-radius:9px;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;letter-spacing:.2px;}
-#fact-panier .addb:hover{background:#C2410C;}
+#fact-panier .addb:hover{background:#0E4FB8;}
 #tbl-factures{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:13px;}
 #tbl-factures thead th{padding:10px 6px;text-align:center;color:var(--mu);font-size:11px;letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid var(--brd);}
 #tbl-factures tbody td{padding:12px 6px;text-align:center;color:var(--tx);}
-#tbl-factures tbody tr:nth-child(even) td{background:rgba(234,88,12,.02);}
+#tbl-factures tbody tr:nth-child(even) td{background:rgba(18,102,227,.02);}
 #tbl-factures tbody tr:not(:last-child) td{border-bottom:1px solid var(--brd);}
 #p2.active{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:24px;overflow:hidden;}
 .cpv2-card{width:100%;max-width:1400px;box-sizing:border-box;background:var(--panel);border:1px solid var(--brd);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:28px 32px;display:flex;flex-direction:column;min-width:0;}
@@ -349,15 +349,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .cpv2-matrix-subtitle{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mu);margin:0;}
 .cpv2-matrix-note{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--mu2);margin:4px 0 0;opacity:.75;}
 .cpv2-kpis{display:flex;gap:24px;margin:18px 0 22px;flex-wrap:wrap;}
-.cpv2-kpi{display:flex;flex-direction:column;gap:4px;padding:12px 20px;border-radius:10px;background:rgba(234,88,12,.03);border:1px solid rgba(234,88,12,.08);min-width:160px;}
+.cpv2-kpi{display:flex;flex-direction:column;gap:4px;padding:12px 20px;border-radius:10px;background:rgba(18,102,227,.03);border:1px solid rgba(18,102,227,.08);min-width:160px;}
 .cpv2-kpi-lbl{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--mu);text-transform:uppercase;}
 .cpv2-kpi-val{font-family:'Bricolage Grotesque',sans-serif;font-size:26px;font-weight:700;color:var(--tx);line-height:1.1;}
 .cpv2-kpi.cotis .cpv2-kpi-val{color:var(--gold);}
-.cpv2-kpi.net{border-color:rgba(234,88,12,.3);}
+.cpv2-kpi.net{border-color:rgba(18,102,227,.3);}
 .cpv2-kpi.net .cpv2-kpi-val{color:var(--ac-t,var(--ac));}
 .cpv2-toggle{display:flex;border:1px solid var(--b2);border-radius:8px;overflow:hidden;}
 .cpv2-toggle button{padding:6px 16px;font-family:'Bricolage Grotesque',sans-serif;font-size:12px;font-weight:700;background:transparent;border:none;color:var(--mu);cursor:pointer;transition:background .15s,color .15s;}
-.cpv2-toggle button.active{background:rgba(234,88,12,.08);color:var(--ac-t,var(--ac));}
+.cpv2-toggle button.active{background:rgba(18,102,227,.08);color:var(--ac-t,var(--ac));}
 .cpv2-toggle button:hover:not(.active){color:var(--tx);}
 .cpv2-yearnav{display:flex;align-items:center;gap:8px;}
 .cpv2-yearnav button{width:32px;height:32px;border-radius:8px;border:1px solid var(--brd);background:var(--panel);color:var(--tx);cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;}
@@ -368,13 +368,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 #tbl-compta thead th:first-child{text-align:left;padding-left:8px;}
 #tbl-compta tbody td{padding:12px 6px;text-align:center;font-size:13px;color:var(--tx);}
 #tbl-compta tbody td:first-child{text-align:left;padding-left:8px;font-weight:700;}
-#tbl-compta tbody tr:nth-child(even) td{background:rgba(234,88,12,.02);}
+#tbl-compta tbody tr:nth-child(even) td{background:rgba(18,102,227,.02);}
 #tbl-compta tbody tr:not(:last-child) td{border-bottom:1px solid var(--brd);}
-#tbl-compta thead th.col-now{color:var(--ac-t,var(--ac));background:rgba(234,88,12,.08);border-radius:4px 4px 0 0;}
-#tbl-compta tbody td.col-now{background:rgba(234,88,12,.05);}
+#tbl-compta thead th.col-now{color:var(--ac-t,var(--ac));background:rgba(18,102,227,.08);border-radius:4px 4px 0 0;}
+#tbl-compta tbody td.col-now{background:rgba(18,102,227,.05);}
 #tbl-compta tbody tr.cpv2-row-client td:first-child{border-left:3px solid transparent;padding-left:10px;}
 #tbl-compta tr.cpv2-sep td{padding:2px 0;border-bottom:none;}
-.cpv2-matrix-sep-bar{height:1px;background:linear-gradient(90deg,rgba(234,88,12,.4),rgba(234,88,12,.08));border-radius:1px;}
+.cpv2-matrix-sep-bar{height:1px;background:linear-gradient(90deg,rgba(18,102,227,.4),rgba(18,102,227,.08));border-radius:1px;}
 #tbl-compta tr.cpv2-row-brut td{color:var(--tx);font-weight:700;}
 #tbl-compta tr.cpv2-row-cotis td{color:var(--mu);}
 #tbl-compta tr.cpv2-row-net td{color:var(--ac-t,var(--ac));font-weight:700;}
@@ -386,10 +386,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 #tbl-recap thead th:first-child{text-align:left;padding-left:8px;}
 #tbl-recap tbody td{padding:12px 6px;text-align:center;font-size:13px;color:var(--tx);}
 #tbl-recap tbody td:first-child{text-align:left;padding-left:8px;font-weight:700;}
-#tbl-recap tbody tr:nth-child(even) td{background:rgba(234,88,12,.02);}
+#tbl-recap tbody tr:nth-child(even) td{background:rgba(18,102,227,.02);}
 #tbl-recap tbody tr:not(:last-child) td{border-bottom:1px solid var(--brd);}
-#tbl-recap thead th.col-now{color:var(--ac-t,var(--ac));background:rgba(234,88,12,.08);border-radius:4px 4px 0 0;}
-#tbl-recap tbody td.col-now{background:rgba(234,88,12,.05);}
+#tbl-recap thead th.col-now{color:var(--ac-t,var(--ac));background:rgba(18,102,227,.08);border-radius:4px 4px 0 0;}
+#tbl-recap tbody td.col-now{background:rgba(18,102,227,.05);}
 #tbl-recap tbody tr.cpv2-row-client td:first-child{border-left:3px solid transparent;padding-left:10px;}
 #tbl-recap tr.cpv2-sep td{padding:2px 0;border-bottom:none;}
 #tbl-recap tr.cpv2-row-brut td{color:var(--tx);font-weight:700;}
@@ -398,13 +398,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 #tbl-recap tr.cpv2-row-brut td:first-child,
 #tbl-recap tr.cpv2-row-cotis td:first-child,
 #tbl-recap tr.cpv2-row-net td:first-child{text-align:left;padding-left:10px;}
-#tbl-recap tbody tr.rec-fam td{padding:14px 8px 6px;text-align:left;font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:800;color:var(--tx);background:rgba(234,88,12,.04);border-bottom:none;}
+#tbl-recap tbody tr.rec-fam td{padding:14px 8px 6px;text-align:left;font-family:'Bricolage Grotesque',sans-serif;font-size:13px;font-weight:800;color:var(--tx);background:rgba(18,102,227,.04);border-bottom:none;}
 #tbl-recap tbody tr.rec-fam .rec-taux{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;color:var(--mu);margin-left:6px;}
-#tbl-recap tbody tr.rec-total td{background:rgba(234,88,12,.1);border-top:2px solid rgba(234,88,12,.35);}
+#tbl-recap tbody tr.rec-total td{background:rgba(18,102,227,.1);border-top:2px solid rgba(18,102,227,.35);}
 #tbl-recap tbody tr:nth-child(even) td{background:none;}
-#tbl-recap tbody tr.rec-fam:nth-child(even) td{background:rgba(234,88,12,.04);}
-#tbl-recap tbody tr.rec-total:nth-child(even) td{background:rgba(234,88,12,.1);}
-.compta-mobile-fam{margin-top:14px;padding:6px 0;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:13.5px;border-bottom:2px solid rgba(234,88,12,.25);}
+#tbl-recap tbody tr.rec-fam:nth-child(even) td{background:rgba(18,102,227,.04);}
+#tbl-recap tbody tr.rec-total:nth-child(even) td{background:rgba(18,102,227,.1);}
+.compta-mobile-fam{margin-top:14px;padding:6px 0;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:13.5px;border-bottom:2px solid rgba(18,102,227,.25);}
 .panier-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--brd);}
 .panier-item:last-child{border-bottom:none;}
 .panier-item input[type="checkbox"]{width:16px;height:16px;flex-shrink:0;accent-color:var(--ac-t,var(--ac));}
@@ -423,7 +423,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .fp-mentions p{margin:0 0 4px;}
 .fp-header{display:flex;justify-content:space-between;margin-bottom:36px;}
 .fp-brand{font-family:'Bricolage Grotesque',sans-serif;font-size:20px;font-weight:800;}
-.fp-brand span{color:#C2410C;}
+.fp-brand span{color:#0E4FB8;}
 .fp-page[style*="--fp-c"] .fp-table th{border-bottom-color:var(--fp-c);}
 .fp-page[style*="--fp-c"] .fp-total-row{color:var(--fp-c);}
 .fp-meta{text-align:right;font-size:13px;color:#4a5c78;}
@@ -548,7 +548,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   #bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:830;background:#13223c;border-top:0;padding:6px 4px calc(8px + env(safe-area-inset-bottom));}
   .bn{flex:1;min-width:0;background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px 4px;font-family:'Outfit',sans-serif;font-size:11.5px;font-weight:700;color:#b9c6dc;cursor:pointer;position:relative;}
   .bn i{font-style:normal;font-size:25px;line-height:1;filter:grayscale(1) brightness(1.6);opacity:.8;}
-  .bn.on{color:#FDBA74;}
+  .bn.on{color:#9DC2F7;}
   .bn.on i{filter:none;opacity:1;}
   .bn.on::after{content:"";width:22px;height:3px;border-radius:3px;background:var(--ac);margin-top:1px;}
   .bn-pastille{position:absolute;top:0;left:calc(50% + 8px);min-width:17px;height:17px;border-radius:9px;background:var(--danger);color:#fff;font-size:10.5px;display:flex;align-items:center;justify-content:center;padding:0 4px;}
@@ -691,7 +691,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .sv-det .sv-nom{font-size:20px;font-weight:800;color:#111;line-height:1.2;}
   .sv-det .sv-meta{font-size:14px;color:#8a8580;margin-top:3px;}
   .sv-det .sv-desc{font-size:15.5px;color:#4b5563;line-height:1.45;margin-top:16px;}
-  .sv-det .sv-rappel{display:inline-block;margin-top:14px;font-size:13px;font-weight:700;color:#C2410C;background:#fff1e8;border-radius:99px;padding:6px 14px;}
+  .sv-det .sv-rappel{display:inline-block;margin-top:14px;font-size:13px;font-weight:700;color:#0E4FB8;background:#EEF4FF;border-radius:99px;padding:6px 14px;}
   .sv-det .sv-btns{display:flex;gap:10px;margin-top:22px;}
   .sv-det .sv-btns button{flex:1;padding:14px;border-radius:14px;font-family:'Outfit',sans-serif;font-size:15.5px;font-weight:800;cursor:pointer;border:2px solid var(--ac);}
   .sv-det .sv-mod{background:var(--ac);color:#fff;}
@@ -712,7 +712,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .rm-t{flex:1;min-width:0;}
   .rm-t b{display:block;font-size:16px;color:#111;}
   .rm-t small{display:block;font-size:13px;color:#8a8580;margin-top:2px;}
-  .rm-o{font-size:12px;font-weight:800;color:var(--ac-t,var(--ac));background:#fff1e8;border-radius:99px;padding:4px 11px;flex-shrink:0;}
+  .rm-o{font-size:12px;font-weight:800;color:var(--ac-t,var(--ac));background:#EEF4FF;border-radius:99px;padding:4px 11px;flex-shrink:0;}
   .rm-o.rm-tous{color:#0f9d78;background:#e6f7ef;}
   .rm-item{border:1px solid #e3e3e3;border-radius:16px;background:#fff;overflow:hidden;}
   .rm-item .rm-l{border:0;border-radius:0;cursor:pointer;}
@@ -760,7 +760,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .fm-corps .hz-nom{width:auto !important;flex:1;font-size:17px !important;font-weight:800 !important;}
   .fm-corps .hz-add{order:2;padding:8px 16px !important;font-size:14px !important;border-radius:99px !important;border:1.5px dashed #c9c9c9 !important;}
   .fm-corps .hz-plages{order:3;width:100%;flex:none !important;gap:8px !important;}
-  .fm-corps .hz-chip{font-size:15px !important;padding:8px 14px !important;border-radius:99px !important;background:#fff1e8 !important;color:#C2410C;}
+  .fm-corps .hz-chip{font-size:15px !important;padding:8px 14px !important;border-radius:99px !important;background:#EEF4FF !important;color:#0E4FB8;}
   .fm-corps .hz-plages>span:not(.hz-chip){font-size:14px !important;color:#9ca3af !important;}
   .fm-corps .hz-form{padding:4px 0 14px !important;flex-wrap:wrap;gap:8px !important;}
   .fm-corps .hz-form input{padding:10px 12px !important;font-size:16px !important;border-radius:10px !important;}
@@ -817,7 +817,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .fm-corps .hz-nom{width:auto !important;flex:1;font-size:17px !important;font-weight:800 !important;}
   .fm-corps .hz-add{order:2;padding:8px 16px !important;font-size:14px !important;border-radius:99px !important;border:1.5px dashed #c9c9c9 !important;}
   .fm-corps .hz-plages{order:3;width:100%;flex:none !important;gap:8px !important;}
-  .fm-corps .hz-chip{font-size:15px !important;padding:8px 14px !important;border-radius:99px !important;background:#fff1e8 !important;color:#C2410C;}
+  .fm-corps .hz-chip{font-size:15px !important;padding:8px 14px !important;border-radius:99px !important;background:#EEF4FF !important;color:#0E4FB8;}
   .fm-corps .hz-plages>span:not(.hz-chip){font-size:14px !important;color:#9ca3af !important;}
   .fm-corps .hz-form{padding:4px 0 14px !important;flex-wrap:wrap;gap:8px !important;}
   .fm-corps .hz-form input{padding:10px 12px !important;font-size:16px !important;border-radius:10px !important;}
@@ -959,7 +959,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 #plan-m{display:none;}
 @media(max-width:640px){
   #plan-m{display:block;background:#fff;border:1px solid #e3e3e3;border-radius:18px;padding:14px;margin-bottom:14px;}
-  #p0 .cal-header,#p0>div[style*="rgba(234,88,12,.09)"],#p0>#cal-dows,#p0>#cal-grid{display:none !important;}
+  #p0 .cal-header,#p0>div[style*="rgba(18,102,227,.09)"],#p0>#cal-dows,#p0>#cal-grid{display:none !important;}
   .pm-tete{display:flex;align-items:center;gap:6px;}
   .pm-titre{flex:1;text-align:center;font-size:17px;font-weight:800;color:#111;white-space:nowrap;}
   .pm-fl{width:40px;height:40px;border-radius:50%;border:1px solid #e3e3e3;background:#fff;font-size:24px;color:#6b7280;cursor:pointer;line-height:1;}
@@ -1012,7 +1012,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 /* ── Ordinateur : Planning au même style épuré que le téléphone (semaine + liste du jour, fiche au clic) ── */
 @media(min-width:641px){
   #plan-m{display:block;background:#fff;border:1px solid #e3e3e3;border-radius:18px;padding:20px 22px;margin-bottom:16px;}
-  #p0 .cal-header,#p0>div[style*="rgba(234,88,12,.09)"],#p0>#cal-dows,#p0>#cal-grid{display:none !important;}
+  #p0 .cal-header,#p0>div[style*="rgba(18,102,227,.09)"],#p0>#cal-dows,#p0>#cal-grid{display:none !important;}
   .pm-tete{display:flex;align-items:center;gap:6px;}
   .pm-titre{flex:1;text-align:center;font-size:17px;font-weight:800;color:#111;white-space:nowrap;}
   .pm-fl{width:40px;height:40px;border-radius:50%;border:1px solid #e3e3e3;background:#fff;font-size:24px;color:#6b7280;cursor:pointer;line-height:1;}
@@ -1124,7 +1124,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   #zone-livraisons .lv-titre{background:none;border-radius:0;padding:0;margin:16px 0 10px;font-size:17px;}
   #zone-livraisons .lv-titre:first-child{margin-top:2px;}
   #zone-livraisons .lv-titre span{background:#f1f5f9;color:#475569;padding:2px 11px;font-size:13px;}
-  #zone-livraisons .lv-t-jour{color:#C2410C;}
+  #zone-livraisons .lv-t-jour{color:#0E4FB8;}
   #zone-livraisons .lv-t-sem{color:#2563eb;}
   #zone-livraisons .lv-t-plan{color:#b45309;}
   #zone-livraisons .pc-wrap{margin-bottom:10px;}
@@ -1142,8 +1142,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .fm-corps .lv-ligne{font-size:17px;line-height:1.5;}
   .fm-corps .lv-puce{font-size:14px;padding:5px 12px;}
   .fm-corps .lv-m-only{display:block;}
-  .lv-bouton-m{display:block;width:100%;text-align:center;margin-top:12px;padding:15px;border-radius:14px;border:0;background:#C2410C;color:#fff !important;font-size:17px;font-weight:800;text-decoration:none;cursor:pointer;}
-  .lv-bouton-m.lv-gris{background:#fff;color:#C2410C !important;border:1.5px solid #e3e3e3;}
+  .lv-bouton-m{display:block;width:100%;text-align:center;margin-top:12px;padding:15px;border-radius:14px;border:0;background:#0E4FB8;color:#fff !important;font-size:17px;font-weight:800;text-decoration:none;cursor:pointer;}
+  .lv-bouton-m.lv-gris{background:#fff;color:#0E4FB8 !important;border:1.5px solid #e3e3e3;}
   #bp-liv-tarifs .dcard>div[style*="padding:16px"]{padding:18px !important;}
   #bp-liv-tarifs div[style*="grid-template-columns"]{grid-template-columns:1fr !important;gap:14px !important;}
   #bp-liv-tarifs div[style*="max-width:340px"]{max-width:none !important;margin-top:14px !important;}
@@ -1156,7 +1156,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .lv-ex-m small{display:block;font-size:13px;color:#6b7280;font-weight:600;}
   .lv-ex-m b{display:block;font-size:30px;font-weight:800;color:#111;line-height:1.15;}
   .lv-ex-m .lv-ex-prix{text-align:right;}
-  .lv-ex-m .lv-ex-prix b{color:#C2410C;}
+  .lv-ex-m .lv-ex-prix b{color:#0E4FB8;}
   .lv-ex-note{text-align:center;font-size:14px;color:#6b7280;font-weight:600;margin-top:4px;}
 }
 
@@ -1188,8 +1188,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .fm-corps .lv-ligne{font-size:17px;line-height:1.5;}
   .fm-corps .lv-puce{font-size:14px;padding:5px 12px;}
   .fm-corps .lv-m-only{display:block;}
-  .lv-bouton-m{display:block;width:100%;text-align:center;margin-top:12px;padding:15px;border-radius:14px;border:0;background:#C2410C;color:#fff !important;font-size:17px;font-weight:800;text-decoration:none;cursor:pointer;}
-  .lv-bouton-m.lv-gris{background:#fff;color:#C2410C !important;border:1.5px solid #e3e3e3;}
+  .lv-bouton-m{display:block;width:100%;text-align:center;margin-top:12px;padding:15px;border-radius:14px;border:0;background:#0E4FB8;color:#fff !important;font-size:17px;font-weight:800;text-decoration:none;cursor:pointer;}
+  .lv-bouton-m.lv-gris{background:#fff;color:#0E4FB8 !important;border:1.5px solid #e3e3e3;}
   #bp-liv-tarifs .dcard>div[style*="padding:16px"]{padding:18px !important;}
   #bp-liv-tarifs label{font-size:14px !important;color:#4b5563 !important;margin-bottom:6px !important;}
   #bp-liv-tarifs input{padding:12px !important;font-size:16px !important;border-radius:12px !important;border:1px solid #d1d5db !important;}
@@ -1199,7 +1199,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .lv-ex-m small{display:block;font-size:13px;color:#6b7280;font-weight:600;}
   .lv-ex-m b{display:block;font-size:30px;font-weight:800;color:#111;line-height:1.15;}
   .lv-ex-m .lv-ex-prix{text-align:right;}
-  .lv-ex-m .lv-ex-prix b{color:#C2410C;}
+  .lv-ex-m .lv-ex-prix b{color:#0E4FB8;}
   .lv-ex-note{text-align:center;font-size:14px;color:#6b7280;font-weight:600;margin-top:4px;}
 
   #zone-livraisons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:stretch;}
@@ -1318,7 +1318,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .rm-t{flex:1;min-width:0;}
   .rm-t b{display:block;font-size:16px;color:#111;}
   .rm-t small{display:block;font-size:13px;color:#8a8580;margin-top:2px;}
-  .rm-o{font-size:12px;font-weight:800;color:var(--ac-t,var(--ac));background:#fff1e8;border-radius:99px;padding:4px 11px;flex-shrink:0;}
+  .rm-o{font-size:12px;font-weight:800;color:var(--ac-t,var(--ac));background:#EEF4FF;border-radius:99px;padding:4px 11px;flex-shrink:0;}
   .rm-o.rm-tous{color:#0f9d78;background:#e6f7ef;}
   .rm-item{border:1px solid #e3e3e3;border-radius:16px;background:#fff;overflow:hidden;}
   .rm-item .rm-l{border:0;border-radius:0;cursor:pointer;}
@@ -1344,7 +1344,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .sv-det .sv-nom{font-size:20px;font-weight:800;color:#111;line-height:1.2;}
   .sv-det .sv-meta{font-size:14px;color:#8a8580;margin-top:3px;}
   .sv-det .sv-desc{font-size:15.5px;color:#4b5563;line-height:1.45;margin-top:16px;}
-  .sv-det .sv-rappel{display:inline-block;margin-top:14px;font-size:13px;font-weight:700;color:#C2410C;background:#fff1e8;border-radius:99px;padding:6px 14px;}
+  .sv-det .sv-rappel{display:inline-block;margin-top:14px;font-size:13px;font-weight:700;color:#0E4FB8;background:#EEF4FF;border-radius:99px;padding:6px 14px;}
   .sv-det .sv-btns{display:flex;gap:10px;margin-top:22px;}
   .sv-det .sv-btns button{flex:1;padding:14px;border-radius:14px;font-family:'Outfit',sans-serif;font-size:15.5px;font-weight:800;cursor:pointer;border:2px solid var(--ac);}
   .sv-det .sv-mod{background:var(--ac);color:#fff;}
@@ -1559,7 +1559,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .dv2-cal-nav button{width:26px;height:26px;border-radius:7px;border:1px solid var(--brd);background:var(--panel);cursor:pointer;}
 .dv2-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
 .dv2-day{height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;background:var(--p2);color:var(--mu);}
-.dv2-day.busy{background:rgba(234,88,12,.15);color:var(--ac-t,var(--ac));font-weight:700;}
+.dv2-day.busy{background:rgba(18,102,227,.15);color:var(--ac-t,var(--ac));font-weight:700;}
 .dv2-day.other{opacity:.25;}
 .dv2-cal-legend{display:flex;gap:16px;margin-top:10px;font-size:11px;color:var(--mu);}
 .dv2-cal-legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;}
@@ -1633,8 +1633,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .mi-s-quand .mi-section-titre{color:#1d4ed8;}
 .mi-s-client{background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.26);}
 .mi-s-client .mi-section-titre{color:#15803d;}
-.mi-s-presta{background:rgba(234,88,12,.07);border-color:rgba(234,88,12,.26);}
-.mi-s-presta .mi-section-titre{color:#C2410C;}
+.mi-s-presta{background:rgba(18,102,227,.07);border-color:rgba(18,102,227,.26);}
+.mi-s-presta .mi-section-titre{color:#0E4FB8;}
 .mi-s-profil{background:rgba(139,92,246,.07);border-color:rgba(139,92,246,.26);}
 .mi-s-profil .mi-section-titre{color:#6d28d9;}
 .mi-s-entreprise{background:rgba(100,116,139,.08);border-color:rgba(100,116,139,.28);}
@@ -1657,7 +1657,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .dm-sec{border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1px solid var(--brd);}
 .dm-titre{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;margin-bottom:7px;}
 .dm-quand{background:rgba(59,130,246,.07);border-color:rgba(59,130,246,.25);}.dm-quand .dm-titre{color:#1d4ed8;}
-.dm-besoin{background:#fafafa;}.dm-besoin .dm-titre{color:#C2410C;}
+.dm-besoin{background:#fafafa;}.dm-besoin .dm-titre{color:#0E4FB8;}
 .dm-texte{font-size:13.5px;line-height:1.55;white-space:pre-wrap;}
 .dm-contact{background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.26);}.dm-contact .dm-titre{color:#15803d;}
 .dm-pied{text-align:right;}
@@ -1669,7 +1669,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .lv-carte{border:1px solid var(--brd);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#fff;}
 .lv-haut{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
 .lv-quand{font-size:15px;}
-.lv-article{font-size:12px;font-weight:700;color:var(--ac-t,var(--ac));background:rgba(234,88,12,.08);border-radius:20px;padding:3px 10px;}
+.lv-article{font-size:12px;font-weight:700;color:var(--ac-t,var(--ac));background:rgba(18,102,227,.08);border-radius:20px;padding:3px 10px;}
 .lv-corps{display:grid;gap:3px;margin-bottom:8px;}.lv-ligne{font-size:13px;line-height:1.45;}
 .lv-pied{display:flex;gap:6px;flex-wrap:wrap;}.lv-pied:empty{display:none;}
 .lv-puce{font-size:11.5px;font-weight:700;border-radius:20px;padding:3px 10px;}
@@ -1698,7 +1698,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 .pj-etat{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
 .pj-pill{font-size:11.5px;font-weight:800;border:1.5px solid;border-radius:20px;padding:3px 10px;background:#fff;}
 .pj-sec{border-radius:10px;padding:10px 12px;border:1px solid var(--brd);}
-.pj-besoin{background:#fafafa;}.pj-st{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#C2410C;margin-bottom:6px;}
+.pj-besoin{background:#fafafa;}.pj-st{font-size:11px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#0E4FB8;margin-bottom:6px;}
 .mi-s-danger{background:rgba(220,38,38,.06);border-color:rgba(220,38,38,.26);}
 .mi-s-danger .mi-section-titre{color:#b91c1c;}
 .mi-resume{display:flex;gap:10px;align-items:flex-start;border-radius:12px;padding:11px 14px;margin:0 0 12px;font-size:13px;line-height:1.5;background:#f8fafc;border:1px solid var(--brd);color:var(--mu2);}
@@ -1725,7 +1725,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <span aria-hidden="true">⭐</span>
 <span class="tbbtn-label"><span class="lib-long">Passer en Pro</span><span class="lib-court">Pro</span></span>
 </button>
-<a class="tbbtn" href="https://caralink.app/artisans/" style="border-color:rgba(234,88,12,.4);color:var(--ac-t,var(--ac));background:rgba(234,88,12,.08);text-decoration:none;" title="Retour à CaraLink Artisans">
+<a class="tbbtn" href="https://caralink.app/artisans/" style="border-color:rgba(18,102,227,.4);color:var(--ac-t,var(--ac));background:rgba(18,102,227,.08);text-decoration:none;" title="Retour à CaraLink Artisans">
 <svg fill="none" height="13" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="13"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
 <span class="tbbtn-label"><span class="lib-long">Retour à CaraLink Artisans</span><span class="lib-court">CaraLink</span></span>
 </a>
@@ -1811,7 +1811,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="dcard" id="itineraire-widget">
 <div class="mj-barre"><span class="mj-marque">🔧 MPA Artisans</span><span class="mj-page">Ma journée</span></div>
 <div class="dchdr">
-<div class="dctit"><svg fill="none" stroke="#EA580C" stroke-width="2" viewbox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>Ma journée</div>
+<div class="dctit"><svg fill="none" stroke="#1266E3" stroke-width="2" viewbox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>Ma journée</div>
 </div>
 <div style="padding:14px 16px;">
 <div class="itin-nav" id="itin-nav"><button onclick="jourItineraire(-1)" id="itin-prec" aria-label="Jour précédent">‹</button><span id="itin-nav-lib">Aujourd'hui</span><button onclick="jourItineraire(1)" id="itin-suiv" aria-label="Jour suivant">›</button></div>
@@ -1829,7 +1829,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="fcard">
 <div class="fchdr">
 <div class="fctit">
-<svg fill="none" height="16" stroke="#EA580C" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+<svg fill="none" height="16" stroke="#1266E3" stroke-width="2" viewbox="0 0 24 24" width="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
               Informations entreprise
             </div>
 <div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="sbtn sm" onclick="ouvrirPartageArtisan('fiche')">🔗 Partager ma fiche</button><button class="sbtn sm" onclick="lancerAssistantReglages()">🧭 Assistant de réglage</button><button class="sbtn sm" onclick="openModifierFiche()">✎ Modifier</button></div>
@@ -1913,14 +1913,14 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 <div class="fcard">
 <div class="fchdr">
-<div class="fctit"><svg fill="none" height="16" stroke="#EA580C" stroke-width="2" viewbox="0 0 24 24" width="16"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>Horaires habituels</div>
+<div class="fctit"><svg fill="none" height="16" stroke="#1266E3" stroke-width="2" viewbox="0 0 24 24" width="16"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>Horaires habituels</div>
 </div>
 <div class="fcbdy" id="zone-horaires" style="padding:16px;">Chargement…</div>
 <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Ces horaires servent à calculer vos disponibilités affichées publiquement sur CaraLink Artisans — plusieurs plages possibles le même jour (ex : 8h-12h puis 14h-16h).</div>
 </div>
 <div class="fcard">
 <div class="fchdr">
-<div class="fctit"><svg fill="none" height="16" stroke="#EA580C" stroke-width="2" viewbox="0 0 24 24" width="16"><rect height="18" rx="2" ry="2" width="18" x="3" y="4"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>Journées bloquées</div>
+<div class="fctit"><svg fill="none" height="16" stroke="#1266E3" stroke-width="2" viewbox="0 0 24 24" width="16"><rect height="18" rx="2" ry="2" width="18" x="3" y="4"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>Journées bloquées</div>
 </div>
 <div class="fcbdy" id="zone-indispo" style="padding:16px;">Chargement…</div>
 <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Congés, jour férié, absence ponctuelle... ces dates n'apparaîtront jamais comme disponibles, même si elles tombent sur un jour habituellement travaillé.</div>
@@ -1938,7 +1938,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div><div class="bpnl" id="bp1">
 <div class="dcard">
 <div class="dchdr">
-<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#EA580C" stroke-width="2" viewbox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>Liste des clients habituels</div><div class="dcdesc">Vos clients, avec leurs coordonnées. Ajoutez-les ici pour les retrouver à chaque intervention.</div></div>
+<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#1266E3" stroke-width="2" viewbox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>Liste des clients habituels</div><div class="dcdesc">Vos clients, avec leurs coordonnées. Ajoutez-les ici pour les retrouver à chaque intervention.</div></div>
 <div class="dchdr-actions" style="display:flex;gap:8px;align-items:center;">
 <input class="sinp" id="sinp-clients" oninput="filtrerClients()" placeholder="Rechercher…" type="text"/>
 <button class="addb" onclick="openAjouterClient()"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>Ajouter</button>
@@ -1957,7 +1957,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div><div class="bpnl" id="bp-avis">
 <div class="dcard">
 <div class="dchdr">
-<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#EA580C" stroke-width="2" viewbox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>Avis clients</div><div class="dcdesc">Les avis laissés par vos clients après une intervention.</div></div>
+<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#1266E3" stroke-width="2" viewbox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>Avis clients</div><div class="dcdesc">Les avis laissés par vos clients après une intervention.</div></div>
 <div id="avis-moyenne" style="font-size:13px;font-weight:700;color:var(--mu2);"></div>
 </div>
 <div class="dcbdy" id="zone-avis" style="padding:16px;">Chargement…</div>
@@ -1980,7 +1980,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <span><span class="dot" style="background:#22c55e;"></span>Payée</span>
 </div>
 </div>
-<div style="font-size:14px;font-weight:600;line-height:1.5;color:var(--tx);background:rgba(234,88,12,.09);border:1.5px solid rgba(234,88,12,.35);border-left:5px solid var(--ac);border-radius:10px;padding:12px 16px;margin-bottom:14px;">💡 Cliquez sur une intervention pour changer son statut en <span style="color:var(--ac-t,var(--ac));">Terminée</span> ou <span style="color:var(--ac-t,var(--ac));">Payée</span>, ou sur le crayon ✎ pour voir et modifier les détails (prix, paiement, notes).</div>
+<div style="font-size:14px;font-weight:600;line-height:1.5;color:var(--tx);background:rgba(18,102,227,.09);border:1.5px solid rgba(18,102,227,.35);border-left:5px solid var(--ac);border-radius:10px;padding:12px 16px;margin-bottom:14px;">💡 Cliquez sur une intervention pour changer son statut en <span style="color:var(--ac-t,var(--ac));">Terminée</span> ou <span style="color:var(--ac-t,var(--ac));">Payée</span>, ou sur le crayon ✎ pour voir et modifier les détails (prix, paiement, notes).</div>
 <div class="cal-grid" id="cal-dows"></div>
 <div class="cal-grid" id="cal-grid" style="margin-top:6px;"></div>
 <div class="dash-jauge-card" style="margin-top:16px;margin-bottom:0;">
@@ -2009,7 +2009,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div><div class="pnl" id="p-interventions"><div class="sous-nav" id="nav-interventions"><button class="btab active" id="bt-int-0" onclick="switchSousOnglet('nav-interventions','conteneur-interventions',0)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg><span class="bt-l">Mes services</span><span class="bt-c">Services</span><span class="bcnt" id="cnt-s" style="display:none;background:var(--danger);color:#fff;">0</span></button><button class="btab" id="bt-int-1" onclick="switchSousOnglet('nav-interventions','conteneur-interventions',1)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg><span class="bt-l">Mes demandes</span><span class="bt-c">Demandes</span><span class="bcnt" id="cnt-demandes" style="display:none;background:var(--danger);color:#fff;">0</span></button><button class="btab" id="bt-int-2" onclick="switchSousOnglet('nav-interventions','conteneur-interventions',2)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><rect height="18" rx="2" width="18" x="3" y="3"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg><span class="bt-l">Mes photos</span><span class="bt-c">Photos</span></button><button class="btab" id="bt-int-3" onclick="switchSousOnglet('nav-interventions','conteneur-interventions',3)"><span class="bt-l">🎁 Remises et fidélité</span><span class="bt-c">🎁 Remises</span></button><button class="btab-aide" onclick="ouvrirAideParcours()" title="Comment ça se passe pour vos clients ?" aria-label="Aide : le parcours de vos clients">?</button></div><div id="conteneur-interventions"><div class="bpnl active" id="bp2">
 <div class="dcard" id="carte-services">
 <div class="dchdr">
-<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#EA580C" stroke-width="2" viewbox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>Mes services</div><div class="dcdesc">Ajoutez ici vos prestations, ex : tonte de pelouse.</div></div>
+<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#1266E3" stroke-width="2" viewbox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>Mes services</div><div class="dcdesc">Ajoutez ici vos prestations, ex : tonte de pelouse.</div></div>
 <div class="dchdr-actions" style="display:flex;gap:8px;align-items:center;">
 <input class="sinp" id="sinp-services" oninput="filtrerServices()" placeholder="Rechercher…" type="text"/>
 <button class="addb" onclick="openAjouterService()"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>Ajouter</button>
@@ -2037,7 +2037,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 <div class="dcard">
 <div class="dchdr">
-<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#EA580C" stroke-width="2" viewbox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>Demandes de devis</div><div class="dcdesc">Les clients qui vous écrivent pour un devis, ou dont la demande est ouverte à tous les artisans de votre secteur.</div></div>
+<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#1266E3" stroke-width="2" viewbox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>Demandes de devis</div><div class="dcdesc">Les clients qui vous écrivent pour un devis, ou dont la demande est ouverte à tous les artisans de votre secteur.</div></div>
 </div>
 <div class="dcbdy" id="zone-demandes" style="padding:16px;">Chargement…</div>
 <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 <strong>Privée</strong> : un client vous a contacté vous précisément. <strong>Ouverte</strong> : visible par tous les artisans de votre secteur — prenez-la en charge pour la traiter.</div>
@@ -2045,7 +2045,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div><div class="bpnl" id="bp3">
 <div class="dcard">
 <div class="dchdr">
-<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#EA580C" stroke-width="2" viewbox="0 0 24 24"><rect height="18" rx="2" width="18" x="3" y="3"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg>Photos de mes réalisations</div><div class="dcdesc">Montrez votre travail : vos photos s'affichent sur votre fiche.</div></div>
+<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#1266E3" stroke-width="2" viewbox="0 0 24 24"><rect height="18" rx="2" width="18" x="3" y="3"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg>Photos de mes réalisations</div><div class="dcdesc">Montrez votre travail : vos photos s'affichent sur votre fiche.</div></div>
 <input accept="image/*" id="photo-input" onchange="uploaderPhoto()" style="display:none;" type="file"/>
 <button class="addb" id="btn-ajouter-photo" onclick="document.getElementById('photo-input').click()"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>Ajouter</button>
 </div>
@@ -2108,7 +2108,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div></div></div><div class="pnl" id="p-ventes"><div class="sous-nav" id="nav-ventes"><button class="btab active" id="bt-vente-0" onclick="switchSousOnglet('nav-ventes','conteneur-ventes',0)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg><span class="bt-l">Mon catalogue</span><span class="bt-c">Catalogue</span></button><button class="btab" id="bt-vente-1" onclick="switchSousOnglet('nav-ventes','conteneur-ventes',1)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg><span class="bt-l">Ma boutique</span><span class="bt-c">Boutique</span></button><button class="btab" id="bt-vente-2" onclick="switchSousOnglet('nav-ventes','conteneur-ventes',2)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg><span class="bt-l">Mes commandes</span><span class="bt-c">Commandes</span><span class="bcnt" id="cnt-commandes" style="display:none;background:var(--danger);color:#fff;">0</span></button></div><div id="conteneur-ventes"><div class="bpnl active" id="bp4">
 <div class="dcard" style="margin-top:16px;">
 <div class="dchdr">
-<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#EA580C" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Mon catalogue</div><div class="dcdesc">Les produits que vous mettez en vente dans votre boutique en ligne.</div></div>
+<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#1266E3" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Mon catalogue</div><div class="dcdesc">Les produits que vous mettez en vente dans votre boutique en ligne.</div></div>
 <button class="addb" onclick="openChoisirProduitAVendre()"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>Ajouter</button>
 </div>
 <div class="dcbdy" id="zone-catalogue" style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;">Chargement…</div>
@@ -2218,13 +2218,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div></div></div></div><div class="bpnl" id="p7">
 <div class="dcard">
 <div class="dchdr">
-<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#EA580C" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Commandes</div><div class="dcdesc">Les commandes passées par vos clients dans votre boutique.</div></div>
+<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#1266E3" stroke-width="2" viewbox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>Commandes</div><div class="dcdesc">Les commandes passées par vos clients dans votre boutique.</div></div>
 </div>
 <div class="dcbdy" id="zone-commandes" style="padding:16px;">Chargement…</div>
 <div style="padding:12px 16px;font-size:12px;color:var(--mu);border-top:1px solid var(--brd);">💡 Pour une commande à livrer, "Planifier la livraison" l'ajoute directement à votre planning — elle passe alors par le calcul de trajet, comme n'importe quel rendez-vous.</div>
 </div>
 </div></div></div><div class="pnl" id="p-livraisons"><div class="sous-nav" id="nav-livraisons"><button class="btab active" onclick="switchSousOnglet('nav-livraisons','conteneur-livraisons',0)"><span class="bt-l">Livraisons</span><span class="bt-c">🚚 Livraisons</span></button><button class="btab" onclick="switchSousOnglet('nav-livraisons','conteneur-livraisons',1)"><span class="bt-l">Tarifs</span><span class="bt-c">💶 Mes tarifs</span></button></div><div id="conteneur-livraisons"><div class="bpnl active" id="bp-liv-liste"><div class="dcard">
-<div class="dchdr"><div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#EA580C" stroke-width="2" viewbox="0 0 24 24"><path d="M3 3h13v13H3z"></path><path d="M16 8h4l3 3v5h-7V8z"></path><circle cx="7.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>Mes livraisons</div><div class="dcdesc">Vos livraisons à faire, avec le jour prévu.</div></div>
+<div class="dchdr"><div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#1266E3" stroke-width="2" viewbox="0 0 24 24"><path d="M3 3h13v13H3z"></path><path d="M16 8h4l3 3v5h-7V8z"></path><circle cx="7.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>Mes livraisons</div><div class="dcdesc">Vos livraisons à faire, avec le jour prévu.</div></div>
 </div>
 <div class="dcbdy" id="zone-livraisons" style="padding:16px;">Chargement…</div>
 </div></div><div class="bpnl" id="bp-liv-tarifs">
@@ -2260,7 +2260,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div></div></div></div><div class="pnl" id="p-stock"><div class="sous-nav" id="nav-stock"><button class="btab active" id="bt-stock-0" onclick="switchSousOnglet('nav-stock','conteneur-stock',0)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2.59 12.58a2 2 0 0 1 0-2.83l7.17-7.17a2 2 0 0 1 2.83 0l8 8a2 2 0 0 1 0 2.83z"></path><line x1="7" x2="7.01" y1="7" y2="7"></line></svg><span class="bt-l">Mes fournitures</span><span class="bt-c">Fournitures</span></button><button class="btab" id="bt-stock-1" onclick="switchSousOnglet('nav-stock','conteneur-stock',1)"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M20 7h-9m0 10h9M3 17V7a2 2 0 0 1 2-2h4v14H5a2 2 0 0 1-2-2z"></path></svg><span class="bt-l">Mes produits</span><span class="bt-c">Produits</span></button></div><div id="conteneur-stock"><div class="bpnl active" id="bp-fournitures">
 <div class="dcard" id="carte-fournitures">
 <div class="dchdr">
-<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#EA580C" stroke-width="2" viewbox="0 0 24 24"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2.59 12.58a2 2 0 0 1 0-2.83l7.17-7.17a2 2 0 0 1 2.83 0l8 8a2 2 0 0 1 0 2.83z"></path><line x1="7" x2="7.01" y1="7" y2="7"></line></svg>Mes fournitures</div><div class="dcdesc">Le matériel que vous utilisez (ex : engrais, vis) et l'alerte avant la rupture.</div></div>
+<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#1266E3" stroke-width="2" viewbox="0 0 24 24"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2.59 12.58a2 2 0 0 1 0-2.83l7.17-7.17a2 2 0 0 1 2.83 0l8 8a2 2 0 0 1 0 2.83z"></path><line x1="7" x2="7.01" y1="7" y2="7"></line></svg>Mes fournitures</div><div class="dcdesc">Le matériel que vous utilisez (ex : engrais, vis) et l'alerte avant la rupture.</div></div>
 <button class="addb" onclick="openAjouterFourniture()"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>Ajouter</button>
 </div>
 <div style="padding:14px 16px 0;display:flex;gap:8px;">
@@ -2274,7 +2274,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div><div class="bpnl" id="bp-produits-stock">
 <div class="dcard" id="carte-produits-stock">
 <div class="dchdr">
-<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#EA580C" stroke-width="2" viewbox="0 0 24 24"><path d="M20 7h-9m0 10h9M3 17V7a2 2 0 0 1 2-2h4v14H5a2 2 0 0 1-2-2z"></path></svg>Mes produits</div><div class="dcdesc">Créez, consultez ou modifiez vos produits dans votre stock.</div></div>
+<div class="dctit-bloc"><div class="dctit"><svg fill="none" stroke="#1266E3" stroke-width="2" viewbox="0 0 24 24"><path d="M20 7h-9m0 10h9M3 17V7a2 2 0 0 1 2-2h4v14H5a2 2 0 0 1-2-2z"></path></svg>Mes produits</div><div class="dcdesc">Créez, consultez ou modifiez vos produits dans votre stock.</div></div>
 <button class="addb" onclick="openAjouterCatalogue()"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>Ajouter</button>
 </div>
 <div class="dcbdy" id="zone-produits-stock" style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;">Chargement…</div>
@@ -2302,7 +2302,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <span id="compta-annee">—</span>
 <button onclick="anneeComptaSuiv()">›</button>
 </div>
-<button type="button" class="addb" onclick="exporterCompta()" style="white-space:nowrap;">📥 Exporter pour mon comptable <span id="export-compta-pro" style="display:none;font-size:10.5px;font-weight:800;padding:1px 7px;border-radius:20px;background:#fff1e8;color:#C2410C;margin-left:4px;">Pro</span></button>
+<button type="button" class="addb" onclick="exporterCompta()" style="white-space:nowrap;">📥 Exporter pour mon comptable <span id="export-compta-pro" style="display:none;font-size:10.5px;font-weight:800;padding:1px 7px;border-radius:20px;background:#EEF4FF;color:#0E4FB8;margin-left:4px;">Pro</span></button>
 </div>
 </div>
 <div id="cx-ca" class="cx-only"></div>
@@ -2422,7 +2422,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 <div class="cpv2-card" id="fact-perso">
 <div class="cpv2-matrix-head"><div class="cpv2-matrix-headtext">
-<p class="cpv2-matrix-title">🎨 Mes factures à mon image <span id="fact-perso-pro" style="display:none;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;background:#fff1e8;color:#C2410C;margin-left:6px;">Pro</span></p>
+<p class="cpv2-matrix-title">🎨 Mes factures à mon image <span id="fact-perso-pro" style="display:none;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;background:#EEF4FF;color:#0E4FB8;margin-left:6px;">Pro</span></p>
 <p class="cpv2-matrix-subtitle">Votre logo et un petit mot en bas de vos factures, imprimées ou envoyées par email. La couleur est celle de votre boutique.</p>
 </div></div>
 <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0 12px;">
@@ -2454,7 +2454,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div></div><div class="bpnl"><div id="encart-rappel-cloture"></div><div id="encart-abonnement"></div><div class="dash-grid">
 <div>
 <div id="cx-barres" class="cx-only"></div>
-<div class="dash-jauge-card dash-hero" id="carte-ca-mois"><div class="dh-lab" id="ca-mois-titre">Ce que j'ai gagné ce mois-ci</div><div id="ca-mois-corps" style="font-size:13px;color:var(--mu);">Chargement…</div></div><div class="dash-lignes"><button type="button" class="dl" id="dl-avenir" onclick="ouvrirDetailDash('avenir')"><span class="dl-tile" style="background:rgba(234,88,12,.12);">📅</span><span class="dl-txt"><span class="dl-t">À venir</span><span class="dl-s">30 prochains jours</span></span><span class="dl-v"><span class="dl-v-txt"></span><i>›</i></span></button><button type="button" class="dl" id="dl-limite" onclick="ouvrirDetailDash('limite')"><span class="dl-tile" style="background:rgba(22,163,74,.12);">🛡️</span><span class="dl-txt"><span class="dl-t">Ma limite de l'année</span><span class="dl-s">Micro-entreprise</span><span class="dj-track dl-track"><span class="dj-bar"></span></span></span><span class="dl-v"><span class="dl-v-txt"></span><i>›</i></span></button><button type="button" class="dl" id="dl-seuil" onclick="ouvrirDetailDash('seuil')"><span class="dl-tile" style="background:rgba(21,101,232,.12);">🤝</span><span class="dl-txt"><span class="dl-t">Clients venus par CaraLink</span><span class="dl-s">Gratuit jusqu'à 200 € par mois</span><span class="dj-track dl-track"><span class="dj-bar"></span></span></span><span class="dl-v"><span class="dl-v-txt"></span><i>›</i></span></button><button type="button" class="dl" id="dl-impot" onclick="ouvrirDetailDash('impot')"><span class="dl-tile" style="background:rgba(109,40,217,.12);">🧾</span><span class="dl-txt"><span class="dl-t">Impôt à prévoir</span><span class="dl-s">Estimation pour l'année</span></span><span class="dl-v"><span class="dl-v-txt"></span><i>›</i></span></button></div><div id="encart-carte-prestations" style="margin-bottom:16px;"></div><input type="hidden" id="dash-parts" value="1"/></div>
+<div class="dash-jauge-card dash-hero" id="carte-ca-mois"><div class="dh-lab" id="ca-mois-titre">Ce que j'ai gagné ce mois-ci</div><div id="ca-mois-corps" style="font-size:13px;color:var(--mu);">Chargement…</div></div><div class="dash-lignes"><button type="button" class="dl" id="dl-avenir" onclick="ouvrirDetailDash('avenir')"><span class="dl-tile" style="background:rgba(18,102,227,.12);">📅</span><span class="dl-txt"><span class="dl-t">À venir</span><span class="dl-s">30 prochains jours</span></span><span class="dl-v"><span class="dl-v-txt"></span><i>›</i></span></button><button type="button" class="dl" id="dl-limite" onclick="ouvrirDetailDash('limite')"><span class="dl-tile" style="background:rgba(22,163,74,.12);">🛡️</span><span class="dl-txt"><span class="dl-t">Ma limite de l'année</span><span class="dl-s">Micro-entreprise</span><span class="dj-track dl-track"><span class="dj-bar"></span></span></span><span class="dl-v"><span class="dl-v-txt"></span><i>›</i></span></button><button type="button" class="dl" id="dl-seuil" onclick="ouvrirDetailDash('seuil')"><span class="dl-tile" style="background:rgba(21,101,232,.12);">🤝</span><span class="dl-txt"><span class="dl-t">Clients venus par CaraLink</span><span class="dl-s">Gratuit jusqu'à 200 € par mois</span><span class="dj-track dl-track"><span class="dj-bar"></span></span></span><span class="dl-v"><span class="dl-v-txt"></span><i>›</i></span></button><button type="button" class="dl" id="dl-impot" onclick="ouvrirDetailDash('impot')"><span class="dl-tile" style="background:rgba(109,40,217,.12);">🧾</span><span class="dl-txt"><span class="dl-t">Impôt à prévoir</span><span class="dl-s">Estimation pour l'année</span></span><span class="dl-v"><span class="dl-v-txt"></span><i>›</i></span></button></div><div id="encart-carte-prestations" style="margin-bottom:16px;"></div><input type="hidden" id="dash-parts" value="1"/></div>
 </div></div><div class="bpnl"><div id="cx-annee" class="cx-only"></div><div class="dcard" style="margin-top:16px;">
 <div class="dchdr fam-vert">
 <div class="dctit" id="recap-int-titre">📊 Mes interventions du mois</div>
@@ -3317,7 +3317,7 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 <div class="faq-item" data-q="statut planifiée en cours terminée payée couleur" id="faq-q5">
 <div class="faq-q" onclick="toggleFAQItem(this.parentElement)"><span>Que veut dire chaque statut d'intervention ?</span><svg class="faq-chevron" fill="none" height="14" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="14"><polyline points="6 9 12 15 18 9"></polyline></svg></div>
-<div class="faq-a"><strong>Planifiée</strong> (orange) : prévue, pas encore commencée. <strong>En cours</strong> (violet) : vous vous en occupez, utile pour les chantiers qui durent plusieurs jours. <strong>Terminée</strong> (bleu) : le travail est fini, prêt à facturer. <strong>Payée</strong> (vert) : réglée, soit en ligne par le client (le statut change tout seul), soit en main propre (espèces, chèque, virement) avec le bouton « 💵 Payé en main propre » d'une intervention terminée. Cliquez directement sur une intervention pour faire avancer son statut.</div>
+<div class="faq-a"><strong>Planifiée</strong> (bleu) : prévue, pas encore commencée. <strong>En cours</strong> (violet) : vous vous en occupez, utile pour les chantiers qui durent plusieurs jours. <strong>Terminée</strong> (bleu) : le travail est fini, prêt à facturer. <strong>Payée</strong> (vert) : réglée, soit en ligne par le client (le statut change tout seul), soit en main propre (espèces, chèque, virement) avec le bouton « 💵 Payé en main propre » d'une intervention terminée. Cliquez directement sur une intervention pour faire avancer son statut.</div>
 </div>
 <div class="faq-item" data-q="bloqué impossible planifier nouvelle intervention non soldée" id="faq-q6">
 <div class="faq-q" onclick="toggleFAQItem(this.parentElement)"><span>Pourquoi je ne peux plus planifier de nouvelle intervention ?</span><svg class="faq-chevron" fill="none" height="14" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" width="14"><polyline points="6 9 12 15 18 9"></polyline></svg></div>
@@ -3372,6 +3372,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261125a"></script>
+<script src="/mpa/mpa-artisans.js?v=20261125b"></script>
 </body>
 </html>

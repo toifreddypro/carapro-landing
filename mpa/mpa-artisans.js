@@ -562,7 +562,7 @@ function mpaAiGrandRendre() {
   if (!g || !fond) return;
   var m = g.liste[g.i], n = g.liste.length, dernier = g.i >= n - 1;
   g.atteint = Math.max(g.atteint, g.i);
-  var couleur = m.type === 'important' ? '#dc2626' : m.type === 'warning' ? '#f59e0b' : '#EA580C';
+  var couleur = m.type === 'important' ? '#dc2626' : m.type === 'warning' ? '#f59e0b' : '#1266E3';
   var loader = document.querySelector('#mpa-ai-fab .mpa-ai-loader');
   var ctas = [].concat(m.cta || []).map(function(c) {
     return '<button type="button" class="mpa-ai-grand-cta" onclick="mpaAiGrandFermer();' + c.action + '">' + c.label + '</button>';
@@ -1300,7 +1300,7 @@ function formaterDescriptionNouveaute(desc) {
     var corps = m ? '<strong style="color:var(--tx,#111);">' + escHtml(m[1]) + '</strong> — ' + escHtml(m[2]) : escHtml(l);
     var astuce = l.indexOf('💡') === 0;
     return '<div style="font-size:13.5px;line-height:1.55;color:var(--mu2);margin:0 0 8px;' +
-      (astuce ? 'background:rgba(234,88,12,.08);border-radius:8px;padding:8px 10px;' : '') + '">' + corps + '</div>';
+      (astuce ? 'background:rgba(18,102,227,.08);border-radius:8px;padding:8px 10px;' : '') + '">' + corps + '</div>';
   }).join('');
 }
 
@@ -1402,7 +1402,7 @@ async function chargerInterventions() {
   renderRecapInterventions();
 }
 
-// ── Interventions passées encore « Planifiée » : mises en évidence (contour orange) dans le planning ──
+// ── Interventions passées encore « Planifiée » : mises en évidence (contour bleu) dans le planning ──
 var _retardIds = {}, _retardDates = {}, _noteRetardVoulue = false;
 function styleRetard() {
   if (document.getElementById('style-retard')) return;
@@ -1581,7 +1581,7 @@ function ficheInterventionM(i) {
   var st = classeStatut(i.statut), q = "'" + i.id + "'";
   var nom = i.mpa_artisans_clients && i.mpa_artisans_clients.nom ? i.mpa_artisans_clients.nom : '—';
   var ini = nom.split(/\s+/).map(function(m) { return m.charAt(0); }).join('').slice(0, 2).toUpperCase() || '?';
-  var pal = ['#8b5cf6', '#2563eb', '#2f9e6e', '#C2410C', '#0891b2', '#db2777'], som = 0;
+  var pal = ['#8b5cf6', '#2563eb', '#2f9e6e', '#0E4FB8', '#0891b2', '#db2777'], som = 0;
   for (var k = 0; k < nom.length; k++) som += nom.charCodeAt(k);
   var h1 = i.heure_debut ? i.heure_debut.slice(0, 5) : '', h2 = i.heure_fin ? i.heure_fin.slice(0, 5) : '';
   var quand = (h1 ? '🕘 ' + h1 + (h2 ? ' → ' + h2 : '') + ' · ' : '🕘 ') + (i.creneau === 'apres_midi' ? '🌇 Après-midi' : '☀️ Matin');
@@ -2317,7 +2317,7 @@ function renderDemandes() {
     else if (d.statut === 'creneau_propose') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(180,83,9,.1);color:#b45309;">📅 Créneau proposé</span>';
     else if (d.statut === 'creneau_confirme') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(22,163,74,.1);color:#16a34a;">✅ Confirmé</span>';
     else if (d.statut === 'creneau_refuse') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--brd);color:var(--mu);">❌ Refusé</span>';
-    else if (l.type === 'privee') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(234,88,12,.1);color:var(--ac-t,var(--ac));">🔓 Privée</span>';
+    else if (l.type === 'privee') badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(18,102,227,.1);color:var(--ac-t,var(--ac));">🔓 Privée</span>';
     else badgeType = '<span style="font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(59,130,246,.1);color:#3b82f6;">📢 Ouverte (mise en concurrence)</span>';
 
     var actionsHaut;
@@ -2345,7 +2345,7 @@ function renderDemandes() {
     }
 
     var ligneCreneau = estCreneau && d.date_intervention
-      ? (d.hors_horaires ? '<div style="font-size:12px;font-weight:700;color:#9a3412;background:#fff7ed;border:1px solid #fdba74;border-radius:6px;padding:4px 8px;margin-bottom:6px;display:inline-block;">⚠️ Hors horaires habituels</div><br>' : '') +
+      ? (d.hors_horaires ? '<div style="font-size:12px;font-weight:700;color:#0B3D91;background:#EEF4FF;border:1px solid #9DC2F7;border-radius:6px;padding:4px 8px;margin-bottom:6px;display:inline-block;">⚠️ Hors horaires habituels</div><br>' : '') +
         '<div style="font-size:13px;font-weight:700;color:var(--ac-t,var(--ac));margin-bottom:6px;">📅 ' + new Date(d.date_intervention).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' }) + ' à ' + (d.heure_debut||'').slice(0,5) + '</div>' +
         (d.reponse_message ? '<div style="font-size:12px;color:var(--mu2);font-style:italic;margin-bottom:6px;">Votre message : « ' + escHtml(d.reponse_message) + ' »</div>' : '')
       : '';
@@ -2356,7 +2356,7 @@ function renderDemandes() {
     // l'artisan doit s'engager (Prendre en charge) avant d'y accéder, pour éviter que le client
     // ne se fasse contacter par des artisans qui n'ont jamais vraiment l'intention de répondre.
     var noteEmail = '<div style="font-size:10.5px;color:var(--mu);margin-top:5px;">⚠️ Cette adresse vous est communiquée uniquement pour répondre à cette demande — pas pour de la prospection commerciale.</div>';
-    var blocEmail = '<a href="mailto:' + escHtml(d.client_email) + '" style="display:inline-block;padding:8px 14px;border-radius:8px;background:rgba(234,88,12,.08);border:1px solid var(--ac-brd);color:var(--ac-t,var(--ac));font-size:13px;font-weight:700;text-decoration:none;font-family:\'JetBrains Mono\',monospace;">📧 ' + escHtml(d.client_email) + '</a>' + noteEmail;
+    var blocEmail = '<a href="mailto:' + escHtml(d.client_email) + '" style="display:inline-block;padding:8px 14px;border-radius:8px;background:rgba(18,102,227,.08);border:1px solid var(--ac-brd);color:var(--ac-t,var(--ac));font-size:13px;font-weight:700;text-decoration:none;font-family:\'JetBrains Mono\',monospace;">📧 ' + escHtml(d.client_email) + '</a>' + noteEmail;
     var contactPref = d.contact_prefere || 'telephone';
     var blocContact;
     if (l.type === 'ouverte') {
@@ -2403,7 +2403,7 @@ function renderDemandes() {
     // Version téléphone : une vignette épurée ; la carte complète s'ouvre au clic (sur ordinateur, seule la carte complète s'affiche).
     var nomC = d.client_nom || '—';
     var iniC = nomC.split(/\s+/).map(function(m) { return m.charAt(0); }).join('').slice(0, 2).toUpperCase() || '?';
-    var palD = ['#0ea5e9', '#8b5cf6', '#2f9e6e', '#C2410C', '#0891b2', '#db2777'], somD = 0;
+    var palD = ['#0ea5e9', '#8b5cf6', '#2f9e6e', '#0E4FB8', '#0891b2', '#db2777'], somD = 0;
     for (var k = 0; k < nomC.length; k++) somD += nomC.charCodeAt(k);
     var besoinC = String(d.description_besoin || '').replace(/\s+/g, ' ').trim();
     if (besoinC.length > 70) besoinC = besoinC.slice(0, 68) + '…';
@@ -3492,7 +3492,7 @@ function majVerrouLivraisonIntervention(commande, nouvelle) {
   var ban = document.getElementById('mi-liv-banner');
   if (!ban) {
     ban = document.createElement('div'); ban.id = 'mi-liv-banner';
-    ban.style.cssText = 'display:none;margin:0 0 12px;padding:10px 12px;border-radius:8px;background:rgba(234,88,12,.08);border:1px solid rgba(234,88,12,.25);font-size:12.5px;line-height:1.5;';
+    ban.style.cssText = 'display:none;margin:0 0 12px;padding:10px 12px;border-radius:8px;background:rgba(18,102,227,.08);border:1px solid rgba(18,102,227,.25);font-size:12.5px;line-height:1.5;';
     var titre = document.getElementById('mi-titre'); titre.parentNode.insertBefore(ban, titre.nextSibling);
   }
   if (!commande) { ban.style.display = 'none'; return; }
@@ -4413,7 +4413,7 @@ const MOIS_COURTS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oc
 
 // ── Système de couleurs par client (même mécanique que MPA Formation) ──
 var CLIENT_PALETTE = [
-  '#EA580C', // Terre cuite (marque)
+  '#1266E3', // Terre cuite (marque)
   '#0891b2', // Cyan/sarcelle doux
   '#7c6fdb', // Violet doux
   '#0a8f68', // Vert émeraude doux
@@ -4426,7 +4426,7 @@ var CLIENT_PALETTE = [
 ];
 var CLIENT_COLORS = {};
 function getClientColor(nom) {
-  if (!nom) return '#EA580C';
+  if (!nom) return '#1266E3';
   if (CLIENT_COLORS[nom]) return CLIENT_COLORS[nom];
   var hash = 0;
   for (var i = 0; i < nom.length; i++) {
@@ -4927,13 +4927,13 @@ function renderStatistiques(vue, annee, pro) {
   zoneFid.innerHTML = html;
 
   if (zcx) {
-    var palette = ['#2f9e6e', '#2563eb', '#8b5cf6', '#C2410C', '#0891b2'];
+    var palette = ['#2f9e6e', '#2563eb', '#8b5cf6', '#0E4FB8', '#0891b2'];
     var cx = cxHtml + '<div class="cx-titre">🏆 Vos meilleurs clients</div>' + (top.length ? top.map(function(c, i) {
       return '<div class="cx-cl"><span class="rg">' + medailles[i] + '</span><span class="av2" style="background:' + palette[i % 5] + '">' + escHtml(c.nom.charAt(0).toUpperCase()) + '</span><span class="tx"><b>' + escHtml(c.nom) + '</b><small>' + c.nb + ' fois · ' + Math.round(c.ca / total * 100) + ' % de vos gains</small></span><span class="mt2">' + _eurM(c.ca) + '</span></div>';
     }).join('') : '<p style="color:#8a8580;font-size:13.5px;">Aucun client identifié cette année.</p>');
     if (clients.length) {
       var pctF = Math.round(fideles.length / clients.length * 100), circ = 326.7;
-      cx += '<div class="cx-titre">🔁 Clients qui reviennent</div><div class="cx-rond"><svg viewBox="0 0 140 140" width="140" height="140"><circle cx="70" cy="70" r="52" fill="none" stroke="#eef2f8" stroke-width="16"/><circle cx="70" cy="70" r="52" fill="none" stroke="#C2410C" stroke-width="16" stroke-linecap="round" stroke-dasharray="' + (pctF / 100 * circ).toFixed(1) + ' ' + circ + '" transform="rotate(-90 70 70)"/><text x="70" y="79" text-anchor="middle" font-size="26" font-weight="800" fill="#111">' + pctF + ' %</text></svg>' +
+      cx += '<div class="cx-titre">🔁 Clients qui reviennent</div><div class="cx-rond"><svg viewBox="0 0 140 140" width="140" height="140"><circle cx="70" cy="70" r="52" fill="none" stroke="#eef2f8" stroke-width="16"/><circle cx="70" cy="70" r="52" fill="none" stroke="#0E4FB8" stroke-width="16" stroke-linecap="round" stroke-dasharray="' + (pctF / 100 * circ).toFixed(1) + ' ' + circ + '" transform="rotate(-90 70 70)"/><text x="70" y="79" text-anchor="middle" font-size="26" font-weight="800" fill="#111">' + pctF + ' %</text></svg>' +
         '<div class="ph">' + fideles.length + ' client' + (fideles.length > 1 ? 's' : '') + ' sur ' + clients.length + ' ' + (fideles.length > 1 ? 'sont revenus' : 'est revenu') + '</div>' +
         '<div class="ex">Un client qui revient a fait appel à vous au moins 2 fois' + (caClients > 0 ? ' · ils ont rapporté ' + Math.round(caFideles / caClients * 100) + ' % de vos gains' : '') + '.</div></div>';
     }
@@ -5423,7 +5423,7 @@ async function _facturerCommande(id, envoyer) {
 }
 
 // ── Factures à mon image (offre Pro) : logo, petit mot en bas, couleur de la boutique. Réglages rangés dans mpa_ai_prefs.facture (aucune colonne à créer). ──
-var COULEURS_FACTURE = { terre: '#EA580C', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
+var COULEURS_FACTURE = { terre: '#1266E3', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
 function factureReglages() {
   var p = (_artisan && _artisan.mpa_ai_prefs && typeof _artisan.mpa_ai_prefs === 'object') ? _artisan.mpa_ai_prefs : {};
   var f = (p.facture && typeof p.facture === 'object') ? p.facture : {};
@@ -6182,7 +6182,7 @@ function renderRge() {
     (peutEnvoyer ? '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
       '<input type="file" id="rge-fichier" accept=".pdf,.jpg,.jpeg,.png" style="font-size:12px;max-width:230px;">' +
       '<label style="font-size:12px;">Fin de validité <input type="date" id="rge-date" style="margin-left:4px;"></label>' +
-      '<button type="button" onclick="envoyerRge()" id="rge-btn" style="padding:8px 12px;border-radius:8px;border:none;background:var(--ac,#EA580C);color:#fff;font-weight:700;cursor:pointer;font-size:12.5px;">Envoyer</button>' + btnRetirer + '</div>' : '') +
+      '<button type="button" onclick="envoyerRge()" id="rge-btn" style="padding:8px 12px;border-radius:8px;border:none;background:var(--ac,#1266E3);color:#fff;font-weight:700;cursor:pointer;font-size:12.5px;">Envoyer</button>' + btnRetirer + '</div>' : '') +
     '<div id="rge-msg" style="font-size:12px;margin-top:8px;color:var(--danger);"></div></div>';
 }
 
@@ -7237,7 +7237,7 @@ function initProfilMobile() {
     ['🕐', '#e6f7ef', 'Mes horaires', 'Les jours et heures où l\'on peut vous réserver', horaires],
     ['🌴', '#f3e8ff', 'Mes congés', 'Les jours où vous n\'êtes pas disponible', indispo],
     ['🎓', '#fef3c7', 'Mes sessions', 'Coaching, ateliers : places et inscrits', sessionsC],
-    ['🚗', '#fff1e8', 'Déplacement et réservation', 'Visite avant devis, frais, annulation', depl],
+    ['🚗', '#EEF4FF', 'Déplacement et réservation', 'Visite avant devis, frais, annulation', depl],
     ['🧾', '#e0f2fe', 'Mes cotisations', 'Réglages fiscaux', fiscal],
     ['⭐', '#fef9c3', 'Mon offre', 'Essentiel ou Pro', document.getElementById('zone-mon-offre')]
   ];
@@ -7255,7 +7255,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 function carteClientMobile(c) {
   var nom = c.nom || '—';
   var ini = nom.split(/\s+/).map(function(m) { return m.charAt(0); }).join('').slice(0, 2).toUpperCase() || '?';
-  var pal = ['#8b5cf6', '#2563eb', '#2f9e6e', '#C2410C', '#0891b2', '#db2777'], som = 0;
+  var pal = ['#8b5cf6', '#2563eb', '#2f9e6e', '#0E4FB8', '#0891b2', '#db2777'], som = 0;
   for (var i = 0; i < nom.length; i++) som += nom.charCodeAt(i);
   var coul = pal[som % pal.length];
   var ligne = function(l, v) { return v ? '<div class="cl-lg"><span>' + l + '</span><span>' + escHtml(String(v)) + '</span></div>' : ''; };
@@ -7803,12 +7803,12 @@ async function chargerUsageCodePromo() {
 }
 
 // ── Personnalisation de la boutique (gratuite) : image de fond, coordonnées choisies, texte libre, couleur d'accent ──
-var COULEURS_BOUTIQUE = { terre: '#EA580C', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
+var COULEURS_BOUTIQUE = { terre: '#1266E3', bleu: '#2563A8', vert: '#2F7D4F', rose: '#B83280', violet: '#6B46C1', ocre: '#B7791F' };
 var NOMS_COULEURS = { terre: 'Terre cuite', bleu: 'Bleu', vert: 'Vert', rose: 'Rose', violet: 'Violet', ocre: 'Ocre' };
 var _accentChoisi = null;
 var _fondChoisi = 'clair';
 var NOMS_FONDS = { clair: 'Clair', ocean: 'Océan', schiste: 'Schiste', sombre: 'Sombre', feuillage: 'Feuillage', provence: 'Lavande', frangipanier: 'Frangipanier', palmes: 'Palmes dorées', soie: 'Soie', couleurs: 'Couleurs', chene: 'Chêne clair', acier: 'Acier brossé', beton: 'Béton clair', plan: 'Plan bleu', circuit: 'Circuit', satin: 'Noir satin', drap: 'Rouge drap', marbre: 'Rose marbré', blancrouge: 'Blanc et drap rouge', violetroyal: 'Violet royal', vertemeraude: 'Vert émeraude', nuages: 'Ciel et nuages' };
-var APERCU_FONDS = { clair: ['#ffffff', '#13223c'], ocean: ['linear-gradient(180deg,#b9d6f2,#f2f8fe)', '#13223c'], schiste: ['linear-gradient(180deg,#c6cfdd,#f1f3f7)', '#13223c'], sombre: ['#0f1115', '#f3f1ec'], feuillage: ['linear-gradient(rgba(255,255,255,0.3),rgba(255,255,255,0.3)),url(/artisans/img/fond-feuillage-m.webp) center/cover', '#13223c'], provence: ['linear-gradient(rgba(255,255,255,0.3),rgba(255,255,255,0.3)),url(/artisans/img/fond-provence-m.webp) center/cover', '#13223c'], frangipanier: ['linear-gradient(rgba(255,255,255,0.3),rgba(255,255,255,0.3)),url(/artisans/img/fond-frangipanier-m.webp) center/cover', '#13223c'], palmes: ['linear-gradient(rgba(255,255,255,0.3),rgba(255,255,255,0.3)),url(/artisans/img/fond-palmes-m.webp) center/cover', '#13223c'], soie: ['linear-gradient(rgba(255,255,255,0.3),rgba(255,255,255,0.3)),url(/artisans/img/fond-soie-mini.webp) center/cover', '#13223c'], couleurs: ['linear-gradient(rgba(255,255,255,0.5),rgba(255,255,255,0.5)),url(/artisans/img/fond-couleurs-mini.webp) center/cover', '#13223c'], chene: ['linear-gradient(rgba(255,255,255,0.3),rgba(255,255,255,0.3)),url(/artisans/img/fond-chene-d.webp) center/cover', '#13223c'], acier: ['linear-gradient(rgba(255,255,255,0.3),rgba(255,255,255,0.3)),url(/artisans/img/fond-acier-d.webp) center/cover', '#13223c'], beton: ['linear-gradient(rgba(255,255,255,0.3),rgba(255,255,255,0.3)),url(/artisans/img/fond-beton-d.webp) center/cover', '#13223c'], plan: ['linear-gradient(rgba(6,16,30,0.3),rgba(6,16,30,0.3)),url(/artisans/img/fond-plan-d.webp) center/cover', '#f3f1ec'], circuit: ['linear-gradient(rgba(6,16,30,0.25),rgba(6,16,30,0.25)),url(/artisans/img/fond-circuit-d.webp) center/cover', '#f3f1ec'], satin: ['url(/artisans/img/fond-satin-m.webp) center/cover', '#f6f0e2'], drap: ['url(/artisans/img/fond-drap-m.webp) center/cover', '#fff3e6'], marbre: ['url(/artisans/img/fond-marbre-d.webp) center/cover', '#4a2b2b'], blancrouge: ['url(/artisans/img/fond-blancrouge-d.webp) center/cover', '#1c1c1f'], violetroyal: ['url(/artisans/img/fond-violetroyal.webp) center/cover', '#ffffff'], vertemeraude: ['url(/artisans/img/fond-vertemeraude-v2.webp) center/cover', '#ffffff'], nuages: ['url(/artisans/img/fond-nuages-d.webp) center/cover', '#14284b'] };
+var APERCU_FONDS = { clair: ['#ffffff', '#13223c'], ocean: ['linear-gradient(180deg,#b9d6f2,#f2f8fe)', '#13223c'], schiste: ['linear-gradient(180deg,#c6cfdd,#f1f3f7)', '#13223c'], sombre: ['#0f1115', '#f3f1ec'], feuillage: ['linear-gradient(rgba(255,255,255,0.3),rgba(255,255,255,0.3)),url(/artisans/img/fond-feuillage-m.webp) center/cover', '#13223c'], provence: ['linear-gradient(rgba(255,255,255,0.3),rgba(255,255,255,0.3)),url(/artisans/img/fond-provence-m.webp) center/cover', '#13223c'], frangipanier: ['linear-gradient(rgba(255,255,255,0.3),rgba(255,255,255,0.3)),url(/artisans/img/fond-frangipanier-m.webp) center/cover', '#13223c'], palmes: ['linear-gradient(rgba(255,255,255,0.3),rgba(255,255,255,0.3)),url(/artisans/img/fond-palmes-m.webp) center/cover', '#13223c'], soie: ['linear-gradient(rgba(255,255,255,0.3),rgba(255,255,255,0.3)),url(/artisans/img/fond-soie-mini.webp) center/cover', '#13223c'], couleurs: ['linear-gradient(rgba(255,255,255,0.5),rgba(255,255,255,0.5)),url(/artisans/img/fond-couleurs-mini.webp) center/cover', '#13223c'], chene: ['linear-gradient(rgba(255,255,255,0.3),rgba(255,255,255,0.3)),url(/artisans/img/fond-chene-d.webp) center/cover', '#13223c'], acier: ['linear-gradient(rgba(255,255,255,0.3),rgba(255,255,255,0.3)),url(/artisans/img/fond-acier-d.webp) center/cover', '#13223c'], beton: ['linear-gradient(rgba(255,255,255,0.3),rgba(255,255,255,0.3)),url(/artisans/img/fond-beton-d.webp) center/cover', '#13223c'], plan: ['linear-gradient(rgba(6,16,30,0.3),rgba(6,16,30,0.3)),url(/artisans/img/fond-plan-d.webp) center/cover', '#f3f1ec'], circuit: ['linear-gradient(rgba(6,16,30,0.25),rgba(6,16,30,0.25)),url(/artisans/img/fond-circuit-d.webp) center/cover', '#f3f1ec'], satin: ['url(/artisans/img/fond-satin-m.webp) center/cover', '#f6f0e2'], drap: ['url(/artisans/img/fond-drap-m.webp) center/cover', '#EEF4FF'], marbre: ['url(/artisans/img/fond-marbre-d.webp) center/cover', '#4a2b2b'], blancrouge: ['url(/artisans/img/fond-blancrouge-d.webp) center/cover', '#1c1c1f'], violetroyal: ['url(/artisans/img/fond-violetroyal.webp) center/cover', '#ffffff'], vertemeraude: ['url(/artisans/img/fond-vertemeraude-v2.webp) center/cover', '#ffffff'], nuages: ['url(/artisans/img/fond-nuages-d.webp) center/cover', '#14284b'] };
 var FAMILLES_FONDS = [['Unis', ['clair', 'ocean', 'schiste', 'sombre']], ['Nature et beauté', ['feuillage', 'provence', 'frangipanier', 'palmes', 'soie', 'couleurs', 'nuages']], ['Pro et chantier', ['chene', 'acier', 'beton', 'plan', 'circuit']], ['Élégance (boutons brillants)', ['satin', 'drap', 'marbre', 'blancrouge', 'violetroyal', 'vertemeraude']]];
 function afficherPersonnalisation() {
   initGlisserBanniere();
@@ -9199,7 +9199,7 @@ function renderCommandes() {
 function ligneCommande(c, couleur) {
   var nom = c.client_nom || '—';
   var ini = nom.split(/\s+/).map(function(m) { return m.charAt(0); }).join('').slice(0, 2).toUpperCase() || '?';
-  var palette = ['#8b5cf6', '#2563eb', '#2f9e6e', '#C2410C', '#0891b2', '#db2777'], somme = 0;
+  var palette = ['#8b5cf6', '#2563eb', '#2f9e6e', '#0E4FB8', '#0891b2', '#db2777'], somme = 0;
   for (var i = 0; i < nom.length; i++) somme += nom.charCodeAt(i);
   var lignesP = _lignesCommandesCache[c.id];
   var article = (c.catalogue_id == null && lignesP && lignesP.length)
@@ -9604,7 +9604,7 @@ async function planifierLivraisonCommande(commandeId) {
     '<h3>🚚 Planifier la livraison</h3>' +
     '<div style="font-size:13px;line-height:1.55;margin-bottom:10px;"><strong>' + escHtml(c.client_nom) + '</strong> — ' + articles + '<br>📍 ' + escHtml(c.adresse_livraison || '') + ' ' + escHtml(c.code_postal_livraison || '') + ' ' + escHtml(c.commune_livraison || '') + '<br>' +
       '<span style="color:var(--mu);">Frais de livraison déjà payés : ' + eurosFR(c.frais_livraison || 0) + '</span></div>' +
-    '<div style="font-size:12.5px;margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(234,88,12,.08);">📅 ' + (c.livraison_debut ? 'Fenêtre annoncée au client : du <strong>' + dateCourteFR(c.livraison_debut) + '</strong> au <strong>' + dateCourteFR(c.livraison_fin) + '</strong>.' : 'Aucune fenêtre annoncée (ancienne commande).') + (analyse.horsFenetre ? '<br>⚠️ Cette fenêtre est dépassée : le client sera prévenu du nouveau jour.' : '') + '</div>' +
+    '<div style="font-size:12.5px;margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(18,102,227,.08);">📅 ' + (c.livraison_debut ? 'Fenêtre annoncée au client : du <strong>' + dateCourteFR(c.livraison_debut) + '</strong> au <strong>' + dateCourteFR(c.livraison_fin) + '</strong>.' : 'Aucune fenêtre annoncée (ancienne commande).') + (analyse.horsFenetre ? '<br>⚠️ Cette fenêtre est dépassée : le client sera prévenu du nouveau jour.' : '') + '</div>' +
     '<div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">Choisissez le jour</div>' + boutonsJours +
     '<div class="modal-row" style="display:flex;gap:10px;margin-top:10px;">' +
       '<div class="modal-field" style="flex:1;"><label>Créneau</label><select id="pl-creneau" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--b2);font-size:13px;"><option value="matin">Matin</option><option value="apres_midi">Après-midi</option></select></div>' +
@@ -9912,7 +9912,7 @@ async function choisirJourItineraire(dateStr) {
       var bas = [cl, it.commune].filter(function(x) { return x; }).map(escHtml).join(' · ');
       morceaux.push('<div class="itin-bulle"><div class="itin-bulle-haut"><span aria-hidden="true">🛠️</span><span>' + h5 + ' · ' + escHtml(sv) + '</span></div>' +
         '<div class="itin-bulle-bas" style="padding-left:26px;">' + (bas || '—') + '</div>' +
-        ((auj && estPro()) ? '<button class="itin-retard" onclick="signalerRetard(\'' + it.id + '\')" title="Prévenir le client d\'un retard" style="background:#fff7ed;border:1.5px solid #f59e0b;color:#b45309;font-weight:700;cursor:pointer;border-radius:8px;">⏰ Je suis en retard</button>' : '') +
+        ((auj && estPro()) ? '<button class="itin-retard" onclick="signalerRetard(\'' + it.id + '\')" title="Prévenir le client d\'un retard" style="background:#EEF4FF;border:1.5px solid #93B7F2;color:#b45309;font-weight:700;cursor:pointer;border-radius:8px;">⏰ Je suis en retard</button>' : '') +
       '</div>');
       if (q < duJour.length - 1) {
         var mm = avecTrajets ? await pLegs[q] : null;
@@ -9948,7 +9948,7 @@ async function choisirJourItineraire(dateStr) {
     // Bouton "Retard" discret — uniquement sur la journée en cours, jamais sur un jour futur
     // affiché en avance (prévenir d'un retard n'a de sens que pour aujourd'hui).
     var boutonRetard = (estAujourdhui && estPro())
-      ? '<button onclick="signalerRetard(\'' + i.id + '\')" title="Prévenir le client d\'un retard" style="margin-left:auto;flex-shrink:0;background:#fff7ed;border:1.5px solid #f59e0b;color:#b45309;font-size:13px;font-weight:700;cursor:pointer;padding:7px 12px;border-radius:8px;">⏰ Je suis en retard</button>'
+      ? '<button onclick="signalerRetard(\'' + i.id + '\')" title="Prévenir le client d\'un retard" style="margin-left:auto;flex-shrink:0;background:#EEF4FF;border:1.5px solid #93B7F2;color:#b45309;font-size:13px;font-weight:700;cursor:pointer;padding:7px 12px;border-radius:8px;">⏰ Je suis en retard</button>'
       : '';
     morceaux.push('<div style="display:flex;gap:10px;align-items:center;padding:6px 0;font-size:13px;">' +
       '<strong style="width:48px;flex-shrink:0;">' + (i.heure_debut || '—') + '</strong>' +
@@ -9994,7 +9994,7 @@ async function dessinerCarteItineraire(interventions) {
   var points = etapes.map(function(e) { return [e.latitude, e.longitude]; });
   if (base) {
     L.marker([base.latitude, base.longitude], {
-      icon: L.divIcon({ className: '', html: '<div style="width:30px;height:30px;border-radius:50%;background:#fff;border:2px solid #EA580C;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,.25);">🏠</div>', iconSize: [30, 30], iconAnchor: [15, 15] }),
+      icon: L.divIcon({ className: '', html: '<div style="width:30px;height:30px;border-radius:50%;background:#fff;border:2px solid #1266E3;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,.25);">🏠</div>', iconSize: [30, 30], iconAnchor: [15, 15] }),
     }).addTo(_itinMap).bindTooltip('Départ — chez vous', { permanent: false });
   }
   avecCoords.forEach(function(i, idx) {
@@ -10014,12 +10014,12 @@ async function dessinerCarteItineraire(interventions) {
       var data = await res.json();
       if (data.geometry && data.geometry.coordinates) {
         var coordsLatLng = data.geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
-        var ligne = L.polyline(coordsLatLng, { color: '#EA580C', weight: 4, opacity: 0.85 }).addTo(_itinMap);
+        var ligne = L.polyline(coordsLatLng, { color: '#1266E3', weight: 4, opacity: 0.85 }).addTo(_itinMap);
         var minutes = Math.ceil(data.duration / 60);
         var km = Math.round(data.distance / 100) / 10;
         var milieu = coordsLatLng[Math.floor(coordsLatLng.length / 2)];
         L.marker(milieu, {
-          icon: L.divIcon({ className: '', html: '<div style="background:#fff;border:1px solid var(--brd,#e3eaf4);border-radius:7px;padding:2px 7px;font-size:11px;font-weight:700;color:#C2410C;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.15);">' + minutes + ' min · ' + km + ' km</div>', iconSize: null }),
+          icon: L.divIcon({ className: '', html: '<div style="background:#fff;border:1px solid var(--brd,#e3eaf4);border-radius:7px;padding:2px 7px;font-size:11px;font-weight:700;color:#0E4FB8;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.15);">' + minutes + ' min · ' + km + ' km</div>', iconSize: null }),
         }).addTo(_itinMap);
       }
       else { L.polyline([[a.latitude, a.longitude], [b.latitude, b.longitude]], { color: '#9aa7b8', weight: 3, opacity: 0.8, dashArray: '6 8' }).addTo(_itinMap); } // route introuvable : trait direct pointillé
@@ -10113,13 +10113,13 @@ function renderFournitures() {
   if (!zone || estPro()) return;
   var zoneM = document.getElementById('zone-fournitures-m');
   var bandeauPro = (
-    '<div style="border:1px dashed var(--ac);background:rgba(234,88,12,.05);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.55;">' +
+    '<div style="border:1px dashed var(--ac);background:rgba(18,102,227,.05);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.55;">' +
       '🔒 <strong>Mes fournitures fait partie de l\'offre Pro</strong> (' + PRIX_PRO_AFFICHE + '). Suivez vos consommables, scannez QR codes et codes-barres, soyez prévenu avant la rupture.' + texteEssai() +
       '<div><button class="addb" onclick="lancerAbonnement()" style="margin-top:8px;">Passer en Pro →</button></div>' +
     '</div>');
   if (zoneM) zoneM.insertAdjacentHTML('afterbegin', bandeauPro);
   zone.insertAdjacentHTML('afterbegin',
-    '<div style="border:1px dashed var(--ac);background:rgba(234,88,12,.05);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.55;">' +
+    '<div style="border:1px dashed var(--ac);background:rgba(18,102,227,.05);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.55;">' +
       '🔒 <strong>Mes fournitures fait partie de l\'offre Pro</strong> (' + PRIX_PRO_AFFICHE + '). Suivez vos consommables, scannez QR codes et codes-barres, soyez prévenu avant la rupture.' + texteEssai() +
       '<div><button class="addb" onclick="lancerAbonnement()" style="margin-top:8px;">Passer en Pro →</button></div>' +
     '</div>');
@@ -10373,7 +10373,7 @@ function renderServices(liste) {
 }
 
 // ── Version téléphone : chaque service = une carte épurée (icône, nom, durée, prix) ; description, rappel et boutons s'ouvrent au clic. ──
-var ICONES_SERVICES = [['🔧', '#fff1e8'], ['🌿', '#e6f7ef'], ['🛠️', '#e8f0ff'], ['🧰', '#f3e8ff'], ['🔌', '#fef9c3'], ['🚿', '#e0f2fe']];
+var ICONES_SERVICES = [['🔧', '#EEF4FF'], ['🌿', '#e6f7ef'], ['🛠️', '#e8f0ff'], ['🧰', '#f3e8ff'], ['🔌', '#fef9c3'], ['🚿', '#e0f2fe']];
 function carteServiceMobile(s, i) {
   var ic = ICONES_SERVICES[i % ICONES_SERVICES.length];
   var prix = s.prix_indicatif ? (s.prix_indicatif + ' €' + (s.unite && s.unite !== 'forfait' ? '/' + s.unite : '')) : 'Sur devis';
