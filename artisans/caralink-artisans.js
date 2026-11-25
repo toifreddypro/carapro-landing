@@ -1252,7 +1252,7 @@ function demarrerPubAlternanceMobile() {
 function initCarte() {
   var el = document.getElementById('leaflet-map');
   if (!el || _map) return;
-  _map = L.map('leaflet-map', { zoomControl:true, scrollWheelZoom:false }).setView([16.10,-61.55], 10);
+  _map = L.map('leaflet-map', { zoomControl:true, scrollWheelZoom:false }).setView([16.20,-61.45], 9);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     maxZoom: 18
@@ -1274,6 +1274,20 @@ function mettreAJourCarte(artisans) {
     marker.bindPopup('<strong>' + escHtml(a.nom_entreprise) + '</strong><br>' + escHtml(a.commune));
     _mapMarkers.push(marker);
   });
+  recentrerCarte();
+}
+
+// Centre la carte sur les artisans trouvés (ou sur toute la Guadeloupe s'il n'y en a pas).
+// La carte est créée alors qu'elle est encore cachée (avant la 1re recherche) : on lui redonne sa vraie taille d'abord.
+var BORNES_GUADELOUPE = [[15.80, -61.85], [16.52, -61.00]];
+function recentrerCarte() {
+  if (!_map) return;
+  try {
+    _map.invalidateSize();
+    if (_mapMarkers.length === 1) { _map.setView(_mapMarkers[0].getLatLng(), 12); return; }
+    if (_mapMarkers.length > 1) { _map.fitBounds(L.featureGroup(_mapMarkers).getBounds(), { padding: [28, 28], maxZoom: 12 }); return; }
+    _map.fitBounds(BORNES_GUADELOUPE);
+  } catch (e) { /* la carte ne doit jamais gêner la recherche */ }
 }
 
 async function chargerArtisans() {
