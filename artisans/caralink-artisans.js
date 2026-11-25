@@ -1060,40 +1060,155 @@ function renderResults() {
   setTimeout(initCarte, 100);
 }
 
-// ── Panneau croisé vers CaraLink Alternance — "Espace partenaire" réutilisé ──
-// Un besoin à la fois : phrase d'accroche, métier, puis la photo (cliquable). Il tourne tout seul, s'arrête quand on le survole.
+// ── Pubs de l'annuaire, fusionnées : une carte CaraLink Alternance, puis un partenaire, puis une carte CaraLink… ──
+// Trois endroits : colonne de gauche (ordinateur, après recherche), page d'accueil (avant recherche), carte glissée dans la liste (téléphone).
+// Interrupteur « pub » éteint dans l'admin : il ne reste que les cartes CaraLink Alternance. Un partenaire garde son lien et sa petite phrase.
 var BESOINS_ALTERNANCE_PUBLIC = [
   { code: 'commercial', phrase: 'Un artisan a aussi besoin de prospecter.', metier: 'Il vous faut un commercial.', img: '/artisans/img/alt-commercial.webp' },
   { code: 'communication', phrase: 'Un artisan a aussi besoin de se faire connaître.', metier: 'Il vous faut de la communication.', img: '/artisans/img/alt-communication.webp' },
   { code: 'administratif', phrase: 'Un artisan a aussi besoin de gérer sa paperasse.', metier: 'Il vous faut un assistant administratif.', img: '/artisans/img/alt-administratif.webp' },
   { code: 'comptable', phrase: 'Un artisan a aussi besoin de chiffrer.', metier: 'Il vous faut un gestionnaire comptable.', img: '/artisans/img/alt-comptable.webp' },
 ];
-var _indexBesoinAlternancePublic = 0;
-var _timerBesoinAlternancePublic = null;
-var _pauseBesoinAlternancePublic = false;
 
-function htmlBesoinAlternancePublic(b) {
-  return (
-    '<a href="https://learnlogicstudio.com/connect.html?besoin=' + b.code + '#section-calculateur" target="_blank" rel="noopener" id="besoin-alternance-lien-public" style="display:block;text-decoration:none;color:inherit;">' +
-      '<div style="font-size:15px;font-weight:700;color:var(--tx);line-height:1.35;min-height:2.7em;margin-bottom:4px;">' + b.phrase + '</div>' +
-      '<div style="font-size:14px;font-weight:700;color:var(--ac-t,var(--ac));line-height:1.35;min-height:2.7em;margin-bottom:10px;">' + b.metier + ' →</div>' +
-      '<img src="' + b.img + '" alt="" width="540" height="770" decoding="async" style="display:block;width:100%;height:auto;aspect-ratio:54/77;object-fit:cover;border-radius:12px;background:var(--inp);box-shadow:0 6px 18px rgba(19,34,60,.18);">' +
-    '</a>'
-  );
+var _pubListe = null;
+var PUB_URL_LOGOS_OK = SUPABASE_URL + '/storage/v1/object/public/pub-logos/';
+
+// Lit la liste des pubs partenaires actives (une seule fois). Éteinte, vide ou en panne : liste vide.
+async function lirePubListe() {
+  if (_pubListe) return _pubListe;
+  try {
+    var res = await fetch(SUPABASE_URL + '/rest/v1/rpc/pub_annonces_actives', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON, 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+    var data = await res.json();
+    // Défense en plus : un logo ne vient que de notre dossier de logos, un lien que en https.
+    _pubListe = (Array.isArray(data) ? data : []).filter(function(a) { return a && a.logo_url && String(a.logo_url).indexOf(PUB_URL_LOGOS_OK) === 0; })
+      .map(function(a) { return { nom: String(a.nom || ''), phrase: String(a.phrase || '').slice(0, 80), logo_url: a.logo_url, lien: /^https:\/\//i.test(a.lien || '') ? a.lien : null }; });
+  } catch (e) { _pubListe = []; }
+  return _pubListe;
 }
 
-function htmlPointsBesoinAlternancePublic() {
-  return BESOINS_ALTERNANCE_PUBLIC.map(function(b, i) {
-    var actif = i === _indexBesoinAlternancePublic;
-    return '<button type="button" onclick="allerBesoinAlternancePublic(' + i + ')" aria-label="' + escHtml(b.metier) + '" aria-current="' + (actif ? 'true' : 'false') + '" style="width:' + (actif ? '22px' : '9px') + ';height:9px;padding:0;border:none;border-radius:9px;cursor:pointer;background:' + (actif ? 'var(--ac)' : 'var(--brd)') + ';transition:all .3s;"></button>';
+// Cartes CaraLink et partenaires en alternance : A1, P1, A2, P2… (s'il y a plus de cartes CaraLink, elles finissent la série).
+function slidesFusion() {
+  var A = BESOINS_ALTERNANCE_PUBLIC, P = _pubListe || [], out = [];
+  for (var i = 0; i < Math.max(A.length, P.length); i++) {
+    if (i < A.length) out.push({ t: 'alt', b: A[i] });
+    if (i < P.length) out.push({ t: 'pub', a: P[i] });
+  }
+  return out;
+}
+
+function enteteLibelle(txt, mention) {
+  return '<div style="font-size:11px;font-weight:700;color:var(--mu2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px;display:flex;justify-content:space-between;gap:8px;"><span>' + escHtml(txt) + '</span>' + (mention ? '<span style="font-weight:600;opacity:.7;">' + escHtml(mention) + '</span>' : '') + '</div>';
+}
+
+// ── Grande carte (colonne de gauche) ──
+function htmlSlideGrande(s) {
+  if (s.t === 'alt') {
+    var b = s.b;
+    return enteteLibelle('Vous êtes artisan ?') +
+      '<a href="https://learnlogicstudio.com/connect.html?besoin=' + b.code + '#section-calculateur" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit;">' +
+        '<div style="font-size:15px;font-weight:700;color:var(--tx);line-height:1.35;min-height:2.7em;margin-bottom:4px;">' + b.phrase + '</div>' +
+        '<div style="font-size:14px;font-weight:700;color:var(--ac-t,var(--ac));line-height:1.35;min-height:2.7em;margin-bottom:10px;">' + b.metier + ' →</div>' +
+        '<img src="' + b.img + '" alt="" width="540" height="770" decoding="async" style="display:block;width:100%;height:auto;aspect-ratio:54/77;object-fit:cover;border-radius:12px;background:var(--inp);box-shadow:0 6px 18px rgba(19,34,60,.18);">' +
+      '</a>';
+  }
+  var a = s.a;
+  var corps = '<div style="height:170px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--brd);border-radius:12px;padding:10px;">' +
+    '<img src="' + escHtml(a.logo_url) + '" alt="' + escHtml(a.nom) + '" style="max-width:100%;max-height:100%;object-fit:contain;" decoding="async"></div>' +
+    '<div style="font-size:14px;font-weight:700;color:var(--tx);text-align:center;margin-top:10px;line-height:1.3;">' + escHtml(a.nom) + '</div>' +
+    (a.phrase ? '<div style="font-size:13px;color:var(--mu);text-align:center;margin-top:4px;line-height:1.4;">' + escHtml(a.phrase) + '</div>' : '');
+  return enteteLibelle(T('pub_titre'), T('pub_mention')) +
+    (a.lien ? '<a href="' + escHtml(a.lien) + '" target="_blank" rel="noopener sponsored" style="display:block;text-decoration:none;color:inherit;">' + corps + '</a>' : '<div>' + corps + '</div>');
+}
+
+// ── Petite carte (page d'accueil et téléphone) ──
+function htmlSlideCompacte(s) {
+  if (s.t === 'alt') {
+    var b = s.b;
+    return '<a href="https://learnlogicstudio.com/connect.html?besoin=' + b.code + '#section-calculateur" target="_blank" rel="noopener" style="display:flex;gap:14px;align-items:center;text-decoration:none;color:inherit;">' +
+      '<img src="' + b.img + '" alt="" width="540" height="770" loading="lazy" decoding="async" style="flex:none;width:88px;height:125px;object-fit:cover;border-radius:10px;background:var(--inp);">' +
+      '<div style="min-width:0;">' +
+        '<div style="font-size:10.5px;font-weight:700;color:var(--mu2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px;">Vous êtes artisan ?</div>' +
+        '<div style="font-size:14px;font-weight:700;color:var(--tx);line-height:1.35;margin-bottom:3px;">' + b.phrase + '</div>' +
+        '<div style="font-size:13.5px;font-weight:700;color:var(--ac-t,var(--ac));line-height:1.35;">' + b.metier + ' →</div>' +
+      '</div></a>';
+  }
+  var a = s.a;
+  var corps = '<div style="display:flex;gap:14px;align-items:center;min-height:125px;">' +
+    '<div style="flex:none;width:88px;height:88px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--brd);border-radius:10px;padding:6px;box-sizing:border-box;">' +
+      '<img class="pub-logo-c" src="' + escHtml(a.logo_url) + '" alt="' + escHtml(a.nom) + '" style="max-width:100%;max-height:100%;object-fit:contain;" decoding="async"></div>' +
+    '<div style="min-width:0;">' +
+      '<div style="font-size:10.5px;font-weight:700;color:var(--mu2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px;">' + escHtml(T('pub_titre')) + ' · ' + escHtml(T('pub_mention')) + '</div>' +
+      '<div style="font-size:14px;font-weight:700;color:var(--tx);line-height:1.35;margin-bottom:3px;">' + escHtml(a.nom) + '</div>' +
+      (a.phrase ? '<div style="font-size:13.5px;color:var(--mu);line-height:1.4;">' + escHtml(a.phrase) + '</div>' : '') +
+    '</div></div>';
+  return a.lien ? '<a href="' + escHtml(a.lien) + '" target="_blank" rel="noopener sponsored" style="display:block;text-decoration:none;color:inherit;">' + corps + '</a>' : corps;
+}
+
+// ── Mécanique commune : une rotation par endroit (gauche, accueil, mobile) ──
+var _rot = {};
+function rotationPoints(nom) {
+  var r = _rot[nom];
+  return r.slides.map(function(_, i) {
+    var actif = i === r.i;
+    return '<button type="button" onclick="rotationAller(\'' + nom + '\',' + i + ')" aria-label="' + (i + 1) + '" aria-current="' + (actif ? 'true' : 'false') + '" style="width:' + (actif ? '20px' : '8px') + ';height:8px;padding:0;border:none;border-radius:9px;cursor:pointer;background:' + (actif ? 'var(--ac)' : 'var(--brd)') + ';transition:all .3s;"></button>';
   }).join('');
+}
+function rotationAfficher(nom) {
+  var r = _rot[nom], zone = document.getElementById(r.zone), pts = r.points ? document.getElementById(r.points) : null;
+  if (!zone || !r.slides.length) return;
+  var s = r.slides[r.i];
+  if (r.hauteurFixe) {                     // la carte partenaire, plus courte, garde la hauteur de la carte CaraLink : rien ne saute
+    if (s.t === 'alt') { zone.style.minHeight = '0'; zone.innerHTML = r.html(s); r.h = zone.offsetHeight; }
+    else { zone.innerHTML = r.html(s); }
+    zone.style.minHeight = r.h ? r.h + 'px' : '';
+  } else { zone.innerHTML = r.html(s); }
+  if (pts) pts.innerHTML = r.slides.length > 1 ? rotationPoints(nom) : '';
+  zone.style.opacity = '1';
+}
+function rotationAller(nom, i) {
+  var r = _rot[nom], zone = r && document.getElementById(r.zone);
+  if (!zone || !r.slides.length) return;
+  r.i = (i + r.slides.length) % r.slides.length;
+  var calme = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (calme) { rotationAfficher(nom); return; }
+  zone.style.opacity = '0';
+  setTimeout(function() { if (_rot[nom] === r) rotationAfficher(nom); }, 300);
+}
+// cfg : zone, points (id ou null), html (fonction), delai (ms), pause (id de l'élément qui met en pause au survol), hauteurFixe
+function rotationDemarrer(nom, cfg) {
+  if (_rot[nom] && _rot[nom].timer) clearInterval(_rot[nom].timer);
+  var r = _rot[nom] = { zone: cfg.zone, points: cfg.points, html: cfg.html, hauteurFixe: !!cfg.hauteurFixe, h: 0, i: 0, pause: false, timer: null, slides: slidesFusion() };
+  var el = cfg.pause && document.getElementById(cfg.pause);
+  if (el) {
+    el.onmouseenter = function() { r.pause = true; }; el.onmouseleave = function() { r.pause = false; };
+    el.onfocusin = function() { r.pause = true; }; el.onfocusout = function() { r.pause = false; };
+  }
+  rotationAfficher(nom);
+  r.timer = setInterval(function() {
+    if (_rot[nom] !== r || !document.getElementById(r.zone)) { clearInterval(r.timer); return; }
+    if (r.pause || document.hidden || r.slides.length < 2) return;
+    rotationAller(nom, r.i + 1);
+  }, cfg.delai);
+  // Les partenaires arrivent un instant après : on ajoute leurs cartes sans repartir de zéro.
+  lirePubListe().then(function() {
+    if (_rot[nom] !== r || !document.getElementById(r.zone)) return;
+    var courante = r.slides[r.i];
+    r.slides = slidesFusion();
+    var k = r.slides.findIndex(function(s) { return courante && s.t === courante.t && (s.b === courante.b || s.a === courante.a); });
+    r.i = k < 0 ? 0 : k;
+    var pts = r.points ? document.getElementById(r.points) : null;
+    if (pts) pts.innerHTML = r.slides.length > 1 ? rotationPoints(nom) : '';
+  });
 }
 
 function htmlPartnerPanel() {
   return (
-    '<div style="font-size:11px;font-weight:700;color:var(--mu2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px;">Vous êtes artisan ?</div>' +
-    '<div id="besoin-alternance-zone-public" style="transition:opacity .35s;">' + htmlBesoinAlternancePublic(BESOINS_ALTERNANCE_PUBLIC[_indexBesoinAlternancePublic]) + '</div>' +
-    '<div id="besoin-alternance-points-public" style="display:flex;justify-content:center;align-items:center;gap:6px;margin:12px 0 14px;">' + htmlPointsBesoinAlternancePublic() + '</div>' +
+    '<div id="rot-gauche-zone" style="transition:opacity .3s;"></div>' +
+    '<div id="rot-gauche-points" style="display:flex;justify-content:center;align-items:center;gap:6px;margin:12px 0 14px;"></div>' +
     '<div style="border-top:1px solid var(--brd);padding-top:12px;">' +
       '<div style="font-size:13px;color:var(--mu);line-height:1.6;margin-bottom:10px;">Voyez pourquoi un alternant peut vous coûter très peu en Guadeloupe.</div>' +
       '<a href="https://learnlogicstudio.com/connect.html#section-calculateur" target="_blank" rel="noopener" style="display:inline-block;padding:9px 14px;border-radius:8px;background:var(--ac);color:#fff;font-size:12.5px;font-weight:700;text-decoration:none;">Calculez votre coût réel →</a>' +
@@ -1101,153 +1216,37 @@ function htmlPartnerPanel() {
   );
 }
 
-// Change de besoin avec un fondu (sans fondu si la personne a demandé moins d'animations).
-function allerBesoinAlternancePublic(i) {
-  var zone = document.getElementById('besoin-alternance-zone-public');
-  var points = document.getElementById('besoin-alternance-points-public');
-  if (!zone || !points) return;
-  _indexBesoinAlternancePublic = (i + BESOINS_ALTERNANCE_PUBLIC.length) % BESOINS_ALTERNANCE_PUBLIC.length;
-  var calme = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  function remplacer() {
-    zone.innerHTML = htmlBesoinAlternancePublic(BESOINS_ALTERNANCE_PUBLIC[_indexBesoinAlternancePublic]);
-    points.innerHTML = htmlPointsBesoinAlternancePublic();
-    zone.style.opacity = '1';
-  }
-  if (calme) { remplacer(); return; }
-  zone.style.opacity = '0';
-  setTimeout(remplacer, 350);
-}
-
-// ════════════════════════════════════════
-//  PUB DE L'ANNUAIRE : jusqu'à 4 logos qui défilent sous le panneau CaraLink Alternance (colonne de gauche).
-//  Allumée ou éteinte depuis la page d'administration (onglet « Pub »). Éteinte : rien ne s'affiche.
-// ════════════════════════════════════════
-var _pubListe = null, _pubIndex = 0, _pubTimer = null, _pubPause = false;
-var PUB_URL_LOGOS_OK = SUPABASE_URL + '/storage/v1/object/public/pub-logos/';
-
-function htmlPubLogo(a) {
-  var logo = '<div style="height:96px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--brd);border-radius:10px;padding:8px;">' +
-    '<img src="' + escHtml(a.logo_url) + '" alt="' + escHtml(a.nom) + '" style="max-width:100%;max-height:100%;object-fit:contain;" loading="lazy" decoding="async"></div>' +
-    '<div style="font-size:12.5px;font-weight:700;color:var(--tx);text-align:center;margin-top:8px;line-height:1.3;">' + escHtml(a.nom) + '</div>';
-  return a.lien ? '<a href="' + escHtml(a.lien) + '" target="_blank" rel="noopener sponsored" style="display:block;text-decoration:none;color:inherit;">' + logo + '</a>' : logo;
-}
-function htmlPubPoints() {
-  return _pubListe.map(function(_, i) {
-    var actif = i === _pubIndex;
-    return '<button type="button" onclick="allerPub(' + i + ')" aria-label="' + (i + 1) + '" aria-current="' + (actif ? 'true' : 'false') + '" style="width:' + (actif ? '18px' : '8px') + ';height:8px;border-radius:999px;border:none;padding:0;cursor:pointer;background:' + (actif ? 'var(--ac)' : 'var(--brd)') + ';transition:width .2s;"></button>';
-  }).join('');
-}
-function allerPub(i) {
-  var zone = document.getElementById('pub-zone'), points = document.getElementById('pub-points');
-  if (!zone || !_pubListe || !_pubListe.length) return;
-  _pubIndex = (i + _pubListe.length) % _pubListe.length;
-  var calme = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  function remplacer() { zone.innerHTML = htmlPubLogo(_pubListe[_pubIndex]); if (points) points.innerHTML = htmlPubPoints(); zone.style.opacity = '1'; }
-  if (calme) { remplacer(); return; }
-  zone.style.opacity = '0';
-  setTimeout(remplacer, 300);
-}
-// Lit la liste des pubs actives (une seule fois). Éteinte ou vide : liste vide.
-async function lirePubListe() {
-  if (_pubListe) return _pubListe;
-  var res = await fetch(SUPABASE_URL + '/rest/v1/rpc/pub_annonces_actives', {
-    method: 'POST',
-    headers: { 'apikey': SUPABASE_ANON, 'Authorization': 'Bearer ' + SUPABASE_ANON, 'Content-Type': 'application/json' },
-    body: '{}'
-  });
-  var data = await res.json();
-  // Défense en plus : un logo ne vient que de notre dossier de logos, un lien que en https.
-  _pubListe = (Array.isArray(data) ? data : []).filter(function(a) { return a && a.logo_url && String(a.logo_url).indexOf(PUB_URL_LOGOS_OK) === 0; })
-    .map(function(a) { return { nom: String(a.nom || ''), logo_url: a.logo_url, lien: /^https:\/\//i.test(a.lien || '') ? a.lien : null }; });
-  return _pubListe;
-}
-
-// Page d'accueil (avant toute recherche, ordinateur ET téléphone) : une bande discrète sous le défilement, tous les logos côte à côte.
-async function chargerPubAccueil() {
-  var zone = document.getElementById('pub-accueil');
-  if (!zone) return;
-  try {
-    var liste = await lirePubListe();
-    if (!liste.length) { zone.innerHTML = ''; return; }
-    zone.innerHTML = '<div class="pub-accueil-in">' +
-      '<div style="font-size:10.5px;font-weight:700;color:var(--mu2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px;display:flex;justify-content:space-between;"><span>' + escHtml(T('pub_titre')) + '</span><span style="font-weight:600;opacity:.7;">' + escHtml(T('pub_mention')) + '</span></div>' +
-      '<div class="pub-accueil-logos">' + liste.map(function(a) { return '<div class="pub-accueil-item">' + htmlPubLogo(a) + '</div>'; }).join('') + '</div></div>';
-  } catch (e) { zone.innerHTML = ''; /* la pub ne doit jamais gêner l'annuaire */ }
-}
-
-async function chargerPubAnnuaire() {
-  var carte = document.getElementById('pub-carte');
-  if (!carte) return;
-  try {
-    await lirePubListe();
-    if (!_pubListe.length) { carte.innerHTML = ''; return; }
-    if (!document.getElementById('style-pub-annuaire')) {
-      var st = document.createElement('style'); st.id = 'style-pub-annuaire';
-      st.textContent = '.partner-panel{max-height:calc(100vh - 96px);overflow-y:auto;scrollbar-width:thin;}';
-      document.head.appendChild(st);
-    }
-    if (_pubIndex >= _pubListe.length) _pubIndex = 0;
-    carte.innerHTML = '<div style="border-top:1px solid var(--brd);margin-top:16px;padding-top:12px;">' +
-      '<div style="font-size:10.5px;font-weight:700;color:var(--mu2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px;display:flex;justify-content:space-between;"><span>' + escHtml(T('pub_titre')) + '</span><span style="font-weight:600;opacity:.7;">' + escHtml(T('pub_mention')) + '</span></div>' +
-      '<div id="pub-zone" style="transition:opacity .3s;">' + htmlPubLogo(_pubListe[_pubIndex]) + '</div>' +
-      (_pubListe.length > 1 ? '<div id="pub-points" style="display:flex;justify-content:center;gap:6px;margin-top:10px;">' + htmlPubPoints() + '</div>' : '') + '</div>';
-    carte.onmouseenter = function() { _pubPause = true; };
-    carte.onmouseleave = function() { _pubPause = false; };
-    clearInterval(_pubTimer);
-    if (_pubListe.length > 1) _pubTimer = setInterval(function() { if (_pubPause || document.hidden) return; allerPub(_pubIndex + 1); }, 5000);
-  } catch (e) { carte.innerHTML = ''; /* la pub ne doit jamais gêner l'annuaire */ }
-}
-
 function renderPartnerPanel() {
   var zone = document.getElementById('partner-panel');
   if (!zone) return;
-  zone.innerHTML = htmlPartnerPanel() + '<div id="pub-carte"></div>';
-  chargerPubAnnuaire();
-  BESOINS_ALTERNANCE_PUBLIC.forEach(function(b) { var im = new Image(); im.src = b.img; }); // les 4 photos sont prêtes avant d'être affichées
-  zone.onmouseenter = function() { _pauseBesoinAlternancePublic = true; };
-  zone.onmouseleave = function() { _pauseBesoinAlternancePublic = false; };
-  zone.onfocusin = function() { _pauseBesoinAlternancePublic = true; };
-  zone.onfocusout = function() { _pauseBesoinAlternancePublic = false; };
-  if (_timerBesoinAlternancePublic) clearInterval(_timerBesoinAlternancePublic);
-  _timerBesoinAlternancePublic = setInterval(function() {
-    if (_pauseBesoinAlternancePublic || document.hidden) return;
-    allerBesoinAlternancePublic(_indexBesoinAlternancePublic + 1);
-  }, 6000);
+  zone.innerHTML = htmlPartnerPanel();
+  if (!document.getElementById('style-pub-annuaire')) {
+    var st = document.createElement('style'); st.id = 'style-pub-annuaire';
+    st.textContent = '.partner-panel{max-height:calc(100vh - 96px);overflow-y:auto;scrollbar-width:thin;}';
+    document.head.appendChild(st);
+  }
+  BESOINS_ALTERNANCE_PUBLIC.forEach(function(b) { var im = new Image(); im.src = b.img; }); // les photos sont prêtes avant d'être affichées
+  rotationDemarrer('gauche', { zone: 'rot-gauche-zone', points: 'rot-gauche-points', html: htmlSlideGrande, delai: 6000, pause: 'partner-panel', hauteurFixe: true });
 }
 
-// ── Version téléphone de la pub alternance : UNE carte compacte glissée dans la liste (après la 3e fiche), jamais en haut de page ──
-var _indexBesoinMobile = 0;
-var _timerBesoinMobile = null;
-function htmlPubAlternanceMobile() {
-  var b = BESOINS_ALTERNANCE_PUBLIC[_indexBesoinMobile];
-  return (
-    '<a href="https://learnlogicstudio.com/connect.html?besoin=' + b.code + '#section-calculateur" target="_blank" rel="noopener" style="display:flex;gap:14px;align-items:center;text-decoration:none;color:inherit;">' +
-      '<img src="' + b.img + '" alt="" width="540" height="770" loading="lazy" decoding="async" style="flex:none;width:88px;height:125px;object-fit:cover;border-radius:10px;background:var(--inp);">' +
-      '<div style="min-width:0;">' +
-        '<div style="font-size:10.5px;font-weight:700;color:var(--mu2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px;">Vous êtes artisan ?</div>' +
-        '<div style="font-size:14px;font-weight:700;color:var(--tx);line-height:1.35;margin-bottom:3px;">' + b.phrase + '</div>' +
-        '<div style="font-size:13.5px;font-weight:700;color:var(--ac-t,var(--ac));line-height:1.35;">' + b.metier + ' →</div>' +
-      '</div>' +
-    '</a>'
-  );
+// Page d'accueil (avant toute recherche, ordinateur et téléphone) : une petite carte qui alterne, sous le défilement des artisans.
+function chargerPubAccueil() {
+  var zone = document.getElementById('pub-accueil');
+  if (!zone) return;
+  zone.innerHTML = '<div class="pub-accueil-in"><div id="rot-accueil-zone" style="transition:opacity .3s;"></div><div id="rot-accueil-points" style="display:flex;justify-content:center;gap:6px;margin-top:10px;"></div></div>';
+  rotationDemarrer('accueil', { zone: 'rot-accueil-zone', points: 'rot-accueil-points', html: htmlSlideCompacte, delai: 6000, pause: 'pub-accueil' });
 }
+
+// ── Téléphone : UNE carte compacte glissée dans la liste (après la 3e fiche), jamais en haut de page ──
+function htmlPubAlternanceMobile() { return htmlSlideCompacte({ t: 'alt', b: BESOINS_ALTERNANCE_PUBLIC[0] }); }
 function demarrerPubAlternanceMobile() {
-  if (_timerBesoinMobile) { clearInterval(_timerBesoinMobile); _timerBesoinMobile = null; }
   if (!document.getElementById('pub-alt-mobile')) return;
   if (!document.getElementById('pub-alt-mobile-style')) {
     var st = document.createElement('style'); st.id = 'pub-alt-mobile-style';
     st.textContent = '.pub-alt-mobile{display:none;} @media(max-width:900px){.pub-alt-mobile{display:block;background:var(--panel);border:1px solid var(--brd);border-radius:14px;padding:12px;margin:0 0 14px;box-shadow:0 1px 3px rgba(19,34,60,.05);transition:opacity .35s;}}';
     document.head.appendChild(st);
   }
-  var calme = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  _timerBesoinMobile = setInterval(function() {
-    var z = document.getElementById('pub-alt-mobile');
-    if (!z) { clearInterval(_timerBesoinMobile); _timerBesoinMobile = null; return; }
-    if (document.hidden) return;
-    var changer = function() { _indexBesoinMobile = (_indexBesoinMobile + 1) % BESOINS_ALTERNANCE_PUBLIC.length; z.innerHTML = htmlPubAlternanceMobile(); z.style.opacity = '1'; };
-    if (calme) { changer(); return; }
-    z.style.opacity = '0'; setTimeout(changer, 350);
-  }, 7000);
+  rotationDemarrer('mobile', { zone: 'pub-alt-mobile', points: null, html: htmlSlideCompacte, delai: 7000, pause: null });
 }
 
 function initCarte() {

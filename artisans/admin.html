@@ -359,7 +359,7 @@ async function init() {
 }
 
 
-// ── Pub : 4 logos qui défilent dans l'annuaire, un seul interrupteur pour tout allumer ou couper ──
+// ── Pub : 4 logos qui alternent avec les cartes CaraLink dans l'annuaire, un seul interrupteur pour tout allumer ou couper ──
 var _pubAnnonces = {}, _pubActif = false;
 var PUB_URL_LOGOS = SUPABASE_URL + '/storage/v1/object/public/pub-logos/';
 async function chargerPub() {
@@ -382,6 +382,7 @@ async function chargerPub() {
           (a ? '<img src="' + escHtml(a.logo_url) + '" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">' : '<span style="color:var(--mu);font-size:12px;">Aucun logo</span>') + '</div>' +
         '<div style="display:grid;gap:8px;">' +
           '<input id="pub-nom-' + n + '" placeholder="Nom de l\'entreprise" maxlength="80" value="' + escHtml(a ? a.nom : '') + '" style="padding:8px 10px;border:1px solid var(--b2);border-radius:8px;font-family:inherit;">' +
+          '<input id="pub-phrase-' + n + '" placeholder="Petite phrase sous le logo — facultatif (ex. Ouvert 7j/7 à Capesterre)" maxlength="60" value="' + escHtml(a && a.phrase ? a.phrase : '') + '" style="padding:8px 10px;border:1px solid var(--b2);border-radius:8px;font-family:inherit;">' +
           '<input id="pub-lien-' + n + '" placeholder="Lien (https://…) — facultatif" maxlength="300" value="' + escHtml(a && a.lien ? a.lien : '') + '" style="padding:8px 10px;border:1px solid var(--b2);border-radius:8px;font-family:inherit;">' +
           '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--mu2);">Du <input type="date" id="pub-debut-' + n + '" value="' + escHtml(a && a.debut ? a.debut : '') + '" style="padding:6px;border:1px solid var(--b2);border-radius:8px;font-family:inherit;"> au <input type="date" id="pub-fin-' + n + '" value="' + escHtml(a && a.fin ? a.fin : '') + '" style="padding:6px;border:1px solid var(--b2);border-radius:8px;font-family:inherit;"> <span>(facultatif)</span></div>' +
           '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
@@ -397,7 +398,7 @@ async function chargerPub() {
       '<div style="padding:16px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;">' +
         '<button onclick="basculerPub()" style="padding:10px 20px;border-radius:999px;border:none;font-weight:800;cursor:pointer;font-family:inherit;color:#fff;background:' + (_pubActif ? '#dc2626' : '#16a34a') + ';">' + (_pubActif ? 'Éteindre la pub' : 'Allumer la pub') + '</button>' +
         '<span style="font-size:13px;color:var(--mu2);">Interrupteur général : éteint, aucun logo ne s\'affiche, même si les emplacements sont remplis.</span></div>' +
-      '<div class="note">Les logos défilent dans la colonne de gauche de l\'annuaire (ordinateur), sous le panneau CaraLink Alternance. Un emplacement dont la date de fin est passée disparaît tout seul.</div></div>' +
+      '<div class="note">Les logos alternent avec les cartes CaraLink Alternance : une carte CaraLink, un partenaire, une carte CaraLink… (colonne de gauche après une recherche, page d\'accueil et téléphone). Pub éteinte : il ne reste que les cartes CaraLink. Un emplacement dont la date de fin est passée disparaît tout seul.</div></div>' +
     cartes;
 }
 async function basculerPub() {
@@ -408,6 +409,7 @@ async function basculerPub() {
 async function enregistrerPub(n) {
   var nom = document.getElementById('pub-nom-' + n).value.trim();
   var lien = document.getElementById('pub-lien-' + n).value.trim();
+  var phrase = document.getElementById('pub-phrase-' + n).value.trim();
   var debut = document.getElementById('pub-debut-' + n).value || null;
   var fin = document.getElementById('pub-fin-' + n).value || null;
   var fichier = document.getElementById('pub-logo-' + n).files[0];
@@ -427,7 +429,7 @@ async function enregistrerPub(n) {
     logoUrl = PUB_URL_LOGOS + chemin;
   }
   if (!logoUrl) { alert('Ajoute un logo pour cet emplacement.'); return; }
-  var { error } = await sb.from('pub_annonces').upsert({ position: n, nom: nom, lien: lien || null, logo_url: logoUrl, debut: debut, fin: fin, updated_at: new Date().toISOString() });
+  var { error } = await sb.from('pub_annonces').upsert({ position: n, nom: nom, phrase: phrase || null, lien: lien || null, logo_url: logoUrl, debut: debut, fin: fin, updated_at: new Date().toISOString() });
   if (error) { alert('Erreur : ' + error.message); return; }
   if (ancienChemin) await sb.storage.from('pub-logos').remove([ancienChemin]);
   await chargerPub();
