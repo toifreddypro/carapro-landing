@@ -347,7 +347,7 @@ async function creerCompte() {
       options: {
         emailRedirectTo: 'https://caralink.app/artisans/inscription.html',
         // Preuve de l'acceptation des conditions : date et version, conservées dans le compte.
-        data: { cgu_acceptees_le: new Date().toISOString(), cgu_version: '2026-11-12' },
+        data: { cgu_acceptees_le: new Date().toISOString(), cgu_version: '2026-11-26' },
       },
     });
     if (r.error) throw new Error(messageAuthFrancais(r.error.message));

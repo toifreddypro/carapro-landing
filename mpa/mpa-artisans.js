@@ -5960,7 +5960,7 @@ function estPro() {
 
 // L'essai n'est offert qu'une fois (le serveur y veille) : on ne le mentionne que s'il reste possible.
 function texteEssai() {
-  return (_artisan && _artisan.stripe_subscription_id) ? '' : ' 30 jours d\'essai gratuit, sans carte.';
+  return (_artisan && _artisan.stripe_subscription_id) ? '' : ' 30 jours d\'essai gratuit.';
 }
 
 function texteLimiteProduits() {
@@ -6280,7 +6280,7 @@ function renderMonOffre() {
       '</div>' +
       (_artisan.stripe_subscription_id
         ? 'Votre essai Pro est terminé. Reprenez l\'offre Pro (' + PRIX_PRO_AFFICHE + ') quand vous le souhaitez — la carte est demandée, sans nouvel essai.'
-        : 'Passez en Pro (' + PRIX_PRO_AFFICHE + ') : catalogue illimité, Mes fournitures avec scan QR code / code-barres. 30 jours d\'essai gratuit, sans carte.') +
+        : 'Passez en Pro (' + PRIX_PRO_AFFICHE + ') : catalogue illimité, Mes fournitures avec scan QR code / code-barres. 30 jours d\'essai gratuit.') +
       '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">' +
         '<button class="addb" id="btn-abonnement" onclick="lancerAbonnement()">Passer en Pro →</button>' +
         '<button class="addb" id="btn-abonnement-an" onclick="lancerAbonnement(\'an\')" style="background:#fff;color:inherit;border:1.5px solid #d1d5db;">249 €/an (2 mois offerts)</button>' +
@@ -9488,11 +9488,11 @@ function renderEncartCartePrestations() {
   } else if (carteOkMpa()) {
     var j = joursRestantsCarte();
     zone.innerHTML = boite('rgba(245,158,11,.08)', 'rgba(245,158,11,.4)',
-      '⏳ <strong>Il vous reste ' + j + ' jour' + (j > 1 ? 's' : '') + ' pour enregistrer votre carte.</strong> Elle est obligatoire pour rester réservable. C\'est gratuit pour commencer : elle n\'est débitée que sur la commission, au-delà de ' + seuil + ' € par mois. Passé ce délai, votre fiche sera grisée dans l\'annuaire.',
+      '⏳ <strong>Il vous reste ' + j + ' jour' + (j > 1 ? 's' : '') + ' pour enregistrer votre carte.</strong> Elle est obligatoire pour rester réservable. C\'est gratuit pour commencer : afin de soutenir les petits créateurs, elle n\'est débitée qu\'à partir du premier euro au-delà de ' + seuil + ' € par mois. <strong>Rappel : 7 % d\'1 € = 0,07 € seulement (7 centimes).</strong> Cette commission sert uniquement au fonctionnement du site et à payer ses charges. Passé ce délai, votre fiche sera grisée dans l\'annuaire.',
       bouton('Enregistrer ma carte →', '#1266e3'));
   } else {
     zone.innerHTML = boite('rgba(18,102,227,.06)', 'rgba(18,102,227,.35)',
-      '🔒 <strong>Étape 1 — Votre carte bancaire.</strong> Elle est obligatoire pour être réservable : on ne reçoit des clients que si l\'on est « commissionable ». C\'est gratuit pour commencer : elle n\'est débitée que sur la commission, au-delà de ' + seuil + ' € par mois. Ensuite, étape 2 : les paiements en ligne.',
+      '🔒 <strong>Étape 1 — Votre carte bancaire.</strong> Elle est obligatoire pour être réservable : on ne reçoit des clients que si l\'on est « commissionable ». C\'est gratuit pour commencer : afin de soutenir les petits créateurs, elle n\'est débitée qu\'à partir du premier euro au-delà de ' + seuil + ' € par mois. <strong>Rappel : 7 % d\'1 € = 0,07 € seulement (7 centimes).</strong> Cette commission sert uniquement au fonctionnement du site et à payer ses charges. Ensuite, étape 2 : les paiements en ligne.',
       bouton('Enregistrer ma carte →', '#1266e3'));
   }
 }
