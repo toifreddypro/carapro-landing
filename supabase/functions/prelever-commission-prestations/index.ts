@@ -334,6 +334,65 @@ async function reprendreMoisEchoues(sb: any, artisanId: string | null, moisExclu
   return resultats;
 }
 
+// ── Lot 53 : RATTRAPAGE ──
+// Le prélèvement du 1er traite le mois précédent UNE seule fois. Si un artisan passe une intervention en « Terminée » ou « Payée »
+// après cette date, elle n'était jamais commissionnée. Le rattrapage (tâche du 8 du mois) recalcule le même mois et ne prélève QUE
+// le complément : commission due maintenant − commission déjà prélevée ce mois-là. Au plus UN rattrapage par artisan et par mois
+// (table prelevements_prestations_rattrapage, contrainte unique) ; un artisan sans carte ou un complément sous 0,50 € est simplement ignoré.
+async function rattraperMois(sb: any, debut: string, finExclusive: string, moisISO: string, simuler: boolean) {
+  const resultats: any[] = [];
+  const { data: artisans, error } = await sb.from("artisans").select("id, nom_entreprise, email, stripe_customer_id, plan");
+  if (error) throw error;
+  for (const artisan of artisans || []) {
+    try {
+      const nom = artisan.nom_entreprise;
+      // Le mois doit avoir été traité par le prélèvement normal, et ne pas être en échec (c'est alors la reprise habituelle qui s'en charge).
+      const { data: base } = await sb.from("prelevements_prestations").select("statut, commission_montant").eq("artisan_id", artisan.id).eq("mois", moisISO).maybeSingle();
+      if (!base || !["reussi", "sous_le_seuil", "sous_minimum_stripe"].includes(base.statut)) continue;
+      const { data: deja } = await sb.from("prelevements_prestations_rattrapage").select("id, statut").eq("artisan_id", artisan.id).eq("mois", moisISO).maybeSingle();
+      if (deja && deja.statut !== "echoue") continue;
+      const dejaPreleve = base.statut === "reussi" ? Math.round(Number(base.commission_montant || 0) * 100) : 0;
+      const ca = await caPrestationsAnnuaireDuMois(sb, artisan.id, debut, finExclusive);
+      const calcul = calculerCommissionAvecSeuil(ca.total, SEUIL_GRATUIT_EUROS * 100, tauxCommissionPour(artisan.plan));
+      const due = Math.max(0, calcul.commissionCentimes - ca.commissionDejaPrelevee);
+      const complement = due - dejaPreleve;
+      if (complement < MINIMUM_STRIPE_CENTIMES) continue; // rien de plus à prélever (ou trop petit pour Stripe)
+      const carte = artisan.stripe_customer_id ? await carteEnregistree(artisan.stripe_customer_id) : null;
+      if (!carte) { resultats.push({ artisan_id: artisan.id, nom, mois: moisISO, statut: "carte_manquante", commission: complement / 100 }); continue; }
+      if (simuler) { resultats.push({ artisan_id: artisan.id, nom, mois: moisISO, statut: "a_prelever", commission: complement / 100 }); continue; }
+      const ligne = { artisan_id: artisan.id, mois: moisISO, ca_total: ca.total / 100, commission_montant: complement / 100 };
+      const { ok, status, data: intent } = await stripeCall("payment_intents", {
+        amount: String(complement), currency: "eur", customer: artisan.stripe_customer_id, payment_method: carte, off_session: "true", confirm: "true",
+        description: `Commission CaraLink Artisans — complément ${moisISO.slice(0, 7)} — ${nom}`,
+        "metadata[artisan_id]": artisan.id, "metadata[mois]": moisISO, "metadata[type]": "rattrapage",
+      }, `rattrapage-prestations_${artisan.id}_${moisISO}_${complement}`);
+      if (!ok && status === 409) continue;
+      const reussi = ok && intent?.status === "succeeded";
+      const motif = reussi ? null : (intent?.error?.message || "Paiement non abouti.");
+      const enreg = { ...ligne, statut: reussi ? "reussi" : "echoue", stripe_payment_intent_id: reussi ? intent.id : null, erreur: motif };
+      const { error: errEnr } = deja
+        ? await sb.from("prelevements_prestations_rattrapage").update(enreg).eq("id", deja.id).eq("statut", "echoue")
+        : await sb.from("prelevements_prestations_rattrapage").insert(enreg);
+      if (errEnr && (errEnr as any).code !== "23505") {
+        console.error("[prelever-commission-prestations] rattrapage non enregistré", artisan.id, errEnr.message);
+        resultats.push({ artisan_id: artisan.id, nom, mois: moisISO, statut: "reussi_non_enregistre", erreur: errEnr.message, commission: complement / 100 });
+        continue;
+      }
+      if (reussi && artisan.email) {
+        await envoyerEmail(artisan.email, "Complément de commission CaraLink — " + moisISO.slice(0, 7),
+          `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#1266E3;">Complément de commission</h2>
+          <p>Bonjour,</p><p>Depuis le prélèvement du 1er, vous avez enregistré de nouvelles prestations de ${moisISO.slice(0, 7)} venues de CaraLink. Un complément de ${euros(complement)} a été prélevé sur votre carte, avec le même calcul (gratuit jusqu'à 200 € par mois).</p>
+          <p>Le détail est dans MPA Artisans (Ma comptabilité).</p></div>`);
+      }
+      resultats.push({ artisan_id: artisan.id, nom, mois: moisISO, statut: reussi ? "reussi" : "echoue", commission: complement / 100, erreur: motif });
+    } catch (e) {
+      console.error("[prelever-commission-prestations] rattrapage", artisan.id, e);
+      resultats.push({ artisan_id: artisan.id, nom: artisan.nom_entreprise, mois: moisISO, statut: "erreur", erreur: (e as Error).message });
+    }
+  }
+  return resultats;
+}
+
 // Récapitulatif à l'admin dès qu'un prélèvement n'a pas abouti : sans lui, une commission impayée ne se voyait que si on ouvrait l'Admin.
 async function prevenirAdmin(resultats: any[], contexte: string) {
   const aSignaler = resultats.filter((r) => ["echoue", "reussi_non_enregistre", "erreur"].includes(r.statut));
@@ -396,6 +455,13 @@ Deno.serve(async (req: Request) => {
     const mois = lireMois(body.mois_iso, simuler);
     if (typeof mois === "string") return json({ error: mois }, 400);
     const { debut, finExclusive, moisISO } = mois;
+
+    // Lot 53 : rattrapage du mois précédent (tâche du 8 du mois) — complément uniquement, jamais un second prélèvement complet.
+    if (body.rattrapage === true) {
+      const res = await rattraperMois(sb, debut, finExclusive, moisISO, simuler);
+      if (!simuler) await prevenirAdmin(res, `rattrapage ${moisISO.slice(0, 7)}`);
+      return json({ ok: true, rattrapage: true, simulation: simuler, mois: moisISO, traites: res.length, resultats: res });
+    }
 
     const { data: artisans, error } = await sb.from("artisans").select("id, nom_entreprise, email, stripe_customer_id, plan");
     if (error) throw error;
