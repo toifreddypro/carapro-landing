@@ -125,6 +125,17 @@ async function alerterAdmin(sbAdmin: any, etape: string, e: any, artisan: any, u
   }
 }
 
+// Lot 51 : « réservable » = paiements en ligne actifs ET carte enregistrée (ou délai de grâce des artisans déjà inscrits encore en cours).
+// Si les colonnes n'existent pas encore (lot51-carte-obligatoire.sql pas lancé), on laisse passer : rien ne casse.
+async function carteOk(sb: any, artisanId: string): Promise<boolean> {
+  try {
+    const { data, error } = await sb.from("artisans").select("carte_prestations_enregistree, carte_delai_jusqua").eq("id", artisanId).maybeSingle();
+    if (error) return true;
+    if (!data) return false;
+    return data.carte_prestations_enregistree === true || (!!data.carte_delai_jusqua && new Date(data.carte_delai_jusqua).getTime() > Date.now());
+  } catch (_e) { return true; }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
@@ -171,6 +182,11 @@ Deno.serve(async (req: Request) => {
       if (errSync) throw errSync;
       return json({ statut });
     }
+
+    // Lot 51 : ÉTAPE 1 = la carte (commission), ÉTAPE 2 = les paiements. Sans carte (ou délai de grâce en cours), on ne lance pas Stripe.
+    etape = "controle_carte";
+    if (!(await carteOk(sbAdmin, artisan.id))) return json({ error: "Enregistrez d'abord votre carte (étape 1) : elle ne sera débitée que sur la commission, au-delà de 200 € par mois.", code: "carte_requise" }, 409);
+    etape = "creation_compte_stripe";
 
     // Réutilise le compte Connect existant s'il y en a déjà un — jamais de doublon.
     let accountId = artisan.stripe_connect_account_id;

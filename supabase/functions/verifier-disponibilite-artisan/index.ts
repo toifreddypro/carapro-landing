@@ -202,6 +202,17 @@ function codePromoValide(a: any, plan: string | null | undefined): boolean {
   return true;
 }
 
+// Lot 51 : « réservable » = paiements en ligne actifs ET carte enregistrée (ou délai de grâce des artisans déjà inscrits encore en cours).
+// Si les colonnes n'existent pas encore (lot51-carte-obligatoire.sql pas lancé), on laisse passer : rien ne casse.
+async function carteOk(sb: any, artisanId: string): Promise<boolean> {
+  try {
+    const { data, error } = await sb.from("artisans").select("carte_prestations_enregistree, carte_delai_jusqua").eq("id", artisanId).maybeSingle();
+    if (error) return true;
+    if (!data) return false;
+    return data.carte_prestations_enregistree === true || (!!data.carte_delai_jusqua && new Date(data.carte_delai_jusqua).getTime() > Date.now());
+  } catch (_e) { return true; }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
@@ -227,6 +238,7 @@ Deno.serve(async (req: Request) => {
     const { data: artisanPublic, error: errArt } = await sb.from("artisans").select("id, slug_catalogue, code_promo, code_promo_pct, code_promo_fin, code_promo_visible, stripe_connect_statut, boutique_en_pause, plan, cashback_pct, cashback_ventes, cashback_interventions, code_promo_ventes, code_promo_interventions").eq("id", artisan_id).eq("actif", true).maybeSingle();
     if (errArt) throw errArt;
     if (!artisanPublic) return json({ error: "Artisan introuvable." }, 404);
+    const reservableLot51 = artisanPublic.stripe_connect_statut === "actif" && await carteOk(sb, artisan_id); // lot 51 : carte obligatoire
     // Heures fixes (Lot 25) : liste d'heures de départ « 08:00, 10:00… » valable tous les jours. Colonne facultative : sans elle, comportement d'avant.
     let heuresFixes: number[] = [];
     try {
@@ -238,7 +250,7 @@ Deno.serve(async (req: Request) => {
       }
     } catch (_e) { /* colonne absente : pas d'heures fixes */ }
     // Règle du 15/10/2026 : sans paiements en ligne actifs, plus de réservation de créneau (deux semaines de grâce, jusqu'au 1er/11/2026).
-    if (mode === "creneaux" && artisanPublic.stripe_connect_statut !== "actif" && new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10) > "2026-11-01") {
+    if (mode === "creneaux" && !reservableLot51 && new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10) > "2026-11-01") {
       return json({ error: "Cet artisan n'accepte pas encore les réservations en ligne." }, 409);
     }
 
@@ -258,7 +270,7 @@ Deno.serve(async (req: Request) => {
       {
         const ap: any = artisanPublic;
         const pro = ap.plan === "pro" || ap.plan === "pro_offert";
-        const paiementsActifs = ap.stripe_connect_statut === "actif";
+        const paiementsActifs = reservableLot51;
         const pct = Number(ap.cashback_pct);
         const cbVentes = ap.cashback_ventes !== false && ap.boutique_en_pause !== true, cbInterv = ap.cashback_interventions !== false;
         const cb = pro && paiementsActifs && pct >= 1 && pct <= 10 && (cbVentes || cbInterv) ? { pct, ventes: cbVentes, interventions: cbInterv } : null;
@@ -290,7 +302,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Règle du 06/10 : sans paiements en ligne ACTIFS, pas de boutique visible : ni produits phares, ni lien, ni code promo sur les cartes.
-    if (artisanPublic.stripe_connect_statut !== "actif") { produitsPhares = []; slugCatalogue = null; codePromo = null; }
+    if (!reservableLot51) { produitsPhares = []; slugCatalogue = null; codePromo = null; }
     // Boutique mise en pause par l'artisan : rien n'est mis en avant tant qu'elle est fermée.
     if (artisanPublic.boutique_en_pause === true) { produitsPhares = []; slugCatalogue = null; codePromo = null; }
 

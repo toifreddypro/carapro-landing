@@ -663,8 +663,10 @@ function etapesPremiersPas() {
       aide: 'Ce que vous proposez et à quel tarif : les clients peuvent alors vous réserver.', bouton: 'Ajouter un service', action: 'switchTab(3)' },
     { fait: (_horairesCache || []).length > 0, icone: '🕒', titre: 'Vos horaires',
       aide: 'Les jours et heures où vous travaillez : ils alimentent vos disponibilités.', bouton: 'Régler mes horaires', action: 'switchTab(1)' },
-    { fait: a.stripe_connect_statut === 'actif', icone: '💳', titre: 'Les paiements en ligne',
-      aide: 'Sans cela, votre carte reste grisée dans l\'annuaire et vos clients ne peuvent pas vous réserver ni commander.', bouton: 'Activer les paiements', action: 'switchTab(4)' }
+    { fait: a.carte_prestations_enregistree === true, icone: '🔒', titre: 'Étape 1 — Votre carte bancaire (commission)',
+      aide: 'Obligatoire pour être réservable. C\'est gratuit pour commencer : elle n\'est débitée que sur la commission, au-delà de 200 € par mois.', bouton: 'Enregistrer ma carte', action: 'ouvrirCartePrestations()' },
+    { fait: a.stripe_connect_statut === 'actif', icone: '💳', titre: 'Étape 2 — Les paiements en ligne',
+      aide: 'Sans cela, votre carte reste grisée dans l\'annuaire et vos clients ne peuvent pas vous réserver ni commander.', bouton: 'Activer les paiements', action: 'lancerStripeConnect(null)' }
   ];
 }
 function renderPremiersPas() {
@@ -5798,7 +5800,12 @@ function renderEncartStripeConnect() {
   var statut = _artisan.stripe_connect_statut || 'non_demarre';
 
   var html;
-  if (statut === 'actif') {
+  if (statut !== 'actif' && !carteOkMpa()) {
+    html = '<div style="background:rgba(100,116,139,.07);border:1px solid rgba(100,116,139,.3);border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
+        '<div style="flex:1;min-width:220px;font-size:12.5px;color:var(--mu2);">🔒 <strong>Étape 2 — Paiements en ligne</strong> : disponible dès que votre carte est enregistrée (étape 1).</div>' +
+        '<button onclick="ouvrirCartePrestations()" style="flex-shrink:0;padding:9px 16px;border-radius:8px;border:none;background:#1266e3;color:#fff;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;">Enregistrer ma carte →</button>' +
+      '</div>';
+  } else if (statut === 'actif') {
     html = '<div style="background:rgba(15,157,120,.06);border:1px solid rgba(15,157,120,.3);border-radius:14px;padding:12px 20px;font-size:12.5px;color:#0f9d78;">' +
         '✅ Paiements en ligne activés — vos clients peuvent payer leurs commandes directement par carte.' +
       '</div>';
@@ -5850,7 +5857,18 @@ async function synchroniserStatutStripe() {
   } catch (e) { /* silencieux : on garde le statut enregistré */ }
 }
 
+// Lot 51 : « pour être réservable, il faut être commissionable ». Carte enregistrée, ou délai de grâce (artisans déjà inscrits) encore en cours.
+function carteOkMpa() {
+  if (!_artisan) return false;
+  if (_artisan.carte_prestations_enregistree === true) return true;
+  return !!_artisan.carte_delai_jusqua && new Date(_artisan.carte_delai_jusqua).getTime() > Date.now();
+}
+function joursRestantsCarte() {
+  if (!_artisan || !_artisan.carte_delai_jusqua) return 0;
+  return Math.max(0, Math.ceil((new Date(_artisan.carte_delai_jusqua).getTime() - Date.now()) / 86400000));
+}
 async function lancerStripeConnect(btn) {
+  if (!carteOkMpa()) { ouvrirCartePrestations(); return; } // étape 1 d'abord
   if (btn) { btn.disabled = true; btn.textContent = 'Redirection…'; }
   try {
     var { data: { session: authSession } } = await sb.auth.getSession();
@@ -5860,6 +5878,7 @@ async function lancerStripeConnect(btn) {
       body: JSON.stringify({ origin: window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '') }),
     });
     var data = await res.json();
+    if (data.code === 'carte_requise') { if (btn) { btn.disabled = false; btn.textContent = 'Activer les paiements →'; } ouvrirCartePrestations(); return; }
     if (data.error) throw new Error(data.error);
     window.location.href = data.url;
   } catch (e) {
@@ -9466,18 +9485,15 @@ function renderEncartCartePrestations() {
         '<span>✅ Carte enregistrée pour la commission prestations.</span>' +
         '<button onclick="ouvrirCartePrestations()" style="padding:6px 12px;border-radius:7px;border:1px solid rgba(15,157,120,.4);background:transparent;color:#0f9d78;font-size:12px;font-weight:700;cursor:pointer;">Remplacer</button>' +
       '</div>';
-  } else if (etat && caMois >= seuil) {
-    zone.innerHTML = boite('rgba(220,38,38,.07)', 'rgba(220,38,38,.4)',
-      '⚠️ <strong>Vous avez dépassé ' + seuil + ' € ce mois-ci</strong> avec vos clients venus de CaraLink. Pour pouvoir en planifier de nouveaux, enregistrez une carte. Elle est débitée une fois par mois, seulement sur la part au-dessus de ' + seuil + ' €.',
-      bouton('Enregistrer une carte →', '#dc2626'));
-  } else if (etat && caMois >= SEUIL_ALERTE_CARTE_EUROS) {
+  } else if (carteOkMpa()) {
+    var j = joursRestantsCarte();
     zone.innerHTML = boite('rgba(245,158,11,.08)', 'rgba(245,158,11,.4)',
-      '🔔 <strong>Vous approchez du seuil gratuit</strong> (' + eurosMPA(caMois) + ' sur ' + seuil + ' € ce mois-ci). Enregistrez une carte dès maintenant pour ne pas être bloqué : elle ne sera débitée que si vous dépassez ' + seuil + ' €.',
-      bouton('Enregistrer une carte →', '#f59e0b'));
+      '⏳ <strong>Il vous reste ' + j + ' jour' + (j > 1 ? 's' : '') + ' pour enregistrer votre carte.</strong> Elle est obligatoire pour rester réservable. C\'est gratuit pour commencer : elle n\'est débitée que sur la commission, au-delà de ' + seuil + ' € par mois. Passé ce délai, votre fiche sera grisée dans l\'annuaire.',
+      bouton('Enregistrer ma carte →', '#1266e3'));
   } else {
-    zone.innerHTML = boite('rgba(59,130,246,.06)', 'rgba(59,130,246,.3)',
-      '💳 Aucune carte enregistrée — nécessaire uniquement si vous dépassez le seuil gratuit de 200 €/mois sur vos clients CaraLink.',
-      bouton('Enregistrer une carte →', '#3b82f6'));
+    zone.innerHTML = boite('rgba(18,102,227,.06)', 'rgba(18,102,227,.35)',
+      '🔒 <strong>Étape 1 — Votre carte bancaire.</strong> Elle est obligatoire pour être réservable : on ne reçoit des clients que si l\'on est « commissionable ». C\'est gratuit pour commencer : elle n\'est débitée que sur la commission, au-delà de ' + seuil + ' € par mois. Ensuite, étape 2 : les paiements en ligne.',
+      bouton('Enregistrer ma carte →', '#1266e3'));
   }
 }
 
@@ -9524,9 +9540,10 @@ async function confirmerCartePrestations() {
     if (_etatCommission) { _etatCommission.carte = true; _etatCommission.bloque_seuil = false; }
     fermerModale('modal-carte-prestations');
     renderEncartCartePrestations();
+    try { renderEncartStripeConnect(); renderPremiersPas(); } catch (_e) {}
     // Le serveur confirme la carte (et relance une éventuelle commission échouée) en quelques secondes : on relit l'état juste après.
     setTimeout(async function() { await chargerEtatCommission(); renderEncartCartePrestations(); await chargerRecapCommission(); }, 5000);
-    alert('✅ Carte enregistrée. Elle ne sera débitée que si vos prestations trouvées via CaraLink dépassent 200 € dans un mois' + (_etatCommission && _etatCommission.commission_impayee > 0 ? ', et la commission restée impayée va être prélevée dans quelques instants.' : '.'));
+    alert('✅ Carte enregistrée (étape 1 faite). Passez à l\'étape 2 : activer vos paiements en ligne. Elle ne sera débitée que si vos prestations trouvées via CaraLink dépassent 200 € dans un mois' + (_etatCommission && _etatCommission.commission_impayee > 0 ? ', et la commission restée impayée va être prélevée dans quelques instants.' : '.'));
   } catch (e) {
     err.textContent = e.message;
     err.style.display = 'block';

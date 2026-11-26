@@ -268,6 +268,17 @@ function emailHtmlDemandeOuverte(commune: string, description: string, secteur: 
   `;
 }
 
+// Lot 51 : « réservable » = paiements en ligne actifs ET carte enregistrée (ou délai de grâce des artisans déjà inscrits encore en cours).
+// Si les colonnes n'existent pas encore (lot51-carte-obligatoire.sql pas lancé), on laisse passer : rien ne casse.
+async function carteOk(sb: any, artisanId: string): Promise<boolean> {
+  try {
+    const { data, error } = await sb.from("artisans").select("carte_prestations_enregistree, carte_delai_jusqua").eq("id", artisanId).maybeSingle();
+    if (error) return true;
+    if (!data) return false;
+    return data.carte_prestations_enregistree === true || (!!data.carte_delai_jusqua && new Date(data.carte_delai_jusqua).getTime() > Date.now());
+  } catch (_e) { return true; }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
@@ -465,7 +476,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── Paiement en ligne à la réservation ──
-    const paiementsActifs = !!(artisanVise && artisanVise.stripe_connect_account_id && artisanVise.stripe_connect_statut === "actif");
+    const paiementsActifs = !!(artisanVise && artisanVise.stripe_connect_account_id && artisanVise.stripe_connect_statut === "actif" && await carteOk(sb, artisanVise.id));
     const aujourdhuiLocal = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
     if (estUneProposionDeCreneau && !paiementsActifs && aujourdhuiLocal > FIN_PERIODE_GRACE) {
       return json({ error: "Cet artisan n'accepte pas encore les réservations en ligne. Essayez un autre artisan, ou envoyez-lui un simple renseignement." }, 409);

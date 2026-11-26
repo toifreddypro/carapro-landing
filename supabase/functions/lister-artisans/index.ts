@@ -68,6 +68,17 @@ function intercalerDecouverte<T>(ordinaires: T[], nouveaux: T[]): T[] {
   return sortie;
 }
 
+// Lot 51 : « réservable » = paiements en ligne actifs ET carte enregistrée (ou délai de grâce des artisans déjà inscrits encore en cours).
+// Si les colonnes n'existent pas encore (lot51-carte-obligatoire.sql pas lancé), on laisse passer : rien ne casse.
+async function carteOk(sb: any, artisanId: string): Promise<boolean> {
+  try {
+    const { data, error } = await sb.from("artisans").select("carte_prestations_enregistree, carte_delai_jusqua").eq("id", artisanId).maybeSingle();
+    if (error) return true;
+    if (!data) return false;
+    return data.carte_prestations_enregistree === true || (!!data.carte_delai_jusqua && new Date(data.carte_delai_jusqua).getTime() > Date.now());
+  } catch (_e) { return true; }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -138,6 +149,14 @@ Deno.serve(async (req: Request) => {
         if (!errOff && Array.isArray(off)) avecOffre = new Set(off.map((r: any) => String(r.artisan_id ?? r)));
       } catch (_e) { /* fonction pas encore créée */ }
     }
+    // Lot 51 : carte obligatoire pour être réservable (une seule lecture pour toute la liste ; colonnes absentes = neutre).
+    const carteValide = new Map<string, boolean>();
+    if (liste.length) {
+      try {
+        const { data: cartes, error: errCartes } = await sb.from("artisans").select("id, carte_prestations_enregistree, carte_delai_jusqua").in("id", liste.map((a) => a.id));
+        if (!errCartes) for (const r of cartes || []) carteValide.set(r.id, r.carte_prestations_enregistree === true || (!!r.carte_delai_jusqua && new Date(r.carte_delai_jusqua).getTime() > Date.now()));
+      } catch (_e) { /* colonnes pas encore créées */ }
+    }
     const limiteActivite = Date.now() - JOURS_ACTIVITE * 24 * 3600 * 1000;
 
     const jour = jourGuadeloupe();
@@ -154,7 +173,7 @@ Deno.serve(async (req: Request) => {
         artisan: {
           ...publics,
           nouveau,
-          paiement_en_ligne: a.stripe_connect_statut === "actif",
+          paiement_en_ligne: a.stripe_connect_statut === "actif" && carteValide.get(a.id) !== false,
           rge: rgeActif,
           rge_jusqu: rgeActif ? a.rge_valide_jusqu : null,
           nb_avis: nbAvis,

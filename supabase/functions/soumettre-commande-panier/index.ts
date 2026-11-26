@@ -123,6 +123,17 @@ function codePromoValide(a: any, plan: string | null | undefined): boolean {
   return true;
 }
 
+// Lot 51 : « réservable » = paiements en ligne actifs ET carte enregistrée (ou délai de grâce des artisans déjà inscrits encore en cours).
+// Si les colonnes n'existent pas encore (lot51-carte-obligatoire.sql pas lancé), on laisse passer : rien ne casse.
+async function carteOk(sb: any, artisanId: string): Promise<boolean> {
+  try {
+    const { data, error } = await sb.from("artisans").select("carte_prestations_enregistree, carte_delai_jusqua").eq("id", artisanId).maybeSingle();
+    if (error) return true;
+    if (!data) return false;
+    return data.carte_prestations_enregistree === true || (!!data.carte_delai_jusqua && new Date(data.carte_delai_jusqua).getTime() > Date.now());
+  } catch (_e) { return true; }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Méthode non autorisée." }, 405);
@@ -181,7 +192,7 @@ Deno.serve(async (req: Request) => {
     if (!artisan) return json({ error: "Boutique introuvable." }, 404);
     // Règle du 06/10 : une boutique n'accepte de commande que si les paiements en ligne de l'artisan sont ACTIFS (sinon la vente en ligne
     // ne servirait à rien). Contrôle fait AVANT tout le reste : ni stock touché, ni email « vente manquée », ni commande créée.
-    if (artisan.stripe_connect_statut !== "actif") return json({ error: "Cette boutique n'accepte pas encore les commandes en ligne." }, 409);
+    if (artisan.stripe_connect_statut !== "actif" || !(await carteOk(sb, artisan_id))) return json({ error: "Cette boutique n'accepte pas encore les commandes en ligne." }, 409);
     // Boutique mise en pause par l'artisan : aucune nouvelle commande, même si le client avait gardé la page ouverte.
     if (artisan.boutique_en_pause === true) return json({ error: "Cette boutique est momentanément fermée. Revenez plus tard." }, 409);
 

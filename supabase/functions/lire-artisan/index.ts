@@ -72,6 +72,17 @@ function codePromoValide(a: any, plan: string | null | undefined): boolean {
   return true;
 }
 
+// Lot 51 : « réservable » = paiements en ligne actifs ET carte enregistrée (ou délai de grâce des artisans déjà inscrits encore en cours).
+// Si les colonnes n'existent pas encore (lot51-carte-obligatoire.sql pas lancé), on laisse passer : rien ne casse.
+async function carteOk(sb: any, artisanId: string): Promise<boolean> {
+  try {
+    const { data, error } = await sb.from("artisans").select("carte_prestations_enregistree, carte_delai_jusqua").eq("id", artisanId).maybeSingle();
+    if (error) return true;
+    if (!data) return false;
+    return data.carte_prestations_enregistree === true || (!!data.carte_delai_jusqua && new Date(data.carte_delai_jusqua).getTime() > Date.now());
+  } catch (_e) { return true; }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "GET") return json({ error: "Méthode non autorisée." }, 405);
@@ -98,7 +109,8 @@ Deno.serve(async (req: Request) => {
     if (!artisan) return json({ error: "Artisan introuvable." }, 404);
     // Paiements en ligne pas encore actifs : la fiche reste consultable (photos, services, avis) mais n'est pas réservable.
     // Le client le voit via paiement_en_ligne = false (même règle que la carte grisée de l'annuaire).
-    artisan.paiement_en_ligne = artisan.stripe_connect_statut === "actif";
+    const reservable = artisan.stripe_connect_statut === "actif" && await carteOk(sb, artisan.id); // lot 51 : carte obligatoire
+    artisan.paiement_en_ligne = reservable;
 
     // Lectures indépendantes lancées TOUTES EN MÊME TEMPS (avant : une après l'autre, ce qui rendait l'ouverture de la fiche lente).
     // Photo du service (lot26-photo-service.sql) : si la colonne n'existe pas encore, on relit sans elle (rien ne casse).
@@ -170,7 +182,7 @@ Deno.serve(async (req: Request) => {
 
     // Règle du 06/10 : tant que les paiements en ligne de l'artisan ne sont pas ACTIFS, sa boutique n'existe pas pour le public :
     // ni produits mis en avant, ni lien vers la boutique sur sa fiche.
-    if (artisan.stripe_connect_statut !== "actif") { produitsPhares = []; artisan.slug_catalogue = null; }
+    if (!reservable) { produitsPhares = []; artisan.slug_catalogue = null; }
     // Boutique mise en pause par l'artisan : même effet, rien n'est mis en avant tant qu'elle est fermée.
     if (artisan.boutique_en_pause === true) { produitsPhares = []; artisan.slug_catalogue = null; artisan.code_promo = null; }
     // Le code promo n'est montré que s'il est réellement utilisable (offre Pro, pourcentage défini, pas expiré).
@@ -178,7 +190,7 @@ Deno.serve(async (req: Request) => {
 
     // Avantages « paiement en ligne » montrés sur la fiche : seulement s'ils sont réellement applicables (offre Pro + paiements en ligne actifs).
     const proActif = lignePlan?.plan === "pro" || lignePlan?.plan === "pro_offert";
-    const peutAfficherAvantages = proActif && artisan.stripe_connect_statut === "actif";
+    const peutAfficherAvantages = proActif && reservable;
     const pctCb = Number(artisan.cashback_pct), pctFid = Number(artisan.remise_fidele_pct);
     artisan.cashback_pct = peutAfficherAvantages && pctCb >= 1 && pctCb <= 10 && !(artisan.cashback_ventes === false && artisan.cashback_interventions === false) ? pctCb : null;
     artisan.remise_fidele_pct = peutAfficherAvantages && pctFid >= 1 && pctFid <= 20 ? pctFid : null;
