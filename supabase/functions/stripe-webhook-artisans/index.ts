@@ -644,6 +644,49 @@ async function traiterPaiementPrestation(intent: any, compteEvenement: string | 
   if (p.type === "reservation") await libererReservation(id);
 }
 
+
+// Lot 56b : forfait de séances payé → actif (une seule livraison de l'événement obtient la réclamation), avec email au client (lien du solde) et au coach.
+async function traiterPaiementForfait(intent: any, compteEvenement: string | null) {
+  const id = intent.metadata?.forfait_id;
+  if (!id) return;
+  const { data: f, error } = await sbAdmin.from("artisans_forfaits").select("*").eq("id", id).maybeSingle();
+  lever(error, "Lecture du forfait");
+  if (!f) { console.error("[stripe-webhook-artisans] Paiement reçu pour un forfait introuvable :", id); return; }
+  if (!(await compteCorrespond(f.artisan_id, compteEvenement))) {
+    await alerterAdmin("Paiement de forfait ignoré : compte Stripe incohérent", [`Forfait ${id} : l'événement ${intent.id} vient du compte ${compteEvenement}, qui n'est pas celui du coach. Rien n'a été modifié.`]);
+    return;
+  }
+  const compte = compteEvenement || f.stripe_account;
+  const recu = Number(intent.amount_received ?? intent.amount);
+  if (f.stripe_payment_intent_id !== intent.id || recu !== Math.round(Number(f.prix) * 100)) {
+    // Autre paiement pour le même forfait, ou montant inattendu : on ne l'active pas, on prévient (un double paiement est remboursé).
+    if (f.statut === "actif" && f.stripe_payment_intent_id && f.stripe_payment_intent_id !== intent.id) {
+      const r = await stripeApi("POST", "refunds", paramsRemboursement({
+        payment_intent: intent.id, reason: "duplicate",
+        "metadata[forfait_id]": id, "metadata[demande_par]": "automatique", "metadata[motif]": "paiement_en_double",
+      }, compte, Number(intent.application_fee_amount || 0)), `doublon-forfait-${intent.id}`, compte);
+      await alerterAdmin(r.ok ? "Forfait payé en double : second paiement remboursé" : "Forfait payé en double À REMBOURSER", [`Forfait ${id} : ${f.stripe_payment_intent_id} puis ${intent.id}.`]);
+      return;
+    }
+    await alerterAdmin("Paiement de forfait non reconnu : laissé en attente", [`Forfait ${id} : l'événement ${intent.id} (${recu / 100} € encaissés) ne correspond pas au paiement enregistré (${f.stripe_payment_intent_id || "aucun"}, ${Number(f.prix)} € attendus).`]);
+    return;
+  }
+  if (f.statut !== "en_attente") return;
+  const { data: reclame, error: errR } = await sbAdmin.from("artisans_forfaits")
+    .update({ statut: "actif", paye_le: new Date().toISOString(), stripe_account: compte }).eq("id", id).eq("statut", "en_attente").select("id");
+  lever(errR, "Activation du forfait");
+  if (!reclame || !reclame.length) return;
+  try {
+    const lien = `https://caralink.app/artisans/forfait.html?t=${f.token}`;
+    const prix = Number(f.prix).toFixed(2).replace(".", ",");
+    const { data: art } = await sbAdmin.from("artisans").select("email, nom_entreprise").eq("id", f.artisan_id).maybeSingle();
+    await envoyerEmail(f.email, `Votre forfait ${f.nb_total} séances — ${art?.nom_entreprise || ""}`,
+      `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#16a34a;">Merci ${escHtml(f.nom)} !</h2><p>Votre forfait <strong>${escHtml(f.nom_service)}</strong> (${f.nb_total} séances, ${prix} €) chez <strong>${escHtml(art?.nom_entreprise || "votre coach")}</strong> est actif.</p><p>Gardez ce lien : il vous permet de <strong>réserver vos jours</strong>, voir votre solde et annuler selon les conditions du forfait.</p><p style="margin-top:20px;"><a href="${lien}" style="background:#1266E3;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:700;">Réserver mes séances →</a></p></div>`);
+    if (art?.email) await envoyerEmail(art.email, `📦 Forfait vendu — ${prix} € (${f.nom})`,
+      `<div style="font-family:sans-serif;max-width:480px;"><h2 style="color:#16a34a;">📦 Forfait vendu</h2><p><strong>${escHtml(f.nom)}</strong> (${escHtml(f.telephone)}) vient d'acheter « ${escHtml(f.nom_service)} » : ${f.nb_total} séances, <strong>${prix} €</strong>, valable jusqu'au ${new Date(f.valable_jusqua).toLocaleDateString("fr-FR")}.</p><p style="font-size:13px;color:#475569;">L'argent arrive sur votre compte Stripe. Il choisira ses jours lui-même.</p></div>`);
+  } catch (e) { console.error("[stripe-webhook-artisans] Emails du forfait incomplets :", e); }
+}
+
 async function traiterRemboursementPrestation(charge: any, compteEvenement: string | null) {
   const intentId = charge.payment_intent;
   const rembourse = Number(charge.amount_refunded || 0);
@@ -763,6 +806,7 @@ Deno.serve(async (req: Request) => {
     if (event.type === "payment_intent.succeeded") {
       await traiterPaiementReussi(event.data.object, compteEvenement);
       await traiterPaiementPrestation(event.data.object, compteEvenement);
+      await traiterPaiementForfait(event.data.object, compteEvenement);
     }
     if (event.type === "payment_intent.payment_failed") await traiterPaiementEchoue(event.data.object, compteEvenement);
     if (event.type === "charge.refunded") {

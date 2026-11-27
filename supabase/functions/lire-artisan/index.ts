@@ -115,6 +115,12 @@ Deno.serve(async (req: Request) => {
     // Lectures indépendantes lancées TOUTES EN MÊME TEMPS (avant : une après l'autre, ce qui rendait l'ouverture de la fiche lente).
     // Photo du service (lot26-photo-service.sql) : si la colonne n'existe pas encore, on relit sans elle (rien ne casse).
     const lireServices = async () => {
+      // Lot 56b : colonnes cours collectifs / forfaits (lot55-services-groupe-forfait.sql) ; absentes → on relit sans.
+      const r0: any = await sb.from("artisans_services")
+        .select("id, nom_service, description, prix_indicatif, unite, duree_estimee_min, photo_url, groupe_places, groupe_jours, groupe_heure, forfait_seances, forfait_prix, forfait_validite_jours, forfait_annulation")
+        .eq("artisan_id", id)
+        .order("ordre", { ascending: true });
+      if (!(r0.error && (r0.error as any).code === "42703")) return r0;
       const r1: any = await sb.from("artisans_services")
         .select("id, nom_service, description, prix_indicatif, unite, duree_estimee_min, photo_url")
         .eq("artisan_id", id)
