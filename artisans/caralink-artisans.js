@@ -531,7 +531,7 @@ var _searchState = { secteur:'', groupe:'', commune:'', nom:'', tri:'', rge:fals
 (function() {
   var st = document.createElement('style');
   st.textContent = '@keyframes atEntree{from{opacity:0;transform:translateY(-18px)}to{opacity:1;transform:none}}' +
-    '.at-entree{animation:atEntree .5s ease-out both;animation-delay:var(--d,0s)}' +
+    '.at-entree{animation:atEntree .5s ease-out backwards;animation-delay:var(--d,0s)}' +
     '@keyframes atBrille{0%{background-position:200% 0}100%{background-position:-200% 0}}' +
     '.at-sq{height:150px;border-radius:16px;margin-bottom:12px;border:1px solid #e3eaf4;background:linear-gradient(90deg,#eef2f8 25%,#f8fafd 50%,#eef2f8 75%);background-size:200% 100%;animation:atBrille 1.4s linear infinite}' +
     '@media (prefers-reduced-motion:reduce){.at-entree,.at-sq{animation:none !important}}';
