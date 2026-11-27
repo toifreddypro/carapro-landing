@@ -10376,7 +10376,7 @@ function renderServices(liste) {
     var prix = s.prix_indicatif ? (s.prix_indicatif + '€' + (s.unite ? '/' + s.unite : '')) : '<span style="font-style:italic;color:var(--mu);">Sur devis</span>';
     var duree = s.duree_estimee_min ? formatDuree(s.duree_estimee_min) : '—';
     return '<tr>' +
-      '<td>' + (s.photo_url ? '<div style="display:flex;align-items:center;gap:10px;">' + vignetteServiceHtml(s, 40) + '<div>' : '') + '<strong>' + escHtml(s.nom_service) + '</strong>' + (s.rappel_mois ? '<div style="font-size:11px;color:var(--mu);margin-top:2px;" title="Rappel d\'entretien envoyé à vos clients">🔔 rappel ' + (s.rappel_mois % 12 === 0 ? (s.rappel_mois / 12) + ' an' + (s.rappel_mois > 12 ? 's' : '') : s.rappel_mois + ' mois') + '</div>' : '') + (s.photo_url ? '</div></div>' : '') + '</td>' +
+      '<td>' + (s.photo_url ? '<div style="display:flex;align-items:center;gap:10px;">' + vignetteServiceHtml(s, 40) + '<div>' : '') + '<strong>' + escHtml(s.nom_service) + '</strong>' + (etiquetteTypeService(s) ? '<div style="font-size:11px;color:var(--ac);font-weight:700;margin-top:2px;">' + etiquetteTypeService(s) + '</div>' : '') + (s.rappel_mois ? '<div style="font-size:11px;color:var(--mu);margin-top:2px;" title="Rappel d\'entretien envoyé à vos clients">🔔 rappel ' + (s.rappel_mois % 12 === 0 ? (s.rappel_mois / 12) + ' an' + (s.rappel_mois > 12 ? 's' : '') : s.rappel_mois + ' mois') + '</div>' : '') + (s.photo_url ? '</div></div>' : '') + '</td>' +
       '<td>' + escHtml(s.description||'—') + '</td>' +
       '<td>' + duree + '</td>' +
       '<td>' + prix + '</td>' +
@@ -10398,6 +10398,7 @@ function carteServiceMobile(s, i) {
   var rappel = s.rappel_mois ? '🔔 Rappel client : ' + (s.rappel_mois % 12 === 0 ? (s.rappel_mois / 12) + ' an' + (s.rappel_mois > 12 ? 's' : '') : s.rappel_mois + ' mois') : '';
   var plein = '<div class="pc-plein"><div class="sv-det"><div class="sv-tete">' + (s.photo_url ? vignetteServiceHtml(s, 44, 'sv-tuile') : '<div class="sv-tuile" style="background:' + ic[1] + '">' + ic[0] + '</div>') + '<div><div class="sv-nom">' + escHtml(s.nom_service) + '</div><div class="sv-meta">' + prix + ' · ' + duree + '</div></div></div>' +
     (s.description ? '<div class="sv-desc">' + escHtml(s.description) + '</div>' : '') +
+    (etiquetteTypeService(s) ? '<div class="sv-rappel" style="color:var(--ac);font-weight:700;">' + etiquetteTypeService(s) + '</div>' : '') +
     (rappel ? '<div class="sv-rappel">' + rappel + '</div>' : '') +
     '<div class="sv-btns"><button class="sv-mod" onclick="fermerFicheMobile();ouvrirService(\'' + s.id + '\')">✎ Modifier</button><button class="sv-ret" onclick="fermerFicheMobile();supprimerService(\'' + s.id + '\')">Retirer</button></div></div></div>';
   return '<div class="pc-wrap" data-fid="svc-' + s.id + '"><div class="pc-ligne" onclick="ouvrirFicheMobile(this)">' +
@@ -10490,6 +10491,7 @@ function openAjouterService() {
   document.getElementById('s-prix').value = '';
   document.getElementById('s-rappel').value = '';
   positionnerUnite('forfait');
+  remplirTypeService(null);
   ouvrirModale('modal-service');
 }
 
@@ -10506,7 +10508,51 @@ function ouvrirService(id) {
   document.getElementById('s-prix').value = s.prix_indicatif || '';
   document.getElementById('s-rappel').value = s.rappel_mois != null ? String(s.rappel_mois) : '';
   positionnerUnite(s.unite);
+  remplirTypeService(s);
   ouvrirModale('modal-service');
+}
+
+// ── Lot 55 : services « groupe » et « forfait ». Visible seulement avec le compte administrateur, le temps de tout valider. ──
+function forfaitsOuverts() { return !!(_session && _session.user && _session.user.email === 'toifreddypro@gmail.com'); }
+var _typePourQui = 'perso', _typeVente = 'seance';
+function remplirTypeService(s) {
+  var bloc = document.getElementById('s-type-bloc');
+  if (!bloc) return;
+  bloc.style.display = forfaitsOuverts() ? '' : 'none';
+  var groupe = !!(s && s.groupe_places), forfait = !!(s && s.forfait_seances);
+  document.getElementById('s-simple').checked = !(groupe || forfait);
+  _typePourQui = groupe ? 'groupe' : 'perso';
+  _typeVente = forfait ? 'forfait' : 'seance';
+  document.getElementById('s-places').value = groupe ? s.groupe_places : '';
+  document.getElementById('s-fnb').value = forfait ? s.forfait_seances : '';
+  document.getElementById('s-fprix').value = forfait ? s.forfait_prix : '';
+  document.getElementById('s-fvalide').value = forfait && s.forfait_validite_jours ? String(s.forfait_validite_jours) : '90';
+  document.getElementById('s-fannul').value = forfait && s.forfait_annulation ? s.forfait_annulation : 'due';
+  majTypeService();
+}
+function choisirPourQui(v) { _typePourQui = v; majTypeService(); }
+function choisirVente(v) { _typeVente = v; majTypeService(); }
+function majPrixSeance() {
+  var n = parseInt(document.getElementById('s-fnb').value, 10), p = parseFloat(document.getElementById('s-fprix').value);
+  var el = document.getElementById('s-fparseance');
+  el.textContent = (n >= 2 && p > 0) ? (Math.round(p / n * 100) / 100).toString().replace('.', ',') + ' € la séance' : '';
+}
+function majTypeService() {
+  var simple = !forfaitsOuverts() || document.getElementById('s-simple').checked;
+  document.getElementById('s-type-choix').style.display = simple ? 'none' : '';
+  document.getElementById('s-groupe-bloc').style.display = (!simple && _typePourQui === 'groupe') ? '' : 'none';
+  document.getElementById('s-forfait-bloc').style.display = (!simple && _typeVente === 'forfait') ? '' : 'none';
+  [['s-pq-perso', 'perso', _typePourQui], ['s-pq-groupe', 'groupe', _typePourQui], ['s-vt-seance', 'seance', _typeVente], ['s-vt-forfait', 'forfait', _typeVente]].forEach(function(x) {
+    document.getElementById(x[0]).classList.toggle('on', x[1] === x[2]);
+  });
+  majPrixSeance();
+}
+// Petite étiquette sur les services de groupe / forfait (liste des services).
+function etiquetteTypeService(s) {
+  var t = [];
+  if (s.groupe_places) t.push('👥 Groupe · ' + s.groupe_places + ' places');
+  if (s.forfait_seances) t.push('📦 Forfait ' + s.forfait_seances + ' séances · ' + String(s.forfait_prix).replace('.', ',') + ' €');
+  return t.join(' · ');
 }
 
 // ── Unité du tarif indicatif : liste déroulante (+ « Autre… » en texte libre) ──
@@ -10547,6 +10593,33 @@ async function sauverService() {
     prix_indicatif: parseFloat(document.getElementById('s-prix').value) || null,
     unite: lireUnite(),
   };
+  // Lot 55 : groupe / forfait. Un service simple n'envoie rien (sauf pour remettre à zéro un ancien service de groupe ou de forfait).
+  if (forfaitsOuverts()) {
+    var ancien = _serviceEnCours ? (_servicesCache.find(function(x) { return x.id === _serviceEnCours; }) || {}) : {};
+    var simple = document.getElementById('s-simple').checked;
+    if (simple) {
+      if (ancien.groupe_places || ancien.forfait_seances) { maj.groupe_places = null; maj.forfait_seances = null; maj.forfait_prix = null; maj.forfait_validite_jours = null; maj.forfait_annulation = null; }
+    } else {
+      var places = null, nbS = null, prixF = null;
+      if (_typePourQui === 'groupe') {
+        places = parseInt(document.getElementById('s-places').value, 10);
+        if (!(places >= 2 && places <= 100)) { alert('Indiquez le nombre de places par séance (entre 2 et 100).'); return; }
+      }
+      if (_typeVente === 'forfait') {
+        nbS = parseInt(document.getElementById('s-fnb').value, 10);
+        prixF = parseFloat(document.getElementById('s-fprix').value);
+        if (!(nbS >= 2 && nbS <= 100)) { alert('Indiquez le nombre de séances du forfait (entre 2 et 100).'); return; }
+        if (!(prixF > 0 && prixF <= 20000)) { alert('Indiquez le prix du forfait.'); return; }
+      }
+      if (_typePourQui === 'perso' && _typeVente === 'seance') { alert('Choisissez « Un groupe » ou « En forfait », ou cochez « Prestation simple ».'); return; }
+      maj.groupe_places = places;
+      maj.forfait_seances = nbS;
+      maj.forfait_prix = prixF;
+      maj.forfait_validite_jours = nbS ? parseInt(document.getElementById('s-fvalide').value, 10) : null;
+      maj.forfait_annulation = nbS ? document.getElementById('s-fannul').value : null;
+      if (nbS) { maj.prix_indicatif = Math.round(prixF / nbS * 100) / 100; maj.unite = 'séance'; } // le prix affiché sur la fiche est celui d'une séance
+    }
+  }
   // Rappel d'entretien (colonne rappel_mois : retour-client-3.sql). Sans la colonne, on n'envoie rien plutôt que d'échouer.
   var rappelBrut = document.getElementById('s-rappel').value;
   if (_servicesAvecRappel !== false || rappelBrut !== '') maj.rappel_mois = rappelBrut === '' ? null : parseInt(rappelBrut, 10);
@@ -10576,6 +10649,7 @@ async function sauverService() {
   }
   if (res.error && nouvelleChemin) { try { await sb.storage.from('artisans-photos').remove([nouvelleChemin]); } catch (e) {} }
   if (res.error && /photo_url/.test(res.error.message || '')) { alert('La photo du service n\'est pas encore activée sur votre compte (mise à jour en cours). Enregistrez sans photo ou réessayez plus tard.'); return; }
+  if (res.error && /groupe_places|forfait_/.test(res.error.message || '')) { alert('Les forfaits et les séances de groupe ne sont pas encore activés sur votre compte (mise à jour en cours). Réessayez plus tard.'); return; }
   if (res.error && /rappel_mois/.test(res.error.message || '')) { alert('Le rappel d\'entretien n\'est pas encore activé sur votre compte (mise à jour en cours). Réessayez plus tard.'); return; }
   if (res.error) { alert('Erreur : ' + res.error.message); return; }
   if (ancienneUrl && (nouvelleChemin || _sPhotoRetiree)) { var ancienChemin = cheminPhotoServiceDepuisUrl(ancienneUrl); if (ancienChemin) { try { await sb.storage.from('artisans-photos').remove([ancienChemin]); } catch (e) {} } }

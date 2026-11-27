@@ -696,7 +696,8 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .sv-det .sv-btns button{flex:1;padding:14px;border-radius:14px;font-family:'Outfit',sans-serif;font-size:15.5px;font-weight:800;cursor:pointer;border:2px solid var(--ac);}
   .sv-det .sv-mod{background:var(--ac);color:#fff;}
   .sv-det .sv-ret{background:#fff;color:var(--ac-t,var(--ac));}
-  .dur-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .s-ch-row{display:flex;gap:10px;}.s-ch-row button{flex:1;border:2px solid var(--b2);background:#fff;border-radius:16px;padding:12px 6px;font-family:inherit;font-size:13.5px;font-weight:700;line-height:1.5;color:var(--tx);cursor:pointer;}.s-ch-row button.on{border-color:var(--ac);background:rgba(18,102,227,.08);color:var(--ac);}
+.dur-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
   .dur-pills button{border:1.5px solid #d6d6d6;background:#fff;border-radius:99px;padding:7px 15px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#4b5563;cursor:pointer;}
   .dur-pills button:active{background:var(--ac);color:#fff;border-color:var(--ac-t,var(--ac));}
   /* demandes */
@@ -2872,6 +2873,15 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <div class="mi-section-titre">🛠️ Le service</div>
 <div class="modal-field"><label for="s-nom">Nom du service</label><input id="s-nom" placeholder="Ex : Tonte de pelouse" type="text"/></div>
 <div class="modal-field"><label for="s-desc">Description</label><input id="s-desc" placeholder="Ex : Entretien complet, évacuation des déchets comprise" type="text"/></div>
+<div id="s-type-bloc" style="display:none;margin-bottom:14px;">
+<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1.5px solid var(--b2);border-radius:14px;padding:12px 14px;font-size:14px;font-weight:700;cursor:pointer;"><span>Prestation simple (à l'unité)</span><input type="checkbox" id="s-simple" checked onchange="majTypeService()" style="width:22px;height:22px;accent-color:var(--ac);"/></label>
+<div id="s-type-choix" style="display:none;margin-top:12px;">
+<div style="font-size:13px;font-weight:700;margin-bottom:6px;">Pour qui ?</div>
+<div class="s-ch-row"><button type="button" id="s-pq-perso" onclick="choisirPourQui('perso')">👤<br>Une personne</button><button type="button" id="s-pq-groupe" onclick="choisirPourQui('groupe')">👥<br>Un groupe</button></div>
+<div style="font-size:13px;font-weight:700;margin:12px 0 6px;">Comment c'est vendu ?</div>
+<div class="s-ch-row"><button type="button" id="s-vt-seance" onclick="choisirVente('seance')">🎟️<br>À la séance</button><button type="button" id="s-vt-forfait" onclick="choisirVente('forfait')">📦<br>En forfait</button></div>
+</div>
+</div>
 <div class="modal-field" id="s-photo-champ"><label>Photo du service <span style="font-weight:400;color:var(--mu);">(facultatif)</span></label>
 <div style="display:flex;align-items:center;gap:12px;">
 <div id="s-photo-apercu" style="width:76px;height:76px;border-radius:12px;background:#f3f4f6;border:1px solid var(--b2);display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden;flex-shrink:0;">🖼️</div>
@@ -2894,6 +2904,13 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 </div>
 <div class="dur-pills"><button type="button" onclick="document.getElementById('s-duree').value=30">30 min</button><button type="button" onclick="document.getElementById('s-duree').value=60">1 h</button><button type="button" onclick="document.getElementById('s-duree').value=120">2 h</button><button type="button" onclick="document.getElementById('s-duree').value=240">4 h</button></div>
 <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mu);margin-top:4px;">Sert de valeur de départ pour vos interventions — modifiable à chaque fois.</div>
+</div>
+<div class="modal-field" id="s-groupe-bloc" style="display:none;"><label for="s-places">Places par séance (nombre maximum de participants)</label><input id="s-places" type="number" min="2" max="100" step="1" placeholder="12" style="width:100px;"/></div>
+<div id="s-forfait-bloc" style="display:none;">
+<div class="modal-field"><label for="s-fnb">Nombre de séances dans le forfait</label><input id="s-fnb" type="number" min="2" max="100" step="1" placeholder="10" style="width:100px;" oninput="majPrixSeance()"/></div>
+<div class="modal-field"><label for="s-fprix">Prix du forfait (€)</label><div style="display:flex;align-items:center;gap:10px;"><input id="s-fprix" type="number" min="1" step="0.5" placeholder="130" style="width:110px;" oninput="majPrixSeance()"/><strong id="s-fparseance" style="color:var(--ac);font-size:14px;"></strong></div></div>
+<div class="modal-field"><label for="s-fvalide">Valable</label><select id="s-fvalide" style="width:auto;min-width:150px;"><option value="30">1 mois</option><option value="60">2 mois</option><option value="90" selected>3 mois</option><option value="180">6 mois</option><option value="365">12 mois</option></select></div>
+<div class="modal-field"><label for="s-fannul">Si le client annule</label><select id="s-fannul"><option value="due">Séance due (non remboursable)</option><option value="gratuite_24h">Annulation gratuite jusqu'à 24 h avant</option></select><div style="font-size:11.5px;color:var(--mu);margin-top:6px;line-height:1.4;">Le client est prévenu à la réservation. Cette règle est à faire relire par un juriste.</div></div>
 </div>
 <div class="modal-field">
 <label for="s-prix">Tarif indicatif</label>
@@ -3372,6 +3389,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261126d"></script>
+<script src="/mpa/mpa-artisans.js?v=20261127a"></script>
 </body>
 </html>
