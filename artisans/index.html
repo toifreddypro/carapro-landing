@@ -1223,6 +1223,15 @@ body.theme-light footer { background:#fbfcfe; }
   .fiche-card .btn-boutique-or::before,.fiche-card .btn-boutique-or::after{display:none !important;}
 }
 </style>
+<style id="en-tete-fixe-mobile">
+/* En-tête figé : il reste en haut de l'écran pendant qu'on fait défiler (sur ordinateur il l'était déjà ; ici téléphone et tablette).
+   « clip » à la place de « hidden » : même effet contre le débordement horizontal, mais sans casser le mode « collant ». */
+@media(max-width:900px){
+  html,body{overflow-x:clip !important;}
+  #nav{position:sticky;top:0;z-index:120;background:#fff;box-shadow:0 1px 0 var(--brd),0 4px 14px rgba(19,34,60,.06);}
+  #nav .nav-wrap{background:#fff !important;}
+}
+</style>
 </head>
 <body class="theme-light">
   <script>
