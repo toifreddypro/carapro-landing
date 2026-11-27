@@ -696,8 +696,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .sv-det .sv-btns button{flex:1;padding:14px;border-radius:14px;font-family:'Outfit',sans-serif;font-size:15.5px;font-weight:800;cursor:pointer;border:2px solid var(--ac);}
   .sv-det .sv-mod{background:var(--ac);color:#fff;}
   .sv-det .sv-ret{background:#fff;color:var(--ac-t,var(--ac));}
-  .s-jours{display:flex;gap:8px;flex-wrap:wrap;}.s-jours button{width:42px;height:42px;border-radius:50%;border:2px solid var(--b2);background:#fff;font-family:inherit;font-size:14px;font-weight:800;color:var(--tx);cursor:pointer;}.s-jours button.on{background:var(--ac);border-color:var(--ac);color:#fff;}
-.s-ch-row{display:flex;gap:10px;}.s-ch-row button{flex:1;border:2px solid var(--b2);background:#fff;border-radius:16px;padding:12px 6px;font-family:inherit;font-size:13.5px;font-weight:700;line-height:1.5;color:var(--tx);cursor:pointer;}.s-ch-row button:disabled{opacity:.45;background:#f1f3f7;cursor:not-allowed;}.s-ch-row button.on{border-color:var(--ac);background:rgba(18,102,227,.08);color:var(--ac);}
 .dur-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
   .dur-pills button{border:1.5px solid #d6d6d6;background:#fff;border-radius:99px;padding:7px 15px;font-family:'Outfit',sans-serif;font-size:14px;font-weight:700;color:#4b5563;cursor:pointer;}
   .dur-pills button:active{background:var(--ac);color:#fff;border-color:var(--ac-t,var(--ac));}
@@ -728,6 +726,10 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
   .rm-l{border:1px solid #e3e3e3;}
   #bp-remises .rm-table,#bp-remises .dcard:first-child p:nth-of-type(n+2){display:none;}
 }
+.s-jours{display:flex;gap:8px;flex-wrap:wrap;}.s-jours button{width:42px;height:42px;border-radius:50%;border:2px solid var(--b2);background:#fff;font-family:inherit;font-size:14px;font-weight:800;color:var(--tx);cursor:pointer;}.s-jours button.on{background:var(--ac);border-color:var(--ac);color:#fff;}
+.s-ch-row{display:flex;gap:10px;}.s-ch-row button{flex:1;border:2px solid var(--b2);background:#fff;border-radius:16px;padding:12px 6px;font-family:inherit;font-size:13.5px;font-weight:700;line-height:1.5;color:var(--tx);cursor:pointer;}.s-ch-row button:disabled{opacity:.45;background:#f1f3f7;cursor:not-allowed;}.s-ch-row button.on{border-color:var(--ac);background:rgba(18,102,227,.08);color:var(--ac);}
+.s-ch-row button:hover:not(:disabled){border-color:var(--ac);}
+.s-ch-row button .e{display:block;font-size:26px;margin-bottom:4px;}
 
 
 /* ── Version téléphone : Mon profil (carte de présentation, lignes à ouvrir, clients en cartes, avis) — ordinateur inchangé ── */
@@ -3395,6 +3397,6 @@ body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--tx);displa
 <!-- Facture imprimable, hors écran normal — doit être un enfant direct de <body>
      pour que la règle @media print (body > *:not(#facture-print)) fonctionne. -->
 <div id="facture-print" style="display:none;"></div>
-<script src="/mpa/mpa-artisans.js?v=20261127f"></script>
+<script src="/mpa/mpa-artisans.js?v=20261127g"></script>
 </body>
 </html>
