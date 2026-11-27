@@ -10524,12 +10524,17 @@ function remplirTypeService(s) {
   _typePourQui = groupe ? 'groupe' : 'perso';
   _typeVente = (forfait || !groupe) ? 'forfait' : 'seance';
   document.getElementById('s-places').value = groupe ? s.groupe_places : '';
+  var jours = (groupe && Array.isArray(s.groupe_jours)) ? s.groupe_jours : [];
+  document.querySelectorAll('#s-jours button').forEach(function(b) { b.classList.toggle('on', jours.indexOf(parseInt(b.getAttribute('data-j'), 10)) >= 0); });
+  document.getElementById('s-gheure').value = (groupe && s.groupe_heure) ? s.groupe_heure : '';
   document.getElementById('s-fnb').value = forfait ? s.forfait_seances : '';
   document.getElementById('s-fprix').value = forfait ? s.forfait_prix : '';
   document.getElementById('s-fvalide').value = forfait && s.forfait_validite_jours ? String(s.forfait_validite_jours) : '90';
   document.getElementById('s-fannul').value = forfait && s.forfait_annulation ? s.forfait_annulation : 'due';
   majTypeService();
 }
+function basculerJourCours(b) { b.classList.toggle('on'); }
+var NOMS_JOURS_COURT = ['', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
 function choisirPourQui(v) { _typePourQui = v; majTypeService(); }
 function choisirVente(v) { if (_typePourQui === 'perso') return; _typeVente = v; majTypeService(); }
 // Explication sous les choix : ce que donne la combinaison choisie.
@@ -10559,7 +10564,7 @@ function majTypeService() {
 // Petite étiquette sur les services de groupe / forfait (liste des services).
 function etiquetteTypeService(s) {
   var t = [];
-  if (s.groupe_places) t.push('👥 Groupe · ' + s.groupe_places + ' places');
+  if (s.groupe_places) t.push('👥 Groupe · ' + s.groupe_places + ' places' + ((s.groupe_jours && s.groupe_jours.length && s.groupe_heure) ? ' · ' + s.groupe_jours.map(function(j) { return NOMS_JOURS_COURT[j]; }).join(' ') + ' ' + s.groupe_heure : ''));
   if (s.forfait_seances) t.push('📦 Forfait ' + s.forfait_seances + ' séances · ' + String(s.forfait_prix).replace('.', ',') + ' €');
   return t.join(' · ');
 }
@@ -10607,12 +10612,16 @@ async function sauverService() {
     var ancien = _serviceEnCours ? (_servicesCache.find(function(x) { return x.id === _serviceEnCours; }) || {}) : {};
     var simple = document.getElementById('s-simple').checked;
     if (simple) {
-      if (ancien.groupe_places || ancien.forfait_seances) { maj.groupe_places = null; maj.forfait_seances = null; maj.forfait_prix = null; maj.forfait_validite_jours = null; maj.forfait_annulation = null; }
+      if (ancien.groupe_places || ancien.forfait_seances) { maj.groupe_places = null; maj.groupe_jours = null; maj.groupe_heure = null; maj.forfait_seances = null; maj.forfait_prix = null; maj.forfait_validite_jours = null; maj.forfait_annulation = null; }
     } else {
-      var places = null, nbS = null, prixF = null;
+      var places = null, nbS = null, prixF = null, jours = null, gheure = null;
       if (_typePourQui === 'groupe') {
         places = parseInt(document.getElementById('s-places').value, 10);
         if (!(places >= 2 && places <= 100)) { alert('Indiquez le nombre de places par séance (entre 2 et 100).'); return; }
+        jours = Array.prototype.slice.call(document.querySelectorAll('#s-jours button.on')).map(function(b) { return parseInt(b.getAttribute('data-j'), 10); });
+        gheure = document.getElementById('s-gheure').value;
+        if (!jours.length) { alert('Choisissez au moins un jour pour votre cours.'); return; }
+        if (!/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(gheure)) { alert('Indiquez l\'heure de départ du cours.'); return; }
       }
       if (_typeVente === 'forfait') {
         nbS = parseInt(document.getElementById('s-fnb').value, 10);
@@ -10622,6 +10631,8 @@ async function sauverService() {
       }
       if (_typePourQui === 'perso' && _typeVente === 'seance') { alert('Choisissez « Un groupe » ou « En forfait », ou cochez « Prestation simple ».'); return; }
       maj.groupe_places = places;
+      maj.groupe_jours = jours;
+      maj.groupe_heure = gheure;
       maj.forfait_seances = nbS;
       maj.forfait_prix = prixF;
       maj.forfait_validite_jours = nbS ? parseInt(document.getElementById('s-fvalide').value, 10) : null;
@@ -10658,7 +10669,7 @@ async function sauverService() {
   }
   if (res.error && nouvelleChemin) { try { await sb.storage.from('artisans-photos').remove([nouvelleChemin]); } catch (e) {} }
   if (res.error && /photo_url/.test(res.error.message || '')) { alert('La photo du service n\'est pas encore activée sur votre compte (mise à jour en cours). Enregistrez sans photo ou réessayez plus tard.'); return; }
-  if (res.error && /groupe_places|forfait_/.test(res.error.message || '')) { alert('Les forfaits et les séances de groupe ne sont pas encore activés sur votre compte (mise à jour en cours). Réessayez plus tard.'); return; }
+  if (res.error && /groupe_|forfait_/.test(res.error.message || '')) { alert('Les forfaits et les séances de groupe ne sont pas encore activés sur votre compte (mise à jour en cours). Réessayez plus tard.'); return; }
   if (res.error && /rappel_mois/.test(res.error.message || '')) { alert('Le rappel d\'entretien n\'est pas encore activé sur votre compte (mise à jour en cours). Réessayez plus tard.'); return; }
   if (res.error) { alert('Erreur : ' + res.error.message); return; }
   if (ancienneUrl && (nouvelleChemin || _sPhotoRetiree)) { var ancienChemin = cheminPhotoServiceDepuisUrl(ancienneUrl); if (ancienChemin) { try { await sb.storage.from('artisans-photos').remove([ancienChemin]); } catch (e) {} } }
