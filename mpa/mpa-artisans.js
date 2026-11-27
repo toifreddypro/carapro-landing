@@ -10514,7 +10514,7 @@ function ouvrirService(id) {
 
 // ── Lot 55 : services « groupe » et « forfait ». Visible seulement avec le compte administrateur, le temps de tout valider. ──
 function forfaitsOuverts() { return !!(_session && _session.user && _session.user.email === 'toifreddypro@gmail.com'); }
-var _typePourQui = 'perso', _typeVente = 'seance';
+var _typePourQui = 'perso', _typeVente = 'forfait';
 function remplirTypeService(s) {
   var bloc = document.getElementById('s-type-bloc');
   if (!bloc) return;
@@ -10522,7 +10522,7 @@ function remplirTypeService(s) {
   var groupe = !!(s && s.groupe_places), forfait = !!(s && s.forfait_seances);
   document.getElementById('s-simple').checked = !(groupe || forfait);
   _typePourQui = groupe ? 'groupe' : 'perso';
-  _typeVente = forfait ? 'forfait' : 'seance';
+  _typeVente = (forfait || !groupe) ? 'forfait' : 'seance';
   document.getElementById('s-places').value = groupe ? s.groupe_places : '';
   document.getElementById('s-fnb').value = forfait ? s.forfait_seances : '';
   document.getElementById('s-fprix').value = forfait ? s.forfait_prix : '';
@@ -10531,14 +10531,23 @@ function remplirTypeService(s) {
   majTypeService();
 }
 function choisirPourQui(v) { _typePourQui = v; majTypeService(); }
-function choisirVente(v) { _typeVente = v; majTypeService(); }
+function choisirVente(v) { if (_typePourQui === 'perso') return; _typeVente = v; majTypeService(); }
+// Explication sous les choix : ce que donne la combinaison choisie.
+function aideTypeService() {
+  if (_typePourQui === 'perso') return '<strong>« À la séance » pour une seule personne, c\'est une prestation simple</strong> : cochez la case « Prestation simple » plus haut.<br>Ici : un forfait individuel. Exemple : le client achète 10 séances et réserve ses jours, une personne à la fois.';
+  if (_typeVente === 'forfait') return 'Un cours collectif avec forfait. Exemple : le client achète 10 séances et réserve ses jours, dans la limite des 12 places.';
+  return 'Un cours collectif payé à la séance. Exemple : chaque participant paie sa place à chaque fois, dans la limite des 12 places.';
+}
 function majPrixSeance() {
   var n = parseInt(document.getElementById('s-fnb').value, 10), p = parseFloat(document.getElementById('s-fprix').value);
   var el = document.getElementById('s-fparseance');
   el.textContent = (n >= 2 && p > 0) ? (Math.round(p / n * 100) / 100).toString().replace('.', ',') + ' € la séance' : '';
 }
 function majTypeService() {
+  if (_typePourQui === 'perso') _typeVente = 'forfait'; // une personne à la fois : « à la séance » = prestation simple
   var simple = !forfaitsOuverts() || document.getElementById('s-simple').checked;
+  document.getElementById('s-vt-seance').disabled = (_typePourQui === 'perso');
+  document.getElementById('s-type-aide').innerHTML = aideTypeService();
   document.getElementById('s-type-choix').style.display = simple ? 'none' : '';
   document.getElementById('s-groupe-bloc').style.display = (!simple && _typePourQui === 'groupe') ? '' : 'none';
   document.getElementById('s-forfait-bloc').style.display = (!simple && _typeVente === 'forfait') ? '' : 'none';
