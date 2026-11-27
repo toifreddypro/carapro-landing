@@ -32,6 +32,7 @@
       var r = el('div', 'resume');
       r.appendChild(el('div', '', i.artisan));
       r.appendChild(el('div', '', '📦 ' + i.nb_seances + ' séances · ' + euros(i.prix) + ' (soit ' + euros(i.prix_par_seance) + ' la séance)'));
+      if (i.solo) r.appendChild(el('div', '', '🧍 Séances individuelles · vous choisissez vos créneaux dans l\'agenda du coach'));
       if (i.collectif) r.appendChild(el('div', '', '👥 Cours collectif · ' + i.places + ' places' + (i.jours.length ? ' · ' + i.jours.join(', ') + (i.heure ? ' à ' + i.heure : '') : '')));
       r.appendChild(el('div', '', 'Valable ' + i.validite_jours + ' jours à partir de l\'achat'));
       var nom = champ('text', 'Votre nom', 60), tel = champ('tel', 'Téléphone', 20), mail = champ('email', 'Email (pour retrouver votre forfait)', 120);
@@ -112,8 +113,9 @@
     lab.appendChild(cb); lab.appendChild(el('span', '', 'Je comprends : ' + (f.annulation === 'gratuite_24h' ? 'une séance réservée est due, sauf annulation gratuite jusqu\'à 24 h avant.' : 'une séance réservée est due, sans remboursement ni recrédit si j\'annule.')));
     if (f.solde > 0) {
       enfants.push(el('h2', '', 'Réserver un jour'));
-      if (!f.disponibles.length) enfants.push(el('p', '', 'Aucune séance à venir pour le moment.'));
-      else {
+      if (f.solo) { var zoneSolo = el('div'); enfants.push(lab, zoneSolo); chargerCreneauxSolo(zoneSolo, cb, err, null); }
+      else if (!f.disponibles.length) enfants.push(el('p', '', 'Aucune séance à venir pour le moment.'));
+      else if (!f.solo) {
         enfants.push(lab);
         f.disponibles.forEach(function (s) {
           var deja = reservees.some(function (r) { return r.date_seance === s.date && r.heure === s.heure; });
@@ -134,6 +136,38 @@
       }
     } else enfants.push(el('p', '', 'Vous avez utilisé toutes les séances de ce forfait. Merci ! Vous pouvez en reprendre un sur la fiche de ' + f.artisan + '.'));
     ecran.apply(null, enfants);
+  }
+
+
+  // Séances individuelles : créneaux libres du coach, fenêtre par fenêtre.
+  async function chargerCreneauxSolo(zone, cb, err, dateDebut) {
+    zone.textContent = ''; zone.appendChild(el('p', 'chargement', 'Chargement des créneaux…'));
+    try {
+      var d = await appel({ action: 'creneaux_solo', token: token, date_debut: dateDebut || undefined });
+      zone.textContent = '';
+      if (!d.jours.length) zone.appendChild(el('p', '', 'Aucun créneau libre sur cette période.'));
+      d.jours.forEach(function (j) {
+        var l = el('div', 'seance'); l.style.flexWrap = 'wrap';
+        l.appendChild(el('div', '', jolieDate(j.date, j.jour_label)));
+        var rang = el('div'); rang.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap';
+        j.creneaux.forEach(function (h) {
+          var bt = el('button', '', h); bt.type = 'button';
+          bt.addEventListener('click', async function () {
+            err.style.display = 'none';
+            if (!cb.checked) { err.textContent = 'Cochez la case pour confirmer que la séance réservée est due.'; err.style.display = 'block'; return; }
+            bt.disabled = true;
+            try { await appel({ action: 'reserver_solo', token: token, date: j.date, heure: h, accepte: true }); chargerSolde(); }
+            catch (e) { err.textContent = e.message; err.style.display = 'block'; bt.disabled = false; if (e.code === 'complet') chargerCreneauxSolo(zone, cb, err, dateDebut); }
+          });
+          rang.appendChild(bt);
+        });
+        l.appendChild(rang); zone.appendChild(l);
+      });
+      var nav = el('div'); nav.style.cssText = 'display:flex;gap:8px;margin-top:6px';
+      if (d.peut_reculer) { var b1 = el('button', 'secondaire', '← Avant'); b1.type = 'button'; b1.addEventListener('click', function () { var x = new Date(d.date_debut + 'T12:00:00'); x.setDate(x.getDate() - 5); chargerCreneauxSolo(zone, cb, err, x.toISOString().slice(0, 10)); }); nav.appendChild(b1); }
+      if (d.peut_avancer) { var b2 = el('button', 'secondaire', 'Après →'); b2.type = 'button'; b2.addEventListener('click', function () { var x = new Date(d.date_debut + 'T12:00:00'); x.setDate(x.getDate() + 5); chargerCreneauxSolo(zone, cb, err, x.toISOString().slice(0, 10)); }); nav.appendChild(b2); }
+      zone.appendChild(nav);
+    } catch (e) { zone.textContent = ''; zone.appendChild(el('p', 'alerte', e.message)); }
   }
 
   if (token) chargerSolde(); else if (serviceId) chargerAchat(); else message('Lien incorrect', 'Ouvrez cette page depuis la fiche du coach ou depuis votre email.', 'erreur');

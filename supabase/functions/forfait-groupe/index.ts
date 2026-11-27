@@ -61,6 +61,24 @@ async function dejaFactureCentimes(artisanId: string, forfaitExclu: string): Pro
   return total;
 }
 
+// Créneaux libres du coach : on interroge le même moteur que la fiche (verifier-disponibilite-artisan), jamais une liste envoyée par la page.
+async function creneauxCoach(req: Request, artisanId: string, dateDebut: string, duree: number): Promise<any | null> {
+  const ip = req.headers.get("cf-connecting-ip") || (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "inconnue";
+  const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/verifier-disponibilite-artisan`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json", "x-forwarded-for": ip },
+    body: JSON.stringify({ mode: "creneaux", artisan_id: artisanId, lieu: "salon", duree_min: duree, date_debut: dateDebut }),
+  });
+  if (!res.ok) return null;
+  return await res.json().catch(() => null);
+}
+// Le client vient chez le coach (« salon » ou « les deux ») : seule condition pour les séances individuelles en ligne (pas de trajet à calculer).
+async function coachAccueille(artisanId: string): Promise<boolean> {
+  const r = await sb.from("artisans").select("mode_lieu").eq("id", artisanId).maybeSingle();
+  const m = !r.error ? (r.data as any)?.mode_lieu : null;
+  return m === "salon" || m === "les_deux";
+}
+
 const NOMS_JOURS = ["", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
 function dateISOGuadeloupe(d: Date) { return new Date(d.getTime() - DECALAGE_LOCAL_MS).toISOString().slice(0, 10); }
 // Prochaines séances d'un cours (jours + heure du service) avec le nombre de places restantes.
@@ -110,20 +128,20 @@ Deno.serve(async (req: Request) => {
       if (eS) throw eS;
       const art: any = (s as any)?.artisans;
       if (!s || !s.forfait_seances || !s.forfait_prix || !art?.actif || art.suspendu_commission) return json({ error: "Forfait introuvable." }, 404);
-      const reservable = art.stripe_connect_statut === "actif" && !!art.stripe_connect_account_id && await carteOk(s.artisan_id);
+      const reservable = art.stripe_connect_statut === "actif" && !!art.stripe_connect_account_id && await carteOk(s.artisan_id) && (!!s.groupe_places || await coachAccueille(s.artisan_id));
       const validite = Number(s.forfait_validite_jours || 90);
       const resume = {
         artisan: art.nom_entreprise, nom_service: s.nom_service, description: s.description || null,
         nb_seances: s.forfait_seances, prix: Number(s.forfait_prix), prix_par_seance: Math.round(Number(s.forfait_prix) / s.forfait_seances * 100) / 100,
         validite_jours: validite, annulation: s.forfait_annulation || "due",
-        collectif: !!s.groupe_places, places: s.groupe_places || null,
+        collectif: !!s.groupe_places, solo: !s.groupe_places, places: s.groupe_places || null,
         jours: (s.groupe_jours || []).map((j: number) => NOMS_JOURS[j]), heure: s.groupe_heure || null, reservable,
       };
       if (action === "infos_service") return json(resume);
 
       // ── Achat ──
       if (!reservable) return json({ error: "Ce coach n'a pas encore activé les paiements en ligne." }, 400);
-      if (!s.groupe_places) return json({ error: "Ce forfait n'est pas encore ouvert à l'achat en ligne." }, 400); // forfait individuel : étape suivante
+      if (!s.groupe_places && !(await coachAccueille(s.artisan_id))) return json({ error: "Ce forfait individuel n'est pas encore ouvert à l'achat en ligne." }, 400); // séances individuelles : seulement quand le client vient chez le coach
       const nom = String(body.nom || "").trim(), tel = String(body.telephone || "").trim(), email = String(body.email || "").trim().toLowerCase();
       if (nom.length < 2 || nom.length > 60) return json({ error: "Indiquez votre nom." }, 400);
       if (tel.length < 6 || tel.length > 20) return json({ error: "Indiquez un numéro de téléphone valide." }, 400);
@@ -191,15 +209,50 @@ Deno.serve(async (req: Request) => {
       const { data: seances } = await sb.from("artisans_forfaits_seances").select("id, date_seance, heure, statut").eq("forfait_id", f.id).order("date_seance", { ascending: true });
       const utilisees = (seances || []).filter((q: any) => q.statut !== "annulee").length;
       let disponibles: unknown[] = [];
+      let solo = false;
       if (f.statut === "actif" && f.service_id) {
         const { data: s } = await sb.from("artisans_services").select("id, groupe_places, groupe_jours, groupe_heure").eq("id", f.service_id).maybeSingle();
-        if (s) disponibles = await prochainesSeances(s, f.valable_jusqua);
+        if (s) { solo = !s.groupe_places; if (!solo) disponibles = await prochainesSeances(s, f.valable_jusqua); }
       }
       return json({
         artisan: (f as any).artisans?.nom_entreprise, nom_service: f.nom_service, client: f.nom, statut: f.statut,
         nb_total: f.nb_total, solde: Math.max(0, f.nb_total - utilisees), valable_jusqua: f.valable_jusqua, annulation: f.annulation,
-        seances: seances || [], disponibles,
+        seances: seances || [], disponibles, solo,
       });
+    }
+
+    // ── Séances individuelles : créneaux libres du coach ──
+    if (action === "creneaux_solo" || action === "reserver_solo") {
+      if (f.statut !== "actif" || !f.service_id) return json({ error: "Ce forfait n'est pas (ou plus) actif." }, 400);
+      const { data: s } = await sb.from("artisans_services").select("id, groupe_places, duree_estimee_min").eq("id", f.service_id).maybeSingle();
+      if (!s || s.groupe_places || !(await coachAccueille(f.artisan_id))) return json({ error: "Ce forfait ne se réserve pas ainsi." }, 400);
+      const duree = Math.min(720, Math.max(15, Number(s.duree_estimee_min) || 60));
+      const limiteJour = String(f.valable_jusqua).slice(0, 10);
+      if (action === "creneaux_solo") {
+        const dd = String(body.date_debut || "");
+        const dateDebut = /^\d{4}-\d{2}-\d{2}$/.test(dd) ? dd : dateISOGuadeloupe(new Date());
+        const m = await creneauxCoach(req, f.artisan_id, dateDebut, duree);
+        if (!m) return json({ error: "Les disponibilités du coach ne sont pas accessibles pour le moment. Réessayez dans un instant." }, 502);
+        const jours = (m.jours || []).filter((j: any) => !j.fermeture && Array.isArray(j.creneaux) && j.creneaux.length && j.date <= limiteJour)
+          .map((j: any) => ({ date: j.date, jour_label: j.jour_label, creneaux: j.creneaux }));
+        return json({ jours, duree_min: duree, date_debut: m.date_debut_fenetre || dateDebut, peut_reculer: !!m.peut_reculer, peut_avancer: !!m.peut_avancer });
+      }
+      const date = String(body.date || ""), heure = String(body.heure || "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^[0-2]\d:[0-5]\d$/.test(heure)) return json({ error: "Créneau invalide." }, 400);
+      if (body.accepte !== true) return json({ error: "Vous devez accepter que la séance réservée soit due." }, 400);
+      // Le créneau doit être l'un de ceux que le coach propose vraiment (jamais une heure inventée par la page).
+      const m = await creneauxCoach(req, f.artisan_id, date, duree);
+      const jour = (m?.jours || []).find((j: any) => j.date === date);
+      if (!m || !jour || jour.fermeture || !Array.isArray(jour.creneaux) || !jour.creneaux.includes(heure)) return json({ error: "Ce créneau n'est plus disponible. Choisissez-en un autre.", code: "complet" }, 409);
+      const { data: r, error: eR } = await sb.rpc("reserver_seance_solo", { p_token: token, p_date: date, p_heure: heure, p_duree: duree });
+      if (eR) throw eR;
+      const msgs: Record<string, string> = {
+        forfait_inactif: "Ce forfait n'est pas (ou plus) actif.", expire: "Ce forfait a expiré.", indisponible: "Cette séance ne peut pas être réservée pour le moment. Contactez le coach.",
+        passee: "Ce créneau est déjà passé.", apres_validite: "Ce jour est après la fin de validité de votre forfait.", solde_vide: "Vous avez utilisé toutes les séances de ce forfait.",
+        complet: "Ce créneau vient d'être pris. Choisissez-en un autre.", jour_invalide: "Créneau invalide.",
+      };
+      if (!r?.ok) return json({ error: msgs[r?.code] || MSG_GENERIQUE, code: r?.code }, r?.code === "complet" ? 409 : 400);
+      return json({ ok: true, solde: r.solde });
     }
 
     if (action === "reserver") {

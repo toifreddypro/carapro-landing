@@ -1410,11 +1410,15 @@ var _coursParJour = {}; // date → [{ cle, service_id, heure, nom_service, plac
 async function chargerCoursGroupe(debutStr, finStr) {
   _coursParJour = {};
   try {
-    var r = await sb.from('artisans_forfaits_seances').select('id, service_id, date_seance, heure, statut, artisans_forfaits(nom, telephone)')
-      .eq('artisan_id', _artisan.id).neq('statut', 'annulee').gte('date_seance', debutStr).lte('date_seance', finStr).order('heure', { ascending: true }).limit(2000);
+    var requete = function(cols) { return sb.from('artisans_forfaits_seances').select(cols)
+      .eq('artisan_id', _artisan.id).neq('statut', 'annulee').gte('date_seance', debutStr).lte('date_seance', finStr).order('heure', { ascending: true }).limit(2000); };
+    var r = await requete('id, service_id, date_seance, heure, statut, intervention_id, artisans_forfaits(nom, telephone)');
+    if (r.error && r.error.code === '42703') r = await requete('id, service_id, date_seance, heure, statut, artisans_forfaits(nom, telephone)');
     if (r.error) return; // tables pas encore créées : le planning reste comme avant
     (r.data || []).forEach(function(q) {
+      if (q.intervention_id) return; // séance individuelle : c'est déjà une intervention du planning
       var sv = _servicesCache.find(function(x) { return String(x.id) === String(q.service_id); });
+      if (sv && !sv.groupe_places) return;
       var liste = _coursParJour[q.date_seance] = _coursParJour[q.date_seance] || [];
       var cle = q.service_id + '|' + q.heure;
       var cours = liste.find(function(c) { return c.cle === cle; });

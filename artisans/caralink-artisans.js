@@ -2111,8 +2111,8 @@ function ouvrirServiceFx(i) {
   corps.innerHTML = (s.photo_url ? '<img class="fx-grand" src="' + escHtml(s.photo_url) + '" alt="' + escHtml(s.nom_service) + '">' : '<div class="fx-grand-ic" style="background:' + ic[1] + '">' + ic[0] + '</div>') +
     '<div style="font-size:15px;font-weight:700;color:var(--mu2,#5b6b82);">' + (d ? d + ' · ' : '') + prixServiceFx(s) + '</div>' +
     (s.description ? '<p style="font-size:14.5px;line-height:1.55;margin:12px 0 0;">' + escHtml(s.description) + '</p>' : '') +
-    (s.forfait_seances && s.groupe_places
-      ? '<div style="margin:14px 0 0;padding:12px 14px;border-radius:12px;background:#eef4ff;border:1px solid #cfe0fb;font-size:13.5px;line-height:1.5;color:#1f3b63;">📦 Forfait de ' + Number(s.forfait_seances) + ' séances · ' + Number(s.forfait_prix) + ' €<br>👥 Cours collectif · ' + Number(s.groupe_places) + ' places par séance<br>Vous achetez le forfait une fois, puis vous réservez vos jours quand vous voulez.</div>' +
+    (s.forfait_seances
+      ? '<div style="margin:14px 0 0;padding:12px 14px;border-radius:12px;background:#eef4ff;border:1px solid #cfe0fb;font-size:13.5px;line-height:1.5;color:#1f3b63;">📦 Forfait de ' + Number(s.forfait_seances) + ' séances · ' + Number(s.forfait_prix) + ' €<br>' + (s.groupe_places ? '👥 Cours collectif · ' + Number(s.groupe_places) + ' places par séance' : '🧍 Séances individuelles sur rendez-vous') + '<br>Vous achetez le forfait une fois, puis vous réservez vos jours quand vous voulez.</div>' +
         '<a class="fx-cta" style="margin-top:14px;display:block;text-align:center;text-decoration:none;" href="forfait.html?s=' + encodeURIComponent(s.id) + '">Acheter le forfait</a>'
       : '<button type="button" class="fx-cta" style="margin-top:20px;" onclick="reserverServiceFx(' + i + ')">' + escHtml(T('fx_reserver_service')) + '</button>');
   ouvrirFeuilleFx('fx-svc');
