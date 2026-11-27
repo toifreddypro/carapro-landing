@@ -70,6 +70,11 @@ async function dejaFactureCeMoisCentimes(sb: any, artisanId: string, sauf?: stri
   if (error) throw error;
   let total = 0;
   for (const p of pre || []) if (p.id !== sauf) total += net(p.montant, p.montant_rembourse);
+  // Lot 56d : les forfaits de séances payés ce mois-ci comptent dans le même seuil (table absente : on les ignore).
+  try {
+    const { data: fo } = await sb.from("artisans_forfaits").select("prix").eq("artisan_id", artisanId).eq("statut", "actif").gte("paye_le", debutMois);
+    for (const f of fo || []) total += Math.round(Math.max(0, Number(f.prix || 0)) * 100);
+  } catch (_e) { /* ignoré */ }
   return total;
 }
 

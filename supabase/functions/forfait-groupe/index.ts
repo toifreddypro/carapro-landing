@@ -48,14 +48,14 @@ async function carteOk(artisanId: string): Promise<boolean> {
     return data.carte_prestations_enregistree === true || (!!data.carte_delai_jusqua && new Date(data.carte_delai_jusqua).getTime() > Date.now());
   } catch (_e) { return true; }
 }
-// Déjà facturé en ligne ce mois-ci (commandes + forfaits payés), pour la franchise de 200 €.
+// Déjà facturé en ligne ce mois-ci dans le canal « prestations » (paiements de prestations + forfaits payés), pour la franchise de 200 €.
 async function dejaFactureCentimes(artisanId: string, forfaitExclu: string): Promise<number> {
   const local = new Date(Date.now() - DECALAGE_LOCAL_MS);
   const debut = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), 1) + DECALAGE_LOCAL_MS).toISOString();
   let total = 0;
-  const { data: cmd } = await sb.from("commandes_catalogue").select("montant_total, montant_rembourse").eq("artisan_id", artisanId)
-    .in("paiement_statut", ["paye", "partiellement_rembourse", "rembourse"]).gte("created_at", debut);
-  for (const c of cmd || []) total += Math.round(Math.max(0, Number(c.montant_total || 0) - Number(c.montant_rembourse || 0)) * 100);
+  const { data: pre } = await sb.from("paiements_prestations").select("montant, montant_rembourse").eq("artisan_id", artisanId)
+    .in("statut", ["paye", "partiellement_rembourse", "rembourse"]).gte("paye_le", debut);
+  for (const p of pre || []) total += Math.round(Math.max(0, Number(p.montant || 0) - Number(p.montant_rembourse || 0)) * 100);
   const { data: fo } = await sb.from("artisans_forfaits").select("prix").eq("artisan_id", artisanId).eq("statut", "actif").neq("id", forfaitExclu).gte("paye_le", debut);
   for (const f of fo || []) total += Math.round(Number(f.prix || 0) * 100);
   return total;

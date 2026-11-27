@@ -676,6 +676,22 @@ async function traiterPaiementForfait(intent: any, compteEvenement: string | nul
     .update({ statut: "actif", paye_le: new Date().toISOString(), stripe_account: compte }).eq("id", id).eq("statut", "en_attente").select("id");
   lever(errR, "Activation du forfait");
   if (!reclame || !reclame.length) return;
+  // Lot 56d : le client du forfait devient une fiche client MPA (origine « annuaire » : il vient de CaraLink, donc soumis à la commission) et la vente
+  // est rangée comme une intervention « payée » du jour : elle compte dans la comptabilité et peut être facturée comme les autres. Jamais bloquant.
+  try {
+    const ligneClient: Record<string, unknown> = { artisan_id: f.artisan_id, nom: f.nom, email: f.email, telephone: f.telephone, delai_paiement: 30, origine: "annuaire" };
+    let { data: cl, error: errCl } = await sbAdmin.from("mpa_artisans_clients").insert(ligneClient).select("id").single();
+    if (errCl && (errCl as any).code === "42703") { delete ligneClient.telephone; ({ data: cl, error: errCl } = await sbAdmin.from("mpa_artisans_clients").insert(ligneClient).select("id").single()); }
+    if (errCl || !cl) throw errCl || new Error("client non créé");
+    const aujourdhui = new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+    const { data: it, error: errIt } = await sbAdmin.from("mpa_artisans_interventions").insert({
+      artisan_id: f.artisan_id, client_id: cl.id, service_id: f.service_id || null, date_intervention: aujourdhui, creneau: "matin",
+      prix: Number(f.prix), statut: "payee", date_paiement: aujourdhui,
+      notes: `📦 Forfait de ${f.nb_total} séances « ${f.nom_service} » vendu et PAYÉ EN LIGNE (${Number(f.prix).toFixed(2).replace(".", ",")} €). Les séances se réservent dans le planning (cours collectif) : rien à encaisser.`,
+    }).select("id").single();
+    if (errIt) console.error("[stripe-webhook-artisans] Vente du forfait non rangée dans MPA :", errIt.message);
+    await sbAdmin.from("artisans_forfaits").update({ client_id: cl.id, intervention_id: it?.id ?? null }).eq("id", id);
+  } catch (e) { console.error("[stripe-webhook-artisans] Fiche client du forfait non créée :", e); }
   try {
     const lien = `https://caralink.app/artisans/forfait.html?t=${f.token}`;
     const prix = Number(f.prix).toFixed(2).replace(".", ",");

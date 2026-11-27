@@ -141,6 +141,19 @@ async function caPrestationsAnnuaireDuMois(sb: any, artisanId: string, debut: st
     // Table pas encore créée (SQL du 15/10 pas lancé) : aucun paiement en ligne, le calcul d'avant s'applique tel quel.
     console.warn("[prelever-commission-prestations] paiements_prestations illisible :", (e as any)?.message);
   }
+  // Lot 56d : les forfaits de séances vendus en ligne comptent comme des paiements en ligne (même seuil de 200 €, commission déjà prélevée à l'achat),
+  // et le prix de leur ligne de vente MPA est considéré comme déjà payé en ligne : jamais commissionné une seconde fois.
+  try {
+    const { data: fo, error: errFo } = await sb.from("artisans_forfaits").select("intervention_id, prix, commission_montant, paye_le")
+      .eq("artisan_id", artisanId).eq("statut", "actif");
+    if (errFo) throw errFo;
+    for (const f of fo || []) {
+      const n = Math.max(0, Math.round(Number(f.prix || 0) * 100));
+      if (f.intervention_id) payeParIntervention.set(f.intervention_id, (payeParIntervention.get(f.intervention_id) || 0) + n);
+      const paye = f.paye_le ? String(f.paye_le) : "";
+      if (paye >= debut + DECALAGE && paye < finExclusive + DECALAGE) { enLigne += n; commissionDejaPrelevee += Math.round(Number(f.commission_montant || 0) * 100); }
+    }
+  } catch (e) { console.warn("[prelever-commission-prestations] artisans_forfaits illisible :", (e as any)?.message); }
   const { data, error } = await sb.from("mpa_artisans_interventions")
     .select("id, prix, mpa_artisans_clients!inner(origine)")
     .eq("artisan_id", artisanId)
