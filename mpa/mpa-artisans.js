@@ -1400,6 +1400,7 @@ async function chargerInterventions() {
 
   await pRetards;
   await chargerCoursGroupe(debutStr, finStr);
+  demarrerSurveillanceCours();
   renderCalendrier();
   renderPlanningMobile();
   renderRecapInterventions();
@@ -1461,6 +1462,46 @@ function ouvrirCoursGroupe(dateStr, cle) {
     '<div class="modal-actions" style="margin-top:14px;"><button class="btn-secondary" onclick="fermerModale(\'modal-cours-groupe\')">Fermer</button></div></div>';
   ouvrirModale('modal-cours-groupe');
 }
+// ── Vigilance de MPA-AI : quelques minutes après le début d'un cours collectif, s'il reste des inscrits non pointés, elle le signale (une seule fois par cours). ──
+var DELAI_ABSENTS_MIN = 10, _coursAujourdhui = null, _derniereLectureCours = 0, _timerCours = null, _coursSignales = {};
+function maintenantGuadeloupe() { var d = new Date(Date.now() - 4 * 3600 * 1000).toISOString(); return { date: d.slice(0, 10), minutes: parseInt(d.slice(11, 13), 10) * 60 + parseInt(d.slice(14, 16), 10) }; }
+async function lireCoursDuJour(dateStr) {
+  var r = await sb.from('artisans_forfaits_seances').select('id, service_id, heure, statut, intervention_id').eq('artisan_id', _artisan.id).eq('date_seance', dateStr).neq('statut', 'annulee').is('intervention_id', null);
+  if (r.error) return {};
+  var cours = {};
+  (r.data || []).forEach(function(q) {
+    var sv = _servicesCache.find(function(x) { return String(x.id) === String(q.service_id); });
+    if (!sv || !sv.groupe_places) return;
+    var cle = q.service_id + '|' + q.heure;
+    var c = cours[cle] = cours[cle] || { cle: cle, heure: q.heure, nom_service: sv.nom_service, total: 0, pointes: 0 };
+    c.total++; if (q.statut !== 'reservee') c.pointes++;
+  });
+  return cours;
+}
+async function surveillerCoursGroupe() {
+  try {
+    if (!_artisan || !_artisan.id) return;
+    var now = maintenantGuadeloupe();
+    if (!_coursAujourdhui || _coursAujourdhui.date !== now.date || Date.now() - _derniereLectureCours > 300000) {
+      _coursAujourdhui = { date: now.date, cours: await lireCoursDuJour(now.date) }; _derniereLectureCours = Date.now();
+    }
+    Object.keys(_coursAujourdhui.cours).forEach(function(k) {
+      var c = _coursAujourdhui.cours[k], debut = parseInt(c.heure.slice(0, 2), 10) * 60 + parseInt(c.heure.slice(3, 5), 10);
+      var cleSignal = now.date + '|' + k;
+      if (_coursSignales[cleSignal] || now.minutes < debut + DELAI_ABSENTS_MIN || now.minutes > debut + 180) return;
+      var restants = c.total - c.pointes;
+      if (restants <= 0) return;
+      _coursSignales[cleSignal] = true;
+      mpaAiDire('👥 Cours de ' + escHtml(c.heure) + ' (' + escHtml(c.nom_service) + ') : ' + c.total + ' inscrit' + (c.total > 1 ? 's' : '') + ', ' + c.pointes + ' pointé' + (c.pointes > 1 ? 's' : '') + '. ' + restants + ' absent' + (restants > 1 ? 's' : '') + ' ? Pointez-les pour garder votre suivi à jour.', 'warning',
+        { label: 'Pointer les présents', action: "ouvrirCoursGroupe('" + now.date + "','" + escHtml(k) + "')" });
+    });
+  } catch (e) { console.warn('[MPA-AI] Surveillance des cours impossible :', e); }
+}
+function demarrerSurveillanceCours() {
+  if (_timerCours) return;
+  _timerCours = setInterval(surveillerCoursGroupe, 60000);
+  setTimeout(surveillerCoursGroupe, 4000);
+}
 async function pointerSeance(id, statut, dateStr, cle) {
   if (!verifierAccesEcriture()) return;
   var c = (_coursParJour[dateStr] || []).find(function(x) { return x.cle === cle; });
@@ -1470,6 +1511,7 @@ async function pointerSeance(id, statut, dateStr, cle) {
   var r = await sb.from('artisans_forfaits_seances').update({ statut: nouveau }).eq('id', id).eq('artisan_id', _artisan.id);
   if (r.error) { alert('Erreur : ' + r.error.message); return; }
   i.statut = nouveau;
+  _derniereLectureCours = 0; // la surveillance relit les pointages
   ouvrirCoursGroupe(dateStr, cle);
 }
 
