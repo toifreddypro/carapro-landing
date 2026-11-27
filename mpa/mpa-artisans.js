@@ -1399,9 +1399,74 @@ async function chargerInterventions() {
   _indisposMois = ind.error ? [] : (ind.data || []);
 
   await pRetards;
+  await chargerCoursGroupe(debutStr, finStr);
   renderCalendrier();
   renderPlanningMobile();
   renderRecapInterventions();
+}
+
+// ── Cours collectifs (lot 56c) : les séances réservées par les clients d'un forfait, regroupées en UNE ligne par cours et par jour ──
+var _coursParJour = {}; // date → [{ cle, service_id, heure, nom_service, places, inscrits: [{ id, nom, telephone, statut }] }]
+async function chargerCoursGroupe(debutStr, finStr) {
+  _coursParJour = {};
+  try {
+    var r = await sb.from('artisans_forfaits_seances').select('id, service_id, date_seance, heure, statut, artisans_forfaits(nom, telephone)')
+      .eq('artisan_id', _artisan.id).neq('statut', 'annulee').gte('date_seance', debutStr).lte('date_seance', finStr).order('heure', { ascending: true }).limit(2000);
+    if (r.error) return; // tables pas encore créées : le planning reste comme avant
+    (r.data || []).forEach(function(q) {
+      var sv = _servicesCache.find(function(x) { return String(x.id) === String(q.service_id); });
+      var liste = _coursParJour[q.date_seance] = _coursParJour[q.date_seance] || [];
+      var cle = q.service_id + '|' + q.heure;
+      var cours = liste.find(function(c) { return c.cle === cle; });
+      if (!cours) { cours = { cle: cle, service_id: q.service_id, heure: q.heure, nom_service: sv ? sv.nom_service : 'Cours collectif', places: sv ? sv.groupe_places : null, inscrits: [] }; liste.push(cours); }
+      var f = q.artisans_forfaits || {};
+      cours.inscrits.push({ id: q.id, nom: f.nom || 'Client', telephone: f.telephone || '', statut: q.statut });
+    });
+  } catch (e) { _coursParJour = {}; }
+}
+function libelleCours(c) { return c.inscrits.length + ' inscrit' + (c.inscrits.length > 1 ? 's' : '') + (c.places ? ' sur ' + c.places : ''); }
+// Case du calendrier (ordinateur)
+function pillsCoursHtml(dateStr, creneau) {
+  return (_coursParJour[dateStr] || []).filter(function(c) { return (c.heure < '12:00' ? 'matin' : 'apres_midi') === creneau; }).map(function(c) {
+    return '<div class="cal-pill" style="background:rgba(18,102,227,.12);border-left:3px solid #1266e3;" onclick="event.stopPropagation();ouvrirCoursGroupe(\'' + dateStr + '\',\'' + escHtml(c.cle) + '\')" title="' + escHtml(c.nom_service + ' — ' + libelleCours(c)) + '"><span class="cal-pill-txt"><span class="cal-pill-ico">👥</span><span class="cal-pill-heure">' + escHtml(c.heure) + '</span> ' + escHtml(c.nom_service) + ' · ' + c.inscrits.length + (c.places ? '/' + c.places : '') + '</span></div>';
+  }).join('');
+}
+// Ligne du jour (mobile)
+function ligneCoursHtml(dateStr, c, grande) {
+  return '<div class="pc-wrap"><div class="pm-ligne" onclick="ouvrirCoursGroupe(\'' + dateStr + '\',\'' + escHtml(c.cle) + '\')"><div class="pm-h">' + escHtml(c.heure) + '</div><div class="pm-txt"><div class="pm-nom">👥 ' + escHtml(c.nom_service) + '</div><div class="pm-svg" style="font-size:13px;color:#6b7280;">Cours collectif · ' + escHtml(libelleCours(c)) + '</div></div></div></div>';
+}
+function ouvrirCoursGroupe(dateStr, cle) {
+  var c = (_coursParJour[dateStr] || []).find(function(x) { return x.cle === cle; });
+  if (!c) return;
+  var dateAff = new Date(dateStr + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  var div = document.getElementById('modal-cours-groupe');
+  if (!div) { div = document.createElement('div'); div.id = 'modal-cours-groupe'; div.className = 'modal-overlay'; document.body.appendChild(div); }
+  var presents = c.inscrits.filter(function(i) { return i.statut === 'presente'; }).length;
+  var absents = c.inscrits.filter(function(i) { return i.statut === 'absente'; }).length;
+  div.innerHTML = '<div class="modal-box"><h3>👥 ' + escHtml(c.nom_service) + '</h3>' +
+    '<div style="font-size:13.5px;color:var(--mu);margin:-4px 0 12px;text-transform:capitalize;">' + escHtml(dateAff) + ' à ' + escHtml(c.heure) + ' · ' + escHtml(libelleCours(c)) + '</div>' +
+    '<div style="font-size:13px;margin:0 0 10px;">✅ ' + presents + ' présent' + (presents > 1 ? 's' : '') + ' · ❌ ' + absents + ' absent' + (absents > 1 ? 's' : '') + ' · ⏳ ' + (c.inscrits.length - presents - absents) + ' à pointer</div>' +
+    c.inscrits.map(function(i) {
+      var q = "'" + i.id + "'", d = "'" + dateStr + "'", k = "'" + escHtml(c.cle) + "'";
+      return '<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--brd);border-radius:12px;">' +
+        '<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:14px;">' + escHtml(i.nom) + '</div>' + (i.telephone ? '<div style="font-size:12.5px;color:var(--mu);">' + escHtml(i.telephone) + '</div>' : '') + '</div>' +
+        '<button type="button" onclick="pointerSeance(' + q + ',\'presente\',' + d + ',' + k + ')" style="padding:8px 12px;border-radius:10px;border:1px solid #16a34a;font-weight:700;cursor:pointer;background:' + (i.statut === 'presente' ? '#16a34a;color:#fff' : '#fff;color:#16a34a') + ';">Présent</button>' +
+        '<button type="button" onclick="pointerSeance(' + q + ',\'absente\',' + d + ',' + k + ')" style="padding:8px 12px;border-radius:10px;border:1px solid #dc2626;font-weight:700;cursor:pointer;background:' + (i.statut === 'absente' ? '#dc2626;color:#fff' : '#fff;color:#dc2626') + ';">Absent</button></div>';
+    }).join('') +
+    '<p style="font-size:12px;color:var(--mu);margin:8px 0 0;">Une séance réservée est due : le pointage sert au suivi, il ne change pas le solde du client.</p>' +
+    '<div class="modal-actions" style="margin-top:14px;"><button class="btn-secondary" onclick="fermerModale(\'modal-cours-groupe\')">Fermer</button></div></div>';
+  ouvrirModale('modal-cours-groupe');
+}
+async function pointerSeance(id, statut, dateStr, cle) {
+  if (!verifierAccesEcriture()) return;
+  var c = (_coursParJour[dateStr] || []).find(function(x) { return x.cle === cle; });
+  var i = c && c.inscrits.find(function(x) { return x.id === id; });
+  if (!i) return;
+  var nouveau = i.statut === statut ? 'reservee' : statut; // un second clic annule le pointage
+  var r = await sb.from('artisans_forfaits_seances').update({ statut: nouveau }).eq('id', id).eq('artisan_id', _artisan.id);
+  if (r.error) { alert('Erreur : ' + r.error.message); return; }
+  i.statut = nouveau;
+  ouvrirCoursGroupe(dateStr, cle);
 }
 
 // ── Interventions passées encore « Planifiée » : mises en évidence (contour bleu) dans le planning ──
@@ -1511,6 +1576,7 @@ function renderCalendrier() {
       var s = classeStatut(i.statut);
       if (s !== 'annulee' && pointsUniques.indexOf(s) === -1) pointsUniques.push(s);
     });
+    if (dateStr && (_coursParJour[dateStr] || []).length && pointsUniques.indexOf('planifiee') === -1) pointsUniques.push('planifiee');
     var compactHtml = c.autreMonth ? '' :
       (pointsUniques.length
         ? '<div class="cal-compact"><div class="cal-compact-dots">' + pointsUniques.map(function(s) { return '<span class="cal-status-dot cal-status-' + s + '"></span>'; }).join('') + '</div></div>'
@@ -1522,8 +1588,8 @@ function renderCalendrier() {
       compactHtml +
       (c.autreMonth ? '' :
         '<div class="cal-halves">' +
-          renderCreneauHtml('matin', dateStr, interMatin) +
-          renderCreneauHtml('apres_midi', dateStr, interAM) +
+          renderCreneauHtml('matin', dateStr, interMatin, pillsCoursHtml(dateStr, 'matin')) +
+          renderCreneauHtml('apres_midi', dateStr, interAM, pillsCoursHtml(dateStr, 'apres_midi')) +
         '</div>'
       ) +
     '</div>';
@@ -1566,7 +1632,8 @@ function renderPlanningMobile() {
   document.getElementById('pm-jour').innerHTML =
     '<div class="pm-titre-jour">' + (_jourPlanM === auj ? 'Aujourd\'hui · ' : '') + escHtml(dateAff.charAt(0).toUpperCase() + dateAff.slice(1)) + ' · ' + liste.length + ' intervention' + (liste.length > 1 ? 's' : '') + '</div>' +
     (bloc ? '<div class="pm-bloque">⛔ Journée bloquée : ' + escHtml(libelleTypeFermeture(bloc.type_fermeture)) + '</div>' : '') +
-    (liste.length ? liste.map(ligneInterventionM).join('') : '<div class="pm-vide">Rien de prévu ce jour-là 🌴</div>');
+    ((_coursParJour[_jourPlanM] || []).map(function(c) { return ligneCoursHtml(_jourPlanM, c); }).join('')) +
+    (liste.length ? liste.map(ligneInterventionM).join('') : ((_coursParJour[_jourPlanM] || []).length ? '' : '<div class="pm-vide">Rien de prévu ce jour-là 🌴</div>'));
   rafraichirFicheMobile();
 }
 var COUL_ST_M = { planifiee: ['#b45309', 'rgba(245,158,11,.14)'], en_cours: ['#6d28d9', 'rgba(109,40,217,.12)'], terminee: ['#1d4ed8', 'rgba(59,130,246,.12)'], payee: ['#15803d', 'rgba(34,197,94,.14)'], annulee: ['#6b7280', 'rgba(107,114,128,.14)'] };
@@ -1611,7 +1678,7 @@ function classeStatut(s) { return /^[a-z_-]{1,30}$/.test(s || '') ? s : 'planifi
 
 // Une case de planning : deux sections nettes (Matin / Après-midi), UNE vignette visible par section puis « +N » (liste du jour).
 // Vignette = barre de couleur du statut + heure + client ; la prestation est dans l'infobulle et dans la fenêtre de détail.
-function renderCreneauHtml(creneau, dateStr, liste) {
+function renderCreneauHtml(creneau, dateStr, liste, coursHtml) {
   var maxVisible = 1;
   var visibles = liste.slice(0, maxVisible);
   var reste = liste.length - maxVisible;
@@ -1643,7 +1710,7 @@ function renderCreneauHtml(creneau, dateStr, liste) {
 
   return '<div class="cal-half cal-half-' + (creneau==='matin'?'matin':'am') + (liste.length ? ' cal-half-occupe' : ' cal-half-vide') + '">' +
     '<div class="cal-half-label">' + (creneau==='matin'?'☀️ Matin':'🌇 Après-midi') + '</div>' +
-    pills + plus +
+    (coursHtml || '') + pills + plus +
     '<button class="cal-add-btn" onclick="event.stopPropagation();ouvrirNouvelleIntervention(\'' + dateStr + '\',\'' + creneau + '\')">+</button>' +
   '</div>';
 }
@@ -1698,6 +1765,7 @@ function ouvrirDetailJourMobile(dateStr) {
   div.innerHTML =
     '<div class="modal-box">' +
       '<h3 style="text-transform:capitalize;">' + dateAff + '</h3>' +
+      ((_coursParJour[dateStr] || []).length ? '<div style="margin:14px 0 6px;font-size:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--mu2);">👥 Cours collectifs</div>' + (_coursParJour[dateStr] || []).map(function(c) { return '<div onclick="fermerModale(\'modal-jour-mobile\');ouvrirCoursGroupe(\'' + dateStr + '\',\'' + escHtml(c.cle) + '\')" style="display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:8px;border:1px solid var(--brd);border-left:4px solid #1266e3;border-radius:12px;cursor:pointer;"><div style="font-size:22px;">👥</div><div style="flex:1;"><div style="font-size:14px;font-weight:700;">' + escHtml(c.heure) + ' · ' + escHtml(c.nom_service) + '</div><div style="font-size:12.5px;color:var(--mu);">' + escHtml(libelleCours(c)) + '</div></div></div>'; }).join('') : '') +
       section('☀️ Matin', matin, 'matin') +
       section('🌇 Après-midi', apm, 'apres_midi') +
       '<div class="modal-actions" style="margin-top:14px;">' +
